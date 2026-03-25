@@ -23,7 +23,7 @@ RUN pnpm build
 # This is required in pnpm monorepos because copying node_modules between
 # Docker stages breaks the virtual store symlinks (.pnpm/).
 WORKDIR /app
-RUN pnpm deploy --filter @symph-crm/api --prod /app/deploy
+RUN pnpm deploy --filter @symph-crm/api --prod --legacy /app/deploy
 
 # ---- Production Stage ----
 FROM node:20-alpine
