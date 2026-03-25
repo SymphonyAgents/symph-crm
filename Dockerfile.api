@@ -1,0 +1,36 @@
+# ---- Build Stage ----
+FROM node:20-alpine AS builder
+RUN corepack enable && corepack prepare pnpm@latest --activate
+WORKDIR /app
+
+# Copy workspace manifests first for layer caching
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/database/package.json ./packages/database/
+COPY apps/api/package.json ./apps/api/
+
+# Install all dependencies (needed to resolve workspace packages)
+RUN pnpm install --frozen-lockfile
+
+# Copy source
+COPY packages ./packages
+COPY apps/api ./apps/api
+
+# Build NestJS (webpack bundles workspace deps into dist/main.js)
+WORKDIR /app/apps/api
+RUN pnpm build
+
+# ---- Production Stage ----
+FROM node:20-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+
+# NestJS webpack output is self-contained — just needs node_modules for
+# external runtime packages (postgres, drizzle-orm, reflect-metadata, etc.)
+COPY --from=builder /app/apps/api/dist ./dist
+COPY --from=builder /app/apps/api/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+# Preserve pnpm workspace symlink target for @symph-crm/database
+COPY --from=builder /app/packages ./packages
+
+EXPOSE 4000
+CMD ["node", "dist/main"]

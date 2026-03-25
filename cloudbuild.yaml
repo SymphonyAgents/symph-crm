@@ -1,0 +1,103 @@
+# Symph CRM — Cloud Build: parallel build + deploy
+# Triggered manually: gcloud builds submit --config cloudbuild.yaml .
+#
+# Substitutions (set at trigger or via --substitutions flag):
+#   _REGION          Cloud Run region (default: asia-southeast1)
+#   _API_SERVICE     Cloud Run service name for NestJS API
+#   _WEB_SERVICE     Cloud Run service name for Next.js web
+#   _API_URL         Internal API URL for web → api proxy rewrite
+
+substitutions:
+  _REGION: asia-southeast1
+  _API_SERVICE: symph-crm-api
+  _WEB_SERVICE: symph-crm-web
+  _API_URL: ''  # filled after first deploy — see deploy-runbook.md
+
+steps:
+  # ── Step 1a: Build API image (starts immediately)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-api
+    waitFor: ['-']
+    args:
+      - build
+      - -f
+      - Dockerfile.api
+      - -t
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$SHORT_SHA
+      - -t
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:latest
+      - .
+
+  # ── Step 1b: Build web image (starts immediately, parallel with API)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: build-web
+    waitFor: ['-']
+    args:
+      - build
+      - -f
+      - Dockerfile.web
+      - -t
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$SHORT_SHA
+      - -t
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:latest
+      - .
+
+  # ── Step 2a: Push API image (after api build)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-api
+    waitFor: [build-api]
+    args:
+      - push
+      - --all-tags
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api
+
+  # ── Step 2b: Push web image (after web build)
+  - name: 'gcr.io/cloud-builders/docker'
+    id: push-web
+    waitFor: [build-web]
+    args:
+      - push
+      - --all-tags
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web
+
+  # ── Step 3a: Deploy API to Cloud Run (after api push)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-api
+    waitFor: [push-api]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_API_SERVICE
+      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$SHORT_SHA
+      - --region=$_REGION
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=4000
+      - --set-secrets=DATABASE_URL=symph-crm-db-url:latest,ANTHROPIC_API_KEY=symph-crm-anthropic-key:latest,CRON_SECRET=symph-crm-cron-secret:latest
+      - --set-env-vars=NODE_ENV=production,NEXT_PUBLIC_APP_URL=https://crm.symph.co
+
+  # ── Step 3b: Deploy web to Cloud Run (after web push)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: deploy-web
+    waitFor: [push-web]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - $_WEB_SERVICE
+      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$SHORT_SHA
+      - --region=$_REGION
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=3000
+      - --set-secrets=NEXTAUTH_SECRET=symph-crm-nextauth-secret:latest,GOOGLE_CLIENT_SECRET=symph-crm-google-client-secret:latest,DATABASE_URL=symph-crm-db-url:latest,ANTHROPIC_API_KEY=symph-crm-anthropic-key:latest,CRON_SECRET=symph-crm-cron-secret:latest
+      - --set-env-vars=NODE_ENV=production,NEXTAUTH_URL=https://crm.symph.co,NEXT_PUBLIC_APP_URL=https://crm.symph.co,GOOGLE_CLIENT_ID=188047996224-l74ln859dbge5cftjonk6nf8efuv62hb.apps.googleusercontent.com,NEXT_PUBLIC_SUPABASE_URL=https://juiwzbfvuvrtjizedtio.supabase.co,NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1aXd6YmZ2dXZydGppemVkdGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNDEzNTAsImV4cCI6MjA4OTkxNzM1MH0.KiYcnydCTWVMqvWus7nKoGEfSfmIGQ2oQQ452CehofI,API_URL=$_API_URL
+
+images:
+  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$SHORT_SHA
+  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$SHORT_SHA
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
