@@ -10,19 +10,10 @@ const nodeExternals = require('webpack-node-externals');
  * its TypeScript source directly into dist/main.js, eliminating the runtime
  * dependency on its compiled form.
  */
+// Only override externals — NestJS CLI already configures ts-loader internally.
+// Adding a duplicate ts-loader rule causes double-processing and incorrect output.
 module.exports = (options) => ({
   ...options,
-  module: {
-    ...options.module,
-    rules: [
-      ...(options.module?.rules || []),
-      {
-        test: /\.tsx?$/,
-        use: 'ts-loader',
-        exclude: /node_modules/,
-      },
-    ],
-  },
   externals: [
     nodeExternals({
       allowlist: [/^@symph-crm\//],
