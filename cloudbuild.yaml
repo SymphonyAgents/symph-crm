@@ -1,18 +1,17 @@
 # Symph CRM — Cloud Build: parallel build + deploy
-# Triggered manually: gcloud builds submit --config cloudbuild.yaml .
+# Triggered via: GitHub Actions on push to main (see .github/workflows/deploy.yml)
+# Manual:        gcloud builds submit --config cloudbuild.yaml --substitutions=SHORT_SHA=$(git rev-parse --short HEAD),_API_URL=https://symph-crm-api-t5wb3mrt7q-as.a.run.app .
 #
-# Substitutions (set at trigger or via --substitutions flag):
-#   _REGION          Cloud Run region (default: asia-southeast1)
-#   _API_SERVICE     Cloud Run service name for NestJS API
-#   _WEB_SERVICE     Cloud Run service name for Next.js web
-#   _API_URL         Internal API URL for web → api proxy rewrite
+# Substitutions:
+#   SHORT_SHA   Built-in: set by Cloud Build on push triggers (7-char commit SHA)
+#   _REGION     Cloud Run region
+#   _API_URL    Internal API URL for web → api proxy rewrite
 
 substitutions:
   _REGION: asia-southeast1
   _API_SERVICE: symph-crm-api
   _WEB_SERVICE: symph-crm-web
-  _API_URL: ''        # filled after first deploy — see deploy-runbook.md
-  _SHORT_SHA: local   # pass via --substitutions=_SHORT_SHA=$(git rev-parse --short HEAD)
+  _API_URL: 'https://symph-crm-api-t5wb3mrt7q-as.a.run.app'
 
 steps:
   # ── Step 1a: Build API image (starts immediately)
@@ -24,7 +23,7 @@ steps:
       - -f
       - Dockerfile.api
       - -t
-      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$_SHORT_SHA
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$SHORT_SHA
       - -t
       - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:latest
       - .
@@ -38,7 +37,7 @@ steps:
       - -f
       - Dockerfile.web
       - -t
-      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$_SHORT_SHA
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$SHORT_SHA
       - -t
       - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:latest
       - .
@@ -70,7 +69,7 @@ steps:
       - run
       - deploy
       - $_API_SERVICE
-      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$_SHORT_SHA
+      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$SHORT_SHA
       - --region=$_REGION
       - --platform=managed
       - --allow-unauthenticated
@@ -87,7 +86,7 @@ steps:
       - run
       - deploy
       - $_WEB_SERVICE
-      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$_SHORT_SHA
+      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$SHORT_SHA
       - --region=$_REGION
       - --platform=managed
       - --allow-unauthenticated
@@ -96,8 +95,8 @@ steps:
       - --set-env-vars=NODE_ENV=production,NEXTAUTH_URL=https://crm.symph.co,NEXT_PUBLIC_APP_URL=https://crm.symph.co,GOOGLE_CLIENT_ID=188047996224-l74ln859dbge5cftjonk6nf8efuv62hb.apps.googleusercontent.com,NEXT_PUBLIC_SUPABASE_URL=https://juiwzbfvuvrtjizedtio.supabase.co,NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1aXd6YmZ2dXZydGppemVkdGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzNDEzNTAsImV4cCI6MjA4OTkxNzM1MH0.KiYcnydCTWVMqvWus7nKoGEfSfmIGQ2oQQ452CehofI,API_URL=$_API_URL
 
 images:
-  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$_SHORT_SHA
-  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$_SHORT_SHA
+  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/api:$SHORT_SHA
+  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/web:$SHORT_SHA
 
 options:
   machineType: E2_HIGHCPU_8

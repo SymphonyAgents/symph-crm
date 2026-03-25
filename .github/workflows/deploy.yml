@@ -1,0 +1,35 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/188047996224/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider
+          service_account: symph-crm-deployer@symph-crm.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Submit Cloud Build
+        run: |
+          gcloud builds submit . \
+            --config=cloudbuild.yaml \
+            --project=symph-crm \
+            --substitutions=SHORT_SHA=${GITHUB_SHA:0:7},_API_URL=https://symph-crm-api-t5wb3mrt7q-as.a.run.app
