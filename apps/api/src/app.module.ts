@@ -13,6 +13,7 @@ import { ChatModule } from './chat/chat.module'
 import { ProductsModule } from './products/products.module'
 import { PipelineModule } from './pipeline/pipeline.module'
 import { InternalModule } from './internal/internal.module'
+import { CalendarModule } from './calendar/calendar.module'
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { InternalModule } from './internal/internal.module'
     ChatModule,
     ProductsModule,
     PipelineModule,
+    CalendarModule,
     InternalModule,
   ],
 })
