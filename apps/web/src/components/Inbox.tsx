@@ -5,8 +5,10 @@ import { cn } from '@/lib/utils'
 
 type FilterTab = 'all' | 'unread' | 'tagged'
 
-export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: number) => void }) {
+export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) => void }) {
   const [filter, setFilter] = useState<FilterTab>('all')
+  // Note: Inbox is currently a placeholder for email/message integration
+  // Activities are shown per-deal in DealDetail. Full inbox requires email provider integration.
 
   return (
     <div className="h-full flex overflow-hidden">
@@ -58,7 +60,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: number) =>
             </svg>
           </div>
           <div className="text-center">
-            <div className="text-[13px] font-semibold text-slate-700 mb-1">No messages</div>
+            <div className="text-[13px] font-semibold text-slate-700 mb-1">Email integration coming</div>
             <div className="text-[11.5px] text-slate-400 leading-relaxed">
               Emails and messages linked<br />to deals will appear here
             </div>

@@ -6,10 +6,19 @@ import { PipelineBar } from './PipelineBar'
 import { TopDeals } from './TopDeals'
 import { AMLeaderboard } from './AMLeaderboard'
 import { RecentActivity } from './RecentActivity'
-import { STAGES } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+
+type ApiDeal = {
+  id: string
+  title: string
+  value: string | null
+  stage: string
+  companyId: string
+  assignedTo: string | null
+  lastActivityAt: string | null
+}
 
 type PipelineSummary = {
   totalDeals: number
@@ -26,15 +35,24 @@ function formatCurrency(n: number): string {
   return `₱${n.toLocaleString()}`
 }
 
+function timeAgo(iso: string | null): string {
+  if (!iso) return 'No activity'
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
+  return `${Math.floor(diff / 86400)}d ago`
+}
+
 export function Dashboard() {
   const { data: summary, isLoading } = useQuery<PipelineSummary>({
     queryKey: queryKeys.pipeline.summary,
     queryFn: () => fetch(`${API}/pipeline/summary`).then(r => r.json()),
-    staleTime: 60_000, // 1 min
+    staleTime: 60_000,
   })
 
-  const { data: deals = [] } = useQuery<{ id: string; title: string; value: string | null; stage: string; companyId: string }[]>({
-    queryKey: ['deals'],
+  const { data: deals = [] } = useQuery<ApiDeal[]>({
+    queryKey: queryKeys.deals.all,
     queryFn: () => fetch(`${API}/deals`).then(r => r.json()),
   })
 
@@ -47,6 +65,34 @@ export function Dashboard() {
     .filter(d => d.value && !['closed_won', 'closed_lost'].includes(d.stage))
     .sort((a, b) => parseFloat(b.value ?? '0') - parseFloat(a.value ?? '0'))
     .slice(0, 5)
+
+  // AM Leaderboard — group by assignedTo
+  const amMap = new Map<string, { deals: number; value: number }>()
+  for (const d of deals) {
+    const name = d.assignedTo || 'Unassigned'
+    const cur = amMap.get(name) || { deals: 0, value: 0 }
+    cur.deals++
+    cur.value += parseFloat(d.value || '0') || 0
+    amMap.set(name, cur)
+  }
+  const amEntries = Array.from(amMap.entries())
+    .sort((a, b) => b[1].value - a[1].value)
+    .map(([name, stats]) => ({
+      name,
+      deals: `${stats.deals} deal${stats.deals !== 1 ? 's' : ''}`,
+      value: formatCurrency(stats.value),
+    }))
+
+  // Recent Activity — last-touched deals sorted by lastActivityAt
+  const recentEntries = [...deals]
+    .filter(d => d.lastActivityAt)
+    .sort((a, b) => new Date(b.lastActivityAt!).getTime() - new Date(a.lastActivityAt!).getTime())
+    .slice(0, 5)
+    .map(d => ({
+      color: '#2563eb',
+      text: d.title,
+      time: timeAgo(d.lastActivityAt),
+    }))
 
   return (
     <div className="w-full p-4 md:px-6 pb-6">
@@ -85,19 +131,19 @@ export function Dashboard() {
         <div className="flex flex-col gap-4">
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 mb-4">Pipeline by Stage</div>
-            <PipelineBar stages={STAGES} deals={deals as any} />
+            <PipelineBar deals={deals} />
           </div>
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <TopDeals deals={topDeals as any} />
+            <TopDeals deals={topDeals} />
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <AMLeaderboard entries={[]} />
+            <AMLeaderboard entries={amEntries} />
           </div>
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <RecentActivity entries={[]} />
+            <RecentActivity entries={recentEntries} />
           </div>
         </div>
       </div>

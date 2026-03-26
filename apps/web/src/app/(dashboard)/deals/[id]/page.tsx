@@ -10,7 +10,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
 
   return (
     <DealDetail
-      dealId={Number(id)}
+      dealId={id}
       onBack={() => router.back()}
       onOpenDeal={(dealId) => router.push(`/deals/${dealId}`)}
     />
