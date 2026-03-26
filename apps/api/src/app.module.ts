@@ -14,6 +14,7 @@ import { ProductsModule } from './products/products.module'
 import { PipelineModule } from './pipeline/pipeline.module'
 import { InternalModule } from './internal/internal.module'
 import { CalendarModule } from './calendar/calendar.module'
+import { UsersModule } from './users/users.module'
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CalendarModule } from './calendar/calendar.module'
     PipelineModule,
     CalendarModule,
     InternalModule,
+    UsersModule,
   ],
 })
 export class AppModule {}

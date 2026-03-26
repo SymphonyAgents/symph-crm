@@ -5,9 +5,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
 import { EmptyState } from './EmptyState'
+import { useUser } from '@/lib/hooks/use-user'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-const USER_ID = 'dev-user' // TODO: replace with real auth session userId
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -76,10 +76,12 @@ function CreateEventModal({
   defaultDate,
   onClose,
   onCreated,
+  userId,
 }: {
   defaultDate?: string
   onClose: () => void
   onCreated: () => void
+  userId: string | null
 }) {
   const [form, setForm] = useState<CreateEventForm>({
     ...BLANK_FORM,
@@ -92,7 +94,7 @@ function CreateEventModal({
     mutationFn: async (data: CreateEventForm) => {
       const res = await fetch(`${API}/calendar/events`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': USER_ID },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
         body: JSON.stringify({
           ...data,
           startAt: new Date(data.startAt).toISOString(),
@@ -208,6 +210,7 @@ function CreateEventModal({
 }
 
 export function Calendar() {
+  const { userId } = useUser()
   const now = new Date()
   const [month, setMonth] = useState(now.getMonth())
   const [year, setYear] = useState(now.getFullYear())
@@ -220,14 +223,15 @@ export function Calendar() {
   const { data: status } = useQuery<CalendarStatus>({
     queryKey: queryKeys.calendar.status,
     queryFn: () =>
-      fetch(`${API}/auth/google-calendar/status`, { headers: { 'x-user-id': USER_ID } }).then(r => r.json()),
+      fetch(`${API}/auth/google-calendar/status`, { headers: { 'x-user-id': userId ?? '' } }).then(r => r.json()),
+    enabled: !!userId,
   })
 
   const { data: events = [] } = useQuery<ApiCalendarEvent[]>({
     queryKey: queryKeys.calendar.events({ from, to }),
     queryFn: () =>
       fetch(`${API}/calendar/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
-        headers: { 'x-user-id': USER_ID },
+        headers: { 'x-user-id': userId ?? '' },
       }).then(r => r.json()),
     enabled: !!status?.connected,
   })
@@ -432,6 +436,7 @@ export function Calendar() {
           defaultDate={clickedDate}
           onClose={() => setShowCreateModal(false)}
           onCreated={() => qc.invalidateQueries({ queryKey: ['calendar', 'events'] })}
+          userId={userId}
         />
       )}
     </div>

@@ -19,9 +19,9 @@ import dynamic from 'next/dynamic'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { EmptyState } from './EmptyState'
+import { useUser } from '@/lib/hooks/use-user'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-const USER_ID = 'dev-user'
 
 // Dynamic import — Tiptap uses ProseMirror (browser DOM only, SSR breaks)
 const ProposalEditor = dynamic(() => import('./ProposalEditor'), {
@@ -51,9 +51,11 @@ type ApiDocument = {
 function NewProposalModal({
   onClose,
   onCreated,
+  userId,
 }: {
   onClose: () => void
   onCreated: (doc: ApiDocument) => void
+  userId: string | null
 }) {
   const [title, setTitle] = useState('')
   const [dealId, setDealId] = useState('')
@@ -68,9 +70,9 @@ function NewProposalModal({
     mutationFn: async () => {
       const res = await fetch(`${API}/documents`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': USER_ID },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
         body: JSON.stringify({
-          authorId: USER_ID,
+          authorId: userId ?? '',
           dealId: dealId || null,
           type: 'proposal',
           title: title || 'Untitled Proposal',
@@ -138,6 +140,7 @@ function NewProposalModal({
 // ─── Main ProposalBuilder ─────────────────────────────────────────────────────
 
 export function ProposalBuilder() {
+  const { userId } = useUser()
   const qc = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
@@ -147,7 +150,8 @@ export function ProposalBuilder() {
   const { data: allDocs = [], isLoading } = useQuery<ApiDocument[]>({
     queryKey: ['documents', 'proposals'],
     queryFn: () =>
-      fetch(`${API}/documents`, { headers: { 'x-user-id': USER_ID } }).then(r => r.json()),
+      fetch(`${API}/documents`, { headers: { 'x-user-id': userId ?? '' } }).then(r => r.json()),
+    enabled: !!userId,
   })
 
   const proposals = useMemo(
@@ -296,6 +300,7 @@ export function ProposalBuilder() {
             qc.invalidateQueries({ queryKey: ['documents', 'proposals'] })
             setSelectedId(doc.id)
           }}
+          userId={userId}
         />
       )}
     </div>

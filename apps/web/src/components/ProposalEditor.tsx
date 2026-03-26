@@ -22,9 +22,9 @@ import TableRow from '@tiptap/extension-table-row'
 import TableHeader from '@tiptap/extension-table-header'
 import TableCell from '@tiptap/extension-table-cell'
 import { cn } from '@/lib/utils'
+import { useUser } from '@/lib/hooks/use-user'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-const USER_ID = 'dev-user'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -71,6 +71,7 @@ function ToolbarBtn({
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 
 export default function ProposalEditor({ documentId, dealId, initialContent, onVersionSaved }: Props) {
+  const { userId } = useUser()
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [wordCount, setWordCount] = useState(0)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -115,7 +116,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
         const excerpt = html.replace(/<[^>]+>/g, '').slice(0, 500)
         const res = await fetch(`${API}/documents/${documentId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json', 'x-user-id': USER_ID },
+          headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
           body: JSON.stringify({
             content: html,
             excerpt,
@@ -130,7 +131,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
         isSavingRef.current = false
       }
     }, 2000)
-  }, [documentId, wordCount])
+  }, [documentId, wordCount, userId])
 
   // ── Save Version ────────────────────────────────────────────────────────
 
@@ -140,10 +141,10 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
 
     const res = await fetch(`${API}/documents`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': USER_ID },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
       body: JSON.stringify({
         dealId,
-        authorId: USER_ID,
+        authorId: userId ?? '',
         type: 'proposal',
         title: `Version — ${new Date().toLocaleString('en-PH')}`,
         content: html,
@@ -153,7 +154,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
     })
 
     if (res.ok) onVersionSaved?.()
-  }, [editor, dealId, documentId, onVersionSaved])
+  }, [editor, dealId, documentId, onVersionSaved, userId])
 
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
