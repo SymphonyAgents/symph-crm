@@ -230,14 +230,102 @@ function AttachmentPreview({
   )
 }
 
-function RecordingIndicator({ elapsed, onStop }: { elapsed: number; onStop: () => void }) {
+// ─── Audio Visualizer ─────────────────────────────────────────────────────────
+
+function AudioVisualizer({ analyser }: { analyser: AnalyserNode | null }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const frameRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!analyser || !canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    analyser.fftSize = 64
+    analyser.smoothingTimeConstant = 0.82
+    const BAR_COUNT = analyser.frequencyBinCount  // 32
+    const BAR_GAP = 2.5
+
+    function draw() {
+      if (!analyser || !canvas || !ctx) return
+
+      const dataArray = new Uint8Array(BAR_COUNT)
+      analyser.getByteFrequencyData(dataArray)
+
+      const { width, height } = canvas
+      ctx.clearRect(0, 0, width, height)
+
+      const totalGap = (BAR_COUNT - 1) * BAR_GAP
+      const barWidth = (width - totalGap) / BAR_COUNT
+      const centerY = height / 2
+
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const raw = dataArray[i] / 255
+        const amplitude = Math.max(0.06, raw)     // always-visible minimum
+        const halfH = amplitude * centerY * 0.88
+        const x = i * (barWidth + BAR_GAP)
+
+        // opacity: dim baseline bars, bright active ones
+        ctx.globalAlpha = 0.25 + raw * 0.75
+        ctx.fillStyle = '#6c63ff'
+        ctx.beginPath()
+        // roundRect: x, y, w, h, radius
+        ctx.roundRect(x, centerY - halfH, barWidth, halfH * 2, 1.5)
+        ctx.fill()
+      }
+
+      ctx.globalAlpha = 1
+      frameRef.current = requestAnimationFrame(draw)
+    }
+
+    draw()
+
+    return () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current)
+    }
+  }, [analyser])
+
   return (
-    <div className="px-4 pt-2 pb-1 flex items-center gap-2">
-      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
-      <span className="text-[12px] text-slate-600 flex-1">Recording · {formatDuration(elapsed)}</span>
+    <canvas
+      ref={canvasRef}
+      width={220}
+      height={36}
+      className="flex-1 min-w-0"
+      style={{ maxWidth: '220px' }}
+    />
+  )
+}
+
+// ─── Recording indicator ──────────────────────────────────────────────────────
+
+function RecordingIndicator({
+  elapsed,
+  analyser,
+  onStop,
+}: {
+  elapsed: number
+  analyser: AnalyserNode | null
+  onStop: () => void
+}) {
+  return (
+    <div className="px-4 pt-3 pb-1 flex items-center gap-3">
+      {/* Mic + timer */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+        <span className="text-[11px] font-mono font-medium text-slate-500 tabular-nums w-[32px]">
+          {formatDuration(elapsed)}
+        </span>
+      </div>
+
+      {/* Visualizer */}
+      <AudioVisualizer analyser={analyser} />
+
+      {/* Stop */}
       <button
         onClick={onStop}
-        className="px-2.5 py-1 rounded-lg bg-red-50 border border-red-200 text-[11px] font-medium text-red-600 hover:bg-red-100 transition-colors"
+        className="shrink-0 h-7 px-3 rounded-lg bg-red-50 border border-red-200 text-[11px] font-semibold text-red-600 hover:bg-red-100 active:scale-[0.96] transition-all"
       >
         Stop
       </button>
@@ -295,6 +383,9 @@ export function Chat({ dealId }: { dealId?: string }) {
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null)
   const [recording, setRecording] = useState(false)
   const [recordingElapsed, setRecordingElapsed] = useState(0)
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  // Live AnalyserNode — passed to AudioVisualizer while recording
+  const [liveAnalyser, setLiveAnalyser] = useState<AnalyserNode | null>(null)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -304,6 +395,7 @@ export function Chat({ dealId }: { dealId?: string }) {
   const audioChunksRef = useRef<Blob[]>([])
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recordingStartRef = useRef<number>(0)
+  const audioContextRef = useRef<AudioContext | null>(null)
 
   const userName = session?.user?.name?.split(' ')[0] || 'there'
   const userId = (session?.user as { id?: string })?.id || 'anonymous'
@@ -353,6 +445,24 @@ export function Chat({ dealId }: { dealId?: string }) {
   }, [compressImage])
 
   const handleFileSelected = useCallback(async (file: File) => {
+    setAttachmentError(null)
+    const ACCEPTED_MIMES = new Set([
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/plain',
+      'text/csv',
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/gif',
+    ])
+    if (!ACCEPTED_MIMES.has(file.type)) {
+      setAttachmentError(`Unsupported file type: ${file.type || file.name.split('.').pop()}. Accepted: PDF, DOCX, XLSX, TXT, CSV, images.`)
+      return
+    }
     const isImage = file.type.startsWith('image/')
     if (isImage) {
       await setImageAttachment(file)
@@ -385,10 +495,22 @@ export function Chat({ dealId }: { dealId?: string }) {
   // ── Voice recording ──────────────────────────────────────────────────────
 
   const startRecording = useCallback(async () => {
+    setAttachmentError(null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mimeType = getAudioMimeType()
       const recorder = new MediaRecorder(stream, { mimeType })
+
+      // ── Web Audio API visualizer setup ───────────────────────────────────
+      const audioCtx = new AudioContext()
+      const analyser = audioCtx.createAnalyser()
+      analyser.fftSize = 64
+      analyser.smoothingTimeConstant = 0.82
+      const source = audioCtx.createMediaStreamSource(stream)
+      source.connect(analyser)
+      audioContextRef.current = audioCtx
+      setLiveAnalyser(analyser)
+      // ─────────────────────────────────────────────────────────────────────
 
       audioChunksRef.current = []
       recorder.ondataavailable = e => {
@@ -397,6 +519,11 @@ export function Chat({ dealId }: { dealId?: string }) {
 
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop())
+        // Close audio context and clear analyser
+        audioCtx.close().catch(() => {})
+        audioContextRef.current = null
+        setLiveAnalyser(null)
+
         const blob = new Blob(audioChunksRef.current, { type: mimeType })
         const ext = mimeToExt(mimeType)
         const duration = (Date.now() - recordingStartRef.current) / 1000
@@ -414,15 +541,20 @@ export function Chat({ dealId }: { dealId?: string }) {
 
       mediaRecorderRef.current = recorder
       recordingStartRef.current = Date.now()
-      recorder.start(200) // collect in 200ms chunks
+      recorder.start(200)
       setRecording(true)
       setRecordingElapsed(0)
 
       recordingTimerRef.current = setInterval(() => {
         setRecordingElapsed(Math.floor((Date.now() - recordingStartRef.current) / 1000))
       }, 1000)
-    } catch {
-      // Microphone permission denied or not available
+    } catch (err) {
+      const isDenied = err instanceof DOMException && err.name === 'NotAllowedError'
+      setAttachmentError(
+        isDenied
+          ? 'Microphone access denied — allow it in your browser settings.'
+          : 'Could not start recording. Check your microphone.'
+      )
     }
   }, [])
 
@@ -442,6 +574,7 @@ export function Chat({ dealId }: { dealId?: string }) {
       URL.revokeObjectURL(pendingAttachment.previewUrl)
     }
     setPendingAttachment(null)
+    setAttachmentError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }, [pendingAttachment])
 
@@ -556,9 +689,13 @@ export function Chat({ dealId }: { dealId?: string }) {
             : 'border border-black/[.08] shadow-[var(--shadow-card)]'
         )}
       >
-        {/* Recording indicator */}
+        {/* Recording indicator + visualizer */}
         {recording && (
-          <RecordingIndicator elapsed={recordingElapsed} onStop={stopRecording} />
+          <RecordingIndicator
+            elapsed={recordingElapsed}
+            analyser={liveAnalyser}
+            onStop={stopRecording}
+          />
         )}
 
         {/* Attachment preview */}
@@ -591,6 +728,18 @@ export function Chat({ dealId }: { dealId?: string }) {
             style={{ minHeight: '28px', maxHeight: '160px' }}
           />
         </div>
+
+        {/* Attachment / mic error */}
+        {attachmentError && (
+          <div className="mx-4 mb-1 mt-0.5 flex items-center gap-1.5 text-[11px] text-red-500">
+            <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {attachmentError}
+          </div>
+        )}
 
         <div className="flex items-center gap-1.5 px-3 pb-3 pt-1">
           {/* File picker */}
