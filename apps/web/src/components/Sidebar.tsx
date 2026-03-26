@@ -70,14 +70,74 @@ function isActive(itemPath: string, pathname: string): boolean {
   return pathname === itemPath || pathname.startsWith(itemPath + '/')
 }
 
+function LogoutConfirmModal({
+  onConfirm,
+  onCancel,
+}: {
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[9998] flex items-center justify-center"
+      style={{
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        backgroundColor: 'rgba(255,255,255,0.5)',
+      }}
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-black/[.06] p-6 w-[320px] flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Icon */}
+        <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+        </div>
+
+        {/* Text */}
+        <div className="flex flex-col gap-1">
+          <p className="text-[14px] font-semibold text-slate-900">Sign out of Symph CRM?</p>
+          <p className="text-[12.5px] text-slate-500 leading-[1.5]">
+            Any unsaved work will be lost. You can sign back in anytime.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2 mt-1">
+          <button
+            onClick={onCancel}
+            className="flex-1 h-9 rounded-lg border border-black/[.08] text-[13px] font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 h-9 rounded-lg bg-red-500 hover:bg-red-600 text-[13px] font-medium text-white transition-colors active:scale-[0.97]"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [hoveredPath, setHoveredPath] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const user = session?.user
 
   async function handleSignOut() {
+    setShowLogoutConfirm(false)
     setSigningOut(true)
     await signOut({ callbackUrl: '/login' })
   }
@@ -85,6 +145,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {signingOut && <LogoutOverlay />}
+      {showLogoutConfirm && (
+        <LogoutConfirmModal
+          onConfirm={handleSignOut}
+          onCancel={() => setShowLogoutConfirm(false)}
+        />
+      )}
       {/* Mobile overlay */}
       {isOpen && (
         <div
@@ -171,7 +237,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="text-[10px] text-slate-400 truncate">{user?.email || ''}</div>
           </div>
           <button
-            onClick={handleSignOut}
+            onClick={() => setShowLogoutConfirm(true)}
             disabled={signingOut}
             className="p-1.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors shrink-0 cursor-pointer disabled:opacity-40"
             title="Sign out"
