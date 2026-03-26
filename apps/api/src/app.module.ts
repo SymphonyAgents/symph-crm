@@ -10,6 +10,7 @@ import { ActivitiesModule } from './activities/activities.module'
 import { FileParserModule } from './file-parser/file-parser.module'
 import { VoiceModule } from './voice/voice.module'
 import { ChatModule } from './chat/chat.module'
+import { ProductsModule } from './products/products.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ChatModule } from './chat/chat.module'
     FileParserModule,
     VoiceModule,
     ChatModule,
+    ProductsModule,
   ],
 })
 export class AppModule {}

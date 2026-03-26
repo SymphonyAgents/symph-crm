@@ -9,7 +9,7 @@ import { STAGES } from '@/lib/constants'
 
 export function Dashboard() {
   return (
-    <div className="p-4 md:px-6 pb-6 max-w-[1200px]">
+    <div className="w-full p-4 md:px-6 pb-6">
 
       {/* KPI Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-[1.2fr_0.9fr_0.9fr_1fr] gap-3 md:gap-3.5 mb-5">
