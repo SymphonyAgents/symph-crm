@@ -6,10 +6,17 @@ import { contacts } from '@symph-crm/database'
 export class ContactsController {
   constructor(private readonly contactsService: ContactsService) {}
 
+  /**
+   * GET /api/contacts
+   * ?companyId=<uuid>   — filter by company
+   * ?search=john        — fuzzy search by name or email
+   */
   @Get()
-  findAll(@Query('companyId') companyId?: string) {
-    if (companyId) return this.contactsService.findByCompany(companyId)
-    return this.contactsService.findAll()
+  findAll(
+    @Query('companyId') companyId?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.contactsService.findAll({ companyId, search })
   }
 
   @Get(':id')

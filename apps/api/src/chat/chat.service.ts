@@ -15,6 +15,9 @@ import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { CompaniesService } from '../companies/companies.service'
 import { DocumentsService } from '../documents/documents.service'
+import { ContactsService } from '../contacts/contacts.service'
+import { ActivitiesService } from '../activities/activities.service'
+import { DealsService } from '../deals/deals.service'
 
 export type MessageRole = 'user' | 'assistant'
 
@@ -222,6 +225,83 @@ const TOOLS: Anthropic.Messages.Tool[] = [
       required: ['companyId', 'name'],
     },
   },
+  {
+    name: 'get_company',
+    description: 'Get full details for a specific company by ID.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        companyId: { type: 'string', description: 'UUID of the company' },
+      },
+      required: ['companyId'],
+    },
+  },
+  {
+    name: 'update_company',
+    description: 'Update company fields — name, industry, website, HQ location, description, etc.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        companyId: { type: 'string' },
+        name: { type: 'string' },
+        domain: { type: 'string' },
+        industry: { type: 'string' },
+        website: { type: 'string' },
+        hqLocation: { type: 'string' },
+        description: { type: 'string' },
+        headcountRange: { type: 'string', description: 'e.g. "100-500"' },
+        revenueRange: { type: 'string', description: 'e.g. "₱50M-₱200M"' },
+      },
+      required: ['companyId'],
+    },
+  },
+  {
+    name: 'list_deals_for_company',
+    description: 'List all deals associated with a specific company.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        companyId: { type: 'string', description: 'UUID of the company' },
+      },
+      required: ['companyId'],
+    },
+  },
+  {
+    name: 'get_contacts',
+    description: 'Get all contacts (POCs) for a specific company, with primary contacts first.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        companyId: { type: 'string', description: 'UUID of the company' },
+      },
+      required: ['companyId'],
+    },
+  },
+  {
+    name: 'search_deals',
+    description: 'Search and filter deals by title, stage, or company. Use this to find a deal when you know its name but not its ID.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        search: { type: 'string', description: 'Fuzzy search by deal title' },
+        stage: { type: 'string', description: 'Filter by pipeline stage' },
+        companyId: { type: 'string', description: 'Filter by company UUID' },
+        limit: { type: 'number', description: 'Max results, default 20' },
+      },
+    },
+  },
+  {
+    name: 'list_activities',
+    description: 'Get the activity log for a deal or company. Shows what happened and when.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        dealId: { type: 'string', description: 'UUID of the deal' },
+        companyId: { type: 'string', description: 'UUID of the company' },
+        limit: { type: 'number', description: 'Max results, default 20' },
+      },
+    },
+  },
 ]
 
 // ─── System prompt ────────────────────────────────────────────────────────────
@@ -259,6 +339,9 @@ export class ChatService {
     @Inject(DB) private db: Database,
     private companies: CompaniesService,
     private documentsService: DocumentsService,
+    private contactsService: ContactsService,
+    private activitiesService: ActivitiesService,
+    private dealsService: DealsService,
   ) {
     this.anthropic = new Anthropic({
       apiKey: config.getOrThrow<string>('ANTHROPIC_API_KEY'),
@@ -620,6 +703,50 @@ export class ChatService {
           })
           .returning()
         return { contact }
+      }
+
+      case 'get_company': {
+        const company = await this.companies.findOne(input.companyId as string)
+        return { company: company ?? null }
+      }
+
+      case 'update_company': {
+        const { companyId, ...fields } = input as Record<string, string>
+        const updated = await this.companies.update(companyId, {
+          ...fields,
+          updatedAt: new Date(),
+        })
+        return { company: updated }
+      }
+
+      case 'list_deals_for_company': {
+        const companyDeals = await this.dealsService.findByCompany(input.companyId as string)
+        return { deals: companyDeals }
+      }
+
+      case 'get_contacts': {
+        const companyContacts = await this.contactsService.findByCompany(input.companyId as string)
+        return { contacts: companyContacts }
+      }
+
+      case 'search_deals': {
+        const results = await this.dealsService.findAll({
+          search: input.search as string | undefined,
+          stage: input.stage as string | undefined,
+          companyId: input.companyId as string | undefined,
+          limit: (input.limit as number | undefined) ?? 20,
+        })
+        return { deals: results }
+      }
+
+      case 'list_activities': {
+        const limit = (input.limit as number | undefined) ?? 20
+        const results = await this.activitiesService.find({
+          dealId: input.dealId as string | undefined,
+          companyId: input.companyId as string | undefined,
+          limit,
+        })
+        return { activities: results }
       }
 
       default:

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common'
 import { CompaniesService } from './companies.service'
 import { DealsService } from '../deals/deals.service'
+import { ContactsService } from '../contacts/contacts.service'
 import { companies } from '@symph-crm/database'
 
 @Controller('companies')
@@ -8,15 +9,32 @@ export class CompaniesController {
   constructor(
     private readonly companiesService: CompaniesService,
     private readonly dealsService: DealsService,
+    private readonly contactsService: ContactsService,
   ) {}
 
-  /** GET /api/companies?search=jollibee — fuzzy search by name or domain */
+  /**
+   * GET /api/companies
+   * ?search=jollibee    — fuzzy search by name or domain
+   */
   @Get()
   findAll(@Query('search') search?: string) {
     if (search?.trim()) {
       return this.companiesService.search(search.trim())
     }
     return this.companiesService.findAll()
+  }
+
+  /**
+   * GET /api/companies/exists?name=Jollibee&domain=jollibee.com.ph
+   * Returns { exists: boolean, company: Company | null }
+   * Used by AI tools to avoid creating duplicates. Must appear before :id.
+   */
+  @Get('exists')
+  checkExists(
+    @Query('name') name?: string,
+    @Query('domain') domain?: string,
+  ) {
+    return this.companiesService.checkExists({ name, domain })
   }
 
   @Get(':id')
@@ -28,6 +46,12 @@ export class CompaniesController {
   @Get(':id/deals')
   findDeals(@Param('id') id: string) {
     return this.dealsService.findByCompany(id)
+  }
+
+  /** GET /api/companies/:id/contacts — all contacts for this company, primary first */
+  @Get(':id/contacts')
+  findContacts(@Param('id') id: string) {
+    return this.contactsService.findByCompany(id)
   }
 
   @Post()

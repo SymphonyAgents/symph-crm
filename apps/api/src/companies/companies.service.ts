@@ -62,6 +62,26 @@ export class CompaniesService {
     return company
   }
 
+  /**
+   * Check whether a company with the given name (case-insensitive) or domain exists.
+   * Used by AI tools before creating a duplicate.
+   */
+  async checkExists(params: { name?: string; domain?: string }) {
+    if (!params.name && !params.domain) return { exists: false, company: null }
+
+    const conditions = []
+    if (params.name) conditions.push(ilike(companies.name, params.name))
+    if (params.domain) conditions.push(eq(companies.domain, params.domain))
+
+    const [company] = await this.db
+      .select()
+      .from(companies)
+      .where(or(...conditions))
+      .limit(1)
+
+    return { exists: !!company, company: company ?? null }
+  }
+
   async remove(id: string) {
     await this.db.delete(companies).where(eq(companies.id, id))
   }

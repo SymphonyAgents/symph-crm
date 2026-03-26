@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common'
+import { Controller, Get, Param } from '@nestjs/common'
 import { ProductsService } from './products.service'
 
 @Controller('products')
@@ -9,6 +9,11 @@ export class ProductsController {
   findAll() {
     return this.productsService.findAllProducts()
   }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.productsService.findProduct(id)
+  }
 }
 
 @Controller('tiers')
@@ -18,5 +23,10 @@ export class TiersController {
   @Get()
   findAll() {
     return this.productsService.findAllTiers()
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.productsService.findTier(id)
   }
 }
