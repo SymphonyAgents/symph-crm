@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { cn } from '@/lib/utils'
 
 type FilterTab = 'all' | 'unread' | 'tagged'
 
@@ -25,7 +26,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: number) =>
               type="text"
               placeholder="Search messages..."
               disabled
-              className="w-full pl-8 pr-3 py-[7px] text-[12.5px] bg-slate-50 border border-black/[.07] rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[rgba(108,99,255,0.2)] focus:border-[rgba(108,99,255,0.4)] disabled:cursor-default transition-colors"
+              className="w-full pl-8 pr-3 py-[7px] text-[12.5px] bg-slate-50 border border-black/[.07] rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-ring focus:border-primary/40 disabled:cursor-default transition-colors"
             />
           </div>
         </div>
@@ -36,11 +37,12 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: number) =>
             <button
               key={tab}
               onClick={() => setFilter(tab)}
-              className={`px-3 py-1 rounded-full text-[11.5px] font-medium capitalize transition-colors ${
+              className={cn(
+                'px-3 py-1 rounded-full text-[11.5px] font-medium capitalize transition-colors',
                 filter === tab
-                  ? 'bg-[rgba(108,99,255,0.1)] text-[#6c63ff]'
-                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-              }`}
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100',
+              )}
             >
               {tab}
             </button>

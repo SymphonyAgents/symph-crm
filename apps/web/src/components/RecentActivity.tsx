@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/lib/utils'
 import { EmptyState } from './EmptyState'
 
 type ActivityEntry = {
@@ -29,7 +30,7 @@ export function RecentActivity({ entries }: RecentActivityProps) {
           {entries.map((entry, i) => (
             <div
               key={i}
-              className={`grid grid-cols-[8px_1fr] gap-3 py-2.5 px-1 ${i < entries.length - 1 ? 'border-b border-black/[.06]' : ''}`}
+              className={cn('grid grid-cols-[8px_1fr] gap-3 py-2.5 px-1', i < entries.length - 1 && 'border-b border-black/[.06]')}
             >
               <div
                 className="w-2 h-2 rounded-full mt-1 shrink-0"

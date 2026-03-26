@@ -12,7 +12,7 @@ function LogoutOverlay() {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center" style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', backgroundColor: 'rgba(255,255,255,0.6)' }}>
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 rounded-full border-2 border-[#6c63ff]/20 border-t-[#6c63ff] animate-spin" />
+        <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
         <p className="text-[13px] font-medium text-slate-500">Signing out…</p>
       </div>
     </div>
@@ -118,7 +118,7 @@ function LogoutConfirmModal({
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-9 rounded-lg bg-red-500 hover:bg-red-600 text-[13px] font-medium text-white transition-colors active:scale-[0.97]"
+            className="flex-1 h-9 rounded-lg bg-red-500 hover:bg-red-600 active:bg-red-700 text-[13px] font-medium text-white transition-colors"
           >
             Sign out
           </button>
@@ -169,7 +169,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="px-4 pt-[18px] pb-[14px] border-b border-black/[.06] flex items-center gap-[10px]">
           <div
             className="w-[30px] h-[30px] rounded-[7px] flex items-center justify-center text-[13px] font-extrabold text-white shrink-0 tracking-tight"
-            style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
+            style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
           >
             S
           </div>
@@ -198,21 +198,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       onMouseEnter={() => setHoveredPath(item.path)}
                       onMouseLeave={() => setHoveredPath(null)}
                       className={cn(
-                        'flex items-center gap-[9px] px-[10px] py-2 rounded text-[12.5px] w-full text-left transition-colors duration-150 active:scale-[0.98]',
+                        'flex items-center gap-[9px] px-[10px] py-2 rounded text-[12.5px] w-full text-left transition-colors duration-150',
                         active
-                          ? 'border border-[rgba(108,99,255,0.15)] font-semibold'
+                          ? 'border border-primary-border font-semibold'
                           : 'border border-transparent font-medium',
                         !active && hovered && 'bg-slate-100 text-slate-900',
                         !active && !hovered && 'text-slate-600',
                       )}
-                      style={active ? { background: 'rgba(108,99,255,0.08)', color: '#6c63ff' } : undefined}
+                      style={active ? { background: 'var(--color-primary-dim)', color: 'var(--primary)' } : undefined}
                     >
                       <NavIcon path={item.icon} />
                       <span className="flex-1">{item.label}</span>
                       {item.badge && (
                         <span
                           className="text-white text-[10px] font-bold px-1.5 py-px rounded-full font-mono tabular-nums"
-                          style={{ background: item.badgeColor || '#6c63ff' }}
+                          style={{ background: item.badgeColor || 'var(--primary)' }}
                         >
                           {item.badge}
                         </span>

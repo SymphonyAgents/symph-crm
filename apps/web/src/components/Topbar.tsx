@@ -65,7 +65,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
       </div>
 
       {/* New Deal */}
-      <button className="flex items-center gap-[5px] bg-[#6c63ff] hover:bg-[#5b52e8] text-white rounded px-[14px] py-[6px] text-[12px] font-semibold transition-colors duration-150 active:scale-[0.98] cursor-pointer">
+      <button className="flex items-center gap-[5px] bg-primary hover:bg-primary-hover text-white rounded px-[14px] py-[6px] text-[12px] font-semibold transition-colors duration-150 cursor-pointer">
         <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />

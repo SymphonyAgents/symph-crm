@@ -8,7 +8,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-base font-extrabold text-white tracking-tight"
-            style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
+            style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
           >
             S
           </div>

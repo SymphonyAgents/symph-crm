@@ -18,12 +18,12 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
     <div
       onClick={onClick}
       className={cn(
-        'rounded-xl p-3.5 cursor-pointer transition-all duration-150 active:scale-[0.98]',
+        'rounded-xl p-3.5 cursor-pointer transition-all duration-150',
         isWon
           ? 'bg-[rgba(22,163,74,0.05)] border border-[rgba(22,163,74,0.22)]'
           : isLost
           ? 'bg-white border border-[rgba(220,38,38,0.15)] opacity-70'
-          : 'bg-white border border-black/[.08] hover:border-[#6c63ff] hover:shadow-[0_0_0_3px_rgba(108,99,255,0.08)]'
+          : 'bg-white border border-black/[.08] hover:border-primary hover:shadow-[0_0_0_3px_var(--color-primary-dim)]'
       )}
     >
       {/* Brand + Category */}
@@ -34,8 +34,8 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
         <span className={cn(
           'text-[10px] font-semibold px-2 py-0.5 rounded-full',
           deal.category === 'Inbound'
-            ? 'bg-[rgba(22,163,74,0.08)] text-[#16a34a]'
-            : 'bg-[rgba(108,99,255,0.1)] text-[#6c63ff]'
+            ? 'bg-success-dim text-success'
+            : 'bg-primary/10 text-primary'
         )}>
           {deal.category}
         </span>
@@ -52,7 +52,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
       {/* Services */}
       <div className="flex flex-wrap gap-1.5 mb-2.5">
         {deal.services.map(s => (
-          <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[rgba(108,99,255,0.08)] text-[#6c63ff]">
+          <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary-dim text-primary">
             {s}
           </span>
         ))}
@@ -60,7 +60,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
 
       {/* Price + AM */}
       <div className="flex items-center justify-between pt-2 border-t border-black/[.05]">
-        <span className="text-[15px] font-bold text-[#6c63ff] tabular-nums">
+        <span className="text-[15px] font-bold text-primary tabular-nums">
           {formatPeso(deal.size)}
         </span>
         <div className="flex items-center gap-1.5">
@@ -86,10 +86,10 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
           {activeDeals.length} active deals {totalValue > 0 ? `· ${'\u20B1'}${(totalValue / 1_000_000).toFixed(1)}M` : ''}
         </span>
         <div className="flex gap-2">
-          <button className="bg-white border border-black/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-150 active:scale-[0.98]">
+          <button className="bg-white border border-black/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-150">
             Filter
           </button>
-          <button className="hidden sm:block bg-white border border-black/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-150 active:scale-[0.98]">
+          <button className="hidden sm:block bg-white border border-black/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition-colors duration-150">
             Group by AM
           </button>
         </div>

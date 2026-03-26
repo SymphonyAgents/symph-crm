@@ -141,7 +141,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
               type="submit"
               disabled={isPending || !name.trim()}
               className="flex-1 h-9 rounded-lg text-[13px] font-medium text-white transition-colors disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
+              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               {isPending ? 'Creating…' : 'Create Brand'}
             </button>

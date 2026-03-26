@@ -62,7 +62,7 @@ export function ChatWidget({ onSubmit }: ChatWidgetProps) {
         />
 
         {/* Mic */}
-        <button className="shrink-0 w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors duration-150 active:scale-[0.94]">
+        <button className="shrink-0 w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors duration-150">
           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
             <path d="M19 10v2a7 7 0 01-14 0v-2" />
@@ -75,9 +75,9 @@ export function ChatWidget({ onSubmit }: ChatWidgetProps) {
         <button
           onClick={handleSubmit}
           className={cn(
-            'shrink-0 w-8 h-8 rounded flex items-center justify-center transition-colors duration-150 active:scale-[0.94]',
+            'shrink-0 w-8 h-8 rounded flex items-center justify-center transition-colors duration-150',
             value.trim()
-              ? 'bg-[#6c63ff] hover:bg-[#5b52e8] cursor-pointer'
+              ? 'bg-primary hover:bg-primary-hover cursor-pointer'
               : 'bg-slate-100 cursor-default'
           )}
         >
@@ -93,7 +93,7 @@ export function ChatWidget({ onSubmit }: ChatWidgetProps) {
           <button
             key={prompt}
             onClick={() => onSubmit(prompt)}
-            className="px-[10px] py-1 rounded-full border border-black/[.06] bg-white text-[11px] font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900 active:scale-[0.98] transition-colors duration-150"
+            className="px-[10px] py-1 rounded-full border border-black/[.06] bg-white text-[11px] font-medium text-slate-600 hover:border-slate-300 hover:text-slate-900 transition-colors duration-150"
           >
             {prompt}
           </button>

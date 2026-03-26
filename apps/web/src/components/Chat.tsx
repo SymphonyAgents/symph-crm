@@ -121,7 +121,7 @@ function ActionPills({ actions }: { actions: ActionRecord[] }) {
       {actions.map((a, i) => (
         <span
           key={i}
-          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[rgba(108,99,255,0.07)] border border-[rgba(108,99,255,0.15)] text-[10.5px] font-medium text-[#6c63ff]"
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-dim border border-primary-border text-[10.5px] font-medium text-primary"
         >
           <svg width={8} height={8} viewBox="0 0 24 24" fill="currentColor">
             <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
@@ -168,7 +168,7 @@ function AttachmentBubble({ attachment }: { attachment: PendingAttachment }) {
 
   return (
     <div className="flex justify-end mb-1">
-      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[rgba(108,99,255,0.08)] border border-[rgba(108,99,255,0.12)] text-[12px] text-slate-600">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-dim border border-primary-border text-[12px] text-slate-600">
         {icon}
         <span className="max-w-[160px] truncate">{label}</span>
       </div>
@@ -194,13 +194,13 @@ function AttachmentPreview({
       ) : (
         <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
           {attachment.type === 'voice' ? (
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#6c63ff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
               <line x1="12" y1="19" x2="12" y2="23"/>
             </svg>
           ) : (
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#6c63ff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
               <polyline points="13 2 13 9 20 9"/>
             </svg>
@@ -269,7 +269,7 @@ function AudioVisualizer({ analyser }: { analyser: AnalyserNode | null }) {
 
         // opacity: dim baseline bars, bright active ones
         ctx.globalAlpha = 0.25 + raw * 0.75
-        ctx.fillStyle = '#6c63ff'
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#6c63ff'
         ctx.beginPath()
         // roundRect: x, y, w, h, radius
         ctx.roundRect(x, centerY - halfH, barWidth, halfH * 2, 1.5)
@@ -802,7 +802,7 @@ export function Chat({ dealId }: { dealId?: string }) {
             className={cn(
               'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 active:scale-[0.94]',
               canSubmit
-                ? 'bg-[#6c63ff] hover:bg-[#5b52e8] cursor-pointer'
+                ? 'bg-primary hover:bg-primary-hover cursor-pointer'
                 : 'bg-slate-100 cursor-default'
             )}
           >
@@ -830,7 +830,7 @@ export function Chat({ dealId }: { dealId?: string }) {
           <div className="flex items-center gap-3 mb-2">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px] shrink-0"
-              style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
+              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               S
             </div>
@@ -870,7 +870,7 @@ export function Chat({ dealId }: { dealId?: string }) {
                   {msg.attachment && <AttachmentBubble attachment={msg.attachment} />}
                   {msg.content && (
                     <div className="flex justify-end">
-                      <div className="max-w-[78%] px-4 py-3 rounded-2xl bg-[rgba(108,99,255,0.08)] border border-[rgba(108,99,255,0.12)] text-[13px] text-slate-900 leading-[1.6]">
+                      <div className="max-w-[78%] px-4 py-3 rounded-2xl bg-primary-dim border border-primary-border text-[13px] text-slate-900 leading-[1.6]">
                         {msg.content}
                       </div>
                     </div>

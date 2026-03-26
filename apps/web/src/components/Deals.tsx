@@ -62,7 +62,7 @@ const STAGE_DOT: Record<string, string> = {
 const CLOSED_STAGES = new Set(['closed_won', 'closed_lost'])
 
 // Deterministic brand color from name
-const PALETTE = ['#6c63ff','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
+const PALETTE = ['var(--primary)','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
 function getBrandColor(name: string): string {
   let h = 0
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
@@ -410,7 +410,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
             <button
               onClick={() => setShowCreateDeal(true)}
               className="h-[30px] px-3 rounded-lg text-[12px] font-medium text-white transition-colors flex items-center gap-1.5"
-              style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
+              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                 <path d="M12 5v14M5 12h14" />
@@ -424,7 +424,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
         {isLoading && (
           <div className="flex-1 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-6 h-6 rounded-full border-2 border-[#6c63ff]/20 border-t-[#6c63ff] animate-spin" />
+              <div className="w-6 h-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
               <p className="text-[12px] text-slate-400">Loading deals…</p>
             </div>
           </div>
