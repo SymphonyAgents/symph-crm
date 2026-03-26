@@ -6,6 +6,13 @@ import { PipelineBar } from './PipelineBar'
 import { TopDeals } from './TopDeals'
 import { AMLeaderboard } from './AMLeaderboard'
 import { RecentActivity } from './RecentActivity'
+import {
+  MetricCardSkeletonRow,
+  PipelineBarSkeleton,
+  TopDealsSkeleton,
+  AMLeaderboardSkeleton,
+  RecentActivitySkeleton,
+} from './Skeletons'
 import { queryKeys } from '@/lib/query-keys'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
@@ -45,16 +52,18 @@ function timeAgo(iso: string | null): string {
 }
 
 export function Dashboard() {
-  const { data: summary, isLoading } = useQuery<PipelineSummary>({
+  const { data: summary, isLoading: loadingSummary } = useQuery<PipelineSummary>({
     queryKey: queryKeys.pipeline.summary,
     queryFn: () => fetch(`${API}/pipeline/summary`).then(r => r.json()),
     staleTime: 60_000,
   })
 
-  const { data: deals = [] } = useQuery<ApiDeal[]>({
+  const { data: deals = [], isLoading: loadingDeals } = useQuery<ApiDeal[]>({
     queryKey: queryKeys.deals.all,
     queryFn: () => fetch(`${API}/deals`).then(r => r.json()),
   })
+
+  const isLoading = loadingSummary || loadingDeals
 
   const totalPipeline = summary?.totalPipeline ?? 0
   const activeDeals   = summary?.activeDeals ?? 0
@@ -99,31 +108,43 @@ export function Dashboard() {
 
       {/* KPI Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-[1.2fr_0.9fr_0.9fr_1fr] gap-3 md:gap-3.5 mb-5">
-        <MetricCard
-          label="Total Pipeline"
-          value={isLoading ? '...' : totalPipeline > 0 ? formatCurrency(totalPipeline) : '₱0'}
-          trend={totalPipeline > 0 ? `${activeDeals} active deals` : 'No deals yet'}
-          trendUp={totalPipeline > 0}
-        />
-        <MetricCard
-          label="Active Deals"
-          value={isLoading ? '...' : String(activeDeals)}
-          trend={activeDeals > 0 ? 'In pipeline' : 'No active deals'}
-          trendUp={activeDeals > 0}
-        />
-        <MetricCard
-          label="Win Rate"
-          value={isLoading ? '...' : `${winRate}%`}
-          trend={winRate > 0 ? 'Closed deals' : 'No closed deals'}
-          trendUp={winRate >= 50}
-          accentColor="#16a34a"
-        />
-        <MetricCard
-          label="Avg Deal Size"
-          value={isLoading ? '...' : avgDealSize > 0 ? formatCurrency(avgDealSize) : '₱0'}
-          trend={avgDealSize > 0 ? 'Per deal' : 'No data yet'}
-          trendUp={avgDealSize > 0}
-        />
+        {loadingSummary ? (
+          <>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <MetricCardSkeletonRow key={i} count={1} />
+            ))}
+          </>
+        ) : (
+          <>
+            <MetricCard
+              label="Total Pipeline"
+              value={totalPipeline > 0 ? formatCurrency(totalPipeline) : '₱0'}
+              trend={totalPipeline > 0 ? `${activeDeals} active deals` : 'No deals yet'}
+              trendUp={totalPipeline > 0}
+              mono
+            />
+            <MetricCard
+              label="Active Deals"
+              value={String(activeDeals)}
+              trend={activeDeals > 0 ? 'In pipeline' : 'No active deals'}
+              trendUp={activeDeals > 0}
+            />
+            <MetricCard
+              label="Win Rate"
+              value={`${winRate}%`}
+              trend={winRate > 0 ? 'Closed deals' : 'No closed deals'}
+              trendUp={winRate >= 50}
+              accentColor="#16a34a"
+            />
+            <MetricCard
+              label="Avg Deal Size"
+              value={avgDealSize > 0 ? formatCurrency(avgDealSize) : '₱0'}
+              trend={avgDealSize > 0 ? 'Per deal' : 'No data yet'}
+              trendUp={avgDealSize > 0}
+              mono
+            />
+          </>
+        )}
       </div>
 
       {/* 2-column layout */}
@@ -131,19 +152,22 @@ export function Dashboard() {
         <div className="flex flex-col gap-4">
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 mb-4">Pipeline by Stage</div>
-            <PipelineBar deals={deals} />
+            {isLoading ? <PipelineBarSkeleton /> : <PipelineBar deals={deals} />}
           </div>
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <TopDeals deals={topDeals} />
+            <div className="text-[13px] font-semibold text-slate-900 mb-3.5">Top Deals</div>
+            {isLoading ? <TopDealsSkeleton /> : <TopDeals deals={topDeals} />}
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <AMLeaderboard entries={amEntries} />
+            <div className="text-[13px] font-semibold text-slate-900 mb-3.5">AM Leaderboard</div>
+            {isLoading ? <AMLeaderboardSkeleton /> : <AMLeaderboard entries={amEntries} />}
           </div>
           <div className="bg-white border border-black/[.06] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <RecentActivity entries={recentEntries} />
+            <div className="text-[13px] font-semibold text-slate-900 mb-3.5">Recent Activity</div>
+            {isLoading ? <RecentActivitySkeleton /> : <RecentActivity entries={recentEntries} />}
           </div>
         </div>
       </div>

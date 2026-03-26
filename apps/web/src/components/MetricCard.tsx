@@ -8,16 +8,18 @@ type MetricCardProps = {
   trend: string
   trendUp: boolean
   accentColor?: string
+  /** Apply Geist Mono to the value — use for monetary/currency displays */
+  mono?: boolean
 }
 
-export function MetricCard({ label, value, trend, trendUp, accentColor }: MetricCardProps) {
+export function MetricCard({ label, value, trend, trendUp, accentColor, mono }: MetricCardProps) {
   return (
     <div className="bg-white border border-black/[.06] rounded-[10px] px-4 py-3.5 shadow-[var(--shadow-card)]">
       <div className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground mb-1.5">
         {label}
       </div>
       <div
-        className="text-[24px] font-bold leading-none tracking-tight tabular-nums"
+        className={cn('text-[24px] font-bold leading-none tracking-tight tabular-nums', mono && 'font-mono')}
         style={{ color: accentColor || 'var(--foreground)' }}
       >
         {value}

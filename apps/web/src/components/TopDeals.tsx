@@ -75,7 +75,7 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-xs font-semibold text-slate-900 tabular-nums">
+                  <div className="text-xs font-semibold text-slate-900 tabular-nums font-mono">
                     {value > 0 ? formatPeso(value) : '—'}
                   </div>
                 </div>

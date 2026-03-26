@@ -10,36 +10,70 @@ type PipelineBarProps = {
   deals: ApiDealBrief[]
 }
 
-const PIPELINE_STAGES = [
-  { id: 'lead',          label: 'Lead',        color: '#94a3b8' },
-  { id: 'discovery',     label: 'Discovery',   color: '#2563eb' },
-  { id: 'assessment',    label: 'Assessment',  color: '#7c3aed' },
-  { id: 'qualified',     label: 'Qualified',   color: '#0369a1' },
-  { id: 'demo',          label: 'Demo',        color: '#d97706' },
-  { id: 'proposal',      label: 'Proposal',    color: '#d97706' },
-  { id: 'proposal_demo', label: 'Demo+Prop',   color: '#d97706' },
-  { id: 'negotiation',   label: 'Negotiation', color: '#f59e0b' },
-  { id: 'followup',      label: 'Follow-up',   color: '#f59e0b' },
-  { id: 'closed_won',    label: 'Won',         color: '#16a34a' },
-  { id: 'closed_lost',   label: 'Lost',        color: '#dc2626' },
+/**
+ * 7 consolidated stages — matches the dashboard design reference.
+ * Granular stages (qualified, demo, proposal, proposal_demo, negotiation) are
+ * grouped into their parent buckets to avoid a cluttered 11-column grid.
+ */
+const SUMMARY_STAGES = [
+  {
+    id: 'lead',
+    label: 'Lead',
+    color: '#94a3b8',
+    matches: ['lead'],
+  },
+  {
+    id: 'discovery',
+    label: 'Discovery',
+    color: '#2563eb',
+    matches: ['discovery'],
+  },
+  {
+    id: 'assessment',
+    label: 'Assessment',
+    color: '#7c3aed',
+    matches: ['assessment', 'qualified'],
+  },
+  {
+    id: 'demo_proposal',
+    label: 'Demo + Proposal',
+    color: '#d97706',
+    matches: ['demo', 'proposal', 'proposal_demo'],
+  },
+  {
+    id: 'followup',
+    label: 'Follow-up',
+    color: '#f59e0b',
+    matches: ['negotiation', 'followup'],
+  },
+  {
+    id: 'won',
+    label: 'Won',
+    color: '#16a34a',
+    matches: ['closed_won'],
+  },
+  {
+    id: 'lost',
+    label: 'Lost',
+    color: '#dc2626',
+    matches: ['closed_lost'],
+  },
 ]
 
 export function PipelineBar({ deals }: PipelineBarProps) {
-  const stageData = PIPELINE_STAGES.map(s => ({
+  const stageData = SUMMARY_STAGES.map(s => ({
     ...s,
-    count: deals.filter(d => d.stage === s.id).length,
-    value: deals
-      .filter(d => d.stage === s.id)
-      .reduce((sum, d) => sum + (parseFloat(d.value || '0') || 0), 0),
+    count: deals.filter(d => s.matches.includes(d.stage)).length,
   }))
 
-  const maxValue = Math.max(...stageData.map(s => s.value), 1)
+  const maxCount = Math.max(...stageData.map(s => s.count), 1)
 
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${PIPELINE_STAGES.length}, 1fr)` }}>
+    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${SUMMARY_STAGES.length}, 1fr)` }}>
       {stageData.map(s => {
-        const fillPct = maxValue > 0 ? Math.max(0, Math.round((s.value / maxValue) * 100)) : 0
+        const fillPct = Math.round((s.count / maxCount) * 100)
         const hasDeals = s.count > 0
+
         return (
           <div key={s.id} className="flex flex-col gap-1.5 min-w-0">
             <div
@@ -50,14 +84,17 @@ export function PipelineBar({ deals }: PipelineBarProps) {
             </div>
             <div className="h-[6px] bg-slate-100 rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full"
+                className="h-full rounded-full transition-all duration-500"
                 style={{
-                  width: `${fillPct}%`,
-                  background: hasDeals ? s.color : '#cbd5e1',
+                  width: hasDeals ? `${fillPct}%` : '0%',
+                  background: s.color,
+                  opacity: hasDeals ? 1 : 0,
                 }}
               />
             </div>
-            <div className="text-[15px] font-bold text-slate-900 tabular-nums">{s.count}</div>
+            <div className="text-[15px] font-bold tabular-nums" style={{ color: hasDeals ? '#0f172a' : '#94a3b8' }}>
+              {s.count}
+            </div>
           </div>
         )
       })}

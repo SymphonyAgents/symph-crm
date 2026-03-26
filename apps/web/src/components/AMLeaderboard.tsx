@@ -41,7 +41,7 @@ export function AMLeaderboard({ entries }: AMLeaderboardProps) {
                 <div className="text-xs font-semibold text-slate-900">{entry.name}</div>
                 <div className="text-[10px] text-slate-400">{entry.deals}</div>
               </div>
-              <div className="text-xs font-semibold text-slate-900 tabular-nums">{entry.value}</div>
+              <div className="text-xs font-semibold text-slate-900 tabular-nums font-mono">{entry.value}</div>
             </div>
           ))}
         </div>
