@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
+import { useCreateCompany } from '@/lib/hooks/mutations'
+import { queryKeys } from '@/lib/query-keys'
 
 type Props = {
   onClose: () => void
@@ -14,39 +17,26 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
   const [website, setWebsite] = useState('')
   const [hqLocation, setHqLocation] = useState('')
   const [domain, setDomain] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
+  const qc = useQueryClient()
+
+  const { mutate, isPending, error } = useCreateCompany({
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.companies.all })
+      onCreated()
+    },
+  })
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) return
-    setLoading(true)
-    setError(null)
-
-    try {
-      const res = await fetch('/api/companies', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          industry: industry.trim() || null,
-          website: website.trim() || null,
-          hqLocation: hqLocation.trim() || null,
-          domain: domain.trim() || null,
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || 'Failed to create brand')
-      }
-
-      onCreated()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setLoading(false)
-    }
+    mutate({
+      name: name.trim(),
+      industry: industry.trim() || null,
+      website: website.trim() || null,
+      hqLocation: hqLocation.trim() || null,
+      domain: domain.trim() || null,
+    })
   }
 
   return (
@@ -134,7 +124,9 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
           </div>
 
           {error && (
-            <p className="text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {error.message}
+            </p>
           )}
 
           <div className="flex gap-2 pt-1">
@@ -147,11 +139,11 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
             </button>
             <button
               type="submit"
-              disabled={loading || !name.trim()}
+              disabled={isPending || !name.trim()}
               className="flex-1 h-9 rounded-lg text-[13px] font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
             >
-              {loading ? 'Creating…' : 'Create Brand'}
+              {isPending ? 'Creating…' : 'Create Brand'}
             </button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useCreateDeal } from '@/lib/hooks/mutations'
+import { queryKeys } from '@/lib/query-keys'
 import type { ApiCompany } from './Deals'
 
 type ApiProduct = { id: string; name: string; slug: string }
@@ -40,18 +42,6 @@ const PRICING_OPTIONS = [
   { value: 'annual',  label: 'Annual' },
 ]
 
-async function fetchProducts(): Promise<ApiProduct[]> {
-  const res = await fetch('/api/products')
-  if (!res.ok) throw new Error('Failed to fetch products')
-  return res.json()
-}
-
-async function fetchTiers(): Promise<ApiTier[]> {
-  const res = await fetch('/api/tiers')
-  if (!res.ok) throw new Error('Failed to fetch tiers')
-  return res.json()
-}
-
 type Props = {
   companies: ApiCompany[]
   onClose: () => void
@@ -68,52 +58,59 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   const [servicesTags, setServicesTags] = useState('')
   const [productId, setProductId] = useState('')
   const [tierId, setTierId] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const { data: products = [] } = useQuery({ queryKey: ['products'], queryFn: fetchProducts })
-  const { data: tiers = [] } = useQuery({ queryKey: ['tiers'], queryFn: fetchTiers })
+  const qc = useQueryClient()
 
-  // Auto-select first product/tier if only one
+  const { data: products = [] } = useQuery<ApiProduct[]>({
+    queryKey: queryKeys.products.all,
+    queryFn: async () => {
+      const res = await fetch('/api/products')
+      if (!res.ok) throw new Error('Failed to fetch products')
+      return res.json()
+    },
+    staleTime: Infinity, // products/tiers are reference data — never stale
+  })
+
+  const { data: tiers = [] } = useQuery<ApiTier[]>({
+    queryKey: queryKeys.tiers.all,
+    queryFn: async () => {
+      const res = await fetch('/api/tiers')
+      if (!res.ok) throw new Error('Failed to fetch tiers')
+      return res.json()
+    },
+    staleTime: Infinity,
+  })
+
+  // Auto-select first product/tier when there's only one (standard for now)
   const effectiveProductId = productId || (products.length === 1 ? products[0].id : '')
   const effectiveTierId = tierId || (tiers.length === 1 ? tiers[0].id : '')
 
-  async function handleSubmit(e: React.FormEvent) {
+  const { mutate, isPending, error } = useCreateDeal({
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
+      // Also invalidate company-specific deals if we ever have that query
+      if (companyId) qc.invalidateQueries({ queryKey: queryKeys.companies.deals(companyId) })
+      onCreated()
+    },
+  })
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim() || !companyId || !effectiveProductId || !effectiveTierId) return
-    setLoading(true)
-    setError(null)
 
     const tags = servicesTags.split(',').map(s => s.trim()).filter(Boolean)
 
-    try {
-      const res = await fetch('/api/deals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: title.trim(),
-          companyId,
-          productId: effectiveProductId,
-          tierId: effectiveTierId,
-          stage,
-          value: value.trim() || null,
-          outreachCategory: outreachCategory || null,
-          pricingModel: pricingModel || null,
-          servicesTags: tags.length > 0 ? tags : [],
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.message || 'Failed to create deal')
-      }
-
-      onCreated()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
-      setLoading(false)
-    }
+    mutate({
+      title: title.trim(),
+      companyId,
+      productId: effectiveProductId,
+      tierId: effectiveTierId,
+      stage,
+      value: value.trim() || null,
+      outreachCategory: outreachCategory || null,
+      pricingModel: pricingModel || null,
+      servicesTags: tags,
+    })
   }
 
   const canSubmit = title.trim() && companyId && effectiveProductId && effectiveTierId
@@ -255,7 +252,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
             />
           </div>
 
-          {/* Product + Tier (if multiple options) */}
+          {/* Product + Tier (only shown when more than one option) */}
           {(products.length > 1 || tiers.length > 1) && (
             <div className="grid grid-cols-2 gap-3">
               {products.length > 1 && (
@@ -292,7 +289,9 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           )}
 
           {error && (
-            <p className="text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {error.message}
+            </p>
           )}
 
           <div className="flex gap-2 pt-1">
@@ -305,11 +304,11 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
             </button>
             <button
               type="submit"
-              disabled={loading || !canSubmit}
+              disabled={isPending || !canSubmit}
               className="flex-1 h-9 rounded-lg text-[13px] font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #6c63ff, #a78bfa)' }}
             >
-              {loading ? 'Creating…' : 'Create Deal'}
+              {isPending ? 'Creating…' : 'Create Deal'}
             </button>
           </div>
         </form>

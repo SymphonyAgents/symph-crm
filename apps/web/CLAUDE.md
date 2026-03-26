@@ -133,3 +133,80 @@ Category badges:
 - Never add mount animations or framer-motion
 - Never use Inter font
 - Never use emojis in code
+
+---
+
+## Engineering Standards — Data Fetching
+
+### TanStack Query — Non-Negotiable Rules
+
+**1. All fetching via `useQuery`. No `useEffect` + `fetch`.**
+```tsx
+// ✅ Correct
+const { data } = useQuery({ queryKey: queryKeys.companies.all, queryFn: fetchCompanies })
+
+// ❌ Wrong
+useEffect(() => { fetch('/api/companies').then(r => r.json()).then(setData) }, [])
+```
+
+**2. All mutations via `useMutation`. No manual fetch inside form handlers.**
+```tsx
+// ✅ Correct — hook owns mutation + invalidation
+const { mutate, isPending } = useCreateCompany({
+  onSuccess: () => { qc.invalidateQueries({ queryKey: queryKeys.companies.all }); onClose() }
+})
+
+// ❌ Wrong — fetch inside component, manual loading state
+const [loading, setLoading] = useState(false)
+async function handleSubmit() { setLoading(true); await fetch('/api/companies', ...) }
+```
+
+**3. Mutation hooks live in `lib/hooks/mutations.ts`. Not in components.**
+
+**4. Query keys must come from `lib/query-keys.ts`. Never hardcode string arrays.**
+```tsx
+// ✅ queryKeys.deals.all
+// ❌ ['deals']
+```
+
+**5. Invalidation rules — always invalidate the right scope:**
+- After `POST /companies` → `invalidate(queryKeys.companies.all)`
+- After `POST /deals` → `invalidate(queryKeys.deals.all)` + `invalidate(queryKeys.companies.detail(companyId).deals)` if that query exists
+- After `PUT /deals/:id` → `invalidate(queryKeys.deals.detail(id))` + `invalidate(queryKeys.deals.all)`
+- After `PATCH /deals/:id/stage` → same as PUT
+- After `DELETE` → `invalidate(parent list)`
+
+**6. `staleTime` strategy:**
+- Default: 60s (configured in Providers.tsx) — good for most list data
+- Long-lived reference data (products, tiers): `staleTime: Infinity` in the query options
+- Real-time data (activities, notifications): `staleTime: 0`
+
+**7. Optimistic updates for fast UX (stage transitions, toggles):**
+```tsx
+onMutate: async (newStage) => {
+  await qc.cancelQueries({ queryKey: queryKeys.deals.all })
+  const prev = qc.getQueryData(queryKeys.deals.all)
+  qc.setQueryData(queryKeys.deals.all, (old) => old?.map(d => d.id === dealId ? { ...d, stage: newStage } : d))
+  return { prev }
+},
+onError: (_, __, ctx) => qc.setQueryData(queryKeys.deals.all, ctx?.prev),
+onSettled: () => qc.invalidateQueries({ queryKey: queryKeys.deals.all }),
+```
+
+### Query Key Hierarchy
+
+All keys defined in `src/lib/query-keys.ts`:
+```
+companies.all              → ['companies']
+companies.detail(id)       → ['companies', id]
+companies.search(q)        → ['companies', 'search', q]
+companies.deals(id)        → ['companies', id, 'deals']
+companies.contacts(id)     → ['companies', id, 'contacts']
+deals.all                  → ['deals']
+deals.filtered(params)     → ['deals', { ...params }]
+deals.detail(id)           → ['deals', id]
+pipeline.summary           → ['pipeline', 'summary']
+products.all               → ['products']
+tiers.all                  → ['tiers']
+contacts.byCompany(id)     → ['contacts', 'company', id]
+```
