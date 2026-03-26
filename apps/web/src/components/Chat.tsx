@@ -594,62 +594,126 @@ export function Chat({ dealId }: { dealId?: string }) {
     setTyping(true)
     setApiError(null)
 
+    const assistantMsgId = `a-${Date.now()}`
+
     try {
-      let data: { sessionId: string; messageId: string; reply: string; actionsTaken?: ActionRecord[] }
-
+      // Prepare request body
+      let attachmentData: { filename: string; mimeType: string; base64: string } | undefined
       if (attachment) {
-        // Multipart upload
-        const form = new FormData()
-        if (sessionId) form.append('sessionId', sessionId)
-        if (dealId) form.append('dealId', dealId)
-        form.append('workspaceId', DEFAULT_WORKSPACE_ID)
-        form.append('userId', userId)
-        form.append('content', text)
-        form.append('attachment', attachment.blob, attachment.filename)
-
-        const res = await fetch('/api/chat/upload', {
-          method: 'POST',
-          body: form,
+        const reader = new FileReader()
+        attachmentData = await new Promise((resolve, reject) => {
+          reader.onload = () => {
+            const base64 = (reader.result as string).split(',')[1] || ''
+            resolve({
+              filename: attachment.filename,
+              mimeType: attachment.mimetype,
+              base64,
+            })
+          }
+          reader.onerror = reject
+          reader.readAsDataURL(attachment.blob)
         })
-
-        if (!res.ok) {
-          const errText = await res.text()
-          throw new Error(`API error ${res.status}: ${errText}`)
-        }
-
-        data = await res.json()
-      } else {
-        // Text-only JSON
-        const res = await fetch('/api/chat/message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            dealId,
-            workspaceId: DEFAULT_WORKSPACE_ID,
-            userId,
-            content: text,
-          }),
-        })
-
-        if (!res.ok) {
-          const errText = await res.text()
-          throw new Error(`API error ${res.status}: ${errText}`)
-        }
-
-        data = await res.json()
       }
 
-      setSessionId(data.sessionId)
+      // Call Aria streaming endpoint
+      const res = await fetch('/api/chat/aria', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: text,
+          userId,
+          userName: 'AM',
+          sessionId,
+          dealId,
+          attachment: attachmentData,
+        }),
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        throw new Error(`API error ${res.status}: ${errText}`)
+      }
+
+      // Stream response
+      let assistantText = ''
+      const actions: ActionRecord[] = []
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      // Initialize assistant message placeholder
       setMessages(prev => [
         ...prev,
         {
-          id: data.messageId,
+          id: assistantMsgId,
           role: 'assistant',
-          content: data.reply,
-          actionsTaken: data.actionsTaken ?? [],
+          content: '',
+          actionsTaken: [],
         },
       ])
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6))
+
+              if (event.type === 'text' && event.data?.text) {
+                assistantText += event.data.text
+                // Stream text updates
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === assistantMsgId
+                      ? { ...m, content: assistantText, actionsTaken: actions }
+                      : m,
+                  ),
+                )
+              } else if (event.type === 'tool' && event.data?.tool) {
+                actions.push({
+                  tool: event.data.tool,
+                  input: event.data.input || {},
+                  result: event.data.result || {},
+                })
+                setMessages(prev =>
+                  prev.map(m =>
+                    m.id === assistantMsgId ? { ...m, actionsTaken: actions } : m,
+                  ),
+                )
+              } else if (event.type === 'error') {
+                throw new Error(event.data?.message || 'Stream error')
+              }
+            } catch (parseErr) {
+              console.error('Failed to parse stream event:', line, parseErr)
+            }
+          }
+        }
+      }
+
+      buffer += decoder.decode()
+      if (buffer.trim().startsWith('data: ')) {
+        try {
+          const event = JSON.parse(buffer.slice(6))
+          if (event.type === 'text' && event.data?.text) {
+            assistantText += event.data.text
+            setMessages(prev =>
+              prev.map(m =>
+                m.id === assistantMsgId ? { ...m, content: assistantText } : m,
+              ),
+            )
+          }
+        } catch (parseErr) {
+          console.error('Failed to parse final stream event:', buffer, parseErr)
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
       setApiError(msg)
