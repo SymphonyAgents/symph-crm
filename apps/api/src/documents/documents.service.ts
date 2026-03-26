@@ -32,11 +32,11 @@ export class DocumentsService {
       .orderBy(desc(documents.updatedAt))
   }
 
-  async findByType(type: string) {
+  async findByType(type: any) {
     return this.db
       .select()
       .from(documents)
-      .where(and(eq(documents.type, type as DocumentType), isNull(documents.deletedAt)))
+      .where(and(eq(documents.type, type), isNull(documents.deletedAt)))
       .orderBy(desc(documents.updatedAt))
   }
 
