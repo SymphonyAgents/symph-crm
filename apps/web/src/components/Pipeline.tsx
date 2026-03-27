@@ -1,10 +1,23 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { formatPeso } from '@/lib/utils'
 import { Avatar } from './Avatar'
 import { queryKeys } from '@/lib/query-keys'
+import { usePatchDealStage } from '@/lib/hooks/mutations'
 
 // --- Types ---
 type ApiDeal = {
@@ -37,6 +50,17 @@ const KANBAN_STAGES = [
   { id: 'closed_lost', label: 'Lost',            color: '#dc2626', matches: ['closed_lost'] },
 ]
 
+/** Maps droppable column id → the primary DB stage value sent to the API */
+const COLUMN_TO_STAGE: Record<string, string> = {
+  lead:         'lead',
+  discovery:    'discovery',
+  assessment:   'assessment',
+  demo_prop:    'proposal_demo',
+  followup:     'followup',
+  closed_won:   'closed_won',
+  closed_lost:  'closed_lost',
+}
+
 const CLOSED_IDS = new Set(['closed_won', 'closed_lost'])
 
 // Sub-stage label for individual deal cards (show granular stage inside grouped column)
@@ -47,6 +71,7 @@ const SUB_STAGE_LABEL: Record<string, string> = {
   followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
 }
 
+// --- DealCard (unchanged) ---
 function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string; onClick: () => void }) {
   const isWon = deal.stage === 'closed_won'
   const isLost = deal.stage === 'closed_lost'
@@ -133,6 +158,63 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
   )
 }
 
+// --- DraggableDealCard — wraps DealCard without touching it ---
+function DraggableDealCard({
+  deal,
+  colColor,
+  onClick,
+}: {
+  deal: ApiDeal
+  colColor: string
+  onClick: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: deal.id,
+  })
+  const style = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
+    : undefined
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn('touch-none', isDragging && 'opacity-0 transition-opacity duration-150')}
+      {...attributes}
+      {...listeners}
+    >
+      <DealCard deal={deal} colColor={colColor} onClick={onClick} />
+    </div>
+  )
+}
+
+// --- DroppableColumn — wraps each stage column ---
+function DroppableColumn({
+  col,
+  children,
+}: {
+  col: (typeof KANBAN_STAGES)[number]
+  children: React.ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'w-[252px] shrink-0 flex flex-col overflow-hidden rounded-lg transition-all duration-150',
+        'bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]',
+        isOver
+          ? 'border-2 border-dashed'
+          : 'border border-black/[.07] dark:border-white/[.08]',
+      )}
+      style={isOver ? { borderColor: col.color } : undefined}
+    >
+      {children}
+    </div>
+  )
+}
+
 // --- Fetch ---
 async function fetchDeals(): Promise<ApiDeal[]> {
   const res = await fetch('/api/deals')
@@ -141,10 +223,19 @@ async function fetchDeals(): Promise<ApiDeal[]> {
 }
 
 export function Pipeline({ onOpenDeal }: PipelineProps) {
+  const [activeDealId, setActiveDealId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+
   const { data: deals = [], isLoading } = useQuery({
     queryKey: queryKeys.deals.all,
     queryFn: fetchDeals,
   })
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+  )
+
+  const patchStage = usePatchDealStage()
 
   const activeDeals = deals.filter(d => !CLOSED_IDS.has(d.stage))
   const totalValue = activeDeals.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
@@ -157,6 +248,52 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
       .filter(d => col.matches.includes(d.stage))
       .reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0),
   }))
+
+  // The deal and its column color for the drag overlay
+  const activeDeal = activeDealId ? deals.find(d => d.id === activeDealId) ?? null : null
+  const activeDealColColor = activeDeal
+    ? (KANBAN_STAGES.find(c => c.matches.includes(activeDeal.stage))?.color ?? '#94a3b8')
+    : '#94a3b8'
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveDealId(event.active.id as string)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveDealId(null)
+    if (!over) return
+
+    const deal = deals.find(d => d.id === (active.id as string))
+    if (!deal) return
+
+    const targetStage = COLUMN_TO_STAGE[over.id as string]
+    if (!targetStage) return
+
+    // No-op if already in the same column
+    const currentCol = KANBAN_STAGES.find(c => c.matches.includes(deal.stage))
+    if (currentCol?.id === over.id) return
+
+    // Snapshot for rollback
+    const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
+
+    // Optimistic update
+    queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
+      old?.map(d => d.id === deal.id ? { ...d, stage: targetStage } : d) ?? [],
+    )
+
+    patchStage.mutate(
+      { id: deal.id, stage: targetStage },
+      {
+        onError: () => {
+          queryClient.setQueryData(queryKeys.deals.all, previousDeals)
+        },
+        onSettled: () => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+        },
+      },
+    )
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -184,46 +321,51 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
 
       {/* Board */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="flex gap-2.5 h-full px-4 pb-4" style={{ minWidth: 'max-content' }}>
-          {isLoading
-            ? KANBAN_STAGES.map(col => (
-                <div
-                  key={col.id}
-                  className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
-                >
-                  {/* Column header skeleton */}
-                  <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-slate-200 dark:bg-white/[.1]" />
-                      <div className="h-3 w-20 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse flex-1" />
-                      <div className="h-5 w-6 bg-slate-100 dark:bg-white/[.06] rounded-full animate-pulse" />
-                    </div>
-                  </div>
-                  {/* Card skeletons */}
-                  <div className="flex flex-col gap-2 flex-1 overflow-y-auto p-2.5">
-                    {[1, 2].map(i => (
-                      <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
-                        <div className="h-2.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
-                        <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-1" />
-                        <div className="h-3 w-3/4 bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
-                        <div className="flex gap-1.5 mb-3">
-                          <div className="h-4 w-12 bg-slate-100 dark:bg-white/[.06] rounded-full" />
-                          <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded-full" />
-                        </div>
-                        <div className="flex items-center justify-between pt-2 border-t border-black/[.04] dark:border-white/[.06]">
-                          <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded" />
-                          <div className="h-5 w-5 bg-slate-100 dark:bg-white/[.06] rounded-full" />
-                        </div>
-                      </div>
-                    ))}
+        {isLoading ? (
+          <div className="flex gap-2.5 h-full px-4 pb-4" style={{ minWidth: 'max-content' }}>
+            {KANBAN_STAGES.map(col => (
+              <div
+                key={col.id}
+                className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
+              >
+                {/* Column header skeleton */}
+                <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-slate-200 dark:bg-white/[.1]" />
+                    <div className="h-3 w-20 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse flex-1" />
+                    <div className="h-5 w-6 bg-slate-100 dark:bg-white/[.06] rounded-full animate-pulse" />
                   </div>
                 </div>
-              ))
-            : columnDeals.map(col => (
-                <div
-                  key={col.id}
-                  className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
-                >
+                {/* Card skeletons */}
+                <div className="flex flex-col gap-2 flex-1 overflow-y-auto p-2.5">
+                  {[1, 2].map(i => (
+                    <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
+                      <div className="h-2.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
+                      <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-1" />
+                      <div className="h-3 w-3/4 bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
+                      <div className="flex gap-1.5 mb-3">
+                        <div className="h-4 w-12 bg-slate-100 dark:bg-white/[.06] rounded-full" />
+                        <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded-full" />
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-black/[.04] dark:border-white/[.06]">
+                        <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded" />
+                        <div className="h-5 w-5 bg-slate-100 dark:bg-white/[.06] rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-2.5 h-full px-4 pb-4" style={{ minWidth: 'max-content' }}>
+              {columnDeals.map(col => (
+                <DroppableColumn key={col.id} col={col}>
                   {/* Column header */}
                   <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
                     <div className="flex items-center gap-2">
@@ -248,7 +390,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                       </div>
                     ) : (
                       col.deals.map(d => (
-                        <DealCard
+                        <DraggableDealCard
                           key={d.id}
                           deal={d}
                           colColor={col.color}
@@ -257,10 +399,24 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                       ))
                     )}
                   </div>
+                </DroppableColumn>
+              ))}
+            </div>
+
+            {/* Drag ghost overlay */}
+            <DragOverlay>
+              {activeDeal ? (
+                <div className="opacity-85 scale-[1.02] shadow-2xl rounded-lg pointer-events-none">
+                  <DealCard
+                    deal={activeDeal}
+                    colColor={activeDealColColor}
+                    onClick={() => {}}
+                  />
                 </div>
-              ))
-          }
-        </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        )}
       </div>
     </div>
   )
