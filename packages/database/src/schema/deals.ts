@@ -33,6 +33,12 @@ export const deals = pgTable('deals', {
   isFlagged: boolean('is_flagged').default(false),
   flagReason: text('flag_reason'),
   workspaceId: uuid('workspace_id').references(() => workspaces.id),
+  // Extended fields for real sales data
+  engagementModel: text('engagement_model'),
+  accountsManagerName: text('accounts_manager_name'),
+  salesNotes: text('sales_notes'),
+  buildAssignedTo: text('build_assigned_to'),
+  buildNotes: text('build_notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
