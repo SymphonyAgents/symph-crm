@@ -120,6 +120,17 @@
     cursor: pointer;
   }
 
+  /* Remove focus outline globally (use focus-visible for keyboard only) */
+  :focus {
+    outline: none;
+  }
+
+  /* Restore visible focus for keyboard navigation */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
   body {
     background: var(--background);
     color: var(--foreground);
