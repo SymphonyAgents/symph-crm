@@ -1,10 +1,10 @@
 export function formatPeso(n: number): string {
-  return '\u20B1' + new Intl.NumberFormat('en-PH').format(n)
+  return 'P' + new Intl.NumberFormat('en-PH').format(n)
 }
 
 export function formatPesoShort(n: number): string {
-  if (n >= 1_000_000) return '\u20B1' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '\u20B1' + Math.round(n / 1_000) + 'K'
+  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000) return 'P' + Math.round(n / 1_000) + 'K'
   return formatPeso(n)
 }
 

@@ -16,8 +16,6 @@ type RecentActivityProps = {
 export function RecentActivity({ entries }: RecentActivityProps) {
   return (
     <div>
-      <div className="text-[13px] font-semibold text-slate-900 mb-3.5">Recent Activity</div>
-
       {entries.length === 0 ? (
         <EmptyState
           icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"

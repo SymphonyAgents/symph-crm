@@ -41,7 +41,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      className="fixed inset-0 z-40 flex items-center justify-center"
       style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', backgroundColor: 'rgba(255,255,255,0.5)' }}
       onClick={onClose}
     >

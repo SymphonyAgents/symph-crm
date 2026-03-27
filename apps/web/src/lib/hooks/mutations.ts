@@ -113,7 +113,7 @@ export function useDeleteCompany(
 
 export type CreateDealInput = {
   title: string
-  companyId: string
+  companyId: string | null
   productId: string
   tierId: string
   stage?: string

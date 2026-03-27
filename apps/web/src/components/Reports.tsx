@@ -51,9 +51,9 @@ async function fetchPipelineSummary(): Promise<PipelineSummary> {
 }
 
 function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return '₱' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '₱' + (n / 1_000).toFixed(0) + 'K'
-  return '₱' + n.toLocaleString()
+  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000) return 'P' + (n / 1_000).toFixed(0) + 'K'
+  return 'P' + n.toLocaleString()
 }
 
 function Spinner() {
@@ -266,7 +266,7 @@ export function Reports() {
                   key={name}
                   className="grid grid-cols-[20px_1fr_auto_auto] items-center gap-3 py-2.5 px-1 border-b border-black/[.04] last:border-0"
                 >
-                  <div className={`text-[11px] font-bold font-mono tabular-nums text-center ${i === 0 ? 'text-primary' : 'text-slate-400'}`}>
+                  <div className={`text-[11px] font-bold tabular-nums text-center ${i === 0 ? 'text-primary' : 'text-slate-400'}`}>
                     {i + 1}
                   </div>
                   <div>

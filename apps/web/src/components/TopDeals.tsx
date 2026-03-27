@@ -33,18 +33,6 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3.5">
-        <div className="text-[13px] font-semibold text-slate-900">Top Deals</div>
-        {onViewAll && (
-          <button
-            onClick={onViewAll}
-            className="text-[12px] font-medium text-slate-600 hover:text-slate-900 transition-colors duration-150"
-          >
-            View All
-          </button>
-        )}
-      </div>
-
       {sorted.length === 0 ? (
         <EmptyState
           icon="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
@@ -75,7 +63,7 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-xs font-semibold text-slate-900 tabular-nums font-mono">
+                  <div className="text-xs font-semibold text-slate-900 tabular-nums">
                     {value > 0 ? formatPeso(value) : '—'}
                   </div>
                 </div>

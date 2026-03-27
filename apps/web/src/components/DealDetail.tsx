@@ -82,9 +82,9 @@ function formatCurrency(v: string | null): string {
   if (!v) return '—'
   const n = parseFloat(v)
   if (isNaN(n)) return '—'
-  if (n >= 1_000_000) return '₱' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '₱' + Math.round(n / 1_000) + 'K'
-  return '₱' + new Intl.NumberFormat('en-PH').format(n)
+  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000) return 'P' + Math.round(n / 1_000) + 'K'
+  return 'P' + new Intl.NumberFormat('en-PH').format(n)
 }
 
 type DealDetailProps = {

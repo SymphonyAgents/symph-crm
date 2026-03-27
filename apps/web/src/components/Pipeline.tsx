@@ -102,7 +102,7 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
 
       {/* Value + AM */}
       <div className="flex items-center justify-between pt-2 border-t border-black/[.05]">
-        <span className="text-[15px] font-bold font-mono tabular-nums" style={{ color: colColor }}>
+        <span className="text-[15px] font-bold tabular-nums" style={{ color: colColor }}>
           {deal.value ? formatPeso(parseFloat(deal.value)) : '—'}
         </span>
         <div className="flex items-center gap-1">
@@ -149,7 +149,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
           <span className="text-[13px] font-medium text-slate-900">
             {activeDeals.length} active deals
             {totalValue > 0 && (
-              <> &middot; <span className="font-mono tabular-nums">₱{(totalValue / 1_000_000).toFixed(1)}M</span></>
+              <> &middot; <span className="tabular-nums">P{(totalValue / 1_000_000).toFixed(1)}M</span></>
             )}
           </span>
         )}
@@ -215,8 +215,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                       </span>
                     </div>
                     {col.total > 0 && (
-                      <div className="text-[12px] text-slate-400 font-mono tabular-nums mt-1 pl-[18px]">
-                        ₱{(col.total / 1_000_000).toFixed(1)}M
+                      <div className="text-[12px] text-slate-400 tabular-nums mt-1 pl-[18px]">
+                        P{(col.total / 1_000_000).toFixed(1)}M
                       </div>
                     )}
                   </div>

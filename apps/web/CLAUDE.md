@@ -209,4 +209,90 @@ pipeline.summary           → ['pipeline', 'summary']
 products.all               → ['products']
 tiers.all                  → ['tiers']
 contacts.byCompany(id)     → ['contacts', 'company', id]
+documents.byDeal(id)       → ['documents', 'deal', id]
+documents.proposals        → ['documents', 'proposals']
 ```
+
+---
+
+## D3 Visualization Standards
+
+### Architecture
+
+- D3 handles simulation, zoom, drag, and DOM mutations via `useRef` + `useEffect`
+- React does NOT re-render on simulation ticks — D3 owns the SVG DOM
+- All D3 components must be `'use client'` with explicit cleanup in `useEffect` return
+- Dynamic import (`ssr: false`) for any component that imports `d3`
+
+### Force Simulation Rules
+
+```typescript
+// Standard simulation config
+const sim = d3.forceSimulation<GraphNode>(nodes)
+  .force('link', d3.forceLink(links).id(d => d.id).distance(120).strength(0.6))
+  .force('charge', d3.forceManyBody().strength(-400))
+  .force('center', d3.forceCenter(0, 0))
+  .force('collide', d3.forceCollide().radius(d => d.r + 14).strength(0.8))
+  .alphaDecay(0.015)
+```
+
+- `alphaDecay`: 0.015 (slower cooldown, smoother settling)
+- `forceCollide`: always include to prevent node overlap
+- Company nodes get stronger charge repulsion than deal/resource nodes
+- Link distance scales by relationship type (company→deal: 120, deal→resource: 80)
+
+### Performance
+
+- Stop simulation on cleanup: `return () => { sim.stop() }`
+- Use `d3.select(ref.current)` not `d3.select('#id')` — refs prevent stale DOM
+- Clear previous render: `svg.selectAll('*').remove()` at start of effect
+- Zoom: `d3.zoom().scaleExtent([0.15, 4])` — always set bounds
+- Node count > 200: reduce `alphaDecay` and use `simulation.tick(50)` to pre-compute positions
+
+### Visual Standards
+
+- Dark canvas: `bg-[#0f1117]` with dot grid overlay
+- Node colors: deterministic from name (hash → palette index)
+- Stage colors: match `STAGE_COLOR` map used across all components
+- Company nodes: `r=26`, glow ring, initials text, label below
+- Deal nodes: `r=10`, stage-colored fill
+- Resource nodes: `r=6`, muted color, doc-type icon
+- Links: `stroke-opacity: 0.2`, colored by target node
+- Tooltip: dark panel (`bg-[#1a1d27]`), appears on hover, follows mouse
+
+### Node Type Hierarchy
+
+```
+Company (circle, r=26)
+  └── Deal (folder icon or circle, r=10)
+        └── Resource (small circle, r=6) — context.md, transcripts, proposals
+```
+
+### Drag Behavior
+
+```typescript
+const drag = d3.drag<SVGGElement, GraphNode>()
+  .on('start', (event, d) => {
+    if (!event.active) sim.alphaTarget(0.3).restart()
+    d.fx = d.x; d.fy = d.y
+  })
+  .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y })
+  .on('end', (event, d) => {
+    if (!event.active) sim.alphaTarget(0)
+    d.fx = null; d.fy = null
+  })
+```
+
+### Zoom
+
+- Initial transform: center graph with `translate(W/2, H/2).scale(0.85)`
+- Hide tooltip on zoom: `setTooltip(null)` in zoom handler
+- Always set `scaleExtent` to prevent infinite zoom
+
+### NEVER
+
+- Never use `document.getElementById` — use `useRef`
+- Never animate D3 via React state — D3 owns tick updates
+- Never render SVG elements via JSX in a force graph — D3 manages enter/update/exit
+- Never forget cleanup — `sim.stop()` in useEffect return
+- Never use `d3-transition` for force graphs — simulation handles movement

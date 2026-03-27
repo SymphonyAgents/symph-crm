@@ -37,9 +37,9 @@ type PipelineSummary = {
 }
 
 function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return `₱${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `₱${(n / 1_000).toFixed(0)}K`
-  return `₱${n.toLocaleString()}`
+  if (n >= 1_000_000) return `P${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `P${(n / 1_000).toFixed(0)}K`
+  return `P${n.toLocaleString()}`
 }
 
 function timeAgo(iso: string | null): string {
@@ -118,7 +118,7 @@ export function Dashboard() {
           <>
             <MetricCard
               label="Total Pipeline"
-              value={totalPipeline > 0 ? formatCurrency(totalPipeline) : '₱0'}
+              value={totalPipeline > 0 ? formatCurrency(totalPipeline) : 'P0'}
               trend={totalPipeline > 0 ? `${activeDeals} active deals` : 'No deals yet'}
               trendUp={totalPipeline > 0}
               mono
@@ -138,7 +138,7 @@ export function Dashboard() {
             />
             <MetricCard
               label="Avg Deal Size"
-              value={avgDealSize > 0 ? formatCurrency(avgDealSize) : '₱0'}
+              value={avgDealSize > 0 ? formatCurrency(avgDealSize) : 'P0'}
               trend={avgDealSize > 0 ? 'Per deal' : 'No data yet'}
               trendUp={avgDealSize > 0}
               mono

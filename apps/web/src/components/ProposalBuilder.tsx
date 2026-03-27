@@ -18,6 +18,7 @@ import { useState, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { EmptyState } from './EmptyState'
 import { useUser } from '@/lib/hooks/use-user'
 import {
@@ -104,8 +105,8 @@ function NewProposalModal({
         <div className="space-y-3">
           <div>
             <label className="block text-[12px] font-medium text-slate-600 mb-1">Title</label>
-            <input
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+            <Input
+              className="h-9 text-[13px]"
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="e.g. Jollibee HRIS Proposal"

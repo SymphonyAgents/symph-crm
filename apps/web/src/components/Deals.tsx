@@ -76,9 +76,9 @@ function formatValue(v: string | null): string {
   if (!v) return '—'
   const n = parseFloat(v)
   if (isNaN(n)) return '—'
-  if (n >= 1_000_000) return '₱' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '₱' + Math.round(n / 1_000) + 'K'
-  return '₱' + new Intl.NumberFormat('en-PH').format(n)
+  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000) return 'P' + Math.round(n / 1_000) + 'K'
+  return 'P' + new Intl.NumberFormat('en-PH').format(n)
 }
 
 function totalNumericValue(deals: ApiDeal[]): number {
@@ -395,9 +395,8 @@ export function Deals({ onOpenDeal }: DealsProps) {
               </button>
             </div>
 
-            {/* Search (list mode only) */}
-            {viewMode === 'list' && (
-              <div className="flex items-center gap-1.5 bg-slate-50 border border-black/[.06] rounded-lg px-2.5 py-[5px] flex-1 sm:flex-none sm:w-[200px] min-w-[140px]">
+            {/* Search */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-black/[.06] rounded-lg px-2.5 py-[5px] flex-1 sm:flex-none sm:w-[200px] min-w-[140px]">
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="text-slate-400 shrink-0" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
@@ -409,7 +408,6 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   className="border-none bg-transparent outline-none text-[12.5px] text-slate-900 w-full placeholder:text-slate-400 focus:ring-0 px-0 py-0 rounded-none h-auto shadow-none"
                 />
               </div>
-            )}
 
             {/* Expand/Collapse (list mode only) */}
             {viewMode === 'list' && (

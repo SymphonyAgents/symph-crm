@@ -314,7 +314,7 @@ function RecordingIndicator({
       {/* Mic + timer */}
       <div className="flex items-center gap-1.5 shrink-0">
         <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-        <span className="text-[11px] font-mono font-medium text-slate-500 tabular-nums w-[32px]">
+        <span className="text-[11px] font-medium text-slate-500 tabular-nums w-[32px]">
           {formatDuration(elapsed)}
         </span>
       </div>

@@ -4,6 +4,8 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from './EmptyState'
 import { useUser } from '@/lib/hooks/use-user'
 import {
@@ -128,8 +130,8 @@ function CreateEventModal({
         <div className="space-y-3">
           <div>
             <label className="block text-[12px] font-medium text-slate-600 mb-1">Title *</label>
-            <input
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+            <Input
+              className="h-9 text-[13px]"
               value={form.title}
               onChange={e => set('title', e.target.value)}
               placeholder="e.g. Discovery call with Jollibee"
@@ -140,18 +142,18 @@ function CreateEventModal({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[12px] font-medium text-slate-600 mb-1">Start *</label>
-              <input
+              <Input
                 type="datetime-local"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="h-9 text-[13px]"
                 value={form.startAt}
                 onChange={e => set('startAt', e.target.value)}
               />
             </div>
             <div>
               <label className="block text-[12px] font-medium text-slate-600 mb-1">End *</label>
-              <input
+              <Input
                 type="datetime-local"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="h-9 text-[13px]"
                 value={form.endAt}
                 onChange={e => set('endAt', e.target.value)}
               />
@@ -178,8 +180,8 @@ function CreateEventModal({
 
           <div>
             <label className="block text-[12px] font-medium text-slate-600 mb-1">Location</label>
-            <input
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900"
+            <Input
+              className="h-9 text-[13px]"
               value={form.location}
               onChange={e => set('location', e.target.value)}
               placeholder="Google Meet, Zoom, office address..."
@@ -188,8 +190,8 @@ function CreateEventModal({
 
           <div>
             <label className="block text-[12px] font-medium text-slate-600 mb-1">Description</label>
-            <textarea
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:ring-2 focus:ring-slate-900 resize-none"
+            <Textarea
+              className="text-[13px] min-h-[80px]"
               rows={3}
               value={form.description}
               onChange={e => set('description', e.target.value)}
@@ -371,7 +373,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                     )}
                   >
                     <div className={cn(
-                      'text-[11px] font-mono tabular-nums mb-1 w-5 h-5 flex items-center justify-center rounded-full',
+                      'text-[11px] tabular-nums mb-1 w-5 h-5 flex items-center justify-center rounded-full',
                       isToday ? 'bg-slate-900 text-white font-bold' : 'text-slate-500'
                     )}>
                       {cell.day}

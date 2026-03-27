@@ -52,9 +52,9 @@ function formatValue(v: string | null): string {
   if (!v) return ''
   const n = parseFloat(v)
   if (isNaN(n) || n === 0) return ''
-  if (n >= 1_000_000) return '₱' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return '₱' + Math.round(n / 1_000) + 'K'
-  return '₱' + n.toLocaleString('en-PH')
+  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
+  if (n >= 1_000) return 'P' + Math.round(n / 1_000) + 'K'
+  return 'P' + n.toLocaleString('en-PH')
 }
 
 function initials(name: string): string {
@@ -353,7 +353,7 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
               </p>
             )}
             {tooltip.node.kind === 'deal' && tooltip.node.value && (
-              <p className="text-[10px] text-white/40 mt-0.5 font-mono tabular-nums">
+              <p className="text-[10px] text-white/40 mt-0.5 tabular-nums">
                 {formatValue(tooltip.node.value)}
               </p>
             )}

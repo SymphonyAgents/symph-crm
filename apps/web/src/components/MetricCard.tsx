@@ -19,7 +19,7 @@ export function MetricCard({ label, value, trend, trendUp, accentColor, mono }: 
         {label}
       </div>
       <div
-        className={cn('text-[24px] font-bold leading-none tracking-tight tabular-nums', mono && 'font-mono')}
+        className={cn('text-[24px] font-bold leading-none tracking-tight tabular-nums', mono && '')}
         style={{ color: accentColor || 'var(--foreground)' }}
       >
         {value}

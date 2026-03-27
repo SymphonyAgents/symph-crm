@@ -96,13 +96,13 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !companyId || !effectiveProductId || !effectiveTierId) return
+    if (!title.trim() || !effectiveProductId || !effectiveTierId) return
 
     const tags = servicesTags.split(',').map(s => s.trim()).filter(Boolean)
 
     mutate({
       title: title.trim(),
-      companyId,
+      companyId: companyId || null,
       productId: effectiveProductId,
       tierId: effectiveTierId,
       stage,
@@ -113,11 +113,11 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
     })
   }
 
-  const canSubmit = title.trim() && companyId && effectiveProductId && effectiveTierId
+  const canSubmit = title.trim() && effectiveProductId && effectiveTierId
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center"
+      className="fixed inset-0 z-40 flex items-center justify-center"
       style={{ backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', backgroundColor: 'rgba(255,255,255,0.5)' }}
       onClick={onClose}
     >
@@ -161,18 +161,14 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           {/* Brand / Company */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">
-              Brand <span className="text-red-400">*</span>
+              Brand <span className="text-slate-400">(optional)</span>
             </label>
-            {companies.length === 0 ? (
-              <div className="h-9 flex items-center px-3 rounded-lg border border-black/[.08] text-[12px] text-slate-400">
-                No brands yet — create a brand first
-              </div>
-            ) : (
-              <Select value={companyId} onValueChange={setCompanyId}>
-                <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue placeholder="Select brand…" />
-                </SelectTrigger>
+            <Select value={companyId || '__none__'} onValueChange={v => setCompanyId(v === '__none__' ? '' : v)}>
+              <SelectTrigger className="h-9 text-[13px]">
+                <SelectValue placeholder="No brand" />
+              </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__" className="text-[13px] text-slate-400">No brand</SelectItem>
                   {companies.map(c => (
                     <SelectItem key={c.id} value={c.id} className="text-[13px]">
                       {c.name}
@@ -180,7 +176,6 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-            )}
           </div>
 
           {/* Stage + Outreach */}
@@ -216,7 +211,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           {/* Value + Pricing Model */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
+              <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (P)</label>
               <Input
                 value={value}
                 onChange={e => setValue(e.target.value.replace(/[^0-9.]/g, ''))}

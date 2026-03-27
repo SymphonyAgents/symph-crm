@@ -8,7 +8,7 @@ import { workspaces } from './workspaces'
 
 export const deals = pgTable('deals', {
   id: uuid('id').defaultRandom().primaryKey(),
-  companyId: uuid('company_id').references(() => companies.id).notNull(),
+  companyId: uuid('company_id').references(() => companies.id),
   productId: uuid('product_id').references(() => products.id).notNull(),
   tierId: uuid('tier_id').references(() => tiers.id).notNull(),
   title: text('title').notNull(),
