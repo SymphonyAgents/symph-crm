@@ -152,7 +152,7 @@ export function Reports() {
         {/* Pipeline Value by Stage */}
         <Card>
           <CardContent>
-            <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4">
+            <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
               Pipeline Value by Stage
             </div>
             {isLoading ? (
@@ -197,7 +197,7 @@ export function Reports() {
         {/* Pipeline Funnel */}
         <Card>
           <CardContent>
-            <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4">
+            <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
               Pipeline Funnel
             </div>
             {isLoading ? (
@@ -223,8 +223,7 @@ export function Reports() {
                           className="h-[20px] rounded flex items-center px-2 transition-all duration-500"
                           style={{
                             width: `${widthPct}%`,
-                            background: `${STAGE_COLORS[s.stage] ?? '#94a3b8'}20`,
-                            border: `1.5px solid ${STAGE_COLORS[s.stage] ?? '#94a3b8'}60`,
+                            background: `${STAGE_COLORS[s.stage] ?? '#94a3b8'}50`,
                           }}
                         >
                           <span
@@ -247,7 +246,7 @@ export function Reports() {
       {/* AM Performance */}
       <Card className="mb-4">
         <CardContent>
-          <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">
+          <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5 pb-3.5 border-b border-black/[.06] dark:border-white/[.08]">
             AM Performance
           </div>
           {loadingDeals ? (
