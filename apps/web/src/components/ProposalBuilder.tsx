@@ -97,7 +97,7 @@ function NewProposalModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-[#1c1c1f] rounded-xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl w-full max-w-sm p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">New Proposal</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:text-slate-400">x</button>
@@ -194,7 +194,7 @@ export function ProposalBuilder() {
           <span className="text-[13px] font-semibold text-slate-900 dark:text-white">Proposals</span>
           <button
             onClick={() => setShowNewModal(true)}
-            className="text-[12px] px-2 py-1 bg-slate-900 text-white rounded-md hover:bg-slate-700 font-medium"
+            className="text-[12px] px-2 py-1 bg-slate-900 text-white rounded-lg hover:bg-slate-700 font-medium"
           >
             + New
           </button>
@@ -204,7 +204,7 @@ export function ProposalBuilder() {
           {isLoading ? (
             <div className="flex flex-col gap-2 p-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="rounded-lg px-4 py-3 bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] animate-pulse">
+                <div key={i} className="rounded-lg px-4 py-3 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
                   <div className="h-3 w-3/4 bg-slate-100 dark:bg-white/[.06] rounded mb-1.5" />
                   <div className="h-2.5 w-1/2 bg-slate-100 dark:bg-white/[.06] rounded" />
                 </div>
@@ -227,7 +227,7 @@ export function ProposalBuilder() {
                 className={cn(
                   'w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors border-l-2',
                   selectedId === doc.id
-                    ? 'border-slate-900 dark:border-white bg-white dark:bg-[#1c1c1f]'
+                    ? 'border-slate-900 dark:border-white bg-white dark:bg-[#1e1e21]'
                     : 'border-transparent',
                 )}
               >
@@ -258,7 +258,7 @@ export function ProposalBuilder() {
         ) : (
           <>
             {/* Editor header */}
-            <div className="flex items-center px-6 py-3 border-b border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1c1c1f] gap-3">
+            <div className="flex items-center px-6 py-3 border-b border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] gap-3">
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-slate-900 dark:text-white truncate">{selected?.title}</p>
                 {selected?.dealId && (
@@ -286,7 +286,7 @@ export function ProposalBuilder() {
                     <button
                       key={v.id}
                       onClick={() => setSelectedId(v.id)}
-                      className="text-[11px] px-2.5 py-1 border border-amber-300 dark:border-amber-700 rounded-md bg-white dark:bg-[#1c1c1f] hover:bg-amber-50 dark:bg-amber-950/30 text-amber-800"
+                      className="text-[11px] px-2.5 py-1 border border-amber-300 dark:border-amber-700 rounded-lg bg-white dark:bg-[#1e1e21] hover:bg-amber-50 dark:bg-amber-950/30 text-amber-800"
                     >
                       {v.title}
                     </button>

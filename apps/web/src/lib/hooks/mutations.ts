@@ -1,24 +1,15 @@
-/**
- * Mutation hooks for all write operations.
- *
- * Rules:
- * - Every POST/PUT/PATCH/DELETE goes through a hook here — never raw fetch() in components.
- * - Each hook handles its own error throwing and returns the typed result.
- * - Callers pass { onSuccess, onError } to wire in invalidation and UI side-effects.
- * - Invalidation lives in the caller (e.g. modal or page) — hooks stay reusable.
- *
- * Usage pattern:
- *   const { mutate, isPending } = useCreateCompany({
- *     onSuccess: () => {
- *       qc.invalidateQueries({ queryKey: queryKeys.companies.all })
- *       onClose()
- *     },
- *   })
- */
+// Mutation hooks for all write operations.
+//
+// Rules:
+// - Every POST/PUT/PATCH/DELETE goes through a hook here
+// - Toast notifications fire on every success and error automatically
+// - Callers pass { onSuccess, onError } for invalidation and UI side-effects
+// - Toast shows BEFORE caller's onSuccess/onError runs
 
 import { useMutation, type UseMutationOptions } from '@tanstack/react-query'
+import { toast } from 'sonner'
 
-// ─── Shared types ─────────────────────────────────────────────────────────────
+// ─── Shared helpers ──────────────────────────────────────────────────────────
 
 export type ApiError = { message: string; statusCode?: number }
 
@@ -69,6 +60,25 @@ async function apiDelete(path: string): Promise<void> {
   }
 }
 
+// Wraps mutation options to inject toast before caller's callbacks
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function withToast(
+  label: string,
+  options?: UseMutationOptions<any, Error, any>,
+): Partial<UseMutationOptions<any, Error, any>> {
+  return {
+    ...options,
+    onSuccess: (...args: any[]) => {
+      toast.success(label)
+      ;(options?.onSuccess as any)?.(...args)
+    },
+    onError: (error: Error, ...rest: any[]) => {
+      toast.error(error.message || `${label} failed`)
+      ;(options?.onError as any)?.(error, ...rest)
+    },
+  }
+}
+
 // ─── Company mutations ────────────────────────────────────────────────────────
 
 export type CreateCompanyInput = {
@@ -87,7 +97,7 @@ export function useCreateCompany(
 ) {
   return useMutation({
     mutationFn: (input: CreateCompanyInput) => apiPost('/api/companies', input),
-    ...options,
+    ...withToast('Brand created', options),
   })
 }
 
@@ -96,7 +106,7 @@ export function useUpdateCompany(
 ) {
   return useMutation({
     mutationFn: ({ id, data }) => apiPut(`/api/companies/${id}`, data),
-    ...options,
+    ...withToast('Brand updated', options),
   })
 }
 
@@ -105,7 +115,7 @@ export function useDeleteCompany(
 ) {
   return useMutation({
     mutationFn: (id: string) => apiDelete(`/api/companies/${id}`),
-    ...options,
+    ...withToast('Brand deleted', options),
   })
 }
 
@@ -122,6 +132,7 @@ export type CreateDealInput = {
   pricingModel?: string | null
   servicesTags?: string[]
   assignedTo?: string | null
+  createdBy?: string | null
   closeDate?: string | null
 }
 
@@ -132,7 +143,7 @@ export function useCreateDeal(
 ) {
   return useMutation({
     mutationFn: (input: CreateDealInput) => apiPost('/api/deals', input),
-    ...options,
+    ...withToast('Deal created', options),
   })
 }
 
@@ -141,7 +152,7 @@ export function useUpdateDeal(
 ) {
   return useMutation({
     mutationFn: ({ id, data }) => apiPut(`/api/deals/${id}`, data),
-    ...options,
+    ...withToast('Deal updated', options),
   })
 }
 
@@ -150,7 +161,7 @@ export function usePatchDealStage(
 ) {
   return useMutation({
     mutationFn: ({ id, stage }) => apiPatch(`/api/deals/${id}/stage`, { stage }),
-    ...options,
+    ...withToast('Stage updated', options),
   })
 }
 
@@ -159,6 +170,6 @@ export function useDeleteDeal(
 ) {
   return useMutation({
     mutationFn: (id: string) => apiDelete(`/api/deals/${id}`),
-    ...options,
+    ...withToast('Deal deleted', options),
   })
 }

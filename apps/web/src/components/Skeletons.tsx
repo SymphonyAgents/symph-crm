@@ -21,7 +21,7 @@ function SkeletonLine({ w = 'w-full', h = 'h-3' }: { w?: string; h?: string }) {
 
 export function MetricCardSkeleton() {
   return (
-    <div className="flex-[1_1_200px] rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1c1c1f] px-5 py-[18px] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="flex-[1_1_200px] rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] px-5 py-[18px] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <SkeletonLine w="w-24" h="h-2.5" />
       <div className="mt-3 mb-2">
         <SkeletonLine w="w-28" h="h-7" />
@@ -124,7 +124,7 @@ export function RecentActivitySkeleton({ rows = 5 }: { rows?: number }) {
 
 export function DealsListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="flex-1 bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+    <div className="flex-1 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
@@ -151,9 +151,9 @@ export function DealsListSkeleton({ rows = 6 }: { rows?: number }) {
 
 function KanbanColumnSkeleton({ cards = 2 }: { cards?: number }) {
   return (
-    <div className="w-[252px] shrink-0 flex flex-col rounded-xl border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] overflow-hidden">
+    <div className="w-[252px] shrink-0 flex flex-col rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] overflow-hidden">
       {/* column header */}
-      <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1c1c1f]/60 flex items-center gap-2">
+      <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]/60 flex items-center gap-2">
         <Skeleton className="w-2.5 h-2.5 rounded-full shrink-0" />
         <Skeleton className="flex-1 h-2.5 rounded" />
         <Skeleton className="w-6 h-4 rounded-full" />
@@ -161,7 +161,7 @@ function KanbanColumnSkeleton({ cards = 2 }: { cards?: number }) {
       {/* cards */}
       <div className="flex flex-col gap-2 p-2.5">
         {Array.from({ length: cards }).map((_, i) => (
-          <div key={i} className="rounded-xl p-3.5 bg-white dark:bg-[#1c1c1f] border border-black/[.08] dark:border-white/[.08] flex flex-col gap-2.5">
+          <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <SkeletonLine w="w-16" h="h-2" />
               <SkeletonLine w="w-12" h="h-4" />
@@ -244,7 +244,7 @@ export function DealDetailSkeleton() {
   return (
     <div className="flex flex-col gap-4 pb-4">
       {/* header card */}
-      <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex-1 flex flex-col gap-2.5">
             <SkeletonLine w="w-3/4" h="h-6" />
@@ -274,7 +274,7 @@ export function DealDetailSkeleton() {
       </div>
 
       {/* activity feed */}
-      <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         <SkeletonLine w="w-20" h="h-4" />
         <div className="mt-3.5 flex flex-col">
           {Array.from({ length: 5 }).map((_, i) => (

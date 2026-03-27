@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, Headers } from '@nestjs/common'
 import { DealsService } from './deals.service'
 import { deals } from '@symph-crm/database'
 
@@ -6,14 +6,6 @@ import { deals } from '@symph-crm/database'
 export class DealsController {
   constructor(private readonly dealsService: DealsService) {}
 
-  /**
-   * GET /api/deals
-   * Optional query params:
-   *   ?stage=discovery        — filter by pipeline stage
-   *   ?companyId=<uuid>       — filter by company
-   *   ?search=acme            — fuzzy search by title
-   *   ?limit=50               — max results (default 200)
-   */
   @Get()
   findAll(
     @Query('stage') stage?: string,
@@ -35,8 +27,17 @@ export class DealsController {
   }
 
   @Post()
-  create(@Body() data: typeof deals.$inferInsert) {
-    return this.dealsService.create(data)
+  create(
+    @Body() data: typeof deals.$inferInsert,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    // Auto-set createdBy and assignedTo from request context
+    const enriched = {
+      ...data,
+      createdBy: data.createdBy || userId || null,
+      assignedTo: data.assignedTo || data.createdBy || userId || null,
+    }
+    return this.dealsService.create(enriched)
   }
 
   @Put(':id')
@@ -44,7 +45,6 @@ export class DealsController {
     return this.dealsService.update(id, data)
   }
 
-  /** PATCH /api/deals/:id/stage — atomic stage transition, triggers lastActivityAt update */
   @Patch(':id/stage')
   patchStage(@Param('id') id: string, @Body() body: { stage: string }) {
     return this.dealsService.updateStage(id, body.stage)

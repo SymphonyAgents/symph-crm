@@ -121,7 +121,7 @@ function CreateEventModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-[#1c1c1f] rounded-xl shadow-xl w-full max-w-md p-6">
+      <div className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl w-full max-w-md p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white">New Event</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:text-slate-400 text-lg leading-none">x</button>
@@ -300,7 +300,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
   return (
     <div className="p-4 md:p-6 flex flex-col gap-4">
       {status && !status.connected && (
-        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-xl px-4 py-3">
+        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-lg px-4 py-3">
           <div>
             <p className="text-[13px] font-semibold text-blue-900 dark:text-blue-300">Connect Google Calendar</p>
             <p className="text-[12px] text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
@@ -346,7 +346,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
             </div>
           </div>
 
-          <div className="border border-black/[.06] dark:border-white/[.08] rounded-xl overflow-hidden bg-white dark:bg-[#1c1c1f]">
+          <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21]">
             <div className="grid grid-cols-7 border-b border-black/[.06] dark:border-white/[.08]">
               {DAYS.map(d => (
                 <div key={d} className="py-2.5 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{d}</div>
@@ -409,7 +409,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
           </div>
         </div>
 
-        <div className="border border-black/[.06] dark:border-white/[.08] rounded-xl bg-white dark:bg-[#1c1c1f] overflow-hidden">
+        <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden">
           <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
             <p className="text-[13px] font-semibold text-slate-900 dark:text-white">Upcoming</p>
           </div>

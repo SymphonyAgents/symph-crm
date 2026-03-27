@@ -45,7 +45,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1c1c1f] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4"
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

@@ -58,24 +58,39 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
     <div
       onClick={onClick}
       className={cn(
-        'rounded-xl p-3.5 cursor-pointer transition-all duration-150',
+        'rounded-lg p-3.5 cursor-pointer transition-all duration-150',
         isWon
-          ? 'bg-[rgba(22,163,74,0.05)] border border-[rgba(22,163,74,0.22)]'
+          ? 'bg-[rgba(22,163,74,0.05)] dark:bg-[rgba(22,163,74,0.08)] border border-[rgba(22,163,74,0.22)]'
           : isLost
-          ? 'bg-white dark:bg-[#1c1c1f] border border-[rgba(220,38,38,0.15)] opacity-70'
-          : 'bg-white dark:bg-[#1c1c1f] border border-black/[.08] dark:border-white/[.08] hover:border-primary hover:shadow-[0_0_0_3px_var(--color-primary-dim)]'
+          ? 'bg-white dark:bg-[#222225] border border-[rgba(220,38,38,0.15)] opacity-70'
+          : 'bg-white dark:bg-[#222225] border border-black/[.08] dark:border-white/[.1]'
       )}
+      onMouseEnter={(e) => {
+        if (!isWon && !isLost) {
+          e.currentTarget.style.borderColor = colColor
+          e.currentTarget.style.boxShadow = `0 0 0 3px ${colColor}20`
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isWon && !isLost) {
+          e.currentTarget.style.borderColor = ''
+          e.currentTarget.style.boxShadow = ''
+        }
+      }}
     >
       {/* Sub-stage label + outreach badge */}
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-400">
+        <span
+          className="text-[11px] font-semibold uppercase tracking-[0.05em]"
+          style={{ color: colColor }}
+        >
           {SUB_STAGE_LABEL[deal.stage] ?? deal.stage.replace(/_/g, ' ')}
         </span>
         <span className={cn(
           'text-[10px] font-semibold px-2 py-0.5 rounded-full',
           outreach === 'inbound'
-            ? 'bg-success-dim text-success'
-            : 'bg-primary/10 text-primary'
+            ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
+            : 'bg-[rgba(124,58,237,0.1)] text-[#8b5cf6]'
         )}>
           {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
         </span>
@@ -90,7 +105,11 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
       {services.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2.5">
           {services.slice(0, 3).map(s => (
-            <span key={s} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-primary-dim text-primary">
+            <span
+              key={s}
+              className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              style={{ background: `${colColor}18`, color: colColor }}
+            >
               {s}
             </span>
           ))}
@@ -101,7 +120,7 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
       )}
 
       {/* Value + AM */}
-      <div className="flex items-center justify-between pt-2 border-t border-black/[.05] dark:border-white/[.06]">
+      <div className="flex items-center justify-between pt-2 border-t border-black/[.05] dark:border-white/[.08]">
         <span className="text-[15px] font-bold tabular-nums" style={{ color: colColor }}>
           {deal.value ? formatPeso(parseFloat(deal.value)) : '—'}
         </span>
@@ -154,10 +173,10 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
           </span>
         )}
         <div className="flex gap-2">
-          <button className="bg-white dark:bg-[#1c1c1f] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors duration-150 cursor-pointer">
+          <button className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors duration-150 cursor-pointer">
             Filter
           </button>
-          <button className="hidden sm:block bg-white dark:bg-[#1c1c1f] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors duration-150 cursor-pointer">
+          <button className="hidden sm:block bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors duration-150 cursor-pointer">
             Group by AM
           </button>
         </div>
@@ -170,7 +189,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
             ? KANBAN_STAGES.map(col => (
                 <div
                   key={col.id}
-                  className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-xl border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
+                  className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
                 >
                   {/* Column header skeleton */}
                   <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
@@ -183,7 +202,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                   {/* Card skeletons */}
                   <div className="flex flex-col gap-2 flex-1 overflow-y-auto p-2.5">
                     {[1, 2].map(i => (
-                      <div key={i} className="rounded-xl p-3.5 bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] animate-pulse">
+                      <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
                         <div className="h-2.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
                         <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-1" />
                         <div className="h-3 w-3/4 bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
@@ -203,14 +222,14 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
             : columnDeals.map(col => (
                 <div
                   key={col.id}
-                  className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-xl border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
+                  className="w-[252px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
                 >
                   {/* Column header */}
                   <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: col.color }} />
                       <span className="text-[12.5px] font-semibold text-slate-700 dark:text-slate-300 flex-1 leading-none">{col.label}</span>
-                      <span className="bg-white dark:bg-[#1c1c1f] border border-black/[.07] dark:border-white/[.08] text-slate-500 text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-full">
+                      <span className="bg-white dark:bg-[#1e1e21] border border-black/[.07] dark:border-white/[.08] text-slate-500 text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-full">
                         {col.deals.length}
                       </span>
                     </div>

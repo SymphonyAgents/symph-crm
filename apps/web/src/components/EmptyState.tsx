@@ -29,7 +29,7 @@ export function EmptyState({ icon, title, description, action, className, compac
       className
     )}>
       <div className={cn(
-        'rounded-xl bg-slate-50 dark:bg-white/[.03] flex items-center justify-center mb-3',
+        'rounded-lg bg-slate-50 dark:bg-white/[.03] flex items-center justify-center mb-3',
         compact ? 'w-10 h-10' : 'w-12 h-12'
       )}>
         <svg

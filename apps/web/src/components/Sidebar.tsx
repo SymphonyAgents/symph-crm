@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
@@ -89,7 +89,7 @@ function LogoutConfirmModal({
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-[#1c1c1f] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] p-6 w-[320px] flex flex-col gap-4"
+        className="bg-white dark:bg-[#1e1e21] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] p-6 w-[320px] flex flex-col gap-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-1">
@@ -121,6 +121,8 @@ function LogoutConfirmModal({
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const { data: session } = useSession()
   const [hoveredPath, setHoveredPath] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
@@ -151,7 +153,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       <aside className={cn(
-        'w-[216px] shrink-0 bg-white dark:bg-[#1c1c1f] border-r border-black/[.06] dark:border-white/[.08] flex flex-col h-full',
+        'w-[216px] shrink-0 bg-white dark:bg-[#1e1e21] border-r border-black/[.06] dark:border-white/[.08] flex flex-col h-full',
         'fixed inset-y-0 left-0 z-30 md:relative md:z-auto',
         'transition-transform duration-150',
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
@@ -213,15 +215,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Theme toggle */}
-        <div className="px-[14px] py-2 border-t border-black/[.06] dark:border-white/[.08]">
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="w-full flex items-center gap-2 px-[10px] py-[6px] rounded text-[12px] font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
-          >
-            {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} /> : <Moon size={14} strokeWidth={1.4} />}
-            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-          </button>
-        </div>
+        {mounted && (
+          <div className="px-[14px] py-2 border-t border-black/[.06] dark:border-white/[.08]">
+            <button
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              className="w-full flex items-center gap-2 px-[10px] py-[6px] rounded text-[12px] font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+            >
+              {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} /> : <Moon size={14} strokeWidth={1.4} />}
+              {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </button>
+          </div>
+        )}
 
         {/* User profile */}
         <div className="px-[14px] py-2.5 border-t border-black/[.06] dark:border-white/[.08] flex items-center gap-[9px]">

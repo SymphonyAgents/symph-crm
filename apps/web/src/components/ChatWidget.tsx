@@ -43,7 +43,7 @@ export function ChatWidget({ onSubmit }: ChatWidgetProps) {
     <div className="mb-5">
       <div
         className={cn(
-          'flex items-end gap-2.5 px-4 py-3 bg-white dark:bg-[#1c1c1f] rounded-[10px] transition-all duration-150',
+          'flex items-end gap-2.5 px-4 py-3 bg-white dark:bg-[#1e1e21] rounded-lg transition-all duration-150',
           focused
             ? 'border border-black/30 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)]'
             : 'border border-black/[.06] dark:border-white/[.08] shadow-[var(--shadow-card)]'
@@ -93,7 +93,7 @@ export function ChatWidget({ onSubmit }: ChatWidgetProps) {
           <button
             key={prompt}
             onClick={() => onSubmit(prompt)}
-            className="px-[10px] py-1 rounded-full border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1c1c1f] text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white transition-colors duration-150"
+            className="px-[10px] py-1 rounded-full border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] text-[11px] font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white transition-colors duration-150"
           >
             {prompt}
           </button>

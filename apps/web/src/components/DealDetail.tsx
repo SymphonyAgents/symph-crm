@@ -160,7 +160,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
         <div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-4">
 
           {/* Deal header card */}
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div className="min-w-0">
                 <h1 className="text-[18px] font-bold text-slate-900 dark:text-white leading-tight mb-2">{deal.title}</h1>
@@ -261,7 +261,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           </div>
 
           {/* Activity feed */}
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">Activity</div>
             {loadingActivities ? (
               <div className="flex items-center justify-center py-8">

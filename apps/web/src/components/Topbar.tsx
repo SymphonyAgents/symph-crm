@@ -8,7 +8,7 @@ type TopbarProps = {
 
 export function Topbar({ onMenuToggle }: TopbarProps) {
   return (
-    <div className="h-[44px] shrink-0 border-b border-black/[.06] dark:border-white/[.08] flex items-center px-4 gap-3 bg-white dark:bg-[#1c1c1f]">
+    <div className="h-[44px] shrink-0 border-b border-black/[.06] dark:border-white/[.08] flex items-center px-4 gap-3 bg-white dark:bg-[#1e1e21]">
       {/* Hamburger — mobile only */}
       <button
         onClick={onMenuToggle}
@@ -26,7 +26,7 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
       >
         <Search size={13} strokeWidth={1.4} className="text-slate-400 shrink-0" />
         <span className="text-[12px] text-slate-400 flex-1">Search or jump to...</span>
-        <kbd className="hidden sm:inline text-[10px] font-medium text-slate-400 bg-white dark:bg-[#1c1c1f] border border-black/[.08] dark:border-white/[.08] rounded px-1.5 py-px">
+        <kbd className="hidden sm:inline text-[10px] font-medium text-slate-400 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded px-1.5 py-px">
           Cmd K
         </kbd>
       </button>

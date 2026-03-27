@@ -42,9 +42,10 @@ const STAGE_LABEL: Record<string, string> = {
 // ─── Brand color ──────────────────────────────────────────────────────────────
 
 const PALETTE = ['#2563eb','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
-function brandColor(name: string): string {
+function brandColor(name: string | null | undefined): string {
+  const str = name || 'default'
   let h = 0
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
   return PALETTE[Math.abs(h) % PALETTE.length]
 }
 
@@ -115,13 +116,14 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
     const nodes: GraphNode[] = []
     const links: GraphLink[] = []
 
-    const usedCompanyIds = new Set(deals.map(d => d.companyId))
+    // Filter deals with valid company references
+    const dealsWithCompany = deals.filter(d => d.companyId && companyMap.has(d.companyId))
+    const dealsWithoutCompany = deals.filter(d => !d.companyId || !companyMap.has(d.companyId))
 
-    for (const cid of usedCompanyIds) {
-      const c = companyMap.get(cid)
-      if (!c) continue
+    // Add ALL companies as nodes (including those without deals)
+    for (const c of companies) {
       nodes.push({
-        id: `c-${cid}`,
+        id: `c-${c.id}`,
         kind: 'company',
         label: c.name,
         sublabel: c.industry || c.domain || undefined,
@@ -130,7 +132,19 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
       })
     }
 
-    for (const deal of deals) {
+    // Add "No Brand" node if there are unlinked deals
+    if (dealsWithoutCompany.length > 0) {
+      nodes.push({
+        id: 'c-unassigned',
+        kind: 'company',
+        label: 'No Brand',
+        sublabel: `${dealsWithoutCompany.length} deal${dealsWithoutCompany.length !== 1 ? 's' : ''}`,
+        color: '#64748b',
+        r: 22,
+      })
+    }
+
+    for (const deal of dealsWithCompany) {
       nodes.push({
         id: `d-${deal.id}`,
         kind: 'deal',
@@ -145,6 +159,25 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
       links.push({
         id: `e-${deal.id}`,
         source: `c-${deal.companyId}`,
+        target: `d-${deal.id}`,
+      })
+    }
+
+    for (const deal of dealsWithoutCompany) {
+      nodes.push({
+        id: `d-${deal.id}`,
+        kind: 'deal',
+        label: deal.title,
+        sublabel: STAGE_LABEL[deal.stage] || deal.stage,
+        color: STAGE_COLOR[deal.stage] || '#94a3b8',
+        r: 10,
+        dealId: deal.id,
+        stage: deal.stage,
+        value: deal.value,
+      })
+      links.push({
+        id: `e-${deal.id}`,
+        source: 'c-unassigned',
         target: `d-${deal.id}`,
       })
     }
@@ -263,6 +296,17 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
       .attr('font-family', 'system-ui, sans-serif')
       .style('pointer-events', 'none')
 
+    // Deal: name label below node
+    nodeSel.filter(d => d.kind === 'deal')
+      .append('text')
+      .text(d => d.label.length > 16 ? d.label.slice(0, 15) + '…' : d.label)
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => d.r + 13)
+      .attr('font-size', 8)
+      .attr('fill', 'rgba(255,255,255,0.5)')
+      .attr('font-family', 'system-ui, sans-serif')
+      .style('pointer-events', 'none')
+
     // ── Hover tooltip ─────────────────────────────────────────────────────────
 
     nodeSel
@@ -326,11 +370,11 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
         }}
       />
 
-      {deals.length === 0 ? (
+      {companies.length === 0 && deals.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-[13px] text-white/30">No deals to graph yet</div>
-            <div className="text-[11px] text-white/20 mt-1">Add companies and deals to see the graph</div>
+            <div className="text-[13px] text-white/30">No data to graph yet</div>
+            <div className="text-[11px] text-white/20 mt-1">Add brands and deals to see the graph</div>
           </div>
         </div>
       ) : (
@@ -367,7 +411,7 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
       )}
 
       {/* Stage legend */}
-      <div className="absolute top-3 left-3 bg-[#1a1d27]/90 backdrop-blur-sm border border-white/[0.08] rounded-xl px-3 py-2.5 pointer-events-none">
+      <div className="absolute top-3 left-3 bg-[#1a1d27]/90 backdrop-blur-sm border border-white/[0.08] rounded-lg px-3 py-2.5 pointer-events-none">
         <p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-2">Stages</p>
         <div className="grid grid-cols-2 gap-x-5 gap-y-1">
           {Object.entries(STAGE_LABEL).map(([k, v]) => (

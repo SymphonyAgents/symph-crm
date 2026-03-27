@@ -70,7 +70,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
 
       {/* Right panel — thread reader */}
       <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-slate-50/50 dark:bg-white/[.02]">
-        <div className="w-12 h-12 rounded-full bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] shadow-sm flex items-center justify-center">
+        <div className="w-12 h-12 rounded-full bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] shadow-sm flex items-center justify-center">
           <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor"
             strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" className="text-slate-300">
             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />

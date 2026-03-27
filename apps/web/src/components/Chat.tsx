@@ -140,7 +140,7 @@ function AttachmentBubble({ attachment }: { attachment: PendingAttachment }) {
         <img
           src={attachment.previewUrl}
           alt={attachment.filename}
-          className="max-w-[200px] max-h-[150px] rounded-xl border border-black/[.08] dark:border-white/[.08] object-cover"
+          className="max-w-[200px] max-h-[150px] rounded-lg border border-black/[.08] dark:border-white/[.08] object-cover"
         />
       </div>
     )
@@ -168,7 +168,7 @@ function AttachmentBubble({ attachment }: { attachment: PendingAttachment }) {
 
   return (
     <div className="flex justify-end mb-1">
-      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary-dim border border-primary-border text-[12px] text-slate-600 dark:text-slate-400">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-dim border border-primary-border text-[12px] text-slate-600 dark:text-slate-400">
         {icon}
         <span className="max-w-[160px] truncate">{label}</span>
       </div>
@@ -747,7 +747,7 @@ export function Chat({ dealId }: { dealId?: string }) {
     <div className="max-w-[680px] w-full mx-auto">
       <div
         className={cn(
-          'rounded-2xl bg-white dark:bg-[#1c1c1f] transition-all duration-150',
+          'rounded-lg bg-white dark:bg-[#1e1e21] transition-all duration-150',
           focused
             ? 'border border-black/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)]'
             : 'border border-black/[.08] dark:border-white/[.08] shadow-[var(--shadow-card)]'
@@ -893,7 +893,7 @@ export function Chat({ dealId }: { dealId?: string }) {
         <div className="flex flex-col items-center gap-6 max-w-[680px] w-full">
           <div className="flex items-center gap-3 mb-2">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-[15px] shrink-0"
+              className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-[15px] shrink-0"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               S
@@ -910,7 +910,7 @@ export function Chat({ dealId }: { dealId?: string }) {
               <button
                 key={p.prompt}
                 onClick={() => sendMessage(p.prompt)}
-                className="px-3.5 py-2 rounded-xl bg-white dark:bg-[#1c1c1f] border border-black/[.08] dark:border-white/[.08] text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
+                className="px-3.5 py-2 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
               >
                 {p.label}
               </button>
@@ -934,7 +934,7 @@ export function Chat({ dealId }: { dealId?: string }) {
                   {msg.attachment && <AttachmentBubble attachment={msg.attachment} />}
                   {msg.content && (
                     <div className="flex justify-end">
-                      <div className="max-w-[78%] px-4 py-3 rounded-2xl bg-primary-dim border border-primary-border text-[13px] text-slate-900 dark:text-white leading-[1.6]">
+                      <div className="max-w-[78%] px-4 py-3 rounded-lg bg-primary-dim border border-primary-border text-[13px] text-slate-900 dark:text-white leading-[1.6]">
                         {msg.content}
                       </div>
                     </div>

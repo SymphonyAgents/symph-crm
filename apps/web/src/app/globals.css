@@ -1,9 +1,10 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(100% 0 0);               /* #ffffff */
+  --background: oklch(97% 0.003 250);           /* ~#f3f4f6 — slightly off-white */
   --foreground: oklch(14.08% 0.0044 285.8);     /* #09090b */
   --card: oklch(100% 0 0);
   --card-foreground: oklch(14.08% 0.0044 285.8);
@@ -25,7 +26,7 @@
 }
 
 .dark {
-  --background: oklch(18% 0.003 285.8);          /* ~#151518 — lighter than #09090b */
+  --background: oklch(20% 0.003 285.8);          /* ~#191a1c — softer contrast */
   --foreground: oklch(98.51% 0 0);              /* #fafafa */
   --card: oklch(21% 0.003 285.8);               /* ~#1c1c1f — slightly lighter than bg */
   --card-foreground: oklch(98.51% 0 0);

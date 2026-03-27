@@ -9,6 +9,7 @@ import { EmptyState } from './EmptyState'
 import { CreateBrandModal } from './CreateBrandModal'
 import { CreateDealModal } from './CreateDealModal'
 import { DealsGraph } from './DealsGraph'
+import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 
 type ViewMode = 'list' | 'graph'
 
@@ -66,9 +67,10 @@ const CLOSED_STAGES = new Set(['closed_won', 'closed_lost'])
 
 // Deterministic brand color from name
 const PALETTE = ['var(--primary)','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
-function getBrandColor(name: string): string {
+function getBrandColor(name: string | null | undefined): string {
+  const str = name || 'default'
   let h = 0
-  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h)
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
   return PALETTE[Math.abs(h) % PALETTE.length]
 }
 
@@ -118,7 +120,7 @@ function BrandHeader({
   return (
     <button
       onClick={onToggle}
-      className="grid grid-cols-[36px_1fr_auto_20px] sm:grid-cols-[40px_1fr_auto_auto_auto_20px] items-center gap-3 sm:gap-3.5 w-full px-4 sm:px-[18px] py-3.5 bg-white dark:bg-[#1c1c1f] border-0 border-b border-black/[.06] dark:border-white/[.08] cursor-pointer transition-colors text-left hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] active:scale-[0.998]"
+      className="grid grid-cols-[36px_1fr_auto_20px] sm:grid-cols-[40px_1fr_auto_auto_auto_20px] items-center gap-3 sm:gap-3.5 w-full px-4 sm:px-[18px] py-3.5 bg-white dark:bg-[#1e1e21] border-0 border-b border-black/[.06] dark:border-white/[.08] cursor-pointer transition-colors text-left hover:bg-slate-50 dark:hover:bg-[#252528]"
     >
       <div
         className="w-9 h-9 rounded-lg flex items-center justify-center text-[13px] font-semibold shrink-0"
@@ -178,7 +180,7 @@ function DealRow({
   return (
     <div
       onClick={onClick}
-      className="grid grid-cols-[16px_1fr_auto_auto] sm:grid-cols-[40px_1.4fr_0.8fr_auto_0.5fr] items-center gap-3 sm:gap-3.5 py-3 pr-4 sm:pr-[18px] pl-5 sm:pl-8 border-b border-black/[.04] dark:border-white/[.06] cursor-pointer transition-colors bg-white dark:bg-[#1c1c1f] hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] active:scale-[0.998]"
+      className="grid grid-cols-[16px_1fr_auto_auto] sm:grid-cols-[40px_1.4fr_0.8fr_auto_0.5fr] items-center gap-3 sm:gap-3.5 py-3 pr-4 sm:pr-[18px] pl-5 sm:pl-8 border-b border-black/[.04] dark:border-white/[.06] cursor-pointer transition-colors bg-slate-50/50 dark:bg-[#252528] hover:bg-slate-100 dark:hover:bg-[#2a2a2d]"
     >
       <div className="flex items-center justify-center">
         <div
@@ -195,7 +197,7 @@ function DealRow({
             {tags.slice(0, 3).map(s => (
               <span
                 key={s}
-                className="text-[9px] font-medium px-1.5 py-0.5 rounded-[3px] bg-slate-100 dark:bg-white/[.06] text-slate-500 whitespace-nowrap"
+                className="text-[9px] font-medium px-1.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[.06] text-slate-500 whitespace-nowrap"
               >
                 {s}
               </span>
@@ -215,7 +217,7 @@ function DealRow({
       <div className="hidden sm:flex items-center justify-end">
         {deal.outreachCategory && (
           <span
-            className="text-[9px] font-medium px-1.5 py-0.5 rounded-[3px] capitalize whitespace-nowrap"
+            className="text-[9px] font-medium px-1.5 py-0.5 rounded-lg capitalize whitespace-nowrap"
             style={{
               background: deal.outreachCategory === 'inbound' ? 'rgba(22,163,74,0.08)' : 'rgba(124,58,237,0.08)',
               color: deal.outreachCategory === 'inbound' ? '#16a34a' : '#7c3aed',
@@ -277,27 +279,50 @@ export function Deals({ onOpenDeal }: DealsProps) {
   }, [companies])
 
   const groups: BrandGroup[] = useMemo(() => {
-    const map = new Map<string, ApiDeal[]>()
+    const dealsByCompany = new Map<string, ApiDeal[]>()
     for (const d of deals) {
-      const arr = map.get(d.companyId) || []
+      const key = d.companyId || '__unassigned__'
+      const arr = dealsByCompany.get(key) || []
       arr.push(d)
-      map.set(d.companyId, arr)
+      dealsByCompany.set(key, arr)
     }
-    return Array.from(map.entries())
-      .map(([companyId, cDeals]) => {
-        const company = companyMap.get(companyId)
-        if (!company) return null
-        const totalValue = totalNumericValue(cDeals)
-        return {
-          company,
-          color: getBrandColor(company.name),
-          deals: cDeals,
-          totalValue,
-          activeCount: cDeals.filter(d => !CLOSED_STAGES.has(d.stage)).length,
-        }
+
+    const result: BrandGroup[] = []
+
+    // Add all companies (even those with no deals)
+    for (const company of companies) {
+      const cDeals = dealsByCompany.get(company.id) || []
+      result.push({
+        company,
+        color: getBrandColor(company.name),
+        deals: cDeals,
+        totalValue: totalNumericValue(cDeals),
+        activeCount: cDeals.filter(d => !CLOSED_STAGES.has(d.stage)).length,
       })
-      .filter((g): g is BrandGroup => g !== null)
-      .sort((a, b) => b.totalValue - a.totalValue)
+    }
+
+    // Add "No Brand" group for deals without a company
+    const unassignedDeals = dealsByCompany.get('__unassigned__')
+    if (unassignedDeals && unassignedDeals.length > 0) {
+      result.push({
+        company: {
+          id: '__unassigned__',
+          name: 'No Brand',
+          domain: null,
+          industry: null,
+          website: null,
+          hqLocation: null,
+          logoUrl: null,
+          createdAt: '',
+        },
+        color: getBrandColor('No Brand'),
+        deals: unassignedDeals,
+        totalValue: totalNumericValue(unassignedDeals),
+        activeCount: unassignedDeals.filter(d => !CLOSED_STAGES.has(d.stage)).length,
+      })
+    }
+
+    return result.sort((a, b) => b.totalValue - a.totalValue)
   }, [deals, companyMap])
 
   const filtered = useMemo(() => {
@@ -315,6 +340,16 @@ export function Deals({ onOpenDeal }: DealsProps) {
       }))
       .filter(g => g.deals.length > 0 || g.company.name.toLowerCase().includes(q))
   }, [groups, search])
+
+  const filteredDeals = useMemo(() => {
+    if (!search.trim()) return deals
+    const q = search.toLowerCase()
+    return deals.filter(d =>
+      d.title.toLowerCase().includes(q) ||
+      d.stage.toLowerCase().includes(q) ||
+      (d.servicesTags ?? []).some(s => s.toLowerCase().includes(q))
+    )
+  }, [deals, search])
 
   function toggleBrand(id: string) {
     setExpandedBrands(prev => {
@@ -375,7 +410,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
             <div className="flex items-center bg-slate-100 dark:bg-white/[.06] rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setViewMode('list')}
-                className={`h-[26px] px-2.5 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white dark:bg-[#1c1c1f] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                className={`h-[26px] px-2.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
               >
                 <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                   <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
@@ -385,7 +420,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
               </button>
               <button
                 onClick={() => setViewMode('graph')}
-                className={`h-[26px] px-2.5 rounded-md text-[12px] font-medium transition-all flex items-center gap-1.5 ${viewMode === 'graph' ? 'bg-white dark:bg-[#1c1c1f] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
+                className={`h-[26px] px-2.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-1.5 ${viewMode === 'graph' ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
               >
                 <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                   <circle cx="5" cy="12" r="2" /><circle cx="19" cy="5" r="2" /><circle cx="19" cy="19" r="2" /><circle cx="12" cy="12" r="2" />
@@ -409,23 +444,17 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 />
               </div>
 
-            {/* Expand/Collapse (list mode only) */}
-            {viewMode === 'list' && (
-              <>
-                <button
-                  onClick={expandAll}
-                  className="h-[30px] px-3 rounded-lg border border-black/[.08] dark:border-white/[.08] text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
-                >
-                  Expand all
-                </button>
-                <button
-                  onClick={collapseAll}
-                  className="h-[30px] px-3 rounded-lg border border-black/[.08] dark:border-white/[.08] text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
-                >
-                  Collapse all
-                </button>
-              </>
-            )}
+            {/* Expand/Collapse toggle */}
+            <button
+              onClick={() => expandedBrands.size > 0 ? collapseAll() : expandAll()}
+              className="h-[30px] w-[30px] rounded-lg border border-black/[.08] dark:border-white/[.08] flex items-center justify-center text-slate-500 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+              title={expandedBrands.size > 0 ? 'Collapse all' : 'Expand all'}
+            >
+              {expandedBrands.size > 0
+                ? <ChevronsDownUp size={14} strokeWidth={1.4} />
+                : <ChevronsUpDown size={14} strokeWidth={1.4} />
+              }
+            </button>
 
             {/* New Brand */}
             <button
@@ -473,11 +502,11 @@ export function Deals({ onOpenDeal }: DealsProps) {
         )}
 
         {/* Graph view */}
-        {!isLoading && deals.length > 0 && viewMode === 'graph' && (
-          <div className="flex-1 rounded-xl overflow-hidden border border-black/[.06] dark:border-white/[.08]">
+        {!isLoading && (companies.length > 0 || deals.length > 0) && viewMode === 'graph' && (
+          <div className="flex-1 rounded-lg overflow-hidden border border-black/[.06] dark:border-white/[.08]">
             <DealsGraph
               companies={companies}
-              deals={deals}
+              deals={filteredDeals}
               onOpenDeal={onOpenDeal}
             />
           </div>
@@ -485,7 +514,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
         {/* List view */}
         {!isLoading && deals.length > 0 && viewMode === 'list' && (
-          <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             {filtered.length === 0 ? (
               <div className="p-10 text-center text-[13px] text-slate-400">
                 No deals matching &quot;{search}&quot;

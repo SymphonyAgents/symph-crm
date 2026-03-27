@@ -95,7 +95,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
     content: initialContent ?? '',
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[400px] px-8 py-6',
+        class: 'prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[400px] px-8 py-6',
       },
     },
     onUpdate: ({ editor }) => {
@@ -223,7 +223,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
       </div>
 
       {/* Editor body */}
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1c1c1f]">
+      <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21]">
         <EditorContent editor={editor} />
       </div>
     </div>

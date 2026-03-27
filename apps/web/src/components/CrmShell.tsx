@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
+import { CommandPalette } from './CommandPalette'
 
 export function CrmShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#f8f9fb] dark:bg-[#151518]">
+    <div className="flex h-dvh overflow-hidden bg-[#f3f4f6] dark:bg-[#191a1c]">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -19,6 +20,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <CommandPalette />
     </div>
   )
 }

@@ -19,9 +19,10 @@ type TopDealsProps = {
 
 // Deterministic color from a string
 const PALETTE = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16']
-function getColor(s: string): string {
+function getColor(s: string | null | undefined): string {
+  const str = s || 'default'
   let h = 0
-  for (let i = 0; i < s.length; i++) h = s.charCodeAt(i) + ((h << 5) - h)
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
   return PALETTE[Math.abs(h) % PALETTE.length]
 }
 

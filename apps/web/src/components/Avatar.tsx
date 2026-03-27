@@ -1,4 +1,6 @@
-import { AM_GRADIENTS } from '@/lib/constants'
+'use client'
+
+import { Facehash } from 'facehash'
 import { cn } from '@/lib/utils'
 
 type AvatarProps = {
@@ -8,15 +10,9 @@ type AvatarProps = {
 }
 
 export function Avatar({ name, size = 26, className }: AvatarProps) {
-  const bg = AM_GRADIENTS[name] || '#334155'
-  const fontSize = Math.round(size * 0.4)
-
   return (
-    <div
-      className={cn('rounded-full flex items-center justify-center shrink-0 font-bold text-white tracking-[-0.02em]', className)}
-      style={{ width: size, height: size, background: bg, fontSize }}
-    >
-      {name[0]}
+    <div className={cn('rounded-full overflow-hidden shrink-0', className)} style={{ width: size, height: size }}>
+      <Facehash name={name || 'unknown'} size={size} variant="gradient" />
     </div>
   )
 }

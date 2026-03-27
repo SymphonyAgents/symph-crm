@@ -150,22 +150,22 @@ export function Dashboard() {
       {/* 2-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 items-start">
         <div className="flex flex-col gap-4">
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
+          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4">Pipeline by Stage</div>
             {isLoading ? <PipelineBarSkeleton /> : <PipelineBar deals={deals} />}
           </div>
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
+          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">Top Deals</div>
             {isLoading ? <TopDealsSkeleton /> : <TopDeals deals={topDeals} />}
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
+          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">AM Leaderboard</div>
             {isLoading ? <AMLeaderboardSkeleton /> : <AMLeaderboard entries={amEntries} />}
           </div>
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-[10px] px-5 py-[18px] shadow-[var(--shadow-card)]">
+          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">Recent Activity</div>
             {isLoading ? <RecentActivitySkeleton /> : <RecentActivity entries={recentEntries} />}
           </div>

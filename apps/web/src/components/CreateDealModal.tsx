@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useCreateDeal } from '@/lib/hooks/mutations'
+import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import type { ApiCompany } from './Deals'
 
@@ -60,6 +61,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   const [tierId, setTierId] = useState('')
 
   const qc = useQueryClient()
+  const { userId } = useUser()
 
   const { data: products = [] } = useQuery<ApiProduct[]>({
     queryKey: queryKeys.products.all,
@@ -110,6 +112,8 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
       outreachCategory: outreachCategory || null,
       pricingModel: pricingModel || null,
       servicesTags: tags,
+      createdBy: userId,
+      assignedTo: userId,
     })
   }
 
@@ -121,11 +125,11 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1c1c1f] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1c1c1f] z-10">
+        <div className="px-6 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
           <div>
             <div className="text-[14px] font-semibold text-slate-900 dark:text-white">New Deal</div>
             <div className="text-[11.5px] text-slate-400 mt-0.5">Add a deal to your pipeline</div>
