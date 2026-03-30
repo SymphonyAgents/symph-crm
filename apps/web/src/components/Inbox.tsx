@@ -114,19 +114,23 @@ function replySubject(subject: string): string {
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 
-async function fetchInbox(): Promise<InboxResponse> {
-  const res = await fetch('/api/gmail/inbox')
+async function fetchInbox(userId: string): Promise<InboxResponse> {
+  const res = await fetch('/api/gmail/inbox', {
+    headers: { 'x-user-id': userId },
+  })
   if (!res.ok) throw new Error('Failed to fetch inbox')
   return res.json()
 }
 
-async function fetchGmailUser(): Promise<{ email: string | null; needsReconnect?: boolean }> {
-  const res = await fetch('/api/gmail/user')
+async function fetchGmailUser(userId: string): Promise<{ email: string | null; needsReconnect?: boolean }> {
+  const res = await fetch('/api/gmail/user', {
+    headers: { 'x-user-id': userId },
+  })
   if (!res.ok) return { email: null }
   return res.json()
 }
 
-async function sendEmail(dto: {
+async function sendEmail(userId: string, dto: {
   to: string[]
   cc?: string[]
   subject: string
@@ -136,7 +140,7 @@ async function sendEmail(dto: {
 }): Promise<{ messageId: string; threadId: string }> {
   const res = await fetch('/api/gmail/send', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
     body: JSON.stringify(dto),
   })
   if (!res.ok) {
@@ -333,6 +337,7 @@ function ReplyBox({
   onSent: () => void
 }) {
   const queryClient = useQueryClient()
+  const { userId } = useUser()
   const [body, setBody] = useState('')
   const [error, setError] = useState<string | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -340,7 +345,7 @@ function ReplyBox({
   const lastMsg = thread.messages[thread.messages.length - 1]
 
   const mutation = useMutation({
-    mutationFn: sendEmail,
+    mutationFn: (dto: Parameters<typeof sendEmail>[1]) => sendEmail(userId ?? '', dto),
     onSuccess: () => {
       setBody('')
       setError(null)
@@ -576,8 +581,9 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
     const oauthError = searchParams.get('oauth_error')
     if (connected === 'true') {
       setOauthBanner({ type: 'success', message: 'Google connected successfully!' })
-      qc.invalidateQueries({ queryKey: queryKeys.gmail.inbox })
-      qc.invalidateQueries({ queryKey: queryKeys.gmail.user })
+      // Invalidate with prefix match so all userId-keyed variants are refreshed
+      qc.invalidateQueries({ queryKey: queryKeys.gmail.inbox, exact: false })
+      qc.invalidateQueries({ queryKey: queryKeys.gmail.user, exact: false })
     } else if (oauthError) {
       setOauthBanner({ type: 'error', message: oauthError })
     }
@@ -591,17 +597,19 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
   }, [])
 
   const { data, isLoading } = useQuery({
-    queryKey: queryKeys.gmail.inbox,
-    queryFn: fetchInbox,
+    queryKey: [...queryKeys.gmail.inbox, userId],
+    queryFn: () => fetchInbox(userId ?? ''),
     staleTime: 5 * 60 * 1000,
     retry: false,
+    enabled: !!userId,
   })
 
   const { data: gmailUser } = useQuery({
-    queryKey: queryKeys.gmail.user,
-    queryFn: fetchGmailUser,
+    queryKey: [...queryKeys.gmail.user, userId],
+    queryFn: () => fetchGmailUser(userId ?? ''),
     staleTime: 60 * 60 * 1000, // 1 hour — email doesn't change
     retry: false,
+    enabled: !!userId,
   })
 
   const threads = data?.threads ?? []

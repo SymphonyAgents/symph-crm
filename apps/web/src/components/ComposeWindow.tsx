@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
+import { useUser } from '@/lib/hooks/use-user'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,10 +33,10 @@ export interface ComposeWindowProps {
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 
-async function sendEmailApi(dto: SendEmailDto): Promise<{ messageId: string; threadId: string }> {
+async function sendEmailApi(userId: string, dto: SendEmailDto): Promise<{ messageId: string; threadId: string }> {
   const res = await fetch('/api/gmail/send', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
     body: JSON.stringify(dto),
   })
   if (!res.ok) {
@@ -154,6 +155,7 @@ export function ComposeWindow({
   mode = 'compose',
 }: ComposeWindowProps) {
   const queryClient = useQueryClient()
+  const { userId } = useUser()
   const bodyRef = useRef<HTMLTextAreaElement>(null)
 
   const [to, setTo] = useState<string[]>(initialTo)
@@ -179,7 +181,7 @@ export function ComposeWindow({
   }, [open])
 
   const sendMutation = useMutation({
-    mutationFn: sendEmailApi,
+    mutationFn: (dto: SendEmailDto) => sendEmailApi(userId ?? '', dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.gmail.inbox })
       onClose()
