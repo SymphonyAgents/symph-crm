@@ -220,6 +220,8 @@ export class CalendarConnectionsService {
    * Returns null if the user has no active connection.
    */
   async getAuthedOAuth2Client(userId: string): Promise<Auth.OAuth2Client | null> {
+    if (!userId) return null
+
     const [conn] = await this.db
       .select()
       .from(userCalendarConnections)
