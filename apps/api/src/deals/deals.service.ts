@@ -3,6 +3,7 @@ import { eq, desc, and, ilike } from 'drizzle-orm'
 import { deals } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
+import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 export type DealsFilterParams = {
   companyId?: string
@@ -13,7 +14,10 @@ export type DealsFilterParams = {
 
 @Injectable()
 export class DealsService {
-  constructor(@Inject(DB) private db: Database) {}
+  constructor(
+    @Inject(DB) private db: Database,
+    private auditLogs: AuditLogsService,
+  ) {}
 
   async findAll(params?: DealsFilterParams) {
     const limit = params?.limit ?? 200
@@ -43,7 +47,9 @@ export class DealsService {
     return deal
   }
 
-  async updateStage(id: string, stage: string) {
+  async updateStage(id: string, stage: string, performedBy?: string) {
+    // Capture old stage for audit trail
+    const existing = await this.findOne(id)
     const [deal] = await this.db
       .update(deals)
       .set({
@@ -53,21 +59,66 @@ export class DealsService {
       })
       .where(eq(deals.id, id))
       .returning()
+
+    this.auditLogs.log({
+      action: 'status_change',
+      auditType: 'deal_stage_change',
+      entityType: 'deal',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: {
+        title: existing?.title,
+        from: existing?.stage ?? null,
+        to: stage,
+      },
+    }).catch(() => {}) // non-blocking
+
     return deal
   }
 
-  async create(data: typeof deals.$inferInsert) {
+  async create(data: typeof deals.$inferInsert, performedBy?: string) {
     const [deal] = await this.db.insert(deals).values(data).returning()
+
+    this.auditLogs.log({
+      action: 'create',
+      auditType: 'deal_created',
+      entityType: 'deal',
+      entityId: deal.id,
+      performedBy: performedBy ?? data.createdBy ?? undefined,
+      details: { title: deal.title, stage: deal.stage },
+    }).catch(() => {})
+
     return deal
   }
 
-  async update(id: string, data: Partial<typeof deals.$inferInsert>) {
+  async update(id: string, data: Partial<typeof deals.$inferInsert>, performedBy?: string) {
     const [deal] = await this.db.update(deals).set(data).where(eq(deals.id, id)).returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'deal_updated',
+      entityType: 'deal',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: { fields: Object.keys(data).filter(k => k !== 'updatedAt') },
+    }).catch(() => {})
+
     return deal
   }
 
-  async remove(id: string) {
+  async remove(id: string, performedBy?: string) {
+    const existing = await this.findOne(id)
+
     await this.db.delete(deals).where(eq(deals.id, id))
+
+    this.auditLogs.log({
+      action: 'delete',
+      auditType: 'deal_deleted',
+      entityType: 'deal',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: { title: existing?.title },
+    }).catch(() => {})
   }
 
   /**

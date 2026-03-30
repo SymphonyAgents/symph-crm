@@ -4,6 +4,7 @@ import { documents } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { StorageService } from '../storage/storage.service'
+import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 export type DocumentType = typeof documents.$inferInsert['type']
 
@@ -12,6 +13,7 @@ export class DocumentsService {
   constructor(
     @Inject(DB) private db: Database,
     private storage: StorageService,
+    private auditLogs: AuditLogsService,
   ) {}
 
   // ── Metadata queries ──────────────────────────────────────────────────────
@@ -67,6 +69,7 @@ export class DocumentsService {
       storagePath?: string
       content?: string
     },
+    performedBy?: string,
   ) {
     const { content, ...rest } = data
 
@@ -86,6 +89,19 @@ export class DocumentsService {
       .insert(documents)
       .values({ ...rest, storagePath, excerpt, wordCount })
       .returning()
+
+    // Audit logging for proposal documents
+    if (doc.type === 'proposal') {
+      this.auditLogs.log({
+        action: 'create',
+        auditType: 'proposal_created',
+        entityType: 'proposal',
+        entityId: doc.id,
+        performedBy: performedBy ?? rest.authorId ?? undefined,
+        details: { title: doc.title, dealId: doc.dealId },
+      }).catch(() => {})
+    }
+
     return doc
   }
 
@@ -95,6 +111,7 @@ export class DocumentsService {
   async update(
     id: string,
     data: Partial<typeof documents.$inferInsert> & { content?: string },
+    performedBy?: string,
   ) {
     const { content, ...rest } = data
     const updates: Partial<typeof documents.$inferInsert> = {
@@ -116,6 +133,19 @@ export class DocumentsService {
       .set(updates)
       .where(eq(documents.id, id))
       .returning()
+
+    // Audit logging for proposal documents
+    if (doc?.type === 'proposal') {
+      this.auditLogs.log({
+        action: 'update',
+        auditType: 'proposal_updated',
+        entityType: 'proposal',
+        entityId: id,
+        performedBy: performedBy ?? undefined,
+        details: { title: doc.title, fields: Object.keys(rest).filter(k => k !== 'updatedAt') },
+      }).catch(() => {})
+    }
+
     return doc
   }
 

@@ -14,13 +14,14 @@
  *   Version: POST /api/documents with parentId = current documentId
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import dynamic from 'next/dynamic'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from './EmptyState'
 import { useUser } from '@/lib/hooks/use-user'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   Select,
   SelectContent,
@@ -65,6 +66,8 @@ function NewProposalModal({
   onCreated: (doc: ApiDocument) => void
   userId: string | null
 }) {
+  useEscapeKey(useCallback(onClose, [onClose]))
+
   const [title, setTitle] = useState('')
   const [dealId, setDealId] = useState('')
   const [error, setError] = useState<string | null>(null)

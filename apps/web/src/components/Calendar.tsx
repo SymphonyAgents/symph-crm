@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from './EmptyState'
 import { useUser } from '@/lib/hooks/use-user'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   Select,
   SelectContent,
@@ -92,6 +93,8 @@ function CreateEventModal({
   onCreated: () => void
   userId: string | null
 }) {
+  useEscapeKey(useCallback(onClose, [onClose]))
+
   const [form, setForm] = useState<CreateEventForm>({
     ...BLANK_FORM,
     startAt: defaultDate ? `${defaultDate}T09:00` : '',

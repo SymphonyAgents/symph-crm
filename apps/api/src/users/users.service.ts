@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
+import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 /**
  * Emails that are auto-assigned the SALES role on first sign-in.
@@ -21,7 +22,10 @@ const SALES_EMAILS = new Set([
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DB) private db: Database) {}
+  constructor(
+    @Inject(DB) private db: Database,
+    private auditLogs: AuditLogsService,
+  ) {}
 
   /**
    * Upsert a user from NextAuth signIn callback.
@@ -85,6 +89,19 @@ export class UsersService {
       })
       .where(eq(users.id, id))
       .returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'user_onboarded',
+      entityType: 'user',
+      entityId: id,
+      performedBy: id,
+      details: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        nickname: data.nickname ?? null,
+      },
+    }).catch(() => {})
 
     return user
   }

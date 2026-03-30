@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { useCreateCompany } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
 type Props = {
   onClose: () => void
@@ -12,6 +13,8 @@ type Props = {
 }
 
 export function CreateBrandModal({ onClose, onCreated }: Props) {
+  useEscapeKey(useCallback(onClose, [onClose]))
+
   const [name, setName] = useState('')
   const [industry, setIndustry] = useState('')
   const [website, setWebsite] = useState('')

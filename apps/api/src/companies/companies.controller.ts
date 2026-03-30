@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, Headers } from '@nestjs/common'
 import { CompaniesService } from './companies.service'
 import { DealsService } from '../deals/deals.service'
 import { ContactsService } from '../contacts/contacts.service'
@@ -55,17 +55,27 @@ export class CompaniesController {
   }
 
   @Post()
-  create(@Body() data: typeof companies.$inferInsert) {
-    return this.companiesService.create(data)
+  create(
+    @Body() data: typeof companies.$inferInsert,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.companiesService.create(data, userId)
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() data: Partial<typeof companies.$inferInsert>) {
-    return this.companiesService.update(id, data)
+  update(
+    @Param('id') id: string,
+    @Body() data: Partial<typeof companies.$inferInsert>,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.companiesService.update(id, data, userId)
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.companiesService.remove(id)
+  remove(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.companiesService.remove(id, userId)
   }
 }

@@ -3,8 +3,14 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Avatar } from './Avatar'
-import { cn } from '@/lib/utils'
-import { Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from './ui/select'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,6 +31,16 @@ type AuditLogEntry = {
 type AuditLogsResponse = {
   rows: AuditLogEntry[]
   total: number
+}
+
+type UserOption = {
+  id: string
+  name: string | null
+  email: string
+  image: string | null
+  firstName: string | null
+  lastName: string | null
+  nickname: string | null
 }
 
 // ── Display config ───────────────────────────────────────────────────────────
@@ -94,17 +110,25 @@ function describeDetails(entry: AuditLogEntry): string {
   return ''
 }
 
+function userDisplayName(u: UserOption): string {
+  if (u.nickname) return u.nickname
+  if (u.firstName && u.lastName) return `${u.firstName} ${u.lastName}`
+  return u.name || u.email
+}
+
 // ── Data fetching ────────────────────────────────────────────────────────────
 
 async function fetchAuditLogs(params: {
   entityType?: string
   action?: string
+  performedBy?: string
   limit: number
   offset: number
 }): Promise<AuditLogsResponse> {
   const sp = new URLSearchParams()
   if (params.entityType) sp.set('entityType', params.entityType)
   if (params.action) sp.set('action', params.action)
+  if (params.performedBy) sp.set('performedBy', params.performedBy)
   sp.set('limit', String(params.limit))
   sp.set('offset', String(params.offset))
 
@@ -113,22 +137,36 @@ async function fetchAuditLogs(params: {
   return res.json()
 }
 
+async function fetchUsers(): Promise<UserOption[]> {
+  const res = await fetch('/api/users')
+  if (!res.ok) throw new Error('Failed to fetch users')
+  return res.json()
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function AuditLogs() {
   const [search, setSearch] = useState('')
-  const [entityFilter, setEntityFilter] = useState<string | null>(null)
-  const [actionFilter, setActionFilter] = useState<string | null>(null)
+  const [entityFilter, setEntityFilter] = useState<string>('all')
+  const [actionFilter, setActionFilter] = useState<string>('all')
+  const [userFilter, setUserFilter] = useState<string>('all')
   const [page, setPage] = useState(0)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', entityFilter, actionFilter, page],
+    queryKey: ['audit-logs', entityFilter, actionFilter, userFilter, page],
     queryFn: () => fetchAuditLogs({
-      entityType: entityFilter ?? undefined,
-      action: actionFilter ?? undefined,
+      entityType: entityFilter !== 'all' ? entityFilter : undefined,
+      action: actionFilter !== 'all' ? actionFilter : undefined,
+      performedBy: userFilter !== 'all' ? userFilter : undefined,
       limit: PAGE_SIZE,
       offset: page * PAGE_SIZE,
     }),
+  })
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: fetchUsers,
+    staleTime: 5 * 60 * 1000,
   })
 
   const rows = data?.rows ?? []
@@ -147,6 +185,8 @@ export function AuditLogs() {
       describeDetails(r).toLowerCase().includes(q)
     )
   }, [rows, search])
+
+  const resetPage = () => setPage(0)
 
   return (
     <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
@@ -173,28 +213,52 @@ export function AuditLogs() {
           </div>
 
           {/* Entity type filter */}
-          <select
-            value={entityFilter ?? ''}
-            onChange={e => { setEntityFilter(e.target.value || null); setPage(0) }}
-            className="h-[30px] px-2.5 rounded-lg border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] text-[12px] font-medium text-slate-700 dark:text-slate-300 cursor-pointer"
+          <Select
+            value={entityFilter}
+            onValueChange={v => { setEntityFilter(v); resetPage() }}
           >
-            <option value="">All entities</option>
-            {Object.entries(ENTITY_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
+            <SelectTrigger size="sm" className="w-[130px] text-[12px]">
+              <SelectValue placeholder="All entities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All entities</SelectItem>
+              {Object.entries(ENTITY_LABEL).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Action filter */}
-          <select
-            value={actionFilter ?? ''}
-            onChange={e => { setActionFilter(e.target.value || null); setPage(0) }}
-            className="h-[30px] px-2.5 rounded-lg border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] text-[12px] font-medium text-slate-700 dark:text-slate-300 cursor-pointer"
+          <Select
+            value={actionFilter}
+            onValueChange={v => { setActionFilter(v); resetPage() }}
           >
-            <option value="">All actions</option>
-            {Object.entries(ACTION_CONFIG).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
-            ))}
-          </select>
+            <SelectTrigger size="sm" className="w-[120px] text-[12px]">
+              <SelectValue placeholder="All actions" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All actions</SelectItem>
+              {Object.entries(ACTION_CONFIG).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {/* User filter */}
+          <Select
+            value={userFilter}
+            onValueChange={v => { setUserFilter(v); resetPage() }}
+          >
+            <SelectTrigger size="sm" className="w-[140px] text-[12px]">
+              <SelectValue placeholder="All users" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All users</SelectItem>
+              {users.map(u => (
+                <SelectItem key={u.id} value={u.id}>{userDisplayName(u)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -209,7 +273,9 @@ export function AuditLogs() {
             <div className="text-center">
               <div className="text-[13px] text-slate-400">No audit events found</div>
               <div className="text-[11px] text-slate-300 dark:text-white/20 mt-1">
-                {search || entityFilter || actionFilter ? 'Try adjusting your filters' : 'Events will appear here as actions are performed'}
+                {search || entityFilter !== 'all' || actionFilter !== 'all' || userFilter !== 'all'
+                  ? 'Try adjusting your filters'
+                  : 'Events will appear here as actions are performed'}
               </div>
             </div>
           </div>

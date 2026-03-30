@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, Headers } from '@nestjs/common'
 import { DocumentsService } from './documents.service'
 import { documents } from '@symph-crm/database'
 
@@ -34,16 +34,18 @@ export class DocumentsController {
       storagePath?: string
       content?: string
     },
+    @Headers('x-user-id') userId?: string,
   ) {
-    return this.documentsService.create(data)
+    return this.documentsService.create(data, userId)
   }
 
   @Put(':id')
   update(
     @Param('id') id: string,
     @Body() data: Partial<typeof documents.$inferInsert> & { content?: string },
+    @Headers('x-user-id') userId?: string,
   ) {
-    return this.documentsService.update(id, data)
+    return this.documentsService.update(id, data, userId)
   }
 
   @Delete(':id')

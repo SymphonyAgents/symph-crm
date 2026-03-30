@@ -3,10 +3,14 @@ import { eq, desc, ilike, or } from 'drizzle-orm'
 import { companies } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
+import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 @Injectable()
 export class CompaniesService {
-  constructor(@Inject(DB) private db: Database) {}
+  constructor(
+    @Inject(DB) private db: Database,
+    private auditLogs: AuditLogsService,
+  ) {}
 
   async findAll() {
     return this.db.select().from(companies).orderBy(desc(companies.createdAt))
@@ -35,6 +39,7 @@ export class CompaniesService {
   async findOrCreate(
     data: Pick<typeof companies.$inferInsert, 'name' | 'domain' | 'workspaceId' | 'createdBy'> &
       Partial<typeof companies.$inferInsert>,
+    performedBy?: string,
   ) {
     if (data.domain) {
       const [existing] = await this.db
@@ -45,20 +50,50 @@ export class CompaniesService {
       if (existing) return { company: existing, created: false }
     }
     const [company] = await this.db.insert(companies).values(data).returning()
+
+    this.auditLogs.log({
+      action: 'create',
+      auditType: 'company_created',
+      entityType: 'company',
+      entityId: company.id,
+      performedBy: performedBy ?? data.createdBy ?? undefined,
+      details: { name: company.name, domain: company.domain },
+    }).catch(() => {})
+
     return { company, created: true }
   }
 
-  async create(data: typeof companies.$inferInsert) {
+  async create(data: typeof companies.$inferInsert, performedBy?: string) {
     const [company] = await this.db.insert(companies).values(data).returning()
+
+    this.auditLogs.log({
+      action: 'create',
+      auditType: 'company_created',
+      entityType: 'company',
+      entityId: company.id,
+      performedBy: performedBy ?? data.createdBy ?? undefined,
+      details: { name: company.name, domain: company.domain },
+    }).catch(() => {})
+
     return company
   }
 
-  async update(id: string, data: Partial<typeof companies.$inferInsert>) {
+  async update(id: string, data: Partial<typeof companies.$inferInsert>, performedBy?: string) {
     const [company] = await this.db
       .update(companies)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(companies.id, id))
       .returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'company_updated',
+      entityType: 'company',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: { fields: Object.keys(data).filter(k => k !== 'updatedAt') },
+    }).catch(() => {})
+
     return company
   }
 
@@ -82,7 +117,17 @@ export class CompaniesService {
     return { exists: !!company, company: company ?? null }
   }
 
-  async remove(id: string) {
+  async remove(id: string, performedBy?: string) {
+    const existing = await this.findOne(id)
     await this.db.delete(companies).where(eq(companies.id, id))
+
+    this.auditLogs.log({
+      action: 'delete',
+      auditType: 'company_deleted',
+      entityType: 'company',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: { name: existing?.name },
+    }).catch(() => {})
   }
 }

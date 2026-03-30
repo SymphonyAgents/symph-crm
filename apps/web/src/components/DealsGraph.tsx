@@ -99,6 +99,9 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const simRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
+  // Store zoom behavior + viewport dims so the search effect can drive the camera
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+  const viewportRef = useRef<{ W: number; H: number }>({ W: 900, H: 600 })
   const [tooltip, setTooltip] = useState<Tooltip>(null)
   const deferredSearch = useDeferredValue(searchQuery)
 
@@ -148,6 +151,8 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     const container = containerRef.current!
     const W = container.clientWidth || 900
     const H = container.clientHeight || 600
+
+    viewportRef.current = { W, H }
 
     svg.selectAll('*').remove()
 
@@ -244,6 +249,9 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     svg.call(zoom)
     // Initial zoom to fit
     svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(0.85))
+
+    // Store zoom ref so search effect can programmatically move the camera
+    zoomRef.current = zoom
 
     // ── Simulation ────────────────────────────────────────────────────────────
 
@@ -402,15 +410,15 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     }
   }, [companies, deals, onOpenDeal])
 
-  // ── Search highlight effect (runs without restarting simulation) ──────────
+  // ── Search highlight + zoom-to-fit effect (runs without restarting simulation) ──
   useEffect(() => {
     const svg = d3.select(svgRef.current!)
-    const nodesGroup = svg.select('g.root g.nodes')
+    const nodesGroup = svg.select<SVGGElement>('g.root g.nodes')
     const linksGroup = svg.select('g.root g.links')
     if (nodesGroup.empty()) return
 
     if (!matchedNodeIds) {
-      // No active search — restore full opacity
+      // No active search — restore full opacity and reset camera to center
       nodesGroup.selectAll<SVGGElement, GraphNode>('g')
         .transition().duration(200)
         .attr('opacity', 1)
@@ -433,6 +441,55 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         const tgt = (d.target as GraphNode).id
         return matchedNodeIds.has(src) && matchedNodeIds.has(tgt) ? 0.4 : 0.03
       })
+
+    // ── Zoom-to-fit matched nodes ─────────────────────────────────────────────
+    if (matchedNodeIds.size === 0 || !zoomRef.current) return
+
+    // Collect positions of matched nodes from the simulation data
+    const matchedNodes: GraphNode[] = []
+    nodesGroup.selectAll<SVGGElement, GraphNode>('g').each(d => {
+      if (matchedNodeIds.has(d.id) && d.x != null && d.y != null) {
+        matchedNodes.push(d)
+      }
+    })
+
+    if (matchedNodes.length === 0) return
+
+    const { W, H } = viewportRef.current
+    const padding = 80
+
+    // Compute bounding box of matched nodes in simulation space
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+    for (const n of matchedNodes) {
+      const x = n.x!
+      const y = n.y!
+      const r = n.r + 30 // include label space
+      if (x - r < minX) minX = x - r
+      if (x + r > maxX) maxX = x + r
+      if (y - r < minY) minY = y - r
+      if (y + r > maxY) maxY = y + r
+    }
+
+    const bW = maxX - minX
+    const bH = maxY - minY
+    const scale = Math.min(
+      (W - padding * 2) / (bW || 1),
+      (H - padding * 2) / (bH || 1),
+      2.5, // cap zoom-in
+    )
+    const cx = (minX + maxX) / 2
+    const cy = (minY + maxY) / 2
+
+    const targetTransform = d3.zoomIdentity
+      .translate(W / 2, H / 2)
+      .scale(scale)
+      .translate(-cx, -cy)
+
+    d3.select(svgRef.current!)
+      .transition()
+      .duration(500)
+      .ease(d3.easeCubicInOut)
+      .call(zoomRef.current.transform, targetTransform)
   }, [matchedNodeIds])
 
   return (

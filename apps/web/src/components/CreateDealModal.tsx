@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import {
@@ -13,6 +13,7 @@ import {
 import { useCreateDeal } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import type { ApiCompany } from './Deals'
 
 type ApiProduct = { id: string; name: string; slug: string }
@@ -50,6 +51,8 @@ type Props = {
 }
 
 export function CreateDealModal({ companies, onClose, onCreated }: Props) {
+  useEscapeKey(useCallback(onClose, [onClose]))
+
   const [title, setTitle] = useState('')
   const [companyId, setCompanyId] = useState('')
   const [stage, setStage] = useState('lead')

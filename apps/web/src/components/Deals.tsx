@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { getInitials } from '@/lib/utils'
@@ -11,6 +11,7 @@ import { CreateDealModal } from './CreateDealModal'
 import { DealsGraph } from './DealsGraph'
 import { ChevronsUpDown, ChevronsDownUp } from 'lucide-react'
 import { useUser } from '@/lib/hooks/use-user'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
 type ViewMode = 'list' | 'graph'
 
@@ -123,6 +124,8 @@ function BrandDetailModal({
   onClose: () => void
   onOpenDeal: (id: string) => void
 }) {
+  useEscapeKey(useCallback(onClose, [onClose]))
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div

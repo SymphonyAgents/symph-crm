@@ -37,21 +37,29 @@ export class DealsController {
       createdBy: data.createdBy || userId || null,
       assignedTo: data.assignedTo || data.createdBy || userId || null,
     }
-    return this.dealsService.create(enriched)
+    return this.dealsService.create(enriched, userId)
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() data: Partial<typeof deals.$inferInsert>) {
-    return this.dealsService.update(id, data)
+  update(
+    @Param('id') id: string,
+    @Body() data: Partial<typeof deals.$inferInsert>,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.dealsService.update(id, data, userId)
   }
 
   @Patch(':id/stage')
-  patchStage(@Param('id') id: string, @Body() body: { stage: string }) {
-    return this.dealsService.updateStage(id, body.stage)
+  patchStage(
+    @Param('id') id: string,
+    @Body() body: { stage: string },
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.dealsService.updateStage(id, body.stage, userId)
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.dealsService.remove(id)
+  remove(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+    return this.dealsService.remove(id, userId)
   }
 }
