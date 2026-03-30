@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, Req, Res, HttpCode, HttpStatus, BadRequestException,
+  Param, Body, Query, Req, Res, HttpCode, HttpStatus, Logger,
 } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { CalendarConnectionsService } from './calendar-connections.service'
@@ -14,6 +14,8 @@ import { CalendarEventsService, CreateEventDto, UpdateEventDto } from './calenda
  */
 @Controller()
 export class CalendarController {
+  private readonly logger = new Logger(CalendarController.name)
+
   constructor(
     private connections: CalendarConnectionsService,
     private events: CalendarEventsService,
@@ -45,23 +47,36 @@ export class CalendarController {
   /**
    * GET /api/auth/google-calendar/callback
    * Google redirects here after consent. The userId is in the `state` param.
+   * Always redirects back to the web app — never leaves the user on a raw API URL.
    */
   @Get('auth/google-calendar/callback')
   async callback(
     @Query('code') code: string,
     @Query('state') state: string,
+    @Query('error') oauthError: string,
     @Res() res: Response,
   ) {
-    // state = userId encoded by the /connect endpoint
-    if (!state || !code) {
-      return res.status(400).json({ error: 'Missing code or state — OAuth flow may have been tampered with' })
+    const webUrl = process.env.WEB_BASE_URL ?? 'http://localhost:3000'
+
+    // Google itself returned an error (e.g. user denied consent)
+    if (oauthError) {
+      return res.redirect(`${webUrl}/calendar?oauth_error=${encodeURIComponent(oauthError)}`)
     }
 
-    await this.connections.handleCallback(state, code)
+    // Missing required params
+    if (!state || !code) {
+      return res.redirect(`${webUrl}/calendar?oauth_error=${encodeURIComponent('Missing code or state')}`)
+    }
 
-    // Redirect back to the web app — show connected=true banner
-    const webUrl = process.env.WEB_BASE_URL ?? 'http://localhost:3000'
-    res.redirect(`${webUrl}/calendar?connected=true`)
+    try {
+      await this.connections.handleCallback(state, code)
+      res.redirect(`${webUrl}/calendar?connected=true`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      this.logger.error(`OAuth callback failed for user ${state}: ${message}`)
+      // Redirect with a readable error so the user isn't stuck on the API URL
+      res.redirect(`${webUrl}/calendar?oauth_error=${encodeURIComponent(message)}`)
+    }
   }
 
   /**
