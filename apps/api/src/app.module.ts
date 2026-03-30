@@ -17,6 +17,7 @@ import { PipelineModule } from './pipeline/pipeline.module'
 import { InternalModule } from './internal/internal.module'
 import { CalendarModule } from './calendar/calendar.module'
 import { UsersModule } from './users/users.module'
+import { AuditLogsModule } from './audit-logs/audit-logs.module'
 
 @Module({
   providers: [
@@ -40,6 +41,7 @@ import { UsersModule } from './users/users.module'
     CalendarModule,
     InternalModule,
     UsersModule,
+    AuditLogsModule,
   ],
 })
 export class AppModule {}
