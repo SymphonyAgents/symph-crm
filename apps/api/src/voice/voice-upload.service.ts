@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { eq, sql } from 'drizzle-orm'
-import { files } from '@symph-crm/database'
+import { files, deals } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { StorageService, ATTACHMENTS_BUCKET } from '../storage/storage.service'
@@ -73,19 +73,30 @@ export class VoiceUploadService {
       return { text }
     }
 
-    // ── 1. Persist audio to Supabase Storage ──────────────────────────────
+    // ── 1. Resolve companyId from deal (for storage path) ─────────────────
+    let companyId: string | null = null
+    if (meta.dealId) {
+      const [deal] = await this.db.select({ companyId: deals.companyId }).from(deals).where(eq(deals.id, meta.dealId))
+      companyId = deal?.companyId ?? null
+    }
+
+    // ── 2. Persist audio to Supabase Storage ──────────────────────────────
+    // Path: brand/{companyId}/{dealId}/audio/{ts}-{name}.{ext}
+    // Falls back to brand/unassigned/{userId}/audio/... when no company/deal.
     const ext = MIME_TO_EXT[mimeType.split(';')[0].trim()] ?? 'webm'
-    const scope = meta.dealId ?? meta.userId
-    const storagePath = `voice/${scope}/${Date.now()}-${sanitizeFilename(filename)}.${ext}`
+    const brandSegment = companyId ?? 'unassigned'
+    const dealSegment  = meta.dealId ?? meta.userId
+    const storagePath = `brand/${brandSegment}/${dealSegment}/audio/${Date.now()}-${sanitizeFilename(filename)}.${ext}`
 
     await this.storage.uploadAttachment(storagePath, buffer, mimeType)
     this.logger.log(`Audio persisted: ${storagePath} (${buffer.length} bytes)`)
 
-    // ── 2. Create DB record (transcription_status = 'pending') ─────────────
+    // ── 3. Create DB record (transcription_status = 'pending') ─────────────
     const [fileRow] = await this.db
       .insert(files)
       .values({
         uploadedBy: meta.userId,
+        companyId: companyId ?? undefined,
         dealId: meta.dealId ?? null,
         filename,
         storagePath,
@@ -96,7 +107,7 @@ export class VoiceUploadService {
       })
       .returning()
 
-    // ── 3. Attempt Groq transcription ─────────────────────────────────────
+    // ── 4. Attempt Groq transcription ─────────────────────────────────────
     try {
       const text = await this.voice.transcribe(buffer, mimeType, filename)
 
