@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -18,8 +18,9 @@ import { cn } from '@/lib/utils'
 import { formatPeso } from '@/lib/utils'
 import { Avatar } from './Avatar'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage } from '@/lib/hooks/mutations'
+import { usePatchDealStage, useDeleteDeal } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
+import { MoreHorizontal, Search, X, Trash2, ExternalLink, ChevronDown } from 'lucide-react'
 
 // --- Types ---
 type ApiDeal = {
@@ -92,8 +93,62 @@ const SUB_STAGE_LABEL: Record<string, string> = {
   followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
 }
 
+// --- CardActionsMenu ---
+function CardActionsMenu({
+  dealId,
+  onOpen,
+  onDelete,
+  isSales,
+}: {
+  dealId: string
+  onOpen: () => void
+  onDelete: () => void
+  isSales: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
+        className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors opacity-0 group-hover:opacity-100"
+      >
+        <MoreHorizontal size={14} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-7 z-50 min-w-[140px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+          <button
+            onClick={(e) => { e.stopPropagation(); setOpen(false); onOpen() }}
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+          >
+            <ExternalLink size={12} /> Open deal
+          </button>
+          {isSales && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete() }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 size={12} /> Delete
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // --- DealCard ---
-function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string; onClick: () => void }) {
+function DealCard({ deal, colColor, onClick, onDelete, isSales }: { deal: ApiDeal; colColor: string; onClick: () => void; onDelete?: () => void; isSales?: boolean }) {
   const isWon = deal.stage === 'closed_won'
   const isLost = deal.stage === 'closed_lost'
   const outreach = deal.outreachCategory || 'outbound'
@@ -104,7 +159,7 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
     <div
       onClick={onClick}
       className={cn(
-        'rounded-lg p-3.5 cursor-pointer transition-colors duration-150',
+        'group rounded-lg p-3.5 cursor-pointer transition-colors duration-150',
         isWon
           ? 'bg-[rgba(22,163,74,0.05)] dark:bg-[rgba(22,163,74,0.08)] border border-[rgba(22,163,74,0.22)]'
           : isLost
@@ -118,19 +173,29 @@ function DealCard({ deal, colColor, onClick }: { deal: ApiDeal; colColor: string
         e.currentTarget.style.backgroundColor = ''
       }}
     >
-      {/* Sub-stage label + outreach badge */}
+      {/* Sub-stage label + outreach badge + actions */}
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-400">
           {SUB_STAGE_LABEL[deal.stage] ?? deal.stage.replace(/_/g, ' ')}
         </span>
-        <span className={cn(
-          'text-[10px] font-semibold px-2 py-0.5 rounded-full',
-          outreach === 'inbound'
-            ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
-            : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
-        )}>
-          {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
-        </span>
+        <div className="flex items-center gap-1">
+          {onDelete && (
+            <CardActionsMenu
+              dealId={deal.id}
+              onOpen={onClick}
+              onDelete={onDelete}
+              isSales={isSales ?? false}
+            />
+          )}
+          <span className={cn(
+            'text-[10px] font-semibold px-2 py-0.5 rounded-full',
+            outreach === 'inbound'
+              ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
+              : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
+          )}>
+            {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
+          </span>
+        </div>
       </div>
 
       {/* Deal title */}
@@ -175,10 +240,14 @@ function DraggableDealCard({
   deal,
   colColor,
   onClick,
+  onDelete,
+  isSales,
 }: {
   deal: ApiDeal
   colColor: string
   onClick: () => void
+  onDelete?: () => void
+  isSales?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: deal.id,
@@ -195,7 +264,7 @@ function DraggableDealCard({
       {...attributes}
       {...listeners}
     >
-      <DealCard deal={deal} colColor={colColor} onClick={onClick} />
+      <DealCard deal={deal} colColor={colColor} onClick={onClick} onDelete={onDelete} isSales={isSales} />
     </div>
   )
 }
@@ -237,6 +306,12 @@ async function fetchDeals(): Promise<ApiDeal[]> {
 
 export function Pipeline({ onOpenDeal }: PipelineProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [amFilter, setAmFilter] = useState<string | null>(null)
+  const [amDropdownOpen, setAmDropdownOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const amDropdownRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -247,6 +322,69 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     queryKey: queryKeys.deals.all,
     queryFn: fetchDeals,
   })
+
+  const deleteDeal = useDeleteDeal()
+
+  // Ctrl+F to open search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        setSearchOpen(true)
+        setTimeout(() => searchInputRef.current?.focus(), 50)
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+        setSearch('')
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [searchOpen])
+
+  // Close AM dropdown on outside click
+  useEffect(() => {
+    if (!amDropdownOpen) return
+    function handleClick(e: MouseEvent) {
+      if (amDropdownRef.current && !amDropdownRef.current.contains(e.target as Node)) setAmDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [amDropdownOpen])
+
+  // Unique AM names for filter
+  const amNames = useMemo(() => {
+    const names = new Set<string>()
+    for (const d of deals) {
+      if (d.assignedTo) names.add(d.assignedTo)
+    }
+    return Array.from(names).sort()
+  }, [deals])
+
+  // Filter deals by search + AM
+  const filteredDeals = useMemo(() => {
+    let result = deals
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      result = result.filter(d =>
+        d.title.toLowerCase().includes(q) ||
+        d.stage.toLowerCase().includes(q) ||
+        (d.servicesTags ?? []).some(s => s.toLowerCase().includes(q)) ||
+        (d.assignedTo || '').toLowerCase().includes(q)
+      )
+    }
+    if (amFilter) {
+      result = result.filter(d => d.assignedTo === amFilter)
+    }
+    return result
+  }, [deals, search, amFilter])
+
+  const handleDeleteDeal = useCallback((dealId: string) => {
+    if (!confirm('Delete this deal? This action cannot be undone.')) return
+    deleteDeal.mutate(dealId, {
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
+    })
+  }, [deleteDeal, queryClient])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -271,14 +409,14 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     return () => clearTimeout(timer)
   }, [isLoading, searchParams, router])
 
-  const activeDeals = deals.filter(d => !CLOSED_IDS.has(d.stage))
+  const activeDeals = filteredDeals.filter(d => !CLOSED_IDS.has(d.stage))
   const totalValue = activeDeals.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
 
-  // Group deals into 7 consolidated columns
+  // Group filtered deals into 7 consolidated columns
   const columnDeals = KANBAN_STAGES.map(col => ({
     ...col,
-    deals: deals.filter(d => col.matches.includes(d.stage)),
-    total: deals
+    deals: filteredDeals.filter(d => col.matches.includes(d.stage)),
+    total: filteredDeals
       .filter(d => col.matches.includes(d.stage))
       .reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0),
   }))
@@ -337,24 +475,90 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Stats + actions */}
-      <div className="flex items-center justify-between px-4 py-2.5 shrink-0">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 shrink-0">
         {isLoading ? (
           <div className="h-4 w-40 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
         ) : (
-          <span className="text-[13px] font-medium text-slate-900 dark:text-white">
-            {activeDeals.length} active deals
+          <span className="text-[13px] font-medium text-slate-900 dark:text-white shrink-0">
+            {activeDeals.length} active deal{activeDeals.length !== 1 ? 's' : ''}
             {totalValue > 0 && (
-              <> &middot; <span className="tabular-nums">P{(totalValue / 1_000_000).toFixed(1)}M</span></>
+              <> &middot; <span className="tabular-nums">{formatPeso(totalValue)}</span></>
+            )}
+            {(search || amFilter) && (
+              <span className="text-slate-400 ml-1">(filtered)</span>
             )}
           </span>
         )}
-        <div className="flex gap-2">
-          <button className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors duration-150 cursor-pointer">
-            Filter
-          </button>
-          <button className="hidden sm:block bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors duration-150 cursor-pointer">
-            Group by AM
-          </button>
+        <div className="flex gap-2 items-center">
+          {/* Search */}
+          {searchOpen ? (
+            <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[200px]">
+              <Search size={13} className="text-slate-400 shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search deals…"
+                className="flex-1 bg-transparent outline-none text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 min-w-0"
+              />
+              <button
+                onClick={() => { setSearchOpen(false); setSearch('') }}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50) }}
+              className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5"
+              title="Search (Ctrl+F)"
+            >
+              <Search size={12} /> Search
+            </button>
+          )}
+
+          {/* AM filter dropdown */}
+          <div ref={amDropdownRef} className="relative">
+            <button
+              onClick={() => setAmDropdownOpen(o => !o)}
+              className={cn(
+                'bg-white dark:bg-[#1e1e21] border rounded-lg px-3 py-[5px] text-[12px] font-medium hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
+                amFilter
+                  ? 'border-primary/30 text-primary'
+                  : 'border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300'
+              )}
+            >
+              {amFilter || 'All AMs'}
+              <ChevronDown size={12} />
+            </button>
+            {amDropdownOpen && (
+              <div className="absolute right-0 top-9 z-50 min-w-[160px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
+                <button
+                  onClick={() => { setAmFilter(null); setAmDropdownOpen(false) }}
+                  className={cn(
+                    'w-full px-3 py-1.5 text-[12px] text-left hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors',
+                    !amFilter ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-300'
+                  )}
+                >
+                  All AMs
+                </button>
+                {amNames.map(name => (
+                  <button
+                    key={name}
+                    onClick={() => { setAmFilter(name); setAmDropdownOpen(false) }}
+                    className={cn(
+                      'w-full px-3 py-1.5 text-[12px] text-left hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors',
+                      amFilter === name ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-300'
+                    )}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -412,11 +616,16 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                         {col.deals.length}
                       </span>
                     </div>
-                    {col.total > 0 && (
-                      <div className="text-[12px] text-slate-400 tabular-nums mt-1 pl-[18px]">
-                        P{(col.total / 1_000_000).toFixed(1)}M
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5 mt-1 pl-[18px]">
+                      <span className="text-[12px] tabular-nums font-medium" style={{ color: col.total > 0 ? col.color : undefined, opacity: col.total > 0 ? 1 : 0.4 }}>
+                        {col.total > 0 ? formatPeso(col.total) : '—'}
+                      </span>
+                      {totalValue > 0 && col.total > 0 && !CLOSED_IDS.has(col.id) && (
+                        <span className="text-[10px] text-slate-400 tabular-nums">
+                          ({Math.round((col.total / totalValue) * 100)}%)
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Cards */}
@@ -432,6 +641,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                           deal={d}
                           colColor={col.color}
                           onClick={() => onOpenDeal(d.id)}
+                          onDelete={() => handleDeleteDeal(d.id)}
+                          isSales={isSales}
                         />
                       ))
                     )}

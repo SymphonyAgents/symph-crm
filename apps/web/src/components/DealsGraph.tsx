@@ -12,7 +12,7 @@
  * - Hover tooltip
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useDeferredValue, useMemo } from 'react'
 import * as d3 from 'd3'
 import type { ApiCompany, ApiDeal } from './Deals'
 
@@ -90,15 +90,58 @@ type DealsGraphProps = {
   companies: ApiCompany[]
   deals: ApiDeal[]
   onOpenDeal: (id: string) => void
+  searchQuery?: string
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
+export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: DealsGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const simRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
   const [tooltip, setTooltip] = useState<Tooltip>(null)
+  const deferredSearch = useDeferredValue(searchQuery)
+
+  // Compute which node IDs match the search (empty = all match)
+  const matchedNodeIds = useMemo(() => {
+    const q = deferredSearch.trim().toLowerCase()
+    if (!q) return null // null means "no active search — show all normally"
+
+    const matched = new Set<string>()
+
+    // Match deals by title, stage, tags
+    for (const deal of deals) {
+      if (
+        deal.title.toLowerCase().includes(q) ||
+        deal.stage.toLowerCase().includes(q) ||
+        (deal.servicesTags ?? []).some(s => s.toLowerCase().includes(q))
+      ) {
+        matched.add(`d-${deal.id}`)
+        // Also highlight the parent company
+        if (deal.companyId) matched.add(`c-${deal.companyId}`)
+        else matched.add('c-unassigned')
+      }
+    }
+
+    // Match companies by name, industry, domain
+    for (const c of companies) {
+      if (
+        c.name.toLowerCase().includes(q) ||
+        (c.industry || '').toLowerCase().includes(q) ||
+        (c.domain || '').toLowerCase().includes(q)
+      ) {
+        matched.add(`c-${c.id}`)
+        // Also highlight all deals under this company
+        for (const deal of deals) {
+          if (deal.companyId === c.id) matched.add(`d-${deal.id}`)
+        }
+      }
+    }
+
+    return matched
+  }, [deferredSearch, deals, companies])
+
+  const matchCount = matchedNodeIds?.size ?? 0
 
   useEffect(() => {
     const svg = d3.select(svgRef.current!)
@@ -359,6 +402,39 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
     }
   }, [companies, deals, onOpenDeal])
 
+  // ── Search highlight effect (runs without restarting simulation) ──────────
+  useEffect(() => {
+    const svg = d3.select(svgRef.current!)
+    const nodesGroup = svg.select('g.root g.nodes')
+    const linksGroup = svg.select('g.root g.links')
+    if (nodesGroup.empty()) return
+
+    if (!matchedNodeIds) {
+      // No active search — restore full opacity
+      nodesGroup.selectAll<SVGGElement, GraphNode>('g')
+        .transition().duration(200)
+        .attr('opacity', 1)
+      linksGroup.selectAll<SVGLineElement, GraphLink>('line')
+        .transition().duration(200)
+        .attr('stroke-opacity', 0.2)
+      return
+    }
+
+    // Dim non-matching nodes, highlight matching ones
+    nodesGroup.selectAll<SVGGElement, GraphNode>('g')
+      .transition().duration(200)
+      .attr('opacity', d => matchedNodeIds.has(d.id) ? 1 : 0.1)
+
+    // Dim non-matching links
+    linksGroup.selectAll<SVGLineElement, GraphLink>('line')
+      .transition().duration(200)
+      .attr('stroke-opacity', d => {
+        const src = (d.source as GraphNode).id
+        const tgt = (d.target as GraphNode).id
+        return matchedNodeIds.has(src) && matchedNodeIds.has(tgt) ? 0.4 : 0.03
+      })
+  }, [matchedNodeIds])
+
   return (
     <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#0f1117] select-none">
       {/* Dot grid background */}
@@ -378,7 +454,18 @@ export function DealsGraph({ companies, deals, onOpenDeal }: DealsGraphProps) {
           </div>
         </div>
       ) : (
-        <svg ref={svgRef} className="w-full h-full" />
+        <>
+          <svg ref={svgRef} className="w-full h-full" />
+          {/* Search "no matches" overlay */}
+          {matchedNodeIds !== null && matchCount === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className="text-center bg-[#1a1d27]/90 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/[0.08]">
+                <div className="text-[13px] text-white/50">No matches for &ldquo;{deferredSearch}&rdquo;</div>
+                <div className="text-[11px] text-white/25 mt-1">Try a different search term</div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Tooltip */}

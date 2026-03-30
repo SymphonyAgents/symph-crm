@@ -512,8 +512,9 @@ export function Deals({ onOpenDeal }: DealsProps) {
           <div className="flex-1 rounded-lg overflow-hidden border border-black/[.06] dark:border-white/[.08]">
             <DealsGraph
               companies={companies}
-              deals={filteredDeals}
+              deals={deals}
               onOpenDeal={onOpenDeal}
+              searchQuery={search}
             />
           </div>
         )}
