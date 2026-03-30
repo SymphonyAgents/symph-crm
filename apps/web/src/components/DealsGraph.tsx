@@ -3,39 +3,50 @@
 /**
  * DealsGraph — Obsidian-style force-directed graph using D3 force simulation.
  *
- * - D3 force: forceLink (spring) + forceManyBody (repulsion) + forceCenter + forceCollide
- * - SVG rendered by React, positions updated by D3 simulation ticks
- * - Drag via d3-drag
- * - Zoom/pan via d3-zoom
- * - Company nodes: larger, labeled, colored by brand
- * - Deal nodes: smaller, colored by stage, click to open
- * - Hover tooltip
+ * Layout tuned to match Obsidian's tight, clustered aesthetic:
+ *   - Short link distances (60-40px) keep clusters compact
+ *   - Moderate repulsion to avoid overlap without excessive spacing
+ *   - Strong center gravity pulls everything toward the middle
+ *   - High alpha decay for fast settling
  */
 
 import { useEffect, useRef, useState, useDeferredValue, useMemo } from 'react'
 import * as d3 from 'd3'
 import type { ApiCompany, ApiDeal } from './Deals'
 
-// ─── Stage config ─────────────────────────────────────────────────────────────
+// ─── Stage config (7 kanban stages — matches Pipeline.tsx) ───────────────────
 
+/** Maps every DB stage value to its kanban column color */
 const STAGE_COLOR: Record<string, string> = {
   lead:          '#94a3b8',
   discovery:     '#2563eb',
   assessment:    '#7c3aed',
-  qualified:     '#0369a1',
+  qualified:     '#7c3aed',   // grouped with assessment
   demo:          '#d97706',
   proposal:      '#d97706',
-  proposal_demo: '#d97706',
+  proposal_demo: '#d97706',   // grouped as Demo + Proposal
   negotiation:   '#f59e0b',
-  followup:      '#f59e0b',
+  followup:      '#f59e0b',   // grouped as Follow-up
   closed_won:    '#16a34a',
   closed_lost:   '#dc2626',
 }
 
+/** The 7 kanban columns shown in the legend */
+const LEGEND_STAGES: { id: string; label: string; color: string }[] = [
+  { id: 'lead',        label: 'Lead',            color: '#94a3b8' },
+  { id: 'discovery',   label: 'Discovery',       color: '#2563eb' },
+  { id: 'assessment',  label: 'Assessment',      color: '#7c3aed' },
+  { id: 'demo_prop',   label: 'Demo + Proposal', color: '#d97706' },
+  { id: 'followup',    label: 'Follow-up',       color: '#f59e0b' },
+  { id: 'closed_won',  label: 'Won',             color: '#16a34a' },
+  { id: 'closed_lost', label: 'Lost',            color: '#dc2626' },
+]
+
+/** Sublabel text for tooltips */
 const STAGE_LABEL: Record<string, string> = {
   lead: 'Lead', discovery: 'Discovery', assessment: 'Assessment',
-  qualified: 'Qualified', demo: 'Demo', proposal: 'Proposal',
-  proposal_demo: 'Demo + Proposal', negotiation: 'Negotiation',
+  qualified: 'Assessment', demo: 'Demo + Proposal', proposal: 'Demo + Proposal',
+  proposal_demo: 'Demo + Proposal', negotiation: 'Follow-up',
   followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
 }
 
@@ -72,6 +83,7 @@ type GraphNode = d3.SimulationNodeDatum & {
   color: string
   r: number
   dealId?: string
+  companyId?: string
   stage?: string
   value?: string | null
 }
@@ -90,16 +102,16 @@ type DealsGraphProps = {
   companies: ApiCompany[]
   deals: ApiDeal[]
   onOpenDeal: (id: string) => void
+  onOpenBrand?: (companyId: string) => void
   searchQuery?: string
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: DealsGraphProps) {
+export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQuery = '' }: DealsGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const simRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
-  // Store zoom behavior + viewport dims so the search effect can drive the camera
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const viewportRef = useRef<{ W: number; H: number }>({ W: 900, H: 600 })
   const [tooltip, setTooltip] = useState<Tooltip>(null)
@@ -108,11 +120,10 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
   // Compute which node IDs match the search (empty = all match)
   const matchedNodeIds = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase()
-    if (!q) return null // null means "no active search — show all normally"
+    if (!q) return null
 
     const matched = new Set<string>()
 
-    // Match deals by title, stage, tags
     for (const deal of deals) {
       if (
         deal.title.toLowerCase().includes(q) ||
@@ -120,13 +131,11 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         (deal.servicesTags ?? []).some(s => s.toLowerCase().includes(q))
       ) {
         matched.add(`d-${deal.id}`)
-        // Also highlight the parent company
         if (deal.companyId) matched.add(`c-${deal.companyId}`)
         else matched.add('c-unassigned')
       }
     }
 
-    // Match companies by name, industry, domain
     for (const c of companies) {
       if (
         c.name.toLowerCase().includes(q) ||
@@ -134,7 +143,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         (c.domain || '').toLowerCase().includes(q)
       ) {
         matched.add(`c-${c.id}`)
-        // Also highlight all deals under this company
         for (const deal of deals) {
           if (deal.companyId === c.id) matched.add(`d-${deal.id}`)
         }
@@ -164,11 +172,9 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     const nodes: GraphNode[] = []
     const links: GraphLink[] = []
 
-    // Filter deals with valid company references
     const dealsWithCompany = deals.filter(d => d.companyId && companyMap.has(d.companyId))
     const dealsWithoutCompany = deals.filter(d => !d.companyId || !companyMap.has(d.companyId))
 
-    // Add ALL companies as nodes (including those without deals)
     for (const c of companies) {
       nodes.push({
         id: `c-${c.id}`,
@@ -176,11 +182,11 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         label: c.name,
         sublabel: c.industry || c.domain || undefined,
         color: brandColor(c.name),
-        r: 26,
+        r: 22,
+        companyId: c.id,
       })
     }
 
-    // Add "No Brand" node if there are unlinked deals
     if (dealsWithoutCompany.length > 0) {
       nodes.push({
         id: 'c-unassigned',
@@ -188,7 +194,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         label: 'No Brand',
         sublabel: `${dealsWithoutCompany.length} deal${dealsWithoutCompany.length !== 1 ? 's' : ''}`,
         color: '#64748b',
-        r: 22,
+        r: 18,
       })
     }
 
@@ -199,7 +205,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         label: deal.title,
         sublabel: STAGE_LABEL[deal.stage] || deal.stage,
         color: STAGE_COLOR[deal.stage] || '#94a3b8',
-        r: 10,
+        r: 8,
         dealId: deal.id,
         stage: deal.stage,
         value: deal.value,
@@ -218,7 +224,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
         label: deal.title,
         sublabel: STAGE_LABEL[deal.stage] || deal.stage,
         color: STAGE_COLOR[deal.stage] || '#94a3b8',
-        r: 10,
+        r: 8,
         dealId: deal.id,
         stage: deal.stage,
         value: deal.value,
@@ -236,40 +242,35 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
 
     svg.attr('width', W).attr('height', H)
 
-    // Root group for zoom/pan
     const root = svg.append('g').attr('class', 'root')
 
     // Zoom
     const zoom = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.15, 4])
+      .scaleExtent([0.15, 6])
       .on('zoom', (event) => {
         root.attr('transform', event.transform)
         setTooltip(null)
       })
     svg.call(zoom)
-    // Initial zoom to fit
-    svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(0.85))
+    svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(1))
 
-    // Store zoom ref so search effect can programmatically move the camera
     zoomRef.current = zoom
 
-    // ── Simulation ────────────────────────────────────────────────────────────
+    // ── Simulation — Obsidian-tight layout ──────────────────────────────────
 
     const sim = d3.forceSimulation<GraphNode>(nodes)
       .force('link', d3.forceLink<GraphNode, GraphLink>(links)
         .id(d => d.id)
-        .distance(d => {
-          const src = d.source as GraphNode
-          return src.kind === 'company' ? 120 : 80
-        })
-        .strength(0.6)
+        .distance(55)
+        .strength(0.9)
       )
       .force('charge', d3.forceManyBody<GraphNode>()
-        .strength(d => d.kind === 'company' ? -800 : -200)
+        .strength(d => d.kind === 'company' ? -300 : -80)
+        .distanceMax(250)
       )
-      .force('center', d3.forceCenter(0, 0))
-      .force('collide', d3.forceCollide<GraphNode>().radius(d => d.r + 14).strength(0.8))
-      .alphaDecay(0.015)
+      .force('center', d3.forceCenter(0, 0).strength(0.1))
+      .force('collide', d3.forceCollide<GraphNode>().radius(d => d.r + 6).strength(0.7))
+      .alphaDecay(0.028)
 
     simRef.current = sim
 
@@ -280,8 +281,8 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
       .data(links)
       .join('line')
       .attr('stroke', d => (d.target as GraphNode).color)
-      .attr('stroke-opacity', 0.2)
-      .attr('stroke-width', 1)
+      .attr('stroke-opacity', 0.15)
+      .attr('stroke-width', 0.8)
 
     // ── Draw nodes ────────────────────────────────────────────────────────────
 
@@ -289,28 +290,28 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
       .selectAll<SVGGElement, GraphNode>('g')
       .data(nodes)
       .join('g')
-      .attr('cursor', d => d.kind === 'deal' ? 'pointer' : 'grab')
+      .attr('cursor', 'pointer')
 
     // Company: glow ring
     nodeSel.filter(d => d.kind === 'company')
       .append('circle')
-      .attr('r', d => d.r + 10)
+      .attr('r', d => d.r + 8)
       .attr('fill', d => d.color)
-      .attr('opacity', 0.07)
+      .attr('opacity', 0.06)
 
     // Outer ring
     nodeSel.append('circle')
-      .attr('r', d => d.r + 2)
+      .attr('r', d => d.r + 1.5)
       .attr('fill', 'none')
       .attr('stroke', d => d.color)
-      .attr('stroke-width', d => d.kind === 'company' ? 1.5 : 1)
-      .attr('stroke-opacity', d => d.kind === 'company' ? 0.55 : 0.35)
+      .attr('stroke-width', d => d.kind === 'company' ? 1.2 : 0.8)
+      .attr('stroke-opacity', d => d.kind === 'company' ? 0.5 : 0.3)
 
     // Fill
     nodeSel.append('circle')
       .attr('r', d => d.r)
       .attr('fill', d => d.kind === 'company' ? d.color + '22' : d.color)
-      .attr('fill-opacity', d => d.kind === 'company' ? 1 : 0.88)
+      .attr('fill-opacity', d => d.kind === 'company' ? 1 : 0.85)
 
     // Company: initials
     nodeSel.filter(d => d.kind === 'company')
@@ -318,43 +319,32 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
       .text(d => initials(d.label))
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
-      .attr('font-size', 10)
+      .attr('font-size', 9)
       .attr('font-weight', 700)
       .attr('fill', d => d.color)
       .attr('font-family', 'system-ui, sans-serif')
       .style('pointer-events', 'none')
 
-    // Company: name label below node
+    // Company: name label below
     nodeSel.filter(d => d.kind === 'company')
       .append('text')
-      .text(d => d.label.length > 20 ? d.label.slice(0, 19) + '…' : d.label)
-      .attr('text-anchor', 'middle')
-      .attr('dy', d => d.r + 15)
-      .attr('font-size', 11)
-      .attr('font-weight', 600)
-      .attr('fill', 'rgba(255,255,255,0.8)')
-      .attr('font-family', 'system-ui, sans-serif')
-      .style('pointer-events', 'none')
-
-    // Company: sublabel
-    nodeSel.filter(d => d.kind === 'company' && !!d.sublabel)
-      .append('text')
-      .text(d => (d.sublabel || '').length > 24 ? (d.sublabel || '').slice(0, 23) + '…' : d.sublabel || '')
-      .attr('text-anchor', 'middle')
-      .attr('dy', d => d.r + 27)
-      .attr('font-size', 9)
-      .attr('fill', 'rgba(255,255,255,0.33)')
-      .attr('font-family', 'system-ui, sans-serif')
-      .style('pointer-events', 'none')
-
-    // Deal: name label below node
-    nodeSel.filter(d => d.kind === 'deal')
-      .append('text')
-      .text(d => d.label.length > 16 ? d.label.slice(0, 15) + '…' : d.label)
+      .text(d => d.label.length > 18 ? d.label.slice(0, 17) + '…' : d.label)
       .attr('text-anchor', 'middle')
       .attr('dy', d => d.r + 13)
-      .attr('font-size', 8)
-      .attr('fill', 'rgba(255,255,255,0.5)')
+      .attr('font-size', 10)
+      .attr('font-weight', 600)
+      .attr('fill', 'rgba(255,255,255,0.75)')
+      .attr('font-family', 'system-ui, sans-serif')
+      .style('pointer-events', 'none')
+
+    // Deal: name label below
+    nodeSel.filter(d => d.kind === 'deal')
+      .append('text')
+      .text(d => d.label.length > 14 ? d.label.slice(0, 13) + '…' : d.label)
+      .attr('text-anchor', 'middle')
+      .attr('dy', d => d.r + 11)
+      .attr('font-size', 7.5)
+      .attr('fill', 'rgba(255,255,255,0.45)')
       .attr('font-family', 'system-ui, sans-serif')
       .style('pointer-events', 'none')
 
@@ -369,10 +359,14 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
       })
       .on('mouseleave', () => setTooltip(null))
 
-    // ── Click deal ────────────────────────────────────────────────────────────
+    // ── Click — deals open deal detail, brands open brand detail ─────────────
 
     nodeSel.on('click', (_event, d) => {
-      if (d.kind === 'deal' && d.dealId) onOpenDeal(d.dealId)
+      if (d.kind === 'deal' && d.dealId) {
+        onOpenDeal(d.dealId)
+      } else if (d.kind === 'company' && d.companyId && onOpenBrand) {
+        onOpenBrand(d.companyId)
+      }
     })
 
     // ── Drag ─────────────────────────────────────────────────────────────────
@@ -408,9 +402,9 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     return () => {
       sim.stop()
     }
-  }, [companies, deals, onOpenDeal])
+  }, [companies, deals, onOpenDeal, onOpenBrand])
 
-  // ── Search highlight + zoom-to-fit effect (runs without restarting simulation) ──
+  // ── Search highlight + center (no zoom change) ────────────────────────────
   useEffect(() => {
     const svg = d3.select(svgRef.current!)
     const nodesGroup = svg.select<SVGGElement>('g.root g.nodes')
@@ -418,20 +412,20 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     if (nodesGroup.empty()) return
 
     if (!matchedNodeIds) {
-      // No active search — restore full opacity and reset camera to center
+      // No active search — restore full opacity
       nodesGroup.selectAll<SVGGElement, GraphNode>('g')
         .transition().duration(200)
         .attr('opacity', 1)
       linksGroup.selectAll<SVGLineElement, GraphLink>('line')
         .transition().duration(200)
-        .attr('stroke-opacity', 0.2)
+        .attr('stroke-opacity', 0.15)
       return
     }
 
-    // Dim non-matching nodes, highlight matching ones
+    // Dim non-matching nodes
     nodesGroup.selectAll<SVGGElement, GraphNode>('g')
       .transition().duration(200)
-      .attr('opacity', d => matchedNodeIds.has(d.id) ? 1 : 0.1)
+      .attr('opacity', d => matchedNodeIds.has(d.id) ? 1 : 0.08)
 
     // Dim non-matching links
     linksGroup.selectAll<SVGLineElement, GraphLink>('line')
@@ -439,13 +433,12 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
       .attr('stroke-opacity', d => {
         const src = (d.source as GraphNode).id
         const tgt = (d.target as GraphNode).id
-        return matchedNodeIds.has(src) && matchedNodeIds.has(tgt) ? 0.4 : 0.03
+        return matchedNodeIds.has(src) && matchedNodeIds.has(tgt) ? 0.35 : 0.02
       })
 
-    // ── Zoom-to-fit matched nodes ─────────────────────────────────────────────
+    // ── Center on matched nodes (keep current zoom scale) ─────────────────
     if (matchedNodeIds.size === 0 || !zoomRef.current) return
 
-    // Collect positions of matched nodes from the simulation data
     const matchedNodes: GraphNode[] = []
     nodesGroup.selectAll<SVGGElement, GraphNode>('g').each(d => {
       if (matchedNodeIds.has(d.id) && d.x != null && d.y != null) {
@@ -456,29 +449,16 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
     if (matchedNodes.length === 0) return
 
     const { W, H } = viewportRef.current
-    const padding = 80
 
-    // Compute bounding box of matched nodes in simulation space
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
-    for (const n of matchedNodes) {
-      const x = n.x!
-      const y = n.y!
-      const r = n.r + 30 // include label space
-      if (x - r < minX) minX = x - r
-      if (x + r > maxX) maxX = x + r
-      if (y - r < minY) minY = y - r
-      if (y + r > maxY) maxY = y + r
-    }
+    // Compute centroid of matched nodes
+    let cx = 0, cy = 0
+    for (const n of matchedNodes) { cx += n.x!; cy += n.y! }
+    cx /= matchedNodes.length
+    cy /= matchedNodes.length
 
-    const bW = maxX - minX
-    const bH = maxY - minY
-    const scale = Math.min(
-      (W - padding * 2) / (bW || 1),
-      (H - padding * 2) / (bH || 1),
-      2.5, // cap zoom-in
-    )
-    const cx = (minX + maxX) / 2
-    const cy = (minY + maxY) / 2
+    // Get current zoom scale and pan to centroid at same scale
+    const currentTransform = d3.zoomTransform(svgRef.current!)
+    const scale = currentTransform.k
 
     const targetTransform = d3.zoomIdentity
       .translate(W / 2, H / 2)
@@ -487,7 +467,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
 
     d3.select(svgRef.current!)
       .transition()
-      .duration(500)
+      .duration(400)
       .ease(d3.easeCubicInOut)
       .call(zoomRef.current.transform, targetTransform)
   }, [matchedNodeIds])
@@ -513,7 +493,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
       ) : (
         <>
           <svg ref={svgRef} className="w-full h-full" />
-          {/* Search "no matches" overlay */}
           {matchedNodeIds !== null && matchCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center bg-[#1a1d27]/90 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/[0.08]">
@@ -545,23 +524,21 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
                 {formatValue(tooltip.node.value)}
               </p>
             )}
-            {tooltip.node.kind === 'deal' && (
-              <p className="text-[9px] text-white/25 mt-1.5 border-t border-white/[0.06] pt-1.5">
-                Click to open deal →
-              </p>
-            )}
+            <p className="text-[9px] text-white/25 mt-1.5 border-t border-white/[0.06] pt-1.5">
+              {tooltip.node.kind === 'deal' ? 'Click to open deal →' : 'Click to view brand →'}
+            </p>
           </div>
         </div>
       )}
 
-      {/* Stage legend */}
+      {/* Stage legend — 7 kanban stages */}
       <div className="absolute top-3 left-3 bg-[#1a1d27]/90 backdrop-blur-sm border border-white/[0.08] rounded-lg px-3 py-2.5 pointer-events-none">
         <p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-2">Stages</p>
-        <div className="grid grid-cols-2 gap-x-5 gap-y-1">
-          {Object.entries(STAGE_LABEL).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: STAGE_COLOR[k] }} />
-              <span className="text-[9px] text-white/40">{v}</span>
+        <div className="flex flex-col gap-1">
+          {LEGEND_STAGES.map(s => (
+            <div key={s.id} className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
+              <span className="text-[9px] text-white/40">{s.label}</span>
             </div>
           ))}
         </div>
@@ -569,7 +546,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, searchQuery = '' }: D
 
       {/* Controls hint */}
       <div className="absolute bottom-3 right-3 bg-[#1a1d27]/80 backdrop-blur-sm border border-white/[0.08] rounded-lg px-2.5 py-1.5 pointer-events-none">
-        <span className="text-[10px] text-white/30">Scroll to zoom · Drag to pan · Click deal to open</span>
+        <span className="text-[10px] text-white/30">Scroll to zoom · Drag to pan · Ctrl+F to search</span>
       </div>
     </div>
   )

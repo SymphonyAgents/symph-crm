@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { getInitials } from '@/lib/utils'
@@ -381,6 +381,7 @@ type DealsProps = {
 }
 
 export function Deals({ onOpenDeal }: DealsProps) {
+  const searchInputRef = useRef<HTMLInputElement>(null)
   const [expandedBrands, setExpandedBrands] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [showCreateBrand, setShowCreateBrand] = useState(false)
@@ -388,6 +389,18 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [brandModalId, setBrandModalId] = useState<string | null>(null)
   const { isSales } = useUser()
+
+  // Ctrl+F / Cmd+F focuses search bar (matches Pipeline behavior)
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const qc = useQueryClient()
 
@@ -576,6 +589,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
                 <Input
+                  ref={searchInputRef}
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
@@ -652,6 +666,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
               companies={companies}
               deals={deals}
               onOpenDeal={onOpenDeal}
+              onOpenBrand={(companyId) => setBrandModalId(companyId)}
               searchQuery={search}
             />
           </div>
