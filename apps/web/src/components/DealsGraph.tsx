@@ -10,7 +10,7 @@
  *   - High alpha decay for fast settling
  */
 
-import { useEffect, useRef, useState, useDeferredValue, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
 import type { ApiCompany, ApiDeal } from './Deals'
 
@@ -114,12 +114,24 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
   const simRef = useRef<d3.Simulation<GraphNode, GraphLink> | null>(null)
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const viewportRef = useRef<{ W: number; H: number }>({ W: 900, H: 600 })
+  const debounceRef = useRef<NodeJS.Timeout | null>(null)
   const [tooltip, setTooltip] = useState<Tooltip>(null)
-  const deferredSearch = useDeferredValue(searchQuery)
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
 
-  // Compute which node IDs match the search (empty = all match)
+  // Debounce searchQuery → debouncedSearch (300ms) to prevent flicker on keystrokes
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 300)
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+  }, [searchQuery])
+
+  // Compute which node IDs match the search (null = no active search)
   const matchedNodeIds = useMemo(() => {
-    const q = deferredSearch.trim().toLowerCase()
+    const q = debouncedSearch.trim().toLowerCase()
     if (!q) return null
 
     const matched = new Set<string>()
@@ -150,7 +162,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     }
 
     return matched
-  }, [deferredSearch, deals, companies])
+  }, [debouncedSearch, deals, companies])
 
   const matchCount = matchedNodeIds?.size ?? 0
 
@@ -412,29 +424,29 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     if (nodesGroup.empty()) return
 
     if (!matchedNodeIds) {
-      // No active search — restore full opacity
+      // No active search — restore full visibility
       nodesGroup.selectAll<SVGGElement, GraphNode>('g')
-        .transition().duration(200)
+        .attr('visibility', 'visible')
         .attr('opacity', 1)
       linksGroup.selectAll<SVGLineElement, GraphLink>('line')
-        .transition().duration(200)
+        .attr('visibility', 'visible')
         .attr('stroke-opacity', 0.15)
       return
     }
 
-    // Dim non-matching nodes
+    // Hide non-matching nodes entirely, show only matches
     nodesGroup.selectAll<SVGGElement, GraphNode>('g')
-      .transition().duration(200)
-      .attr('opacity', d => matchedNodeIds.has(d.id) ? 1 : 0.08)
+      .attr('visibility', d => matchedNodeIds.has(d.id) ? 'visible' : 'hidden')
+      .attr('opacity', 1)
 
-    // Dim non-matching links
+    // Hide non-matching links
     linksGroup.selectAll<SVGLineElement, GraphLink>('line')
-      .transition().duration(200)
-      .attr('stroke-opacity', d => {
+      .attr('visibility', d => {
         const src = (d.source as GraphNode).id
         const tgt = (d.target as GraphNode).id
-        return matchedNodeIds.has(src) && matchedNodeIds.has(tgt) ? 0.35 : 0.02
+        return matchedNodeIds.has(src) && matchedNodeIds.has(tgt) ? 'visible' : 'hidden'
       })
+      .attr('stroke-opacity', 0.35)
 
     // ── Center on matched nodes (keep current zoom scale) ─────────────────
     if (matchedNodeIds.size === 0 || !zoomRef.current) return
@@ -496,7 +508,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
           {matchedNodeIds !== null && matchCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center bg-[#1a1d27]/90 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/[0.08]">
-                <div className="text-[13px] text-white/50">No matches for &ldquo;{deferredSearch}&rdquo;</div>
+                <div className="text-[13px] text-white/50">No matches for &ldquo;{debouncedSearch}&rdquo;</div>
                 <div className="text-[11px] text-white/25 mt-1">Try a different search term</div>
               </div>
             </div>

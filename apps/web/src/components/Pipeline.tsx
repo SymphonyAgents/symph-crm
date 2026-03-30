@@ -18,9 +18,12 @@ import { cn } from '@/lib/utils'
 import { formatPeso } from '@/lib/utils'
 import { Avatar } from './Avatar'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useDeleteDeal } from '@/lib/hooks/mutations'
+import { usePatchDealStage, useDeleteDeal, useUpdateDeal } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
-import { MoreHorizontal, Search, X, Trash2, ExternalLink, ChevronDown } from 'lucide-react'
+import {
+  MoreHorizontal, Search, X, Trash2, ExternalLink,
+  ChevronDown, ChevronRight, User as UserIcon,
+} from 'lucide-react'
 
 // --- Types ---
 type ApiDeal = {
@@ -31,9 +34,13 @@ type ApiDeal = {
   value: string | null
   servicesTags: string[] | null
   outreachCategory: string | null
+  pricingModel: string | null
   assignedTo: string | null
   lastActivityAt: string | null
 }
+
+type ApiCompany = { id: string; name: string }
+type ApiUser = { id: string; name: string; email: string }
 
 type PipelineProps = {
   onOpenDeal: (id: string) => void
@@ -41,7 +48,6 @@ type PipelineProps = {
 
 /**
  * 7 consolidated stages — mirrors PipelineBar in Dashboard.
- * Granular DB stages are grouped so the board isn't 11 columns wide.
  */
 const KANBAN_STAGES = [
   { id: 'lead',         label: 'Lead',           color: '#94a3b8', matches: ['lead'] },
@@ -55,63 +61,60 @@ const KANBAN_STAGES = [
 
 /** Maps droppable column id → the primary DB stage value sent to the API */
 const COLUMN_TO_STAGE: Record<string, string> = {
-  lead:         'lead',
-  discovery:    'discovery',
-  assessment:   'assessment',
-  demo_prop:    'proposal_demo',
-  followup:     'followup',
-  closed_won:   'closed_won',
-  closed_lost:  'closed_lost',
+  lead: 'lead', discovery: 'discovery', assessment: 'assessment',
+  demo_prop: 'proposal_demo', followup: 'followup',
+  closed_won: 'closed_won', closed_lost: 'closed_lost',
 }
 
-/**
- * Stage ordering for forward-only constraint.
- * closed_won and closed_lost share the same level (both terminal).
- * If targetOrder < currentOrder → block the drag (no-op, no toast).
- */
+/** Stage ordering for forward-only drag constraint */
 const STAGE_ORDER: Record<string, number> = {
-  lead:         0,
-  discovery:    1,
-  assessment:   2,
-  qualified:    2,
-  demo:         3,
-  proposal:     3,
-  proposal_demo: 3,
-  negotiation:  4,
-  followup:     4,
-  closed_won:   5,
-  closed_lost:  5,
+  lead: 0, discovery: 1, assessment: 2, qualified: 2,
+  demo: 3, proposal: 3, proposal_demo: 3,
+  negotiation: 4, followup: 4,
+  closed_won: 5, closed_lost: 5,
+}
+
+/** Maps a stage to the next stage when advancing */
+const STAGE_ADVANCE_MAP: Record<string, string> = {
+  lead: 'discovery', discovery: 'assessment',
+  assessment: 'proposal_demo', qualified: 'proposal_demo',
+  demo: 'proposal_demo', proposal: 'proposal_demo',
+  proposal_demo: 'followup', negotiation: 'followup',
+  followup: 'closed_won',
 }
 
 const CLOSED_IDS = new Set(['closed_won', 'closed_lost'])
 
-// Sub-stage label for individual deal cards (show granular stage inside grouped column)
-const SUB_STAGE_LABEL: Record<string, string> = {
-  lead: 'Lead', discovery: 'Discovery', assessment: 'Assessment',
-  qualified: 'Qualified', demo: 'Demo', proposal: 'Proposal',
-  proposal_demo: 'Demo + Proposal', negotiation: 'Negotiation',
-  followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
-}
-
 // --- CardActionsMenu ---
 function CardActionsMenu({
-  dealId,
+  currentStage,
   onOpen,
   onDelete,
+  onAdvance,
+  onAssign,
   isSales,
+  users,
 }: {
-  dealId: string
+  currentStage: string
   onOpen: () => void
   onDelete: () => void
+  onAdvance: () => void
+  onAssign: (name: string) => void
   isSales: boolean
+  users: ApiUser[]
 }) {
   const [open, setOpen] = useState(false)
+  const [showAssign, setShowAssign] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const canAdvance = !!STAGE_ADVANCE_MAP[currentStage]
 
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setShowAssign(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
@@ -120,19 +123,59 @@ function CardActionsMenu({
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(o => !o) }}
+        onClick={(e) => { e.stopPropagation(); setOpen(o => !o); setShowAssign(false) }}
         className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors opacity-0 group-hover:opacity-100"
       >
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 min-w-[140px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="absolute right-0 top-7 z-50 min-w-[160px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+          {/* Assign */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowAssign(v => !v) }}
+            className="flex items-center justify-between w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+          >
+            <span className="flex items-center gap-2"><UserIcon size={12} /> Assign</span>
+            <ChevronRight size={11} className={cn('text-slate-400 transition-transform duration-150', showAssign && 'rotate-90')} />
+          </button>
+          {showAssign && (
+            <div className="border-t border-black/[.04] dark:border-white/[.06] max-h-[144px] overflow-y-auto">
+              {users.length === 0 ? (
+                <div className="px-3 py-2 text-[11px] text-slate-400 italic">No team members</div>
+              ) : (
+                users.map(u => (
+                  <button
+                    key={u.id}
+                    onClick={(e) => { e.stopPropagation(); setOpen(false); setShowAssign(false); onAssign(u.name || u.email) }}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                  >
+                    <Avatar name={u.name || u.email} size={16} />
+                    {u.name || u.email}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Advance */}
+          {canAdvance && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onAdvance() }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+            >
+              <ChevronRight size={12} /> Advance
+            </button>
+          )}
+
+          {/* Open deal */}
           <button
             onClick={(e) => { e.stopPropagation(); setOpen(false); onOpen() }}
             className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
           >
             <ExternalLink size={12} /> Open deal
           </button>
+
+          {/* Delete */}
           {isSales && (
             <button
               onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete() }}
@@ -148,7 +191,27 @@ function CardActionsMenu({
 }
 
 // --- DealCard ---
-function DealCard({ deal, colColor, onClick, onDelete, isSales }: { deal: ApiDeal; colColor: string; onClick: () => void; onDelete?: () => void; isSales?: boolean }) {
+function DealCard({
+  deal,
+  colColor,
+  brandName,
+  onClick,
+  onDelete,
+  onAdvance,
+  onAssign,
+  isSales,
+  users,
+}: {
+  deal: ApiDeal
+  colColor: string
+  brandName: string
+  onClick: () => void
+  onDelete?: () => void
+  onAdvance?: () => void
+  onAssign?: (name: string) => void
+  isSales?: boolean
+  users?: ApiUser[]
+}) {
   const isWon = deal.stage === 'closed_won'
   const isLost = deal.stage === 'closed_lost'
   const outreach = deal.outreachCategory || 'outbound'
@@ -166,25 +229,24 @@ function DealCard({ deal, colColor, onClick, onDelete, isSales }: { deal: ApiDea
           ? 'bg-white dark:bg-[#222225] border border-[rgba(220,38,38,0.15)] opacity-70'
           : 'bg-white dark:bg-[#222225] border border-black/[.08] dark:border-white/[.1]'
       )}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = colColor + '14'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = ''
-      }}
+      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = colColor + '14' }}
+      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
     >
-      {/* Sub-stage label + outreach badge + actions */}
+      {/* Brand name + outreach badge + actions */}
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-400">
-          {SUB_STAGE_LABEL[deal.stage] ?? deal.stage.replace(/_/g, ' ')}
+        <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-slate-400 truncate max-w-[120px]">
+          {brandName}
         </span>
         <div className="flex items-center gap-1">
-          {onDelete && (
+          {onDelete !== undefined && onAdvance !== undefined && onAssign !== undefined && (
             <CardActionsMenu
-              dealId={deal.id}
+              currentStage={deal.stage}
               onOpen={onClick}
               onDelete={onDelete}
+              onAdvance={onAdvance}
+              onAssign={onAssign}
               isSales={isSales ?? false}
+              users={users ?? []}
             />
           )}
           <span className={cn(
@@ -235,23 +297,21 @@ function DealCard({ deal, colColor, onClick, onDelete, isSales }: { deal: ApiDea
   )
 }
 
-// --- DraggableDealCard — wraps DealCard without touching it ---
+// --- DraggableDealCard —wraps DealCard without touching it ---
 function DraggableDealCard({
-  deal,
-  colColor,
-  onClick,
-  onDelete,
-  isSales,
+  deal, colColor, brandName, onClick, onDelete, onAdvance, onAssign, isSales, users,
 }: {
   deal: ApiDeal
   colColor: string
+  brandName: string
   onClick: () => void
   onDelete?: () => void
+  onAdvance?: () => void
+  onAssign?: (name: string) => void
   isSales?: boolean
+  users?: ApiUser[]
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: deal.id,
-  })
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: deal.id })
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
     : undefined
@@ -264,21 +324,24 @@ function DraggableDealCard({
       {...attributes}
       {...listeners}
     >
-      <DealCard deal={deal} colColor={colColor} onClick={onClick} onDelete={onDelete} isSales={isSales} />
+      <DealCard
+        deal={deal}
+        colColor={colColor}
+        brandName={brandName}
+        onClick={onClick}
+        onDelete={onDelete}
+        onAdvance={onAdvance}
+        onAssign={onAssign}
+        isSales={isSales}
+        users={users}
+      />
     </div>
   )
 }
 
-// --- DroppableColumn — wraps each stage column ---
-function DroppableColumn({
-  col,
-  children,
-}: {
-  col: (typeof KANBAN_STAGES)[number]
-  children: React.ReactNode
-}) {
+// --- DroppableColumn ---
+function DroppableColumn({ col, children }: { col: (typeof KANBAN_STAGES)[number]; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: col.id })
-
   return (
     <div
       ref={setNodeRef}
@@ -286,9 +349,7 @@ function DroppableColumn({
       className={cn(
         'w-[252px] shrink-0 flex flex-col rounded-lg transition-all duration-150',
         'bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]',
-        isOver
-          ? 'border-2 border-dashed'
-          : 'border border-black/[.07] dark:border-white/[.08]',
+        isOver ? 'border-2 border-dashed' : 'border border-black/[.07] dark:border-white/[.08]',
       )}
       style={isOver ? { borderColor: col.color } : undefined}
     >
@@ -303,7 +364,18 @@ async function fetchDeals(): Promise<ApiDeal[]> {
   if (!res.ok) throw new Error('Failed to fetch deals')
   return res.json()
 }
+async function fetchCompanies(): Promise<ApiCompany[]> {
+  const res = await fetch('/api/companies')
+  if (!res.ok) throw new Error('Failed to fetch companies')
+  return res.json()
+}
+async function fetchUsers(): Promise<ApiUser[]> {
+  const res = await fetch('/api/users')
+  if (!res.ok) throw new Error('Failed to fetch users')
+  return res.json()
+}
 
+// --- Pipeline ---
 export function Pipeline({ onOpenDeal }: PipelineProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -323,7 +395,25 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     queryFn: fetchDeals,
   })
 
+  const { data: companies = [] } = useQuery({
+    queryKey: queryKeys.companies.all,
+    queryFn: fetchCompanies,
+  })
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'] as const,
+    queryFn: fetchUsers,
+  })
+
+  const companyMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const c of companies) m.set(c.id, c.name)
+    return m
+  }, [companies])
+
   const deleteDeal = useDeleteDeal()
+  const patchStage = usePatchDealStage()
+  const updateDeal = useUpdateDeal()
 
   // Ctrl+F to open search
   useEffect(() => {
@@ -352,7 +442,6 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [amDropdownOpen])
 
-  // Unique AM names for filter
   const amNames = useMemo(() => {
     const names = new Set<string>()
     for (const d of deals) {
@@ -361,7 +450,6 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     return Array.from(names).sort()
   }, [deals])
 
-  // Filter deals by search + AM
   const filteredDeals = useMemo(() => {
     let result = deals
     if (search.trim()) {
@@ -386,24 +474,41 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     })
   }, [deleteDeal, queryClient])
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-  )
+  const handleAdvanceDeal = useCallback((dealId: string, currentStage: string) => {
+    const nextStage = STAGE_ADVANCE_MAP[currentStage]
+    if (!nextStage) return
+    const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
+    queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
+      old?.map(d => d.id === dealId ? { ...d, stage: nextStage } : d) ?? []
+    )
+    patchStage.mutate({ id: dealId, stage: nextStage }, {
+      onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
+    })
+  }, [patchStage, queryClient])
 
-  const patchStage = usePatchDealStage()
+  const handleAssignDeal = useCallback((dealId: string, assignedTo: string) => {
+    const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
+    queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
+      old?.map(d => d.id === dealId ? { ...d, assignedTo } : d) ?? []
+    )
+    updateDeal.mutate({ id: dealId, data: { assignedTo } }, {
+      onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
+    })
+  }, [updateDeal, queryClient])
 
-  // Scroll to the stage column referenced by ?stage= param, then clear the param
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  // Scroll to the stage column referenced by ?stage= param, then clear it
   useEffect(() => {
     if (isLoading || scrolledRef.current) return
     const stageId = searchParams.get('stage')
     if (!stageId) return
     scrolledRef.current = true
-    // Small delay to let the DOM render the kanban columns
     const timer = setTimeout(() => {
       const el = document.querySelector(`[data-stage-id="${stageId}"]`)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
       router.replace('/pipeline')
     }, 100)
     return () => clearTimeout(timer)
@@ -412,7 +517,6 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const activeDeals = filteredDeals.filter(d => !CLOSED_IDS.has(d.stage))
   const totalValue = activeDeals.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
 
-  // Group filtered deals into 7 consolidated columns
   const columnDeals = KANBAN_STAGES.map(col => ({
     ...col,
     deals: filteredDeals.filter(d => col.matches.includes(d.stage)),
@@ -421,7 +525,6 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
       .reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0),
   }))
 
-  // The deal and its column color for the drag overlay
   const activeDeal = activeDealId ? deals.find(d => d.id === activeDealId) ?? null : null
   const activeDealColColor = activeDeal
     ? (KANBAN_STAGES.find(c => c.matches.includes(activeDeal.stage))?.color ?? '#94a3b8')
@@ -435,41 +538,23 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     const { active, over } = event
     setActiveDealId(null)
     if (!over) return
-
     const deal = deals.find(d => d.id === (active.id as string))
     if (!deal) return
-
     const targetStage = COLUMN_TO_STAGE[over.id as string]
     if (!targetStage) return
-
-    // No-op: same column
     const currentCol = KANBAN_STAGES.find(c => c.matches.includes(deal.stage))
     if (currentCol?.id === over.id) return
-
-    // Forward-only constraint: block backward drags
     const currentOrder = STAGE_ORDER[deal.stage] ?? 0
     const targetOrder = STAGE_ORDER[targetStage] ?? 0
     if (targetOrder < currentOrder) return
-
-    // Snapshot for rollback
     const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
-
-    // Optimistic update
     queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
-      old?.map(d => d.id === deal.id ? { ...d, stage: targetStage } : d) ?? [],
+      old?.map(d => d.id === deal.id ? { ...d, stage: targetStage } : d) ?? []
     )
-
-    patchStage.mutate(
-      { id: deal.id, stage: targetStage },
-      {
-        onError: () => {
-          queryClient.setQueryData(queryKeys.deals.all, previousDeals)
-        },
-        onSettled: () => {
-          queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-        },
-      },
-    )
+    patchStage.mutate({ id: deal.id, stage: targetStage }, {
+      onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
+      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
+    })
   }
 
   return (
@@ -500,7 +585,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search deals…"
-                className="flex-1 bg-transparent outline-none text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 min-w-0"
+                className="flex-1 bg-transparent text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
               />
               <button
                 onClick={() => { setSearchOpen(false); setSearch('') }}
@@ -567,10 +652,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
         {isLoading ? (
           <div className="flex gap-2.5 px-4 pb-4" style={{ minWidth: 'max-content' }}>
             {KANBAN_STAGES.map(col => (
-              <div
-                key={col.id}
-                className="w-[252px] shrink-0 flex flex-col rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]"
-              >
+              <div key={col.id} className="w-[252px] shrink-0 flex flex-col rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]">
                 <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-slate-200 dark:bg-white/[.1]" />
@@ -640,8 +722,12 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                           key={d.id}
                           deal={d}
                           colColor={col.color}
+                          brandName={companyMap.get(d.companyId) ?? 'No Brand'}
+                          users={users}
                           onClick={() => onOpenDeal(d.id)}
                           onDelete={() => handleDeleteDeal(d.id)}
+                          onAdvance={() => handleAdvanceDeal(d.id, d.stage)}
+                          onAssign={(name) => handleAssignDeal(d.id, name)}
                           isSales={isSales}
                         />
                       ))
@@ -658,6 +744,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                   <DealCard
                     deal={activeDeal}
                     colColor={activeDealColColor}
+                    brandName={companyMap.get(activeDeal.companyId) ?? 'No Brand'}
                     onClick={() => {}}
                   />
                 </div>

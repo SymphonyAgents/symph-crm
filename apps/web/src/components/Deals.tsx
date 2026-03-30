@@ -594,7 +594,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search deals…"
-                  className="border-none bg-transparent outline-none text-[12.5px] text-slate-900 dark:text-white w-full placeholder:text-slate-400 focus:ring-0 px-0 py-0 rounded-none h-auto shadow-none"
+                  className="border-none bg-transparent outline-none text-[12.5px] text-slate-900 dark:text-white w-full placeholder:text-slate-400 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none px-0 py-0 rounded-none h-auto shadow-none"
                 />
               </div>
 
