@@ -21,13 +21,7 @@ function SkeletonLine({ w = 'w-full', h = 'h-3' }: { w?: string; h?: string }) {
 
 export function MetricCardSkeleton() {
   return (
-    <div className="flex-[1_1_200px] rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] px-5 py-[18px] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-      <SkeletonLine w="w-24" h="h-2.5" />
-      <div className="mt-3 mb-2">
-        <SkeletonLine w="w-28" h="h-7" />
-      </div>
-      <SkeletonLine w="w-16" h="h-2.5" />
-    </div>
+    <div className="flex-[1_1_200px] rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] px-5 py-[18px] shadow-[0_1px_3px_rgba(0,0,0,0.04)] animate-pulse" />
   )
 }
 

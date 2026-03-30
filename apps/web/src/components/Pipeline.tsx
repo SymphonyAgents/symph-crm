@@ -261,7 +261,7 @@ function DealCard({
       </div>
 
       {/* Deal title */}
-      <div className="text-[14px] font-bold text-slate-900 dark:text-white leading-snug mb-2.5">
+      <div className="text-[12.5px] font-semibold text-slate-900 dark:text-white leading-snug mb-2.5">
         {deal.title}
       </div>
 

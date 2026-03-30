@@ -342,7 +342,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
               </button>
               <button
                 onClick={() => { setClickedDate(undefined); setShowCreateModal(true) }}
-                className="px-3 py-1.5 text-[12px] bg-slate-900 text-white rounded-lg hover:bg-slate-700 font-medium"
+                className="px-3 py-1.5 text-[12px] bg-primary text-white rounded-lg hover:bg-primary/90 font-medium"
               >
                 + Event
               </button>

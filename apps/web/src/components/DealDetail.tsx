@@ -445,7 +445,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1 text-[12px] font-medium text-slate-500 hover:text-primary transition-colors mb-4 w-fit"
+        className="flex items-center gap-1 text-[12px] font-medium text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors mb-4 w-fit"
       >
         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><polyline points="15 18 9 12 15 6" /></svg>
         Back to Pipeline
