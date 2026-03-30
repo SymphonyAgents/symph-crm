@@ -309,7 +309,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
             <p className="text-[12px] text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
           </div>
           <a
-            href={`${API}/auth/google-calendar/connect`}
+            href={`${API}/auth/google-calendar/connect${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`}
             className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-[13px] font-medium rounded-lg hover:bg-blue-700"
           >
             Connect

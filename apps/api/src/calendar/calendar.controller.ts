@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, Req, Res, HttpCode, HttpStatus,
+  Param, Body, Query, Req, Res, HttpCode, HttpStatus, BadRequestException,
 } from '@nestjs/common'
 import type { Request, Response } from 'express'
 import { CalendarConnectionsService } from './calendar-connections.service'
@@ -22,35 +22,44 @@ export class CalendarController {
   // ─── OAuth Flow ──────────────────────────────────────────────────────────
 
   /**
-   * GET /api/auth/google-calendar/connect
+   * GET /api/auth/google-calendar/connect?userId=<userId>
    * Redirects AM to Google OAuth consent screen.
+   * userId is passed as a query param and encoded into the OAuth state so the
+   * callback can identify the user even after the browser redirect through Google.
    */
   @Get('auth/google-calendar/connect')
-  connect(@Res() res: Response) {
-    const url = this.connections.getAuthUrl()
+  connect(
+    @Query('userId') userId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    // Accept userId from query param (browser link) or x-user-id header (API call)
+    const uid = userId || (req.headers['x-user-id'] as string)
+    if (!uid) {
+      return res.status(400).json({ error: 'Missing userId — make sure you are logged in before connecting' })
+    }
+    const url = this.connections.getAuthUrl(uid)
     res.redirect(url)
   }
 
   /**
    * GET /api/auth/google-calendar/callback
-   * Google redirects here after consent. Exchanges code, runs initial sync.
+   * Google redirects here after consent. The userId is in the `state` param.
    */
   @Get('auth/google-calendar/callback')
   async callback(
     @Query('code') code: string,
     @Query('state') state: string,
-    @Req() req: Request,
     @Res() res: Response,
   ) {
-    // Extract userId from session/header (temporary: pass via state param)
-    const userId = state || (req.headers['x-user-id'] as string)
-    if (!userId || !code) {
-      return res.status(400).json({ error: 'Missing code or userId' })
+    // state = userId encoded by the /connect endpoint
+    if (!state || !code) {
+      return res.status(400).json({ error: 'Missing code or state — OAuth flow may have been tampered with' })
     }
 
-    await this.connections.handleCallback(userId, code)
+    await this.connections.handleCallback(state, code)
 
-    // Redirect back to the calendar page in the web app
+    // Redirect back to the web app — show connected=true banner
     const webUrl = process.env.WEB_BASE_URL ?? 'http://localhost:3000'
     res.redirect(`${webUrl}/calendar?connected=true`)
   }

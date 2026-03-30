@@ -4,7 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
+import { useUser } from '@/lib/hooks/use-user'
 import { ComposeWindow } from './ComposeWindow'
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -514,7 +517,7 @@ function ChatView({
   )
 }
 
-function ConnectBanner() {
+function ConnectBanner({ connectUrl }: { connectUrl: string }) {
   return (
     <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-lg px-4 py-3 mx-4 mb-3">
       <div className="min-w-0">
@@ -522,7 +525,7 @@ function ConnectBanner() {
         <p className="text-[12px] text-blue-700 dark:text-blue-400 mt-0.5">Shows this month&apos;s team emails where you&apos;re CC&apos;d.</p>
       </div>
       <a
-        href="/api/auth/google-calendar/connect"
+        href={connectUrl}
         className="ml-4 shrink-0 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-semibold rounded-lg transition-colors"
       >
         Connect
@@ -560,6 +563,8 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
   const [compose, setCompose] = useState<ComposeState | null>(null)
   // Mobile navigation: 'list' shows the conversation list, 'chat' shows the chat panel
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
+
+  const { userId } = useUser()
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.gmail.inbox,
@@ -604,7 +609,11 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
   return (
     <div className="h-full flex flex-col overflow-hidden relative">
       {/* Connect banner — shown when Google not connected */}
-      {needsReconnect && <ConnectBanner />}
+      {needsReconnect && (
+        <ConnectBanner
+          connectUrl={`${API}/auth/google-calendar/connect${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`}
+        />
+      )}
 
       <div className="flex-1 flex overflow-hidden">
       {/* Left panel — conversation list (full width on mobile, fixed width on desktop) */}

@@ -29,13 +29,15 @@ export class CalendarConnectionsService {
 
   /**
    * Step 1 — generate the OAuth2 consent URL.
-   * The frontend redirects the AM to this URL.
+   * userId is encoded in the `state` param so the callback can identify the user
+   * without relying on headers (Google redirect loses all custom headers).
    */
-  getAuthUrl(): string {
+  getAuthUrl(userId: string): string {
     const oauth2 = this.getOAuth2Client()
     return oauth2.generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent', // force refresh_token on every connect
+      state: userId,     // Google echoes this back to /callback verbatim
       scope: [
         'https://www.googleapis.com/auth/calendar.events',
         'https://www.googleapis.com/auth/gmail.readonly',
