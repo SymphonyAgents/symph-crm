@@ -39,6 +39,8 @@ export class CalendarConnectionsService {
       prompt: 'consent', // force refresh_token on every connect
       state: userId,     // Google echoes this back to /callback verbatim
       scope: [
+        'openid',
+        'email',   // required: userinfo.get() needs email scope to return the address
         'https://www.googleapis.com/auth/calendar.events',
         'https://www.googleapis.com/auth/gmail.readonly',
         'https://www.googleapis.com/auth/gmail.send',
