@@ -214,7 +214,13 @@ export function ComposeWindow({
 
   return (
     <div
-      className="fixed bottom-0 right-6 z-50 w-[520px] max-w-[calc(100vw-1.5rem)] shadow-[0_8px_40px_rgba(0,0,0,0.28)] rounded-t-xl overflow-hidden bg-card border border-black/[.08] dark:border-white/[.08] flex flex-col"
+      className={cn(
+        'fixed z-50 bg-card flex flex-col',
+        // Mobile: full viewport overlay
+        'inset-0',
+        // Desktop: floating bottom-right widget
+        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-t-xl sm:shadow-[0_8px_40px_rgba(0,0,0,0.28)] sm:border sm:border-black/[.08] sm:dark:border-white/[.08]',
+      )}
       onKeyDown={handleKeyDown}
     >
       {/* Title bar */}
@@ -285,14 +291,14 @@ export function ComposeWindow({
             />
           </div>
 
-          {/* Body */}
+          {/* Body — flex-1 so it fills remaining height (especially on mobile fullscreen) */}
           <textarea
             ref={bodyRef}
             value={body}
             onChange={e => setBody(e.target.value)}
             placeholder="Write your message…"
             rows={8}
-            className="flex-1 px-3.5 py-3 text-[12.5px] text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-card outline-none border-none resize-none leading-relaxed"
+            className="flex-1 min-h-[160px] px-3.5 py-3 text-[12.5px] text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-card outline-none border-none resize-none leading-relaxed"
           />
 
           {/* Footer */}

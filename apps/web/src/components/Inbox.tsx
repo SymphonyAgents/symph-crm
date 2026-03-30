@@ -423,10 +423,12 @@ function ChatView({
   thread,
   myEmail,
   onCompose,
+  onBack,
 }: {
   thread: GmailThread
   myEmail: string | null
   onCompose: (state: ComposeState) => void
+  onBack?: () => void
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -440,7 +442,19 @@ function ChatView({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Chat header */}
-      <div className="shrink-0 px-5 py-3.5 border-b border-black/[.06] dark:border-white/[.06] bg-card flex items-center gap-3">
+      <div className="shrink-0 px-3 sm:px-5 py-3.5 border-b border-black/[.06] dark:border-white/[.06] bg-card flex items-center gap-2 sm:gap-3">
+        {/* Back button — mobile only */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="sm:hidden shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors -ml-1"
+            aria-label="Back to inbox"
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
         <Avatar name={thread.from} email={thread.fromEmail} size={34} />
         <div className="flex-1 min-w-0">
           <h2 className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">{thread.from}</h2>
@@ -544,6 +558,8 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [compose, setCompose] = useState<ComposeState | null>(null)
+  // Mobile navigation: 'list' shows the conversation list, 'chat' shows the chat panel
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.gmail.inbox,
@@ -591,8 +607,11 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
       {needsReconnect && <ConnectBanner />}
 
       <div className="flex-1 flex overflow-hidden">
-      {/* Left panel — conversation list */}
-      <div className="w-[320px] shrink-0 border-r border-black/[.06] dark:border-white/[.06] flex flex-col h-full bg-white dark:bg-card">
+      {/* Left panel — conversation list (full width on mobile, fixed width on desktop) */}
+      <div className={cn(
+        'w-full sm:w-[320px] shrink-0 sm:border-r border-black/[.06] dark:border-white/[.06] flex-col h-full bg-white dark:bg-card',
+        mobileView === 'chat' ? 'hidden sm:flex' : 'flex',
+      )}>
 
         {/* Header */}
         <div className="px-4 pt-4 pb-2.5 shrink-0 border-b border-black/[.05] dark:border-white/[.05]">
@@ -676,7 +695,10 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
                 key={thread.id}
                 thread={thread}
                 selected={selectedId === thread.id}
-                onClick={() => setSelectedId(thread.id)}
+                onClick={() => {
+                  setSelectedId(thread.id)
+                  setMobileView('chat')
+                }}
               />
             ))
           )}
@@ -689,13 +711,17 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
         )}
       </div>
 
-      {/* Right panel — chat view */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      {/* Right panel — chat view (hidden on mobile when showing list) */}
+      <div className={cn(
+        'flex-1 flex-col overflow-hidden bg-background',
+        mobileView === 'list' ? 'hidden sm:flex' : 'flex',
+      )}>
         {selectedThread ? (
           <ChatView
             thread={selectedThread}
             myEmail={myEmail}
             onCompose={openCompose}
+            onBack={() => setMobileView('list')}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center gap-4">

@@ -210,7 +210,7 @@ function StageProgress({ currentStage }: { currentStage: string }) {
               </div>
               <span
                 className={cn(
-                  'text-[10px] font-medium whitespace-nowrap',
+                  'hidden sm:block text-[10px] font-medium whitespace-nowrap',
                   isCurrent ? 'text-primary font-semibold' : isCompleted ? 'text-slate-500' : 'text-slate-300'
                 )}
               >
@@ -453,11 +453,12 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
 
       {/* ── Header card ─────────────────────────────────────────────────────── */}
       <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-5 mb-4">
-        <div className="flex items-start justify-between gap-4">
+        {/* Top row: brand info + value/advance (stacks on mobile) */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           {/* Left: Brand + deal info */}
           <div className="flex items-center gap-3.5 min-w-0">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-[15px] font-bold shrink-0"
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-[14px] sm:text-[15px] font-bold shrink-0"
               style={{ background: `${brandColor}18`, color: brandColor }}
             >
               {getInitials(company?.name ?? 'No Brand')}
@@ -466,7 +467,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
               <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide leading-none mb-1">
                 {company?.name ?? 'No Brand'}
               </p>
-              <h1 className="text-[20px] font-bold text-slate-900 dark:text-white leading-tight truncate">
+              <h1 className="text-[18px] sm:text-[20px] font-bold text-slate-900 dark:text-white leading-tight">
                 {deal.title}
               </h1>
               <p className="text-[12px] text-slate-400 mt-0.5">
@@ -476,9 +477,9 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           </div>
 
           {/* Right: Value + stage + advance */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right">
-              <div className="text-[26px] font-bold tabular-nums text-primary leading-tight">
+          <div className="flex items-center gap-3 sm:shrink-0">
+            <div className="sm:text-right">
+              <div className="text-[22px] sm:text-[26px] font-bold tabular-nums text-primary leading-tight">
                 {formatCurrencyFull(deal.value)}
               </div>
               <div className="mt-0.5">
@@ -494,21 +495,27 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
               <button
                 onClick={handleAdvance}
                 disabled={patchStage.isPending}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-[13px] text-white transition-opacity disabled:opacity-60"
-                style={{ background: `linear-gradient(135deg, var(--primary), ${stageColor})` }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-[13px] text-white transition-opacity disabled:opacity-60 shrink-0"
+                style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
               >
-                Advance
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+                {patchStage.isPending ? (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                ) : (
+                  <>
+                    Advance
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </>
+                )}
               </button>
             )}
             {isTerminal && (
               <span className={cn(
-                'text-[12px] font-semibold px-3 py-1.5 rounded-lg',
+                'text-[12px] font-semibold px-3 py-1.5 rounded-lg shrink-0',
                 deal.stage === 'closed_won'
                   ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
-                  : 'bg-red-50 text-red-500'
+                  : 'bg-red-50 dark:bg-red-950/30 text-red-500'
               )}>
                 {deal.stage === 'closed_won' ? '✓ Won' : '✕ Lost'}
               </span>
@@ -520,8 +527,8 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
         <StageProgress currentStage={deal.stage} />
       </div>
 
-      {/* ── Body: left content + right sidebar ──────────────────────────────── */}
-      <div className="flex gap-4 items-start">
+      {/* ── Body: left content + right sidebar (stacks on mobile) ─────────── */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start">
 
         {/* Left: tabs + content */}
         <div className="flex-1 min-w-0 bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -705,8 +712,8 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           )}
         </div>
 
-        {/* ── Right sidebar ──────────────────────────────────────────────────── */}
-        <div className="w-[260px] shrink-0 flex flex-col gap-3">
+        {/* ── Right sidebar — full-width on mobile, fixed on desktop ────────── */}
+        <div className="w-full sm:w-[260px] sm:shrink-0 flex flex-col gap-3">
 
           {/* Deal Info */}
           <SidebarSection title="Deal Info">
