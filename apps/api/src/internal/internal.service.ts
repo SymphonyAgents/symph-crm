@@ -8,6 +8,19 @@ export type SweepResult = {
   dealIds: string[]
 }
 
+export type PipelineStageSummary = {
+  stage: string
+  count: number
+  totalValue: number
+}
+
+export type PipelineSummary = {
+  stages: PipelineStageSummary[]
+  totalDeals: number
+  totalPipelineValue: number
+  flaggedDeals: number
+}
+
 @Injectable()
 export class InternalService {
   private readonly logger = new Logger(InternalService.name)
@@ -19,8 +32,6 @@ export class InternalService {
    * workspace's configured threshold (default: 3 days).
    *
    * Single bulk UPDATE regardless of deal count — O(1) infrastructure.
-   * Configurable per workspace via workspaces.settings->>'dormancy_threshold_days'.
-   *
    * Triggered by Cloud Scheduler daily at 8am PHT (midnight UTC).
    */
   async sweepDormantDeals(): Promise<SweepResult> {
@@ -65,5 +76,50 @@ export class InternalService {
       WHERE id = ${dealId}
         AND is_flagged = true
     `)
+  }
+
+  /**
+   * Pipeline summary — deal counts and values grouped by stage.
+   * Used by Aria to get a high-level view of the CRM without paginating every deal.
+   */
+  async getPipelineSummary(): Promise<PipelineSummary> {
+    const rows = await this.db.execute(sql`
+      SELECT
+        stage,
+        COUNT(*)::int                                         AS count,
+        COALESCE(SUM(value), 0)::float                       AS total_value
+      FROM deals
+      WHERE stage NOT IN ('closed_won', 'closed_lost')
+      GROUP BY stage
+      ORDER BY
+        CASE stage
+          WHEN 'lead'        THEN 1
+          WHEN 'qualified'   THEN 2
+          WHEN 'proposal'    THEN 3
+          WHEN 'negotiation' THEN 4
+          ELSE 5
+        END
+    `)
+
+    const stages = Array.from(rows) as Array<{ stage: string; count: number; total_value: number }>
+
+    const totalDeals = stages.reduce((sum, r) => sum + r.count, 0)
+    const totalPipelineValue = stages.reduce((sum, r) => sum + r.total_value, 0)
+
+    const [flaggedRow] = await this.db.execute(sql`
+      SELECT COUNT(*)::int AS count FROM deals WHERE is_flagged = true
+    `)
+    const flaggedDeals = (flaggedRow as any)?.count ?? 0
+
+    return {
+      stages: stages.map((r) => ({
+        stage: r.stage,
+        count: r.count,
+        totalValue: r.total_value,
+      })),
+      totalDeals,
+      totalPipelineValue,
+      flaggedDeals,
+    }
   }
 }
