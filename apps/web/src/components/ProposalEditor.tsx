@@ -107,8 +107,12 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
 
   // ── Auto-save (debounce 2s) ─────────────────────────────────────────────
 
+  // Track dirty state for unsaved changes guard
+  const isDirtyRef = useRef(false)
+
   const triggerAutoSave = useCallback((html: string) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    isDirtyRef.current = true
     setSaveStatus('saving')
     saveTimerRef.current = setTimeout(async () => {
       if (isSavingRef.current) return
@@ -125,6 +129,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
             updatedAt: new Date().toISOString(),
           }),
         })
+        if (res.ok) isDirtyRef.current = false
         setSaveStatus(res.ok ? 'saved' : 'error')
       } catch {
         setSaveStatus('error')
@@ -154,8 +159,23 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
       }),
     })
 
-    if (res.ok) onVersionSaved?.()
+    if (res.ok) {
+      isDirtyRef.current = false
+      onVersionSaved?.()
+    }
   }, [editor, dealId, documentId, onVersionSaved, userId])
+
+  // ── Unsaved changes guard ─────────────────────────────────────────────
+  // Warn user before tab close / browser navigation when there are unsaved edits
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!isDirtyRef.current) return
+      e.preventDefault()
+      // Modern browsers show a generic message regardless of returnValue
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [])
 
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)

@@ -113,24 +113,143 @@ function StagePill({ stage }: { stage: string }) {
   )
 }
 
+// --- Brand detail modal ---
+function BrandDetailModal({
+  group,
+  onClose,
+  onOpenDeal,
+}: {
+  group: BrandGroup
+  onClose: () => void
+  onOpenDeal: (id: string) => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[90vw] max-w-[640px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center text-[14px] font-semibold"
+            style={{ background: `${group.color}15`, color: group.color }}
+          >
+            {getInitials(group.company.name)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[15px] font-semibold text-slate-900 dark:text-white truncate">
+              {group.company.name}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+              {group.company.industry && <span>{group.company.industry}</span>}
+              {group.company.domain && <span>{group.company.domain}</span>}
+              {group.company.website && (
+                <a
+                  href={group.company.website.startsWith('http') ? group.company.website : `https://${group.company.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {group.company.website}
+                </a>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        {/* Stats bar */}
+        <div className="flex items-center gap-4 px-5 py-2.5 border-b border-black/[.04] dark:border-white/[.06] bg-slate-50/50 dark:bg-white/[.02] shrink-0">
+          <div className="text-[12px]">
+            <span className="text-slate-400">Deals:</span>{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{group.deals.length}</span>
+          </div>
+          <div className="text-[12px]">
+            <span className="text-slate-400">Active:</span>{' '}
+            <span className="font-semibold text-slate-700 dark:text-slate-300">{group.activeCount}</span>
+          </div>
+          <div className="text-[12px]">
+            <span className="text-slate-400">Value:</span>{' '}
+            <span className="font-semibold tabular-nums" style={{ color: group.color }}>
+              {group.totalValue > 0 ? formatValue(String(group.totalValue)) : '—'}
+            </span>
+          </div>
+        </div>
+
+        {/* Deals list */}
+        <div className="flex-1 overflow-y-auto">
+          {group.deals.length === 0 ? (
+            <div className="py-10 text-center text-[13px] text-slate-400">
+              No deals for this brand yet
+            </div>
+          ) : (
+            group.deals.map(deal => {
+              const stageCfg = STAGE_DISPLAY[deal.stage] || { label: deal.stage, bg: '#f1f5f9', color: '#475569' }
+              const tags = deal.servicesTags?.filter(Boolean) ?? []
+              return (
+                <div
+                  key={deal.id}
+                  onClick={() => { onClose(); onOpenDeal(deal.id) }}
+                  className="flex items-center gap-3 px-5 py-3 border-b border-black/[.04] dark:border-white/[.06] cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[.03] transition-colors"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: STAGE_DOT[deal.stage] || '#94a3b8' }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium text-slate-900 dark:text-white truncate">
+                      {deal.title}
+                    </div>
+                    {tags.length > 0 && (
+                      <div className="flex gap-1 mt-0.5 flex-wrap">
+                        {tags.slice(0, 3).map(s => (
+                          <span key={s} className="text-[9px] font-medium px-1.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[.06] text-slate-500 whitespace-nowrap">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <StagePill stage={deal.stage} />
+                  <div className="text-[13px] font-medium text-slate-700 dark:text-slate-300 tabular-nums whitespace-nowrap">
+                    {formatValue(deal.value)}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function BrandHeader({
-  group, expanded, onToggle,
-}: { group: BrandGroup; expanded: boolean; onToggle: () => void }) {
+  group, expanded, onToggle, onOpenModal,
+}: { group: BrandGroup; expanded: boolean; onToggle: () => void; onOpenModal: () => void }) {
   const totalStr = group.totalValue > 0 ? formatValue(String(group.totalValue)) : '—'
 
   return (
-    <button
-      onClick={onToggle}
-      className="grid grid-cols-[36px_1fr_auto_20px] sm:grid-cols-[40px_1fr_auto_auto_auto_20px] items-center gap-3 sm:gap-3.5 w-full px-4 sm:px-[18px] py-3.5 bg-white dark:bg-[#1e1e21] border-0 border-b border-black/[.06] dark:border-white/[.08] cursor-pointer transition-colors text-left hover:bg-slate-50 dark:hover:bg-[#252528]"
+    <div
+      className="grid grid-cols-[36px_1fr_auto_20px] sm:grid-cols-[40px_1fr_auto_auto_auto_20px] items-center gap-3 sm:gap-3.5 w-full px-4 sm:px-[18px] py-3.5 bg-white dark:bg-[#1e1e21] border-0 border-b border-black/[.06] dark:border-white/[.08] transition-colors text-left hover:bg-slate-50 dark:hover:bg-[#252528]"
     >
       <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center text-[13px] font-semibold shrink-0"
+        onClick={onOpenModal}
+        className="w-9 h-9 rounded-lg flex items-center justify-center text-[13px] font-semibold shrink-0 cursor-pointer hover:ring-2 hover:ring-primary/30 transition-all"
         style={{ background: `${group.color}15`, color: group.color }}
+        title="Open brand details"
       >
         {getInitials(group.company.name)}
       </div>
-      <div className="min-w-0">
-        <div className="text-[13px] font-semibold text-slate-900 dark:text-white truncate">
+      <div className="min-w-0 cursor-pointer" onClick={onOpenModal} title="Open brand details">
+        <div className="text-[13px] font-semibold text-slate-900 dark:text-white truncate hover:text-primary transition-colors">
           {group.company.name}
         </div>
         <div className="text-[11px] text-slate-400 mt-px">
@@ -161,15 +280,21 @@ function BrandHeader({
           />
         ))}
       </div>
-      <svg
-        width={14} height={14} viewBox="0 0 24 24" fill="none"
-        className="stroke-slate-400 transition-transform shrink-0"
-        strokeWidth={1.2} strokeLinecap="round"
-        style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+      <button
+        onClick={onToggle}
+        className="w-5 h-5 flex items-center justify-center rounded hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors cursor-pointer"
+        title={expanded ? 'Collapse' : 'Expand'}
       >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-    </button>
+        <svg
+          width={14} height={14} viewBox="0 0 24 24" fill="none"
+          className="stroke-slate-400 transition-transform shrink-0"
+          strokeWidth={1.2} strokeLinecap="round"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+    </div>
   )
 }
 
@@ -258,6 +383,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const [showCreateBrand, setShowCreateBrand] = useState(false)
   const [showCreateDeal, setShowCreateDeal] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [brandModalId, setBrandModalId] = useState<string | null>(null)
   const { isSales } = useUser()
 
   const qc = useQueryClient()
@@ -372,8 +498,17 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const totalDeals = deals.length
   const activePipeline = totalNumericValue(deals.filter(d => !CLOSED_STAGES.has(d.stage)))
 
+  const brandModalGroup = brandModalId ? groups.find(g => g.company.id === brandModalId) ?? null : null
+
   return (
     <>
+      {brandModalGroup && (
+        <BrandDetailModal
+          group={brandModalGroup}
+          onClose={() => setBrandModalId(null)}
+          onOpenDeal={onOpenDeal}
+        />
+      )}
       {showCreateBrand && (
         <CreateBrandModal
           onClose={() => setShowCreateBrand(false)}
@@ -535,6 +670,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                       group={group}
                       expanded={expanded}
                       onToggle={() => toggleBrand(group.company.id)}
+                      onOpenModal={() => setBrandModalId(group.company.id)}
                     />
                     {expanded && group.deals.map(deal => (
                       <DealRow
