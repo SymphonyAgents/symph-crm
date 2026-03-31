@@ -14,38 +14,11 @@ import { useCreateDeal } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
-import type { ApiCompany } from './Deals'
-
-type ApiProduct = { id: string; name: string; slug: string }
-type ApiTier = { id: string; name: string; slug: string }
-
-const STAGE_OPTIONS = [
-  { value: 'lead',          label: 'Lead' },
-  { value: 'discovery',     label: 'Discovery' },
-  { value: 'assessment',    label: 'Assessment' },
-  { value: 'qualified',     label: 'Qualified' },
-  { value: 'demo',          label: 'Demo' },
-  { value: 'proposal',      label: 'Proposal' },
-  { value: 'proposal_demo', label: 'Demo + Proposal' },
-  { value: 'negotiation',   label: 'Negotiation' },
-  { value: 'followup',      label: 'Follow-up' },
-  { value: 'closed_won',    label: 'Won' },
-  { value: 'closed_lost',   label: 'Lost' },
-]
-
-const OUTREACH_OPTIONS = [
-  { value: 'inbound',  label: 'Inbound' },
-  { value: 'outbound', label: 'Outbound' },
-]
-
-const PRICING_OPTIONS = [
-  { value: 'fixed',   label: 'Fixed' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'annual',  label: 'Annual' },
-]
+import { STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS } from '@/lib/constants'
+import type { ApiCompanyDetail, ApiProduct, ApiTier } from '@/lib/types'
 
 type Props = {
-  companies: ApiCompany[]
+  companies: ApiCompanyDetail[]
   onClose: () => void
   onCreated: () => void
 }

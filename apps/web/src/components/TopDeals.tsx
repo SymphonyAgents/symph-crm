@@ -1,29 +1,11 @@
 'use client'
 
-import { formatPeso, getInitials } from '@/lib/utils'
+import { formatPeso, getInitials, getBrandColor } from '@/lib/utils'
 import { EmptyState } from './EmptyState'
 
-type ApiDealBrief = {
-  id: string
-  title: string
-  value: string | null
-  stage: string
-  companyId: string
-  assignedTo: string | null
-}
-
 type TopDealsProps = {
-  deals: ApiDealBrief[]
+  deals: { id: string; title: string; value: string | null; stage: string; companyId: string; assignedTo: string | null }[]
   onViewAll?: () => void
-}
-
-// Deterministic color from a string
-const PALETTE = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16']
-function getColor(s: string | null | undefined): string {
-  const str = s || 'default'
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
-  return PALETTE[Math.abs(h) % PALETTE.length]
 }
 
 export function TopDeals({ deals, onViewAll }: TopDealsProps) {
@@ -44,7 +26,7 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
       ) : (
         <div className="flex flex-col gap-0.5">
           {sorted.map(d => {
-            const color = getColor(d.companyId)
+            const color = getBrandColor(d.companyId)
             const value = d.value ? parseFloat(d.value) : 0
             return (
               <div

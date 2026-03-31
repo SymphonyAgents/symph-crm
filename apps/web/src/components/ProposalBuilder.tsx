@@ -29,8 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+import { API_BASE } from '@/lib/constants'
+import type { ApiDocument } from '@/lib/types'
 
 // Dynamic import — Tiptap uses ProseMirror (browser DOM only, SSR breaks)
 const ProposalEditor = dynamic(() => import('./ProposalEditor'), {
@@ -41,19 +41,6 @@ const ProposalEditor = dynamic(() => import('./ProposalEditor'), {
     </div>
   ),
 })
-
-type ApiDocument = {
-  id: string
-  dealId: string | null
-  type: string
-  title: string
-  excerpt: string | null
-  wordCount: number | null
-  version: number | null
-  parentId: string | null
-  updatedAt: string
-  createdAt: string
-}
 
 // ─── New Proposal Modal ───────────────────────────────────────────────────────
 
@@ -74,12 +61,12 @@ function NewProposalModal({
 
   const { data: deals = [] } = useQuery<{ id: string; title: string }[]>({
     queryKey: ['deals'],
-    queryFn: () => fetch(`${API}/deals`).then(r => r.json()),
+    queryFn: () => fetch(`${API_BASE}/deals`).then(r => r.json()),
   })
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${API}/documents`, {
+      const res = await fetch(`${API_BASE}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
         body: JSON.stringify({
@@ -165,7 +152,7 @@ export function ProposalBuilder() {
   const { data: allDocs = [], isLoading } = useQuery<ApiDocument[]>({
     queryKey: ['documents', 'proposals'],
     queryFn: () =>
-      fetch(`${API}/documents?type=proposal`, { headers: { 'x-user-id': userId ?? '' } }).then(r => r.json()),
+      fetch(`${API_BASE}/documents?type=proposal`, { headers: { 'x-user-id': userId ?? '' } }).then(r => r.json()),
     enabled: !!userId,
   })
 
@@ -183,7 +170,7 @@ export function ProposalBuilder() {
   const { data: contentData } = useQuery<{ content: string }>({
     queryKey: ['document-content', selectedId],
     queryFn: () =>
-      fetch(`${API}/documents/${selectedId}/content`).then(r => r.json()),
+      fetch(`${API_BASE}/documents/${selectedId}/content`).then(r => r.json()),
     enabled: !!selectedId,
   })
 
@@ -239,7 +226,7 @@ export function ProposalBuilder() {
                   <p className="text-[11px] text-slate-500 mt-0.5 truncate">{doc.excerpt}</p>
                 )}
                 <p className="text-[10px] text-slate-400 mt-1">
-                  {new Date(doc.updatedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                  {new Date(doc.updatedAt ?? '').toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                   {doc.wordCount ? ` · ${doc.wordCount} words` : ''}
                 </p>
               </button>

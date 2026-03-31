@@ -13,104 +13,9 @@ import {
   SelectContent,
   SelectItem,
 } from './ui/select'
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-type AuditLogEntry = {
-  id: number
-  createdAt: string
-  action: 'create' | 'update' | 'delete' | 'status_change'
-  auditType: string
-  entityType: string
-  entityId: string | null
-  source: string | null
-  performedBy: string | null
-  details: Record<string, unknown> | null
-  performerName: string | null
-  performerImage: string | null
-}
-
-type AuditLogsResponse = {
-  rows: AuditLogEntry[]
-  total: number
-}
-
-type UserOption = {
-  id: string
-  name: string | null
-  email: string
-  image: string | null
-  firstName: string | null
-  lastName: string | null
-  nickname: string | null
-}
-
-// ── Display config ───────────────────────────────────────────────────────────
-
-const ACTION_CONFIG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  create:        { label: 'Created',  color: '#16a34a', bg: 'rgba(22,163,74,0.08)',  icon: '+' },
-  update:        { label: 'Updated',  color: '#2563eb', bg: 'rgba(37,99,235,0.08)',  icon: '✎' },
-  delete:        { label: 'Deleted',  color: '#dc2626', bg: 'rgba(220,38,38,0.08)',  icon: '×' },
-  status_change: { label: 'Status',   color: '#d97706', bg: 'rgba(217,119,6,0.08)',  icon: '→' },
-}
-
-const ENTITY_LABEL: Record<string, string> = {
-  deal: 'Deal',
-  company: 'Company',
-  contact: 'Contact',
-  activity: 'Activity',
-  document: 'Document',
-  proposal: 'Proposal',
-  user: 'User',
-}
-
-const PAGE_SIZE = 50
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatRelativeTime(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60_000)
-  const diffHours = Math.floor(diffMs / 3_600_000)
-  const diffDays = Math.floor(diffMs / 86_400_000)
-
-  if (diffMins < 1) return 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  if (diffDays < 7) return `${diffDays}d ago`
-  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined })
-}
-
-function formatFullDate(iso: string): string {
-  return new Date(iso).toLocaleString('en-PH', {
-    month: 'short', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit', hour12: true,
-  })
-}
-
-function describeDetails(entry: AuditLogEntry): string {
-  const details = entry.details
-  if (!details) return ''
-
-  if (entry.action === 'status_change' && details.from && details.to) {
-    return `${details.from} → ${details.to}`
-  }
-  if (entry.action === 'update' && details.fields) {
-    const fields = details.fields as string[]
-    return fields.join(', ')
-  }
-  if (details.title) return String(details.title)
-  if (details.name) return String(details.name)
-  return ''
-}
-
-function userDisplayName(u: UserOption): string {
-  if (u.nickname) return u.nickname
-  if (u.firstName && u.lastName) return `${u.firstName} ${u.lastName}`
-  return u.name || u.email
-}
+import { formatFullDate, describeAuditDetails, userDisplayName } from '@/lib/utils'
+import { AUDIT_ACTION_CONFIG, ENTITY_LABEL, AUDIT_PAGE_SIZE } from '@/lib/constants'
+import type { AuditLogEntry, AuditLogsResponse, ApiUser } from '@/lib/types'
 
 // ── Data fetching ────────────────────────────────────────────────────────────
 
@@ -133,7 +38,7 @@ async function fetchAuditLogs(params: {
   return res.json()
 }
 
-async function fetchUsers(): Promise<UserOption[]> {
+async function fetchUsers(): Promise<ApiUser[]> {
   const res = await fetch('/api/users')
   if (!res.ok) throw new Error('Failed to fetch users')
   return res.json()
@@ -161,8 +66,8 @@ const columns: ColumnDef<AuditLogEntry>[] = [
     size: 180,
     cell: ({ row }) => {
       const entry = row.original
-      const cfg = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.update
-      const details = describeDetails(entry)
+      const cfg = AUDIT_ACTION_CONFIG[entry.action] ?? AUDIT_ACTION_CONFIG.update
+      const details = describeAuditDetails(entry)
       return (
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
@@ -253,8 +158,8 @@ export function AuditLogs() {
       entityType: entityFilter !== 'all' ? entityFilter : undefined,
       action: actionFilter !== 'all' ? actionFilter : undefined,
       performedBy: userFilter !== 'all' ? userFilter : undefined,
-      limit: PAGE_SIZE,
-      offset: page * PAGE_SIZE,
+      limit: AUDIT_PAGE_SIZE,
+      offset: page * AUDIT_PAGE_SIZE,
     }),
   })
 
@@ -266,7 +171,7 @@ export function AuditLogs() {
 
   const rows = data?.rows ?? []
   const total = data?.total ?? 0
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.ceil(total / AUDIT_PAGE_SIZE)
 
   // Client-side search filter (on top of server filters)
   const filtered = useMemo(() => {
@@ -277,7 +182,7 @@ export function AuditLogs() {
       r.entityType.toLowerCase().includes(q) ||
       r.action.toLowerCase().includes(q) ||
       (r.entityId || '').toLowerCase().includes(q) ||
-      describeDetails(r).toLowerCase().includes(q)
+      describeAuditDetails(r).toLowerCase().includes(q)
     )
   }, [rows, search])
 
@@ -333,7 +238,7 @@ export function AuditLogs() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All actions</SelectItem>
-              {Object.entries(ACTION_CONFIG).map(([k, v]) => (
+              {Object.entries(AUDIT_ACTION_CONFIG).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v.label}</SelectItem>
               ))}
             </SelectContent>

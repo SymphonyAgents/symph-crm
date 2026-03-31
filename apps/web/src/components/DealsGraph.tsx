@@ -12,11 +12,13 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
-import type { ApiCompany, ApiDeal } from './Deals'
+import { getBrandColor, getInitials, formatCurrency } from '@/lib/utils'
+import { KANBAN_STAGES } from '@/lib/constants'
+import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
 
-// ─── Stage config (7 kanban stages — matches Pipeline.tsx) ───────────────────
+// ─── Graph-specific stage color map ─────────────────────────────────────────
+// Groups DB stages by their kanban column color (e.g. qualified → assessment color)
 
-/** Maps every DB stage value to its kanban column color */
 const STAGE_COLOR: Record<string, string> = {
   lead:          '#94a3b8',
   discovery:     '#2563eb',
@@ -31,46 +33,20 @@ const STAGE_COLOR: Record<string, string> = {
   closed_lost:   '#dc2626',
 }
 
-/** The 7 kanban columns shown in the legend */
-const LEGEND_STAGES: { id: string; label: string; color: string }[] = [
-  { id: 'lead',        label: 'Lead',            color: '#94a3b8' },
-  { id: 'discovery',   label: 'Discovery',       color: '#2563eb' },
-  { id: 'assessment',  label: 'Assessment',      color: '#7c3aed' },
-  { id: 'demo_prop',   label: 'Demo + Proposal', color: '#d97706' },
-  { id: 'followup',    label: 'Follow-up',       color: '#f59e0b' },
-  { id: 'closed_won',  label: 'Won',             color: '#16a34a' },
-  { id: 'closed_lost', label: 'Lost',            color: '#dc2626' },
-]
-
-/** Sublabel text for tooltips */
-const STAGE_LABEL: Record<string, string> = {
+/** Sublabel text for tooltips — maps DB stage to kanban column label */
+const STAGE_TOOLTIP_LABEL: Record<string, string> = {
   lead: 'Lead', discovery: 'Discovery', assessment: 'Assessment',
   qualified: 'Assessment', demo: 'Demo + Proposal', proposal: 'Demo + Proposal',
   proposal_demo: 'Demo + Proposal', negotiation: 'Follow-up',
   followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
 }
 
-// ─── Brand color ──────────────────────────────────────────────────────────────
-
-const PALETTE = ['#2563eb','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
-function brandColor(name: string | null | undefined): string {
-  const str = name || 'default'
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
-  return PALETTE[Math.abs(h) % PALETTE.length]
-}
-
-function formatValue(v: string | null): string {
+/** Format deal value for graph tooltip — empty string for zero/null */
+function formatGraphValue(v: string | null): string {
   if (!v) return ''
   const n = parseFloat(v)
   if (isNaN(n) || n === 0) return ''
-  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return 'P' + Math.round(n / 1_000) + 'K'
-  return 'P' + n.toLocaleString('en-PH')
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase()
+  return formatCurrency(n)
 }
 
 // ─── D3 types ─────────────────────────────────────────────────────────────────
@@ -99,7 +75,7 @@ type Tooltip = { x: number; y: number; node: GraphNode } | null
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 type DealsGraphProps = {
-  companies: ApiCompany[]
+  companies: ApiCompanyDetail[]
   deals: ApiDeal[]
   onOpenDeal: (id: string) => void
   onOpenBrand?: (companyId: string) => void
@@ -206,7 +182,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     const companies = companiesRef.current
     const deals = dealsRef.current
 
-    const companyMap = new Map<string, ApiCompany>()
+    const companyMap = new Map<string, ApiCompanyDetail>()
     for (const c of companies) companyMap.set(c.id, c)
 
     const nodes: GraphNode[] = []
@@ -221,7 +197,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
         kind: 'company',
         label: c.name,
         sublabel: c.industry || c.domain || undefined,
-        color: brandColor(c.name),
+        color: getBrandColor(c.name),
         r: 22,
         companyId: c.id,
       })
@@ -243,7 +219,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
         id: `d-${deal.id}`,
         kind: 'deal',
         label: deal.title,
-        sublabel: STAGE_LABEL[deal.stage] || deal.stage,
+        sublabel: STAGE_TOOLTIP_LABEL[deal.stage] || deal.stage,
         color: STAGE_COLOR[deal.stage] || '#94a3b8',
         r: 8,
         dealId: deal.id,
@@ -262,7 +238,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
         id: `d-${deal.id}`,
         kind: 'deal',
         label: deal.title,
-        sublabel: STAGE_LABEL[deal.stage] || deal.stage,
+        sublabel: STAGE_TOOLTIP_LABEL[deal.stage] || deal.stage,
         color: STAGE_COLOR[deal.stage] || '#94a3b8',
         r: 8,
         dealId: deal.id,
@@ -356,7 +332,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     // Company: initials
     nodeSel.filter(d => d.kind === 'company')
       .append('text')
-      .text(d => initials(d.label))
+      .text(d => getInitials(d.label))
       .attr('text-anchor', 'middle')
       .attr('dy', '0.35em')
       .attr('font-size', 9)
@@ -597,7 +573,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
             )}
             {tooltip.node.kind === 'deal' && tooltip.node.value && (
               <p className="text-[10px] text-white/40 mt-0.5 tabular-nums">
-                {formatValue(tooltip.node.value)}
+                {formatGraphValue(tooltip.node.value)}
               </p>
             )}
             <p className="text-[9px] text-white/25 mt-1.5 border-t border-white/[0.06] pt-1.5">
@@ -611,7 +587,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
       <div className="absolute top-3 left-3 bg-[#1a1d27]/90 backdrop-blur-sm border border-white/[0.08] rounded-lg px-3 py-2.5 pointer-events-none">
         <p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-2">Stages</p>
         <div className="flex flex-col gap-1">
-          {LEGEND_STAGES.map(s => (
+          {KANBAN_STAGES.map(s => (
             <div key={s.id} className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
               <span className="text-[9px] text-white/40">{s.label}</span>

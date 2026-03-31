@@ -14,8 +14,12 @@ import {
 } from '@dnd-kit/core'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { formatPeso } from '@/lib/utils'
+import { cn, formatPeso, getAdvanceTargets, getMoveBackTargets } from '@/lib/utils'
+import type { ApiDeal, ApiCompany, ApiUser } from '@/lib/types'
+import {
+  API_BASE, KANBAN_STAGES, COLUMN_TO_STAGE, STAGE_ORDER,
+  STAGE_ADVANCE_MAP, CLOSED_STAGE_IDS,
+} from '@/lib/constants'
 import { Avatar } from './Avatar'
 import { queryKeys } from '@/lib/query-keys'
 import { usePatchDealStage, useDeleteDeal, useUpdateDeal } from '@/lib/hooks/mutations'
@@ -25,86 +29,8 @@ import {
   ChevronDown, ChevronRight, User as UserIcon,
 } from 'lucide-react'
 
-// --- Types ---
-type ApiDeal = {
-  id: string
-  companyId: string
-  title: string
-  stage: string
-  value: string | null
-  servicesTags: string[] | null
-  outreachCategory: string | null
-  pricingModel: string | null
-  assignedTo: string | null
-  lastActivityAt: string | null
-}
-
-type ApiCompany = { id: string; name: string }
-type ApiUser = { id: string; name: string; email: string }
-
 type PipelineProps = {
   onOpenDeal: (id: string) => void
-}
-
-/**
- * 7 consolidated stages — mirrors PipelineBar in Dashboard.
- */
-const KANBAN_STAGES = [
-  { id: 'lead',         label: 'Lead',           color: '#94a3b8', matches: ['lead'] },
-  { id: 'discovery',   label: 'Discovery',       color: '#2563eb', matches: ['discovery'] },
-  { id: 'assessment',  label: 'Assessment',      color: '#7c3aed', matches: ['assessment', 'qualified'] },
-  { id: 'demo_prop',   label: 'Demo + Proposal', color: '#d97706', matches: ['demo', 'proposal', 'proposal_demo'] },
-  { id: 'followup',    label: 'Follow-up',       color: '#f59e0b', matches: ['negotiation', 'followup'] },
-  { id: 'closed_won',  label: 'Won',             color: '#16a34a', matches: ['closed_won'] },
-  { id: 'closed_lost', label: 'Lost',            color: '#dc2626', matches: ['closed_lost'] },
-]
-
-/** Maps droppable column id → the primary DB stage value sent to the API */
-const COLUMN_TO_STAGE: Record<string, string> = {
-  lead: 'lead', discovery: 'discovery', assessment: 'assessment',
-  demo_prop: 'proposal_demo', followup: 'followup',
-  closed_won: 'closed_won', closed_lost: 'closed_lost',
-}
-
-/** Stage ordering for forward-only drag constraint */
-const STAGE_ORDER: Record<string, number> = {
-  lead: 0, discovery: 1, assessment: 2, qualified: 2,
-  demo: 3, proposal: 3, proposal_demo: 3,
-  negotiation: 4, followup: 4,
-  closed_won: 5, closed_lost: 5,
-}
-
-/** Maps a stage to the next stage when advancing */
-const STAGE_ADVANCE_MAP: Record<string, string> = {
-  lead: 'discovery', discovery: 'assessment',
-  assessment: 'proposal_demo', qualified: 'proposal_demo',
-  demo: 'proposal_demo', proposal: 'proposal_demo',
-  proposal_demo: 'followup', negotiation: 'followup',
-  followup: 'closed_won',
-}
-
-const CLOSED_IDS = new Set(['closed_won', 'closed_lost'])
-
-/** Get all stages a deal can advance to (forward only, excluding current) */
-function getAdvanceTargets(currentStage: string): { id: string; label: string; color: string; dbStage: string }[] {
-  const currentOrder = STAGE_ORDER[currentStage] ?? 0
-  return KANBAN_STAGES
-    .filter(col => {
-      const colOrder = STAGE_ORDER[COLUMN_TO_STAGE[col.id]] ?? 0
-      return colOrder > currentOrder
-    })
-    .map(col => ({ id: col.id, label: col.label, color: col.color, dbStage: COLUMN_TO_STAGE[col.id] }))
-}
-
-/** Get all stages a deal can move back to (backward, excluding current) */
-function getMoveBackTargets(currentStage: string): { id: string; label: string; color: string; dbStage: string }[] {
-  const currentOrder = STAGE_ORDER[currentStage] ?? 0
-  return KANBAN_STAGES
-    .filter(col => {
-      const colOrder = STAGE_ORDER[COLUMN_TO_STAGE[col.id]] ?? 0
-      return colOrder < currentOrder
-    })
-    .map(col => ({ id: col.id, label: col.label, color: col.color, dbStage: COLUMN_TO_STAGE[col.id] }))
 }
 
 // --- Spinner ---
@@ -717,7 +643,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     return () => clearTimeout(timer)
   }, [isLoading, searchParams, router])
 
-  const activeDeals = filteredDeals.filter(d => !CLOSED_IDS.has(d.stage))
+  const activeDeals = filteredDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))
   const totalValue = activeDeals.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
 
   const columnDeals = KANBAN_STAGES.map(col => ({
@@ -909,7 +835,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                       <span className="text-[12px] tabular-nums font-medium" style={{ color: col.total > 0 ? col.color : undefined, opacity: col.total > 0 ? 1 : 0.4 }}>
                         {col.total > 0 ? formatPeso(col.total) : '—'}
                       </span>
-                      {totalValue > 0 && col.total > 0 && !CLOSED_IDS.has(col.id) && (
+                      {totalValue > 0 && col.total > 0 && !CLOSED_STAGE_IDS.has(col.id) && (
                         <span className="text-[10px] text-slate-400 tabular-nums">
                           ({Math.round((col.total / totalValue) * 100)}%)
                         </span>

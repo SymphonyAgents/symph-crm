@@ -14,53 +14,20 @@ import {
   RecentActivitySkeleton,
 } from './Skeletons'
 import { queryKeys } from '@/lib/query-keys'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-
-type ApiDeal = {
-  id: string
-  title: string
-  value: string | null
-  stage: string
-  companyId: string
-  assignedTo: string | null
-  lastActivityAt: string | null
-}
-
-type PipelineSummary = {
-  totalDeals: number
-  activeDeals: number
-  totalPipeline: number
-  avgDealSize: number
-  winRate: number
-  dealsByStage: { stage: string; count: number; totalValue: number }[]
-}
-
-function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return `P${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `P${(n / 1_000).toFixed(0)}K`
-  return `P${n.toLocaleString()}`
-}
-
-function timeAgo(iso: string | null): string {
-  if (!iso) return 'No activity'
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000
-  if (diff < 60) return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return `${Math.floor(diff / 86400)}d ago`
-}
+import { formatCurrency, timeAgo } from '@/lib/utils'
+import { API_BASE } from '@/lib/constants'
+import type { ApiDeal, PipelineSummary } from '@/lib/types'
 
 export function Dashboard() {
   const { data: summary, isLoading: loadingSummary } = useQuery<PipelineSummary>({
     queryKey: queryKeys.pipeline.summary,
-    queryFn: () => fetch(`${API}/pipeline/summary`).then(r => r.json()),
+    queryFn: () => fetch(`${API_BASE}/pipeline/summary`).then(r => r.json()),
     staleTime: 60_000,
   })
 
   const { data: deals = [], isLoading: loadingDeals } = useQuery<ApiDeal[]>({
     queryKey: queryKeys.deals.all,
-    queryFn: () => fetch(`${API}/deals`).then(r => r.json()),
+    queryFn: () => fetch(`${API_BASE}/deals`).then(r => r.json()),
   })
 
   const isLoading = loadingSummary || loadingDeals

@@ -9,164 +9,15 @@ import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ApiDealDetail = {
-  id: string
-  companyId: string
-  title: string
-  stage: string
-  value: string | null
-  servicesTags: string[] | null
-  outreachCategory: string | null
-  pricingModel: string | null
-  assignedTo: string | null
-  lastActivityAt: string | null
-  closeDate: string | null
-  probability: number | null
-  isFlagged: boolean | null
-  flagReason: string | null
-  proposalLink: string | null
-  demoLink: string | null
-  createdAt: string
-}
-
-type ApiCompany = {
-  id: string
-  name: string
-  domain: string | null
-  industry: string | null
-  website: string | null
-}
-
-type ApiDocument = {
-  id: string
-  title: string
-  type: string
-  createdAt: string
-  authorId: string
-  excerpt: string | null
-  wordCount: number | null
-}
-
-type Activity = {
-  id: string
-  type: string
-  metadata: Record<string, unknown>
-  actorId: string | null
-  createdAt: string
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const STAGE_LABELS: Record<string, string> = {
-  lead: 'Lead', discovery: 'Discovery', assessment: 'Assessment',
-  qualified: 'Qualified', demo: 'Demo', proposal: 'Proposal',
-  proposal_demo: 'Demo + Proposal', negotiation: 'Negotiation',
-  followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
-}
-
-const STAGE_COLORS: Record<string, string> = {
-  lead: '#94a3b8', discovery: '#2563eb', assessment: '#7c3aed',
-  qualified: '#0369a1', demo: '#d97706', proposal: '#d97706',
-  proposal_demo: '#d97706', negotiation: '#f59e0b', followup: '#f59e0b',
-  closed_won: '#16a34a', closed_lost: '#dc2626',
-}
-
-const STAGE_ADVANCE_MAP: Record<string, string> = {
-  lead: 'discovery', discovery: 'assessment',
-  assessment: 'proposal_demo', qualified: 'proposal_demo',
-  demo: 'proposal_demo', proposal: 'proposal_demo',
-  proposal_demo: 'followup', negotiation: 'followup',
-  followup: 'closed_won',
-}
-
-const PROGRESS_STAGES = [
-  { id: 'lead',        label: 'Lead',           matches: ['lead'] },
-  { id: 'discovery',   label: 'Discovery',       matches: ['discovery'] },
-  { id: 'assessment',  label: 'Assessment',      matches: ['assessment', 'qualified'] },
-  { id: 'demo_prop',   label: 'Demo + Proposal', matches: ['demo', 'proposal', 'proposal_demo'] },
-  { id: 'followup',    label: 'Follow-up',       matches: ['negotiation', 'followup'] },
-  { id: 'won',         label: 'Won',             matches: ['closed_won'] },
-]
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  deal_created: 'Deal created', deal_stage_changed: 'Stage changed',
-  deal_updated: 'Deal updated', deal_value_changed: 'Value updated',
-  note_added: 'Note added', note_updated: 'Note updated',
-  file_uploaded: 'File uploaded', contact_added: 'Contact added',
-  company_created: 'Company created', company_updated: 'Company updated',
-  deal_won: 'Deal won', deal_lost: 'Deal lost',
-  proposal_created: 'Proposal created', proposal_sent: 'Proposal sent',
-  am_assigned: 'AM assigned', deal_flagged: 'Deal flagged',
-  deal_unflagged: 'Flag cleared', attachment_added: 'Attachment added',
-}
-
-const DOC_TYPE_LABELS: Record<string, string> = {
-  context: 'Context', discovery: 'Discovery', transcript_raw: 'Transcript',
-  transcript_clean: 'Transcript', meeting: 'Meeting', proposal: 'Proposal',
-  summary: 'Summary', email_thread: 'Email', company_profile: 'Profile',
-  weekly_digest: 'Digest', general: 'Note',
-}
-
-// Matches any stage to its progress bar index (0–5)
-function getStageProgressIndex(stage: string): number {
-  return PROGRESS_STAGES.findIndex(ps => ps.matches.includes(stage))
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCurrency(v: string | null): string {
-  if (!v) return '—'
-  const n = parseFloat(v)
-  if (isNaN(n)) return '—'
-  if (n >= 1_000_000) return '₱' + (n / 1_000_000).toFixed(2) + 'M'
-  if (n >= 1_000) return '₱' + (n / 1_000).toFixed(0) + 'K'
-  return '₱' + new Intl.NumberFormat('en-PH').format(n)
-}
-
-function formatCurrencyFull(v: string | null): string {
-  if (!v) return '—'
-  const n = parseFloat(v)
-  if (isNaN(n)) return '—'
-  return '₱' + new Intl.NumberFormat('en-PH').format(n)
-}
-
-function timeAgo(iso: string): string {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000
-  if (diff < 60) return 'just now'
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`
-  return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function getDaysInStage(activities: Activity[], createdAt: string): number {
-  const lastChange = activities
-    .filter(a => a.type === 'deal_stage_changed')
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
-  const since = lastChange ? lastChange.createdAt : createdAt
-  return Math.max(0, Math.floor((Date.now() - new Date(since).getTime()) / (1000 * 60 * 60 * 24)))
-}
-
-const BRAND_PALETTE = ['#2563eb', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16']
-function getBrandColor(name: string | null | undefined): string {
-  const str = name || 'default'
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
-  return BRAND_PALETTE[Math.abs(h) % BRAND_PALETTE.length]
-}
-
-function getInitials(name: string): string {
-  return name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase()
-}
+import {
+  cn, formatDealValue, formatCurrencyFull, timeAgo, formatDate,
+  getDaysInStage, getBrandColor, getInitials, getStageProgressIndex,
+} from '@/lib/utils'
+import type { ApiDealDetail, ApiCompanyDetail, ApiDocument, Activity } from '@/lib/types'
+import {
+  API_BASE, STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
+  PROGRESS_STAGES, ACTIVITY_LABELS, DOC_TYPE_LABELS,
+} from '@/lib/constants'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -304,31 +155,31 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const { data: deal, isLoading, isError } = useQuery<ApiDealDetail>({
     queryKey: queryKeys.deals.detail(dealId),
     queryFn: () =>
-      fetch(`${API}/deals/${dealId}`).then(r => {
+      fetch(`${API_BASE}/deals/${dealId}`).then(r => {
         if (!r.ok) throw new Error('Deal not found')
         return r.json()
       }),
     retry: false,
   })
 
-  const { data: company } = useQuery<ApiCompany>({
+  const { data: company } = useQuery<ApiCompanyDetail>({
     queryKey: queryKeys.companies.detail(deal?.companyId ?? ''),
     queryFn: () =>
-      fetch(`${API}/companies/${deal!.companyId}`).then(r => r.json()),
+      fetch(`${API_BASE}/companies/${deal!.companyId}`).then(r => r.json()),
     enabled: !!deal?.companyId,
   })
 
   const { data: activities = [], isLoading: loadingActivities } = useQuery<Activity[]>({
     queryKey: queryKeys.activities.byDeal(dealId),
     queryFn: () =>
-      fetch(`${API}/activities?dealId=${dealId}&limit=30`).then(r => r.json()),
+      fetch(`${API_BASE}/activities?dealId=${dealId}&limit=30`).then(r => r.json()),
     enabled: !!deal,
   })
 
   const { data: documents = [], isLoading: loadingDocs, refetch: refetchDocs } = useQuery<ApiDocument[]>({
     queryKey: ['documents', 'deal', dealId],
     queryFn: () =>
-      fetch(`${API}/documents?dealId=${dealId}`).then(r => r.json()),
+      fetch(`${API_BASE}/documents?dealId=${dealId}`).then(r => r.json()),
     enabled: !!deal,
   })
 
@@ -381,7 +232,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
     setAddingNote(true)
     try {
       const title = noteText.trim().split('\n')[0].slice(0, 100) || 'Note'
-      const res = await fetch(`${API}/documents`, {
+      const res = await fetch(`${API_BASE}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
         body: JSON.stringify({

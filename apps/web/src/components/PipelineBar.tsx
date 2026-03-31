@@ -1,42 +1,26 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-
-type ApiDealBrief = {
-  id: string
-  stage: string
-  value: string | null
-}
+import { KANBAN_STAGES } from '@/lib/constants'
 
 type PipelineBarProps = {
-  deals: ApiDealBrief[]
+  deals: { id: string; stage: string; value: string | null }[]
 }
-
-// IDs match Pipeline.tsx KANBAN_STAGES so ?stage= param resolves to the right column
-const SUMMARY_STAGES = [
-  { id: 'lead',         label: 'Lead',           color: '#94a3b8', matches: ['lead'] },
-  { id: 'discovery',   label: 'Discovery',       color: '#2563eb', matches: ['discovery'] },
-  { id: 'assessment',  label: 'Assessment',      color: '#7c3aed', matches: ['assessment', 'qualified'] },
-  { id: 'demo_prop',   label: 'Demo + Proposal', color: '#d97706', matches: ['demo', 'proposal', 'proposal_demo'] },
-  { id: 'followup',    label: 'Follow-up',       color: '#f59e0b', matches: ['negotiation', 'followup'] },
-  { id: 'closed_won',  label: 'Won',             color: '#16a34a', matches: ['closed_won'] },
-  { id: 'closed_lost', label: 'Lost',            color: '#dc2626', matches: ['closed_lost'] },
-]
 
 export function PipelineBar({ deals }: PipelineBarProps) {
   const router = useRouter()
-  const stageData = SUMMARY_STAGES.map((s, index) => ({
+  const stageData = KANBAN_STAGES.map((s, index) => ({
     ...s,
     count: deals.filter(d => s.matches.includes(d.stage)).length,
     position: index + 1,
   }))
 
   return (
-    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${SUMMARY_STAGES.length}, 1fr)` }}>
+    <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${KANBAN_STAGES.length}, 1fr)` }}>
       {stageData.map(s => {
         const hasDeals = s.count > 0
         // Fill proportional to stage position: lead=1/7, …, lost=7/7
-        const positionPct = Math.round((s.position / SUMMARY_STAGES.length) * 100)
+        const positionPct = Math.round((s.position / KANBAN_STAGES.length) * 100)
         const fillPct = hasDeals ? positionPct : 0
 
         return (

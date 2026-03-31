@@ -23,8 +23,7 @@ import { TableHeader } from '@tiptap/extension-table-header'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/hooks/use-user'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+import { API_BASE } from '@/lib/constants'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -119,7 +118,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
       isSavingRef.current = true
       try {
         const excerpt = html.replace(/<[^>]+>/g, '').slice(0, 500)
-        const res = await fetch(`${API}/documents/${documentId}`, {
+        const res = await fetch(`${API_BASE}/documents/${documentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
           body: JSON.stringify({
@@ -145,7 +144,7 @@ export default function ProposalEditor({ documentId, dealId, initialContent, onV
     if (!editor) return
     const html = editor.getHTML()
 
-    const res = await fetch(`${API}/documents`, {
+    const res = await fetch(`${API_BASE}/documents`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
       body: JSON.stringify({

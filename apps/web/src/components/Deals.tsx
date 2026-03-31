@@ -3,7 +3,9 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
-import { getInitials } from '@/lib/utils'
+import { getInitials, getBrandColor, formatDealValue, totalNumericValue } from '@/lib/utils'
+import { STAGE_DISPLAY, STAGE_COLORS, STAGE_DOT, CLOSED_STAGE_IDS } from '@/lib/constants'
+import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
 import { Avatar } from './Avatar'
 import { EmptyState } from './EmptyState'
 import { CreateBrandModal } from './CreateBrandModal'
@@ -15,87 +17,10 @@ import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
 type ViewMode = 'list' | 'graph'
 
-// --- API types (matching DB schema) ---
-
-export type ApiCompany = {
-  id: string
-  name: string
-  domain: string | null
-  industry: string | null
-  website: string | null
-  hqLocation: string | null
-  logoUrl: string | null
-  createdAt: string
-}
-
-export type ApiDeal = {
-  id: string
-  companyId: string
-  title: string
-  stage: string
-  value: string | null
-  servicesTags: string[] | null
-  outreachCategory: string | null
-  pricingModel: string | null
-  assignedTo: string | null
-  lastActivityAt: string | null
-  createdAt: string
-}
-
-// --- Stage display config ---
-
-const STAGE_DISPLAY: Record<string, { label: string; bg: string; color: string }> = {
-  lead:          { label: 'Lead',            bg: '#f1f5f9',                 color: '#475569' },
-  discovery:     { label: 'Discovery',       bg: 'rgba(37,99,235,0.08)',   color: '#2563eb' },
-  assessment:    { label: 'Assessment',      bg: 'rgba(124,58,237,0.08)', color: '#7c3aed' },
-  qualified:     { label: 'Qualified',       bg: 'rgba(14,165,233,0.08)', color: '#0369a1' },
-  demo:          { label: 'Demo',            bg: 'rgba(217,119,6,0.08)',  color: '#d97706' },
-  proposal:      { label: 'Proposal',        bg: 'rgba(217,119,6,0.08)',  color: '#d97706' },
-  proposal_demo: { label: 'Demo + Proposal', bg: 'rgba(217,119,6,0.08)', color: '#d97706' },
-  negotiation:   { label: 'Negotiation',     bg: 'rgba(245,158,11,0.08)', color: '#92400e' },
-  followup:      { label: 'Follow-up',       bg: 'rgba(245,158,11,0.08)', color: '#92400e' },
-  closed_won:    { label: 'Won',             bg: 'rgba(22,163,74,0.08)',  color: '#16a34a' },
-  closed_lost:   { label: 'Lost',            bg: 'rgba(220,38,38,0.08)', color: '#dc2626' },
-}
-
-const STAGE_DOT: Record<string, string> = {
-  lead: '#94a3b8', discovery: '#2563eb', assessment: '#7c3aed',
-  qualified: '#0369a1', demo: '#d97706', proposal: '#d97706',
-  proposal_demo: '#d97706', negotiation: '#f59e0b', followup: '#f59e0b',
-  closed_won: '#16a34a', closed_lost: '#dc2626',
-}
-
-const CLOSED_STAGES = new Set(['closed_won', 'closed_lost'])
-
-// Deterministic brand color from name
-const PALETTE = ['var(--primary)','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
-function getBrandColor(name: string | null | undefined): string {
-  const str = name || 'default'
-  let h = 0
-  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h)
-  return PALETTE[Math.abs(h) % PALETTE.length]
-}
-
-function formatValue(v: string | null): string {
-  if (!v) return '—'
-  const n = parseFloat(v)
-  if (isNaN(n)) return '—'
-  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return 'P' + Math.round(n / 1_000) + 'K'
-  return 'P' + new Intl.NumberFormat('en-PH').format(n)
-}
-
-function totalNumericValue(deals: ApiDeal[]): number {
-  return deals.reduce((s, d) => {
-    const n = parseFloat(d.value || '0')
-    return s + (isNaN(n) ? 0 : n)
-  }, 0)
-}
-
 // --- Sub-components ---
 
 type BrandGroup = {
-  company: ApiCompany
+  company: ApiCompanyDetail
   color: string
   deals: ApiDeal[]
   totalValue: number
@@ -181,7 +106,7 @@ function BrandDetailModal({
           <div className="text-[12px]">
             <span className="text-slate-400">Value:</span>{' '}
             <span className="font-semibold tabular-nums" style={{ color: group.color }}>
-              {group.totalValue > 0 ? formatValue(String(group.totalValue)) : '—'}
+              {group.totalValue > 0 ? formatDealValue(String(group.totalValue)) : '—'}
             </span>
           </div>
         </div>
@@ -204,7 +129,7 @@ function BrandDetailModal({
                 >
                   <div
                     className="w-2 h-2 rounded-full shrink-0"
-                    style={{ background: STAGE_DOT[deal.stage] || '#94a3b8' }}
+                    style={{ background: STAGE_COLORS[deal.stage] || '#94a3b8' }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13px] font-medium text-slate-900 dark:text-white truncate">
@@ -222,7 +147,7 @@ function BrandDetailModal({
                   </div>
                   <StagePill stage={deal.stage} />
                   <div className="text-[13px] font-medium text-slate-700 dark:text-slate-300 tabular-nums whitespace-nowrap">
-                    {formatValue(deal.value)}
+                    {formatDealValue(deal.value)}
                   </div>
                 </div>
               )
@@ -237,7 +162,7 @@ function BrandDetailModal({
 function BrandHeader({
   group, expanded, onToggle, onOpenModal,
 }: { group: BrandGroup; expanded: boolean; onToggle: () => void; onOpenModal: () => void }) {
-  const totalStr = group.totalValue > 0 ? formatValue(String(group.totalValue)) : '—'
+  const totalStr = group.totalValue > 0 ? formatDealValue(String(group.totalValue)) : '—'
 
   return (
     <div
@@ -341,7 +266,7 @@ function DealRow({
         <StagePill stage={deal.stage} />
       </div>
       <div className="text-[13px] font-medium text-slate-700 dark:text-slate-300 tabular-nums text-right whitespace-nowrap">
-        {formatValue(deal.value)}
+        {formatDealValue(deal.value)}
       </div>
       <div className="hidden sm:flex items-center justify-end">
         {deal.outreachCategory && (
@@ -362,7 +287,7 @@ function DealRow({
 
 // --- Data fetching ---
 
-async function fetchCompanies(): Promise<ApiCompany[]> {
+async function fetchCompanies(): Promise<ApiCompanyDetail[]> {
   const res = await fetch('/api/companies')
   if (!res.ok) throw new Error('Failed to fetch companies')
   return res.json()
@@ -373,6 +298,10 @@ async function fetchDeals(): Promise<ApiDeal[]> {
   if (!res.ok) throw new Error('Failed to fetch deals')
   return res.json()
 }
+
+// Re-export types for components that import from Deals.tsx (legacy)
+export type { ApiCompanyDetail as ApiCompany } from '@/lib/types'
+export type { ApiDeal } from '@/lib/types'
 
 // --- Main component ---
 
@@ -417,7 +346,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const isLoading = loadingCompanies || loadingDeals
 
   const companyMap = useMemo(() => {
-    const m = new Map<string, ApiCompany>()
+    const m = new Map<string, ApiCompanyDetail>()
     for (const c of companies) m.set(c.id, c)
     return m
   }, [companies])
@@ -441,7 +370,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
         color: getBrandColor(company.name),
         deals: cDeals,
         totalValue: totalNumericValue(cDeals),
-        activeCount: cDeals.filter(d => !CLOSED_STAGES.has(d.stage)).length,
+        activeCount: cDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)).length,
       })
     }
 
@@ -462,7 +391,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
         color: getBrandColor('No Brand'),
         deals: unassignedDeals,
         totalValue: totalNumericValue(unassignedDeals),
-        activeCount: unassignedDeals.filter(d => !CLOSED_STAGES.has(d.stage)).length,
+        activeCount: unassignedDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)).length,
       })
     }
 
@@ -512,7 +441,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   }
 
   const totalDeals = deals.length
-  const activePipeline = totalNumericValue(deals.filter(d => !CLOSED_STAGES.has(d.stage)))
+  const activePipeline = totalNumericValue(deals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)))
 
   const brandModalGroup = brandModalId ? groups.find(g => g.company.id === brandModalId) ?? null : null
 
@@ -553,7 +482,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
             <div className="text-[11px] text-slate-400 mt-0.5">
               {isLoading
                 ? 'Loading…'
-                : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatValue(String(activePipeline)) + ' pipeline' : 'No pipeline value'}`
+                : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' pipeline' : 'No pipeline value'}`
               }
             </div>
           </div>

@@ -3,83 +3,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import {
+  cn, htmlToText, formatRelativeDate, formatChatTime, formatDateSeparator,
+  isSameDay, getInitials, avatarColor, parseDisplayName, replySubject,
+} from '@/lib/utils'
+import type { GmailMessage, GmailThread, InboxResponse, FilterTab } from '@/lib/types'
+import { API_BASE } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { ComposeWindow } from './ComposeWindow'
 import { MoreHorizontal, Archive, Trash2, Mail } from 'lucide-react'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-
-// ─── HTML-to-text extractor ───────────────────────────────────────────────────
-//
-// Converts email HTML to readable plain text for native CRM rendering.
-// Avoids iframes (which break dark mode) by stripping markup and preserving
-// paragraph structure.
-
-function htmlToText(html: string): string {
-  return html
-    // Block-level closers → newline
-    .replace(/<\/(p|div|tr|li|blockquote|h[1-6]|table|ul|ol|section|article|header|footer|br)[^>]*>/gi, '\n')
-    // Self-closing br
-    .replace(/<br\s*\/?>/gi, '\n')
-    // Preserve link text: <a href="...">label</a> → label
-    .replace(/<a[^>]*>([^<]*)<\/a>/gi, '$1')
-    // Strip remaining tags
-    .replace(/<[^>]+>/g, '')
-    // Decode common HTML entities
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&apos;/g, "'")
-    // Collapse lines that are purely whitespace
-    .replace(/\n[ \t]+\n/g, '\n\n')
-    // Collapse 3+ consecutive newlines to 2
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type GmailMessage = {
-  id: string
-  rfcMessageId: string
-  subject: string
-  from: string
-  fromEmail: string
-  to: string
-  cc: string[]
-  date: string
-  snippet: string
-  unread: boolean
-  bodyHtml?: string
-  bodyText?: string
-}
-
-type GmailThread = {
-  id: string
-  subject: string
-  from: string
-  fromEmail: string
-  latestDate: string
-  snippet: string
-  unread: boolean
-  messageCount: number
-  cc: string[]
-  messages: GmailMessage[]
-}
-
-type InboxResponse = {
-  threads: GmailThread[]
-  fetchedAt: string
-  needsReconnect?: boolean
-  error?: string
-}
-
-type FilterTab = 'all' | 'unread'
 
 interface ComposeState {
   to: string[]
@@ -88,60 +21,6 @@ interface ComposeState {
   threadId?: string
   inReplyTo?: string
   mode: 'compose' | 'reply'
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatRelativeDate(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-  if (diffDays === 0) return date.toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7) return date.toLocaleDateString('en-PH', { weekday: 'short' })
-  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
-}
-
-function formatChatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-}
-
-function formatDateSeparator(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Yesterday'
-  return date.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })
-}
-
-function isSameDay(a: string, b: string): boolean {
-  const da = new Date(a), db = new Date(b)
-  return da.getFullYear() === db.getFullYear() &&
-    da.getMonth() === db.getMonth() &&
-    da.getDate() === db.getDate()
-}
-
-function getInitials(name: string): string {
-  return name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase()
-}
-
-const AVATAR_COLORS = ['#6c63ff','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16']
-function avatarColor(email: string): string {
-  let h = 0
-  for (let i = 0; i < email.length; i++) h = email.charCodeAt(i) + ((h << 5) - h)
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length]
-}
-
-function parseDisplayName(address: string): string {
-  const match = address.match(/^(.+?)\s*<.+>$/)
-  if (match) return match[1].trim().replace(/^["']|["']$/g, '')
-  return address.split('@')[0]
-}
-
-function replySubject(subject: string): string {
-  return subject.toLowerCase().startsWith('re:') ? subject : `Re: ${subject}`
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────────
@@ -818,7 +697,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
       {/* Connect banner — shown when Google not connected */}
       {needsReconnect && (
         <ConnectBanner
-          connectUrl={`${API}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Finbox`}
+          connectUrl={`${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Finbox`}
         />
       )}
 

@@ -4,56 +4,14 @@ import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from './EmptyState'
 import { queryKeys } from '@/lib/query-keys'
+import { formatCurrency } from '@/lib/utils'
+import { API_BASE, STAGE_LABELS, STAGE_COLORS } from '@/lib/constants'
+import type { PipelineSummary, ApiDeal } from '@/lib/types'
 
-// --- Types ---
-type PipelineSummary = {
-  totalDeals: number
-  activeDeals: number
-  totalPipeline: number
-  avgDealSize: number
-  winRate: number
-  dealsByStage: Array<{
-    stage: string
-    count: number
-    totalValue: number
-  }>
-}
-
-type ApiDeal = {
-  id: string
-  value: string | null
-  stage: string
-  assignedTo: string | null
-}
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-
-// --- Stage config ---
-const STAGE_LABELS: Record<string, string> = {
-  lead: 'Lead', discovery: 'Discovery', assessment: 'Assessment',
-  qualified: 'Qualified', demo: 'Demo', proposal: 'Proposal',
-  proposal_demo: 'Demo+Prop', negotiation: 'Negotiation',
-  followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
-}
-
-const STAGE_COLORS: Record<string, string> = {
-  lead: '#94a3b8', discovery: '#2563eb', assessment: '#7c3aed',
-  qualified: '#0369a1', demo: '#d97706', proposal: '#d97706',
-  proposal_demo: '#d97706', negotiation: '#f59e0b', followup: '#f59e0b',
-  closed_won: '#16a34a', closed_lost: '#dc2626',
-}
-
-// --- Fetch ---
 async function fetchPipelineSummary(): Promise<PipelineSummary> {
   const res = await fetch('/api/pipeline/summary')
   if (!res.ok) throw new Error('Failed to fetch pipeline summary')
   return res.json()
-}
-
-function formatCurrency(n: number): string {
-  if (n >= 1_000_000) return 'P' + (n / 1_000_000).toFixed(1) + 'M'
-  if (n >= 1_000) return 'P' + (n / 1_000).toFixed(0) + 'K'
-  return 'P' + n.toLocaleString()
 }
 
 function Spinner() {
@@ -73,7 +31,7 @@ export function Reports() {
 
   const { data: deals = [], isLoading: loadingDeals } = useQuery<ApiDeal[]>({
     queryKey: queryKeys.deals.all,
-    queryFn: () => fetch(`${API}/deals`).then(r => r.json()),
+    queryFn: () => fetch(`${API_BASE}/deals`).then(r => r.json()),
   })
 
   const closedWon = summary?.dealsByStage.find(s => s.stage === 'closed_won')
