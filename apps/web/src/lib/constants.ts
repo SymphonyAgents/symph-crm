@@ -140,6 +140,68 @@ export const PROGRESS_STAGES = [
   { id: 'won',         label: 'Won',             matches: ['closed_won'] },
 ]
 
+// ─── Service Types ───────────────────────────────────────────────────────────
+
+export type ServiceOption = {
+  readonly value: string
+  readonly label: string
+  readonly children?: readonly ServiceOption[]
+}
+
+export const SERVICE_TYPES: readonly ServiceOption[] = [
+  { value: 'agency',            label: 'The Agency' },
+  { value: 'consulting',        label: 'Consulting' },
+  { value: 'staff_augmenting',  label: 'Staff Augmenting' },
+  { value: 'internal_products', label: 'Internal Products' },
+  {
+    value: 'reseller',
+    label: 'Reseller',
+    children: [
+      { value: 'reseller_josys',    label: 'Josys' },
+      { value: 'reseller_gcp',      label: 'Google SCC - GCP' },
+      { value: 'reseller_apigee',   label: 'Google Apigee' },
+      { value: 'reseller_gws',      label: 'GWS' },
+    ],
+  },
+]
+
+/** Flat list of all service values (top-level + children) for validation */
+export const ALL_SERVICE_VALUES = SERVICE_TYPES.flatMap(s =>
+  s.children ? [s.value, ...s.children.map(c => c.value)] : [s.value],
+)
+
+// ─── Industry Options ────────────────────────────────────────────────────────
+
+export const INDUSTRY_OPTIONS = [
+  'Agriculture',
+  'Automotive',
+  'Banking & Finance',
+  'BPO / Outsourcing',
+  'Construction',
+  'Consumer Goods / FMCG',
+  'E-commerce',
+  'Education',
+  'Energy & Utilities',
+  'Entertainment & Media',
+  'F&B / Food Service',
+  'Fintech',
+  'Government',
+  'Healthcare',
+  'Hospitality & Tourism',
+  'Insurance',
+  'Legal',
+  'Logistics & Supply Chain',
+  'Manufacturing',
+  'Mining',
+  'Non-Profit / NGO',
+  'Pharmaceuticals',
+  'Real Estate',
+  'Retail',
+  'SaaS / Software',
+  'Telecommunications',
+  'Transportation',
+] as const
+
 // ─── Deal Detail Display Maps ────────────────────────────────────────────────
 
 export const ACTIVITY_LABELS: Record<string, string> = {

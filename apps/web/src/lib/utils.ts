@@ -27,12 +27,11 @@ export function formatCurrency(n: number): string {
   return `P${n.toLocaleString()}`
 }
 
-/** Full currency display — "P 1,234,567.00" */
-export function formatCurrencyFull(v: string | null): string {
-  if (!v) return '—'
-  const n = parseFloat(v)
-  if (isNaN(n)) return '—'
-  return `P ${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+/** Full currency display — "₱1,234,567.00" (shows ₱0.00 for null/zero) */
+export function formatCurrencyFull(v: string | null | undefined): string {
+  const n = v ? parseFloat(v) : 0
+  if (isNaN(n)) return '\u20B10.00'
+  return `\u20B1${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 /** Compact deal value display — "P1.2M" or "—" for null */

@@ -3,9 +3,11 @@
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
+import { Combobox } from '@/components/ui/combobox'
 import { useCreateCompany } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
+import { INDUSTRY_OPTIONS } from '@/lib/constants'
 
 type Props = {
   onClose: () => void
@@ -44,11 +46,11 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4"
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -86,11 +88,12 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Industry</label>
-              <Input
+              <Combobox
+                options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
                 value={industry}
-                onChange={e => setIndustry(e.target.value)}
-                placeholder="e.g. F&B, Fintech"
-                className="h-9 text-[13px]"
+                onValueChange={setIndustry}
+                placeholder="Search industry..."
+                allowCustom
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -145,7 +148,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
               className="flex-1 h-9 rounded-lg text-[13px] font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
-              {isPending ? 'Creating…' : 'Create Brand'}
+              {isPending ? 'Creating\u2026' : 'Create Brand'}
             </button>
           </div>
         </form>

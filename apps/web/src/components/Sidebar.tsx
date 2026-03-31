@@ -87,7 +87,7 @@ function LogoutConfirmModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[9998] flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
       onClick={onCancel}
     >
       <div

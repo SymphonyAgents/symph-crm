@@ -10,17 +10,53 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Combobox } from '@/components/ui/combobox'
 import { useCreateDeal } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
-import { STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS } from '@/lib/constants'
+import {
+  STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SERVICE_TYPES,
+} from '@/lib/constants'
 import type { ApiCompanyDetail, ApiProduct, ApiTier } from '@/lib/types'
 
 type Props = {
   companies: ApiCompanyDetail[]
   onClose: () => void
   onCreated: () => void
+}
+
+/** Flatten SERVICE_TYPES for display in grouped select */
+function ServiceSelect({ value, onValueChange }: { value: string; onValueChange: (v: string) => void }) {
+  return (
+    <Select value={value || '__none__'} onValueChange={v => onValueChange(v === '__none__' ? '' : v)}>
+      <SelectTrigger className="h-9 text-[13px]">
+        <SelectValue placeholder="Select service" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="__none__" className="text-[13px] text-slate-400">No service</SelectItem>
+        {SERVICE_TYPES.map(svc => (
+          svc.children ? (
+            <div key={svc.value}>
+              {/* Parent label */}
+              <div className="px-2 pt-2 pb-1 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                {svc.label}
+              </div>
+              {svc.children.map(child => (
+                <SelectItem key={child.value} value={child.value} className="text-[13px] pl-5">
+                  {child.label}
+                </SelectItem>
+              ))}
+            </div>
+          ) : (
+            <SelectItem key={svc.value} value={svc.value} className="text-[13px]">
+              {svc.label}
+            </SelectItem>
+          )
+        ))}
+      </SelectContent>
+    </Select>
+  )
 }
 
 export function CreateDealModal({ companies, onClose, onCreated }: Props) {
@@ -32,7 +68,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   const [value, setValue] = useState('')
   const [outreachCategory, setOutreachCategory] = useState('')
   const [pricingModel, setPricingModel] = useState('')
-  const [servicesTags, setServicesTags] = useState('')
+  const [serviceType, setServiceType] = useState('')
   const [productId, setProductId] = useState('')
   const [tierId, setTierId] = useState('')
 
@@ -46,7 +82,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
       if (!res.ok) throw new Error('Failed to fetch products')
       return res.json()
     },
-    staleTime: Infinity, // products/tiers are reference data — never stale
+    staleTime: Infinity,
   })
 
   const { data: tiers = [] } = useQuery<ApiTier[]>({
@@ -59,14 +95,13 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
     staleTime: Infinity,
   })
 
-  // Auto-select first product/tier when there's only one (standard for now)
+  // Auto-select first product/tier when there's only one
   const effectiveProductId = productId || (products.length === 1 ? products[0].id : '')
   const effectiveTierId = tierId || (tiers.length === 1 ? tiers[0].id : '')
 
   const { mutate, isPending, error } = useCreateDeal({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-      // Also invalidate company-specific deals if we ever have that query
       if (companyId) qc.invalidateQueries({ queryKey: queryKeys.companies.deals(companyId) })
       onCreated()
     },
@@ -74,15 +109,16 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !effectiveProductId || !effectiveTierId) return
+    if (!title.trim()) return
 
-    const tags = servicesTags.split(',').map(s => s.trim()).filter(Boolean)
+    // Build tags from the selected service type
+    const tags = serviceType ? [serviceType] : []
 
     mutate({
       title: title.trim(),
       companyId: companyId || null,
-      productId: effectiveProductId,
-      tierId: effectiveTierId,
+      productId: effectiveProductId || null,
+      tierId: effectiveTierId || null,
       stage,
       value: value.trim() || null,
       outreachCategory: outreachCategory || null,
@@ -93,15 +129,16 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
     })
   }
 
-  const canSubmit = title.trim() && effectiveProductId && effectiveTierId
+  // Product + tier are now optional — only title is required
+  const canSubmit = !!title.trim()
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-white/50 dark:bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.12)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
@@ -137,46 +174,44 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
             />
           </div>
 
-          {/* Brand / Company */}
+          {/* Brand / Company — use combobox since companies list can grow large */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">
               Brand <span className="text-slate-400">(optional)</span>
             </label>
-            <Select value={companyId || '__none__'} onValueChange={v => setCompanyId(v === '__none__' ? '' : v)}>
-              <SelectTrigger className="h-9 text-[13px]">
-                <SelectValue placeholder="No brand" />
-              </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__" className="text-[13px] text-slate-400">No brand</SelectItem>
-                  {companies.map(c => (
-                    <SelectItem key={c.id} value={c.id} className="text-[13px]">
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <Combobox
+              options={[
+                { value: '', label: 'No brand' },
+                ...companies.map(c => ({ value: c.id, label: c.name })),
+              ]}
+              value={companyId}
+              onValueChange={setCompanyId}
+              placeholder="Search brands..."
+            />
+          </div>
+
+          {/* Service Type */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Service</label>
+            <ServiceSelect value={serviceType} onValueChange={setServiceType} />
           </div>
 
           {/* Stage + Outreach */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Stage</label>
-              <Select value={stage} onValueChange={setStage}>
-                <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STAGE_OPTIONS.map(s => (
-                    <SelectItem key={s.value} value={s.value} className="text-[13px]">{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={STAGE_OPTIONS}
+                value={stage}
+                onValueChange={setStage}
+                placeholder="Select stage..."
+              />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Outreach</label>
               <Select value={outreachCategory} onValueChange={setOutreachCategory}>
                 <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue placeholder="—" />
+                  <SelectValue placeholder="\u2014" />
                 </SelectTrigger>
                 <SelectContent>
                   {OUTREACH_OPTIONS.map(o => (
@@ -190,7 +225,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           {/* Value + Pricing Model */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (P)</label>
+              <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (\u20B1)</label>
               <Input
                 value={value}
                 onChange={e => setValue(e.target.value.replace(/[^0-9.]/g, ''))}
@@ -202,7 +237,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Pricing Model</label>
               <Select value={pricingModel} onValueChange={setPricingModel}>
                 <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue placeholder="—" />
+                  <SelectValue placeholder="\u2014" />
                 </SelectTrigger>
                 <SelectContent>
                   {PRICING_OPTIONS.map(p => (
@@ -213,28 +248,15 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
             </div>
           </div>
 
-          {/* Services Tags */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">
-              Services <span className="text-slate-300 normal-case font-normal">(comma-separated)</span>
-            </label>
-            <Input
-              value={servicesTags}
-              onChange={e => setServicesTags(e.target.value)}
-              placeholder="e.g. AI Agents, Web Dev, Design"
-              className="h-9 text-[13px]"
-            />
-          </div>
-
           {/* Product + Tier (only shown when more than one option) */}
           {(products.length > 1 || tiers.length > 1) && (
             <div className="grid grid-cols-2 gap-3">
               {products.length > 1 && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Product <span className="text-red-400">*</span></label>
+                  <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Product</label>
                   <Select value={productId} onValueChange={setProductId}>
                     <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select…" />
+                      <SelectValue placeholder="Select\u2026" />
                     </SelectTrigger>
                     <SelectContent>
                       {products.map(p => (
@@ -246,10 +268,10 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               )}
               {tiers.length > 1 && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Tier <span className="text-red-400">*</span></label>
+                  <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Tier</label>
                   <Select value={tierId} onValueChange={setTierId}>
                     <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select…" />
+                      <SelectValue placeholder="Select\u2026" />
                     </SelectTrigger>
                     <SelectContent>
                       {tiers.map(t => (
@@ -282,7 +304,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               className="flex-1 h-9 rounded-lg text-[13px] font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
-              {isPending ? 'Creating…' : 'Create Deal'}
+              {isPending ? 'Creating\u2026' : 'Create Deal'}
             </button>
           </div>
         </form>
