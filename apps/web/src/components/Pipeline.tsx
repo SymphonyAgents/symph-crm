@@ -579,14 +579,15 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
         d.title.toLowerCase().includes(q) ||
         d.stage.toLowerCase().includes(q) ||
         (d.servicesTags ?? []).some(s => s.toLowerCase().includes(q)) ||
-        (d.assignedTo || '').toLowerCase().includes(q)
+        (d.assignedTo || '').toLowerCase().includes(q) ||
+        (companyMap.get(d.companyId) || '').toLowerCase().includes(q)
       )
     }
     if (amFilter) {
       result = result.filter(d => d.assignedTo === amFilter)
     }
     return result
-  }, [deals, search, amFilter])
+  }, [deals, search, amFilter, companyMap])
 
   const handleDeleteDeal = useCallback((dealId: string) => {
     setDeleteConfirmDealId(dealId)

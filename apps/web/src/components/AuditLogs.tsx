@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { type ColumnDef } from '@tanstack/react-table'
+import { DataTable, SortableHeader } from './ui/data-table'
 import { Avatar } from './Avatar'
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -92,21 +94,15 @@ function describeDetails(entry: AuditLogEntry): string {
   const details = entry.details
   if (!details) return ''
 
-  // Status change: "lead → discovery"
   if (entry.action === 'status_change' && details.from && details.to) {
     return `${details.from} → ${details.to}`
   }
-
-  // Update: list changed fields
   if (entry.action === 'update' && details.fields) {
     const fields = details.fields as string[]
     return fields.join(', ')
   }
-
-  // Create: show title/name if present
   if (details.title) return String(details.title)
   if (details.name) return String(details.name)
-
   return ''
 }
 
@@ -142,6 +138,105 @@ async function fetchUsers(): Promise<UserOption[]> {
   if (!res.ok) throw new Error('Failed to fetch users')
   return res.json()
 }
+
+// ── Column definitions ──────────────────────────────────────────────────────
+
+const columns: ColumnDef<AuditLogEntry>[] = [
+  {
+    accessorKey: 'createdAt',
+    header: ({ column }) => <SortableHeader column={column}>When</SortableHeader>,
+    size: 160,
+    cell: ({ row }) => (
+      <span
+        className="text-[12px] text-slate-600 dark:text-slate-400 tabular-nums"
+        title={formatFullDate(row.original.createdAt)}
+      >
+        {formatFullDate(row.original.createdAt)}
+      </span>
+    ),
+  },
+  {
+    accessorKey: 'action',
+    header: ({ column }) => <SortableHeader column={column}>Event</SortableHeader>,
+    size: 180,
+    cell: ({ row }) => {
+      const entry = row.original
+      const cfg = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.update
+      const details = describeDetails(entry)
+      return (
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="inline-flex items-center gap-1 font-medium px-1.5 py-px rounded-full text-[10.5px]"
+              style={{ background: cfg.bg, color: cfg.color }}
+            >
+              <span className="text-[11px] leading-none">{cfg.icon}</span>
+              {cfg.label}
+            </span>
+          </div>
+          {details && (
+            <span className="text-[11px] text-slate-400 truncate max-w-[200px]">{details}</span>
+          )}
+        </div>
+      )
+    },
+    filterFn: (row, _columnId, filterValue) => {
+      if (!filterValue || filterValue === 'all') return true
+      return row.original.action === filterValue
+    },
+  },
+  {
+    accessorKey: 'entityType',
+    header: ({ column }) => <SortableHeader column={column}>On</SortableHeader>,
+    size: 120,
+    cell: ({ row }) => {
+      const entry = row.original
+      const entityLabel = ENTITY_LABEL[entry.entityType] ?? entry.entityType
+      return (
+        <div className="flex flex-col">
+          <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300">{entityLabel}</span>
+          {entry.entityId && (
+            <span className="text-[10.5px] text-slate-400 font-mono">#{entry.entityId.slice(0, 8)}</span>
+          )}
+        </div>
+      )
+    },
+    filterFn: (row, _columnId, filterValue) => {
+      if (!filterValue || filterValue === 'all') return true
+      return row.original.entityType === filterValue
+    },
+  },
+  {
+    accessorKey: 'performerName',
+    header: ({ column }) => <SortableHeader column={column}>By</SortableHeader>,
+    size: 180,
+    cell: ({ row }) => {
+      const entry = row.original
+      return (
+        <div className="flex items-center gap-2">
+          <Avatar name={entry.performerName || 'System'} size={24} />
+          <span className="text-[12px] font-medium text-slate-700 dark:text-slate-300 truncate">
+            {entry.performerName || 'System'}
+          </span>
+        </div>
+      )
+    },
+  },
+  {
+    accessorKey: 'source',
+    header: 'Via',
+    size: 80,
+    cell: ({ row }) => {
+      const source = row.original.source
+      if (!source) return <span className="text-[11px] text-slate-300 dark:text-white/20">—</span>
+      return (
+        <span className="inline-block px-1.5 py-px rounded text-[10.5px] font-medium bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+          {source}
+        </span>
+      )
+    },
+  },
+]
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -195,7 +290,7 @@ export function AuditLogs() {
         <div>
           <div className="text-[13px] font-semibold text-slate-900 dark:text-white">Audit Log</div>
           <div className="text-[11px] text-slate-400 mt-0.5">
-            {isLoading ? 'Loading…' : `${total} event${total !== 1 ? 's' : ''}`}
+            {isLoading ? 'Loading...' : `${total} event${total !== 1 ? 's' : ''}`}
           </div>
         </div>
 
@@ -207,7 +302,7 @@ export function AuditLogs() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search logs…"
+              placeholder="Search logs..."
               className="flex-1 bg-transparent outline-none text-[12px] text-slate-900 dark:text-white placeholder:text-slate-400 min-w-0"
             />
           </div>
@@ -262,80 +357,24 @@ export function AuditLogs() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* DataTable */}
       <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <div className="text-[13px] text-slate-400">No audit events found</div>
-              <div className="text-[11px] text-slate-300 dark:text-white/20 mt-1">
-                {search || entityFilter !== 'all' || actionFilter !== 'all' || userFilter !== 'all'
-                  ? 'Try adjusting your filters'
-                  : 'Events will appear here as actions are performed'}
-              </div>
-            </div>
-          </div>
         ) : (
-          <div className="divide-y divide-black/[.04] dark:divide-white/[.06]">
-            {filtered.map(entry => {
-              const cfg = ACTION_CONFIG[entry.action] ?? ACTION_CONFIG.update
-              const entityLabel = ENTITY_LABEL[entry.entityType] ?? entry.entityType
-              const details = describeDetails(entry)
-
-              return (
-                <div
-                  key={entry.id}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-white/[.02] transition-colors"
-                >
-                  {/* Action icon */}
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[12px] font-bold shrink-0"
-                    style={{ background: cfg.bg, color: cfg.color }}
-                  >
-                    {cfg.icon}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 text-[12.5px]">
-                      <span className="font-semibold text-slate-900 dark:text-white truncate">
-                        {entry.performerName || 'System'}
-                      </span>
-                      <span
-                        className="font-medium px-1.5 py-px rounded-full text-[10px]"
-                        style={{ background: cfg.bg, color: cfg.color }}
-                      >
-                        {cfg.label}
-                      </span>
-                      <span className="text-slate-500">
-                        {entityLabel}
-                      </span>
-                    </div>
-                    {details && (
-                      <div className="text-[11px] text-slate-400 mt-0.5 truncate">
-                        {details}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Performer avatar */}
-                  <Avatar
-                    name={entry.performerName || 'System'}
-                    size={24}
-                  />
-
-                  {/* Timestamp */}
-                  <div className="text-[11px] text-slate-400 tabular-nums shrink-0 min-w-[60px] text-right" title={formatFullDate(entry.createdAt)}>
-                    {formatRelativeTime(entry.createdAt)}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            globalFilter={search}
+            emptyMessage="No audit events found"
+            emptyDescription={
+              search || entityFilter !== 'all' || actionFilter !== 'all' || userFilter !== 'all'
+                ? 'Try adjusting your filters'
+                : 'Events will appear here as actions are performed'
+            }
+          />
         )}
       </div>
 
@@ -343,7 +382,7 @@ export function AuditLogs() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-3 shrink-0">
           <span className="text-[11px] text-slate-400">
-            Page {page + 1} of {totalPages}
+            Page {page + 1} of {totalPages} ({total} total)
           </span>
           <div className="flex gap-1">
             <button
