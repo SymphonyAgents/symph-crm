@@ -124,7 +124,7 @@ function CardActionsMenu({
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o); setShowAssign(false) }}
-        className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors opacity-0 group-hover:opacity-100"
+        className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
       >
         <MoreHorizontal size={14} />
       </button>
@@ -382,6 +382,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [amFilter, setAmFilter] = useState<string | null>(null)
   const [amDropdownOpen, setAmDropdownOpen] = useState(false)
+  const [deleteConfirmDealId, setDeleteConfirmDealId] = useState<string | null>(null)
+  const [advanceConfirmDealId, setAdvanceConfirmDealId] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const amDropdownRef = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
@@ -468,24 +470,43 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   }, [deals, search, amFilter])
 
   const handleDeleteDeal = useCallback((dealId: string) => {
-    if (!confirm('Delete this deal? This action cannot be undone.')) return
-    deleteDeal.mutate(dealId, {
-      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
+    setDeleteConfirmDealId(dealId)
+  }, [])
+
+  const confirmDelete = useCallback(() => {
+    if (!deleteConfirmDealId) return
+    deleteDeal.mutate(deleteConfirmDealId, {
+      onSettled: () => {
+        setDeleteConfirmDealId(null)
+        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+      },
     })
-  }, [deleteDeal, queryClient])
+  }, [deleteConfirmDealId, deleteDeal, queryClient])
 
   const handleAdvanceDeal = useCallback((dealId: string, currentStage: string) => {
     const nextStage = STAGE_ADVANCE_MAP[currentStage]
     if (!nextStage) return
+    setAdvanceConfirmDealId(dealId)
+  }, [])
+
+  const confirmAdvance = useCallback(() => {
+    if (!advanceConfirmDealId) return
+    const deal = deals.find(d => d.id === advanceConfirmDealId)
+    if (!deal) return
+    const nextStage = STAGE_ADVANCE_MAP[deal.stage]
+    if (!nextStage) return
     const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
     queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
-      old?.map(d => d.id === dealId ? { ...d, stage: nextStage } : d) ?? []
+      old?.map(d => d.id === advanceConfirmDealId ? { ...d, stage: nextStage } : d) ?? []
     )
-    patchStage.mutate({ id: dealId, stage: nextStage }, {
+    patchStage.mutate({ id: advanceConfirmDealId, stage: nextStage }, {
       onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
-      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
+      onSettled: () => {
+        setAdvanceConfirmDealId(null)
+        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+      },
     })
-  }, [patchStage, queryClient])
+  }, [advanceConfirmDealId, deals, patchStage, queryClient])
 
   const handleAssignDeal = useCallback((dealId: string, assignedTo: string) => {
     const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
@@ -753,6 +774,56 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
           </DndContext>
         )}
       </div>
+
+      {/* Delete confirmation modal */}
+      {deleteConfirmDealId && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full sm:w-[420px] bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl p-4 animate-in slide-in-from-bottom duration-150">
+            <h2 className="text-[14px] font-semibold text-slate-900 dark:text-white mb-1">Delete deal?</h2>
+            <p className="text-[12px] text-slate-600 dark:text-slate-400 mb-4">This action cannot be undone. The deal will be permanently removed from your pipeline.</p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                onClick={() => setDeleteConfirmDealId(null)}
+                className="px-3.5 py-1.5 text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[.06] rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={deleteDeal.isPending}
+                className="px-3.5 py-1.5 text-[12px] font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 rounded-lg transition-colors active:scale-[0.98]"
+              >
+                {deleteDeal.isPending ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advance confirmation modal */}
+      {advanceConfirmDealId && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/30 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full sm:w-[420px] bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl p-4 animate-in slide-in-from-bottom duration-150">
+            <h2 className="text-[14px] font-semibold text-slate-900 dark:text-white mb-1">Advance deal?</h2>
+            <p className="text-[12px] text-slate-600 dark:text-slate-400 mb-4">The deal will be moved to the next pipeline stage.</p>
+            <div className="flex items-center gap-2 justify-end">
+              <button
+                onClick={() => setAdvanceConfirmDealId(null)}
+                className="px-3.5 py-1.5 text-[12px] font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[.06] rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAdvance}
+                disabled={patchStage.isPending}
+                className="px-3.5 py-1.5 text-[12px] font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-60 rounded-lg transition-colors active:scale-[0.98]"
+              >
+                {patchStage.isPending ? 'Advancing…' : 'Advance'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

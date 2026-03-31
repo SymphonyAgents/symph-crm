@@ -162,7 +162,6 @@ export function ComposeWindow({
   const [cc, setCc] = useState<string[]>(initialCc)
   const [subject, setSubject] = useState(initialSubject)
   const [body, setBody] = useState(initialBody)
-  const [showCc, setShowCc] = useState(initialCc.length > 0)
   const [minimized, setMinimized] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
 
@@ -173,7 +172,6 @@ export function ComposeWindow({
       setCc(initialCc)
       setSubject(initialSubject)
       setBody(initialBody)
-      setShowCc(initialCc.length > 0)
       setMinimized(false)
       setSendError(null)
     }
@@ -217,16 +215,16 @@ export function ComposeWindow({
   return (
     <div
       className={cn(
-        'fixed z-50 bg-card flex flex-col',
+        'fixed z-50 bg-card flex flex-col rounded-lg',
         // Mobile: full viewport overlay
         'inset-0',
         // Desktop: floating bottom-right widget
-        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-t-xl sm:shadow-[0_8px_40px_rgba(0,0,0,0.28)] sm:border sm:border-black/[.08] sm:dark:border-white/[.08]',
+        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-lg sm:shadow-[0_8px_40px_rgba(0,0,0,0.28)] sm:border sm:border-black/[.08] sm:dark:border-white/[.08]',
       )}
       onKeyDown={handleKeyDown}
     >
       {/* Title bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-900 shrink-0 cursor-default select-none">
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-900 shrink-0 cursor-default select-none rounded-t-lg sm:rounded-t-lg">
         <span className="text-[12.5px] font-semibold text-white">
           {mode === 'reply' ? 'Reply' : 'New Message'}
         </span>
@@ -264,23 +262,12 @@ export function ComposeWindow({
             autoFocus={to.length === 0}
           />
 
-          {showCc ? (
-            <AddressInput
-              label="Cc"
-              addresses={cc}
-              onChange={setCc}
-              placeholder="CC recipients"
-            />
-          ) : (
-            <div className="px-3.5 py-2 border-b border-black/[.06]">
-              <button
-                onClick={() => setShowCc(true)}
-                className="text-[11px] font-medium text-slate-400 dark:text-slate-500 hover:text-primary transition-colors"
-              >
-                + Add Cc
-              </button>
-            </div>
-          )}
+          <AddressInput
+            label="Cc"
+            addresses={cc}
+            onChange={setCc}
+            placeholder="CC recipients"
+          />
 
           {/* Subject */}
           <div className="px-3.5 border-b border-black/[.06] dark:border-white/[.06]">
@@ -330,7 +317,7 @@ export function ComposeWindow({
             </div>
             <button
               onClick={onClose}
-              className="w-7 h-7 flex items-center justify-center rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
               title="Discard"
             >
               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">

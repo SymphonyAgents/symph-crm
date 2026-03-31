@@ -209,11 +209,11 @@ function ConversationRow({
 function DateSeparator({ date }: { date: string }) {
   return (
     <div className="flex items-center gap-3 px-5 py-3">
-      <div className="flex-1 h-px bg-black/[.06]" />
-      <span className="text-[10.5px] font-medium text-slate-400 shrink-0">
+      <div className="flex-1 h-px bg-black/[.06] dark:bg-white/[.06]" />
+      <span className="text-[10.5px] font-medium text-slate-400 dark:text-slate-500 shrink-0">
         {formatDateSeparator(date)}
       </span>
-      <div className="flex-1 h-px bg-black/[.06]" />
+      <div className="flex-1 h-px bg-black/[.06] dark:bg-white/[.06]" />
     </div>
   )
 }
@@ -227,7 +227,6 @@ function ChatBubble({
   isMine: boolean
   showAvatar: boolean
 }) {
-  const [showBody, setShowBody] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   function handleIframeLoad() {
@@ -249,14 +248,13 @@ function ChatBubble({
       <div className={cn('flex flex-col max-w-[72%]', isMine ? 'items-end' : 'items-start')}>
         {/* Sender name — only for received, only when avatar shown */}
         {!isMine && showAvatar && (
-          <span className="text-[10.5px] font-semibold text-slate-500 mb-1 px-0.5">
+          <span className="text-[10.5px] font-semibold text-slate-500 dark:text-slate-400 mb-1 px-0.5">
             {message.from}
           </span>
         )}
 
         {/* Bubble */}
-        <button
-          onClick={() => setShowBody(v => !v)}
+        <div
           className={cn(
             'text-left rounded-2xl px-3.5 py-2.5 max-w-full transition-all duration-150',
             isMine
@@ -264,62 +262,42 @@ function ChatBubble({
               : 'bg-card border border-black/[.07] dark:border-white/[.07] text-slate-800 dark:text-slate-200 rounded-bl-sm hover:bg-secondary shadow-[0_1px_2px_rgba(17,24,39,0.06)]',
           )}
         >
-          {/* Preview: snippet */}
-          {!showBody && (
-            <p className={cn(
-              'text-[12.5px] leading-relaxed',
-              isMine ? 'text-white' : 'text-slate-800',
-            )}>
-              {message.snippet || message.from}
-            </p>
-          )}
-
-          {/* Expanded: full body */}
-          {showBody && (
-            <div className="w-full">
-              {message.bodyHtml ? (
-                <iframe
-                  ref={iframeRef}
-                  srcDoc={message.bodyHtml}
-                  className="w-full border-0 min-h-[80px] max-w-[460px]"
-                  style={{ width: '100%' }}
-                  sandbox="allow-same-origin"
-                  onLoad={handleIframeLoad}
-                  title="Email content"
-                />
-              ) : message.bodyText ? (
-                <pre className={cn(
-                  'text-[12px] whitespace-pre-wrap font-sans leading-relaxed',
-                  isMine ? 'text-white/90' : 'text-slate-700',
-                )}>
-                  {message.bodyText}
-                </pre>
-              ) : (
-                <p className={cn('text-[12.5px] leading-relaxed', isMine ? 'text-white' : 'text-slate-800')}>
-                  {message.snippet}
-                </p>
-              )}
-            </div>
-          )}
-        </button>
+          {/* Full body — always expanded */}
+          <div className="w-full">
+            {message.bodyHtml ? (
+              <iframe
+                ref={iframeRef}
+                srcDoc={message.bodyHtml}
+                className="w-full border-0 min-h-[80px] max-w-[460px]"
+                style={{ width: '100%' }}
+                sandbox="allow-same-origin"
+                onLoad={handleIframeLoad}
+                title="Email content"
+              />
+            ) : message.bodyText ? (
+              <pre className={cn(
+                'text-[12px] whitespace-pre-wrap font-sans leading-relaxed',
+                isMine ? 'text-white/90' : 'text-slate-700 dark:text-slate-300',
+              )}>
+                {message.bodyText}
+              </pre>
+            ) : (
+              <p className={cn('text-[12.5px] leading-relaxed', isMine ? 'text-white' : 'text-slate-800 dark:text-slate-200')}>
+                {message.snippet}
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Timestamp + CC indicator */}
         <div className={cn('flex items-center gap-1.5 mt-1 px-0.5', isMine ? 'flex-row-reverse' : 'flex-row')}>
-          <span className="text-[10px] text-slate-400 tabular-nums">
+          <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
             {formatChatTime(message.date)}
           </span>
           {message.cc.length > 0 && (
-            <span className="text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500">
               · {message.cc.length} CC
             </span>
-          )}
-          {showBody && (
-            <button
-              onClick={() => setShowBody(false)}
-              className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              collapse
-            </button>
           )}
         </div>
       </div>
@@ -493,7 +471,8 @@ function ChatView({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto py-3 bg-background">
         {thread.messages.map((msg, i) => {
-          const isMine = !!myEmail && msg.fromEmail.toLowerCase() === myEmail.toLowerCase()
+          // Symph emails (*.symph.co) go right; client emails go left
+          const isMine = msg.fromEmail.toLowerCase().endsWith('@symph.co') || (!!myEmail && msg.fromEmail.toLowerCase() === myEmail.toLowerCase())
           const prevMsg = thread.messages[i - 1]
           const showDate = i === 0 || !isSameDay(prevMsg.date, msg.date)
           // Show avatar when sender changes or first in a group
