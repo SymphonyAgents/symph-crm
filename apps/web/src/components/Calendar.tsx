@@ -423,15 +423,37 @@ function WeekView({
   onEventClick: (ev: ApiCalendarEvent) => void
   onDayClick: (dateKey: string) => void
 }) {
-  const today = toDateKey(new Date().toISOString())
+  const now = new Date()
+  const today = toDateKey(now.toISOString())
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [nowMinutes, setNowMinutes] = useState(() => now.getHours() * 60 + now.getMinutes())
 
-  // Scroll to 8 AM on mount
+  // Scroll to current time (or 8 AM if before 8) on mount
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = (8 - 7) * HOUR_PX
+      const currentHour = new Date().getHours()
+      const scrollHour = Math.max(currentHour - 1, 7) // scroll 1 hour before current time
+      scrollRef.current.scrollTop = (scrollHour - 7) * HOUR_PX
     }
   }, [])
+
+  // Update current time indicator every minute
+  useEffect(() => {
+    const tick = () => {
+      const n = new Date()
+      setNowMinutes(n.getHours() * 60 + n.getMinutes())
+    }
+    const interval = setInterval(tick, 60_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Position of "now" line — only shown if within the visible hours range (7am–10pm)
+  const nowTop = (() => {
+    const gridStartMin = 7 * 60
+    const gridEndMin = 22 * 60
+    if (nowMinutes < gridStartMin || nowMinutes > gridEndMin) return null
+    return ((nowMinutes - gridStartMin) / 60) * HOUR_PX
+  })()
 
   const weekDays = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart)
@@ -538,6 +560,17 @@ function WeekView({
                   />
                 ))}
 
+                {/* Current time indicator — only on today's column */}
+                {isToday && nowTop !== null && (
+                  <div
+                    className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
+                    style={{ top: nowTop - 1 }}
+                  >
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 shrink-0 -ml-1.5 shadow-sm" />
+                    <div className="flex-1 h-[1.5px] bg-red-500 -ml-1" />
+                  </div>
+                )}
+
                 {/* Events */}
                 {dayEvents.map(ev => (
                   <div
@@ -572,7 +605,7 @@ type CalendarProps = {
 export function Calendar({ onOpenDeal }: CalendarProps = {}) {
   const { userId } = useUser()
   const now = new Date()
-  const [view, setView] = useState<CalendarView>('month')
+  const [view, setView] = useState<CalendarView>('week')
   const [month, setMonth] = useState(now.getMonth())
   const [year, setYear] = useState(now.getFullYear())
   const [weekStart, setWeekStart] = useState(() => getWeekStart(now))

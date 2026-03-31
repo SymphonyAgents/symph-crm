@@ -11,6 +11,37 @@ import { MoreHorizontal, Archive, Trash2, Mail } from 'lucide-react'
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
 
+// ─── HTML-to-text extractor ───────────────────────────────────────────────────
+//
+// Converts email HTML to readable plain text for native CRM rendering.
+// Avoids iframes (which break dark mode) by stripping markup and preserving
+// paragraph structure.
+
+function htmlToText(html: string): string {
+  return html
+    // Block-level closers → newline
+    .replace(/<\/(p|div|tr|li|blockquote|h[1-6]|table|ul|ol|section|article|header|footer|br)[^>]*>/gi, '\n')
+    // Self-closing br
+    .replace(/<br\s*\/?>/gi, '\n')
+    // Preserve link text: <a href="...">label</a> → label
+    .replace(/<a[^>]*>([^<]*)<\/a>/gi, '$1')
+    // Strip remaining tags
+    .replace(/<[^>]+>/g, '')
+    // Decode common HTML entities
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&apos;/g, "'")
+    // Collapse lines that are purely whitespace
+    .replace(/\n[ \t]+\n/g, '\n\n')
+    // Collapse 3+ consecutive newlines to 2
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type GmailMessage = {
@@ -250,14 +281,12 @@ function ChatBubble({
   isMine: boolean
   showAvatar: boolean
 }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  function handleIframeLoad() {
-    const f = iframeRef.current
-    if (f?.contentDocument?.body) {
-      f.style.height = Math.min(f.contentDocument.body.scrollHeight, 400) + 'px'
-    }
-  }
+  // Extract readable text from HTML (prefer bodyText, fall back to stripping bodyHtml)
+  const bodyContent = message.bodyText
+    ? message.bodyText.trim()
+    : message.bodyHtml
+    ? htmlToText(message.bodyHtml)
+    : message.snippet
 
   return (
     <div className={cn('flex items-end gap-2 px-4', isMine ? 'flex-row-reverse' : 'flex-row', 'mb-1')}>
@@ -285,31 +314,13 @@ function ChatBubble({
               : 'bg-card border border-black/[.07] dark:border-white/[.07] text-slate-800 dark:text-slate-200 rounded-bl-sm hover:bg-secondary shadow-[0_1px_2px_rgba(17,24,39,0.06)]',
           )}
         >
-          {/* Full body — always expanded */}
-          <div className="w-full">
-            {message.bodyHtml ? (
-              <iframe
-                ref={iframeRef}
-                srcDoc={message.bodyHtml}
-                className="w-full border-0 min-h-[80px] max-w-[460px]"
-                style={{ width: '100%' }}
-                sandbox="allow-same-origin"
-                onLoad={handleIframeLoad}
-                title="Email content"
-              />
-            ) : message.bodyText ? (
-              <pre className={cn(
-                'text-[12px] whitespace-pre-wrap font-sans leading-relaxed',
-                isMine ? 'text-white/90' : 'text-slate-700 dark:text-slate-300',
-              )}>
-                {message.bodyText}
-              </pre>
-            ) : (
-              <p className={cn('text-[12.5px] leading-relaxed', isMine ? 'text-white' : 'text-slate-800 dark:text-slate-200')}>
-                {message.snippet}
-              </p>
-            )}
-          </div>
+          {/* Native email body — rendered as CRM-styled text, no iframe */}
+          <p className={cn(
+            'text-[12.5px] leading-relaxed whitespace-pre-wrap break-words max-w-[460px]',
+            isMine ? 'text-white/95' : 'text-slate-800 dark:text-slate-200',
+          )}>
+            {bodyContent}
+          </p>
         </div>
 
         {/* Timestamp + CC indicator */}

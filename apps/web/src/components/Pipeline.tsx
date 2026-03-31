@@ -138,7 +138,7 @@ function CardActionsMenu({
   onAdvance: () => void
   onAdvanceTo: (stage: string) => void
   onMoveTo: (stage: string) => void
-  onAssign: (name: string) => void
+  onAssign: (id: string, name: string) => void
   isSales: boolean
   users: ApiUser[]
   isAdvancing: boolean
@@ -192,7 +192,7 @@ function CardActionsMenu({
                 users.map(u => (
                   <button
                     key={u.id}
-                    onClick={(e) => { e.stopPropagation(); setOpen(false); setShowAssign(false); onAssign(u.name || u.email) }}
+                    onClick={(e) => { e.stopPropagation(); setOpen(false); setShowAssign(false); onAssign(u.id, u.name || u.email) }}
                     className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
                   >
                     <Avatar name={u.name || u.email} size={16} />
@@ -315,7 +315,7 @@ function DealCard({
   onAdvance?: () => void
   onAdvanceTo?: (stage: string) => void
   onMoveTo?: (stage: string) => void
-  onAssign?: (name: string) => void
+  onAssign?: (id: string, name: string) => void
   isSales?: boolean
   users?: ApiUser[]
   isAdvancing?: boolean
@@ -421,7 +421,7 @@ function DraggableDealCard({
   onAdvance?: () => void
   onAdvanceTo?: (stage: string) => void
   onMoveTo?: (stage: string) => void
-  onAssign?: (name: string) => void
+  onAssign?: (id: string, name: string) => void
   isSales?: boolean
   users?: ApiUser[]
   isAdvancing?: boolean
@@ -687,12 +687,14 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
     })
   }, [moveConfirm, patchStage, queryClient])
 
-  const handleAssignDeal = useCallback((dealId: string, assignedTo: string) => {
+  const handleAssignDeal = useCallback((dealId: string, userId: string, displayName: string) => {
     const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
+    // Optimistic update: show display name immediately in the UI
     queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
-      old?.map(d => d.id === dealId ? { ...d, assignedTo } : d) ?? []
+      old?.map(d => d.id === dealId ? { ...d, assignedTo: displayName } : d) ?? []
     )
-    updateDeal.mutate({ id: dealId, data: { assignedTo } }, {
+    // Send the actual user UUID to the API (FK constraint requires UUID)
+    updateDeal.mutate({ id: dealId, data: { assignedTo: userId } }, {
       onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
       onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
     })
@@ -933,7 +935,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                           onAdvance={() => handleAdvanceDeal(d.id, d.stage)}
                           onAdvanceTo={(stage) => handleAdvanceTo(d.id, stage)}
                           onMoveTo={(stage) => handleMoveTo(d.id, stage)}
-                          onAssign={(name) => handleAssignDeal(d.id, name)}
+                          onAssign={(id, name) => handleAssignDeal(d.id, id, name)}
                           isSales={isSales}
                           isAdvancing={advancingDealId === d.id}
                         />
