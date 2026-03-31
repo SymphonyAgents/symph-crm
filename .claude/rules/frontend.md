@@ -44,30 +44,76 @@ apps/web/src/
 - Component files are `PascalCase` for features (`Dashboard.tsx`) and `kebab-case` for ui primitives (`button.tsx`).
 - Export named components, not default exports (e.g., `export function Dashboard()`).
 
-### Data Fetching
-- Use the `api` client from `lib/api.ts` for all backend calls:
-  ```ts
-  import { api } from '@/lib/api'
-  api.get<Deal[]>('/deals')
-  api.post<Deal>('/deals', body)
-  api.put<Deal>(`/deals/${id}`, body)
-  api.delete(`/deals/${id}`)
-  ```
-- Wrap in React Query hooks per feature:
-  ```ts
-  const { data, isLoading } = useQuery({
-    queryKey: ['deals'],
-    queryFn: () => api.get<Deal[]>('/deals'),
-  })
-  ```
-- Mutations must invalidate relevant queries on success:
-  ```ts
-  const mutation = useMutation({
-    mutationFn: (data) => api.post('/deals', data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deals'] }),
-  })
-  ```
-- Query keys follow `[resource]` or `[resource, id]` pattern.
+### Data Fetching — Three-Layer Architecture (MANDATORY)
+
+Data flow is strictly one-directional:
+
+```
+Component → Custom Hook → API Client → Backend REST API
+```
+
+Each layer has a single responsibility. **No layer skips another.**
+
+#### Layer 1 — API Client (`lib/api.ts`)
+
+- Single source of truth for all backend communication.
+- Every backend endpoint is wrapped in a **typed async function**.
+- Attaches auth headers to every request; centralizes base URL via env var.
+- Parses error responses into a consistent error shape with extracted `message`.
+- Returns typed data so consumers get full TypeScript safety.
+- Methods are grouped by domain: `api.deals.list()`, `api.deals.create(dto)`, etc.
+
+Rules:
+- No TanStack Query imports in this file.
+- No React hooks or component logic.
+- No caching, retry logic, or toast notifications.
+- Every method must have typed params and typed return value.
+
+#### Layer 2 — Custom Hooks (`lib/hooks/` directory)
+
+- Encapsulate all TanStack Query logic and user feedback in dedicated hook files.
+- One file per domain: `useDealsQuery.ts`, `useContactsQuery.ts`, etc.
+- Each file can export multiple hooks: `useDealsList`, `useDealDetail`, `useCreateDeal`, `useUpdateDeal`.
+
+**Query hooks:**
+- Accept filter params that feed into both the query key and the api call.
+- Use query key arrays that include all filter dependencies: `['deals', filters]`.
+
+**Mutation hooks:**
+- Call the corresponding `api.ts` method in `mutationFn`.
+- Invalidate related query keys in `onSuccess` so lists refresh automatically.
+- Show `toast.success` on success and `toast.error(err.message)` on failure.
+- Accept optional per-call `onSuccess`/`onError` callbacks for component-specific side effects (close dialog, navigate).
+
+Rules:
+- No JSX or rendering logic.
+- No direct `fetch()` calls — always go through `lib/api.ts`.
+- Query keys must be deterministic and include all variables that affect the response.
+- **Toast messages belong here, not in components.**
+
+#### Layer 3 — Components
+
+- Import and call custom hooks from `lib/hooks/`.
+- Destructure hook returns: `{ data, isLoading, mutate, isPending }`.
+- Show loading and error states based on hook status.
+- Pass per-call callbacks to mutations when needed (close dialog, reset form).
+
+Rules:
+- **Never import from `lib/api.ts` directly.**
+- **Never write `useQuery` or `useMutation` inline in the component.**
+- **Never define query keys in components.**
+- **Never call `toast` for mutation results — the hook owns that feedback.**
+- Keep data transformation minimal — push complex transforms into the hook or a utility.
+
+#### Adding a New Feature — Checklist
+
+When adding a new domain (e.g., "invoices"):
+
+1. **Backend:** create the REST endpoints.
+2. **API Client:** add an `invoices` namespace to the `api` object in `lib/api.ts` with typed methods.
+3. **Types:** add the `Invoice` type to the shared types file.
+4. **Hooks:** create `lib/hooks/useInvoicesQuery.ts` with query and mutation hooks, including toast notifications for all mutations.
+5. **Components:** build UI that consumes only the hooks from step 4.
 
 ### Styling
 - **Tailwind only** — no inline `style={}` unless truly dynamic (e.g., colors from data).
