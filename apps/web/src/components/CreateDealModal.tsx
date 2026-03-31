@@ -211,7 +211,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Outreach</label>
               <Select value={outreachCategory} onValueChange={setOutreachCategory}>
                 <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue placeholder="\u2014" />
+                  <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
                   {OUTREACH_OPTIONS.map(o => (
@@ -225,7 +225,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           {/* Value + Pricing Model */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (\u20B1)</label>
+              <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
               <Input
                 value={value}
                 onChange={e => setValue(e.target.value.replace(/[^0-9.]/g, ''))}
@@ -237,7 +237,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Pricing Model</label>
               <Select value={pricingModel} onValueChange={setPricingModel}>
                 <SelectTrigger className="h-9 text-[13px]">
-                  <SelectValue placeholder="\u2014" />
+                  <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
                   {PRICING_OPTIONS.map(p => (
@@ -256,7 +256,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
                   <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Product</label>
                   <Select value={productId} onValueChange={setProductId}>
                     <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select\u2026" />
+                      <SelectValue placeholder="Select…" />
                     </SelectTrigger>
                     <SelectContent>
                       {products.map(p => (
@@ -271,7 +271,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
                   <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Tier</label>
                   <Select value={tierId} onValueChange={setTierId}>
                     <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select\u2026" />
+                      <SelectValue placeholder="Select…" />
                     </SelectTrigger>
                     <SelectContent>
                       {tiers.map(t => (
@@ -304,7 +304,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               className="flex-1 h-9 rounded-lg text-[13px] font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
-              {isPending ? 'Creating\u2026' : 'Create Deal'}
+              {isPending ? 'Creating…' : 'Create Deal'}
             </button>
           </div>
         </form>

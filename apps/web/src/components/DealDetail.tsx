@@ -33,58 +33,66 @@ function StageProgress({ currentStage }: { currentStage: string }) {
   const currentIdx = isLost ? -1 : getStageProgressIndex(currentStage)
 
   return (
-    <div className="flex items-center mt-5 px-1">
-      {PROGRESS_STAGES.map((stage, i) => {
-        const isCompleted = i < currentIdx
-        const isCurrent = i === currentIdx
-        return (
-          <div key={stage.id} className="flex items-center flex-1 last:flex-none">
-            {/* Connector before (skip first) */}
+    <div className="mt-5 px-1">
+      {/* Row 1: circles + connector lines */}
+      <div className="flex items-center">
+        {PROGRESS_STAGES.map((stage, i) => (
+          <>
+            {/* Connector (between steps) */}
             {i > 0 && (
               <div
-                className="flex-1 h-[1.5px]"
-                style={{ background: i <= currentIdx ? 'var(--primary)' : '#e2e8f0' }}
+                key={`line-${stage.id}`}
+                className="flex-1 h-[1.5px] mx-0.5"
+                style={{ background: i <= currentIdx ? 'var(--primary)' : 'var(--color-border, #e2e8f0)' }}
               />
             )}
             {/* Step circle */}
-            <div className="flex flex-col items-center gap-1.5 shrink-0">
-              <div
-                className={cn(
-                  'w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-semibold transition-all',
-                  isCompleted
-                    ? 'bg-primary text-white'
-                    : isCurrent
-                    ? 'bg-white dark:bg-[#1e1e21] border-2 border-primary text-primary shadow-sm'
-                    : 'bg-white dark:bg-[#1e1e21] border border-slate-200 dark:border-white/10 text-slate-400'
-                )}
-              >
-                {isCompleted ? (
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                ) : (
-                  i + 1
-                )}
-              </div>
-              <span
-                className={cn(
-                  'hidden sm:block text-[10px] font-medium whitespace-nowrap',
-                  isCurrent ? 'text-primary font-semibold' : isCompleted ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'
-                )}
-              >
-                {stage.label}
-              </span>
+            <div
+              key={stage.id}
+              className={cn(
+                'w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 transition-all',
+                i < currentIdx
+                  ? 'bg-primary text-white'
+                  : i === currentIdx
+                  ? 'bg-white dark:bg-[#1e1e21] border-2 border-primary text-primary shadow-sm'
+                  : 'bg-white dark:bg-[#1e1e21] border border-slate-200 dark:border-white/10 text-slate-400'
+              )}
+            >
+              {i < currentIdx ? (
+                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : (
+                i + 1
+              )}
             </div>
+          </>
+        ))}
+        {isLost && (
+          <div className="ml-3 shrink-0">
+            <span className="text-[11px] font-semibold text-red-500 bg-red-50 dark:bg-red-950/30 px-2.5 py-0.5 rounded-full border border-red-100 dark:border-red-500/20">
+              Lost
+            </span>
           </div>
-        )
-      })}
-      {isLost && (
-        <div className="ml-3 flex items-center">
-          <span className="text-[11px] font-semibold text-red-500 bg-red-50 dark:bg-red-950/30 px-2.5 py-0.5 rounded-full border border-red-100 dark:border-red-500/20">
-            Closed Lost
-          </span>
-        </div>
-      )}
+        )}
+      </div>
+      {/* Row 2: labels — aligned under each circle */}
+      <div className="hidden sm:flex items-start mt-1.5">
+        {PROGRESS_STAGES.map((stage, i) => (
+          <>
+            {i > 0 && <div key={`spacer-${stage.id}`} className="flex-1" />}
+            <span
+              key={`label-${stage.id}`}
+              className={cn(
+                'text-[10px] font-medium whitespace-nowrap w-[26px] text-center shrink-0',
+                i === currentIdx ? 'text-primary font-semibold' : i < currentIdx ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'
+              )}
+            >
+              {stage.label}
+            </span>
+          </>
+        ))}
+      </div>
     </div>
   )
 }
@@ -311,7 +319,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       <div className="p-4 md:p-6 h-full flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-          <p className="text-[12px] text-slate-400">Loading deal\u2026</p>
+          <p className="text-[12px] text-slate-400">Loading deal&hellip;</p>
         </div>
       </div>
     )
@@ -474,7 +482,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                 <textarea
                   value={noteText}
                   onChange={e => setNoteText(e.target.value)}
-                  placeholder="Add notes, paste a transcript, drop a link\u2026"
+                  placeholder="Add notes, paste a transcript, drop a link…"
                   rows={3}
                   className="w-full text-[13px] text-slate-800 dark:text-white bg-slate-50 dark:bg-white/[.04] border border-black/[.06] dark:border-white/[.08] rounded-lg px-3 py-2.5 placeholder:text-slate-400 resize-none outline-none focus:outline-none focus:border-primary/40 transition-colors"
                 />
@@ -528,7 +536,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 text-[10px] text-slate-400">
                         <span>{DOC_TYPE_LABELS[doc.type] ?? doc.type}</span>
-                        <span>\u00B7</span>
+                        <span>&middot;</span>
                         <span>
                           {new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                         </span>
