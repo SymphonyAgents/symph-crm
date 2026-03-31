@@ -185,6 +185,14 @@ export const EVENT_TYPE_BADGE: Record<string, string> = {
   general:        'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300',
 }
 
+/** Hex colors matching EVENT_TYPE_COLORS — used for inline styles (outline/fill variants) */
+export const EVENT_TYPE_HEX: Record<string, string> = {
+  demo:           '#8b5cf6',   // violet-500
+  discovery_call: '#3b82f6',   // blue-500
+  followup:       '#f59e0b',   // amber-500
+  general:        '#94a3b8',   // slate-400
+}
+
 export const TIME_SLOTS = Array.from({ length: (22 - 7) * 4 + 1 }, (_, i) => {
   const totalMinutes = 7 * 60 + i * 15
   const h = Math.floor(totalMinutes / 60)

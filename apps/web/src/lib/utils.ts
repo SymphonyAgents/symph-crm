@@ -201,6 +201,53 @@ export function avatarColor(email: string): string {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
 }
 
+// ─── Email Cleaning ──────────────────────────────────────────────────────────
+
+/**
+ * Strips email cruft to leave only the new message content.
+ * Removes: quoted reply chains (>>> / >), "On ... wrote:" headers,
+ * signature separators (-- / ---), and common footer boilerplate.
+ */
+export function cleanEmailBody(text: string): string {
+  if (!text) return text
+
+  const lines = text.split('\n')
+  const cleaned: string[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    // Stop at bare signature separators
+    if (trimmed === '--' || trimmed === '---' || trimmed === '––' || trimmed === '—') break
+    // Stop at "-- \n" (email signature with trailing space)
+    if (trimmed === '-- ') break
+
+    // Stop at reply header: "On Mon, Jan 1, 2024 at 12:00 PM, Someone wrote:"
+    if (/^On .{10,200}wrote:\s*$/i.test(trimmed)) break
+
+    // Stop at Outlook-style "From: ... Sent: ..." forward block
+    if (/^From:\s+/i.test(trimmed) && i > 2) break
+    if (/^-{5,}\s*(original message|forwarded message)/i.test(trimmed)) break
+
+    // Skip quoted lines (> or >>>) — these are prior messages
+    if (/^>+/.test(trimmed)) continue
+
+    // Stop at footer boilerplate
+    if (/^(unsubscribe|this e.?mail (was sent|is intended|contains)|you are receiving this|to (stop receiving|unsubscribe)|confidentiality notice|disclaimer:|legal notice|this message is intended for)/i.test(trimmed)) break
+
+    // Skip long separator lines (_____ or ===== etc.)
+    if (/^[_=*-]{6,}$/.test(trimmed)) continue
+
+    cleaned.push(line)
+  }
+
+  // Trim trailing blank lines
+  while (cleaned.length > 0 && cleaned[cleaned.length - 1].trim() === '') cleaned.pop()
+
+  return cleaned.join('\n').trim()
+}
+
 // ─── HTML Processing ─────────────────────────────────────────────────────────
 
 /** Converts email HTML to readable plain text for native CRM rendering */

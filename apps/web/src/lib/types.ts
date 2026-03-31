@@ -143,6 +143,8 @@ export type ApiCalendarEvent = {
   attendeeEmails: string[]
   dealId: string | null
   eventType: 'demo' | 'discovery_call' | 'followup' | 'general'
+  /** True if the current user is the organizer. Non-owned events render as outlines. */
+  isOwner: boolean
 }
 
 export type CalendarStatus = {

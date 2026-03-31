@@ -7,7 +7,7 @@ import { cn, toDateKey, formatTime, getWeekStart, monthRange, weekRange } from '
 import type { ApiCalendarEvent, CalendarStatus, CreateEventForm, CalendarView } from '@/lib/types'
 import {
   API_BASE, MONTHS, MONTHS_SHORT, DAYS,
-  EVENT_TYPE_COLORS, EVENT_TYPE_BADGE, TIME_SLOTS, HOURS, HOUR_PX,
+  EVENT_TYPE_COLORS, EVENT_TYPE_BADGE, EVENT_TYPE_HEX, TIME_SLOTS, HOURS, HOUR_PX,
 } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { Input } from '@/components/ui/input'
@@ -23,6 +23,29 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { X, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react'
+
+// ─── Event style helpers ───────────────────────────────────────────────────────
+// Google Calendar convention:
+//   isOwner = true  → solid fill (you created/organized this event)
+//   isOwner = false → outline / ghost (you were invited — shows the color but not filled)
+
+function getEventChipStyle(ev: ApiCalendarEvent): CSSProperties {
+  const hex = EVENT_TYPE_HEX[ev.eventType] ?? '#94a3b8'
+  if (ev.isOwner !== false) {
+    // Solid fill — owned event
+    return { background: hex }
+  }
+  // Outline — non-owned / invited event
+  return {
+    background: `${hex}18`,
+    border: `1.5px solid ${hex}`,
+    color: hex,
+  }
+}
+
+function eventTextClass(ev: ApiCalendarEvent): string {
+  return ev.isOwner !== false ? 'text-white' : ''
+}
 
 // ─── TimePicker ───────────────────────────────────────────────────────────────
 
@@ -72,6 +95,9 @@ function EventDetailPanel({
             <span className="text-[11px] font-semibold capitalize">
               {event.eventType.replace('_', ' ')}
             </span>
+            {event.isOwner === false && (
+              <span className="text-[10px] opacity-60 font-normal">(invited)</span>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -81,7 +107,7 @@ function EventDetailPanel({
           </button>
         </div>
 
-        {/* Body — scrollable to prevent overflow on long attendee lists */}
+        {/* Body */}
         <div className="px-4 py-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 120px)' }}>
           <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white leading-snug">
             {event.title}
@@ -198,7 +224,7 @@ function CreateEventModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl w-full max-w-md p-6 animate-in zoom-in-95 duration-150"
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl w-full max-w-md mx-4 p-6 animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -335,7 +361,7 @@ function WeekView({
   useEffect(() => {
     if (scrollRef.current) {
       const currentHour = new Date().getHours()
-      const scrollHour = Math.max(currentHour - 1, 7) // scroll 1 hour before current time
+      const scrollHour = Math.max(currentHour - 1, 7)
       scrollRef.current.scrollTop = (scrollHour - 7) * HOUR_PX
     }
   }, [])
@@ -350,7 +376,7 @@ function WeekView({
     return () => clearInterval(interval)
   }, [])
 
-  // Position of "now" line — only shown if within the visible hours range (7am–10pm)
+  // Position of "now" line
   const nowTop = (() => {
     const gridStartMin = 7 * 60
     const gridEndMin = 22 * 60
@@ -381,15 +407,16 @@ function WeekView({
     const gridStartMin = 7 * 60
     const top = Math.max(((startMin - gridStartMin) / 60) * HOUR_PX, 0)
     const height = Math.max(((endMin - startMin) / 60) * HOUR_PX, HOUR_PX * 0.4)
-    return { top, height, position: 'absolute' }
+    return { top, height, position: 'absolute', ...getEventChipStyle(ev) }
   }
 
   return (
-    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21] flex flex-col">
-      {/* Day headers */}
+    // h-full so it expands to fill the flex container on desktop
+    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21] flex flex-col h-full">
+      {/* Day headers — fixed, never scrolls */}
       <div
         className="grid border-b border-black/[.06] dark:border-white/[.08] shrink-0"
-        style={{ gridTemplateColumns: '48px repeat(7, 1fr)' }}
+        style={{ gridTemplateColumns: '44px repeat(7, 1fr)' }}
       >
         <div className="py-2" />
         {weekDays.map(d => {
@@ -397,7 +424,7 @@ function WeekView({
           const isToday = key === today
           return (
             <div key={key} className="py-2 text-center">
-              <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+              <div className="text-[9.5px] font-semibold text-slate-400 uppercase tracking-wide">
                 {DAYS[d.getDay()]}
               </div>
               <div className={cn(
@@ -411,17 +438,17 @@ function WeekView({
         })}
       </div>
 
-      {/* Scrollable time grid */}
-      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: 520 }}>
+      {/* Scrollable time grid — flex-1 fills remaining height */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0" style={{ minHeight: 320 }}>
         <div
           className="relative"
-          style={{ display: 'grid', gridTemplateColumns: '48px repeat(7, 1fr)' }}
+          style={{ display: 'grid', gridTemplateColumns: '44px repeat(7, 1fr)' }}
         >
           {/* Hour labels */}
           <div>
             {HOURS.map(h => (
               <div key={h} className="relative border-t border-black/[.04] dark:border-white/[.04]" style={{ height: HOUR_PX }}>
-                <span className="absolute -top-2 right-2 text-[10px] text-slate-400 tabular-nums">
+                <span className="absolute -top-2 right-2 text-[9.5px] text-slate-400 tabular-nums select-none">
                   {h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`}
                 </span>
               </div>
@@ -463,7 +490,7 @@ function WeekView({
                   />
                 ))}
 
-                {/* Current time indicator — only on today's column */}
+                {/* Current time indicator */}
                 {isToday && nowTop !== null && (
                   <div
                     className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
@@ -480,14 +507,14 @@ function WeekView({
                     key={ev.id}
                     className={cn(
                       'absolute left-0.5 right-0.5 rounded px-1.5 py-0.5 overflow-hidden cursor-pointer hover:opacity-80 z-10 transition-opacity',
-                      EVENT_TYPE_COLORS[ev.eventType] ?? 'bg-slate-400',
+                      eventTextClass(ev),
                     )}
                     style={getEventStyle(ev)}
                     onClick={e => { e.stopPropagation(); onEventClick(ev) }}
                     title={`${ev.title} · ${formatTime(ev.startAt)}`}
                   >
-                    <div className="text-[10.5px] font-semibold text-white truncate leading-tight">{ev.title}</div>
-                    <div className="text-[10px] text-white/80 truncate">{formatTime(ev.startAt)}</div>
+                    <div className="text-[10.5px] font-semibold truncate leading-tight">{ev.title}</div>
+                    <div className="text-[10px] opacity-80 truncate">{formatTime(ev.startAt)}</div>
                   </div>
                 ))}
               </div>
@@ -634,87 +661,103 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
         return `${MONTHS_SHORT[weekStart.getMonth()]} ${weekStart.getDate()} – ${MONTHS_SHORT[end.getMonth()]} ${end.getDate()}, ${weekStart.getFullYear()}`
       })()
 
+  // ─── Layout: flush to viewport height ─────────────────────────────────────
+  // Outer div is h-full — fills the <main> container in CrmShell.
+  // Banners / header are shrink-0. The main grid is flex-1 min-h-0.
+  // On mobile (< lg): single column, outer container scrolls.
+  // On desktop (lg+): two-column grid, internal scroll only (overflow-hidden).
+
   return (
-    <div className="p-4 md:p-6 flex flex-col gap-4">
-      {/* OAuth banner */}
-      {oauthBanner && (
-        <div className={cn(
-          'flex items-center justify-between rounded-lg px-4 py-3 border text-[13px]',
-          oauthBanner.type === 'success'
-            ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-800 dark:text-green-300'
-            : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-800 dark:text-red-300',
-        )}>
-          <span className="font-medium">
-            {oauthBanner.type === 'success' ? '✓ ' : '⚠ '}{oauthBanner.message}
-          </span>
-          <button
-            onClick={() => setOauthBanner(null)}
-            className="ml-4 shrink-0 text-[11px] opacity-60 hover:opacity-100 transition-opacity"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+    <div className="flex flex-col h-full overflow-hidden">
 
-      {/* Connect banner */}
-      {status && !status.connected && (
-        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-lg px-4 py-3">
-          <div>
-            <p className="text-[13px] font-semibold text-blue-900 dark:text-blue-300">Connect Google Calendar</p>
-            <p className="text-[12px] text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
-          </div>
-          <a
-            href={`${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Fcalendar`}
-            className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-[12.5px] font-medium rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Connect
-          </a>
-        </div>
-      )}
-
-      {/* Connection status */}
-      {status?.connected && (
-        <div className="flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400">
-          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-          Connected as <span className="font-medium text-slate-700 dark:text-slate-300 ml-1">{status.googleEmail}</span>
-          {status.lastSyncedAt && (
-            <span className="ml-auto">
-              Last synced {new Date(status.lastSyncedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+      {/* ── Fixed top area: banners + connection status ─────────────────── */}
+      <div className="shrink-0 px-4 md:px-6 pt-4 md:pt-5 flex flex-col gap-2.5">
+        {/* OAuth result banner */}
+        {oauthBanner && (
+          <div className={cn(
+            'flex items-center justify-between rounded-lg px-4 py-3 border text-[13px]',
+            oauthBanner.type === 'success'
+              ? 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-800 dark:text-green-300'
+              : 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-800 dark:text-red-300',
+          )}>
+            <span className="font-medium">
+              {oauthBanner.type === 'success' ? '✓ ' : '⚠ '}{oauthBanner.message}
             </span>
-          )}
-        </div>
-      )}
+            <button
+              onClick={() => setOauthBanner(null)}
+              className="ml-4 shrink-0 text-[11px] opacity-60 hover:opacity-100 transition-opacity"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 items-start">
-        <div>
-          {/* Calendar header — nav + view toggle */}
-          <div className="flex items-center gap-2 mb-3.5 flex-wrap">
-            <div className="text-base font-bold text-slate-900 dark:text-white tracking-tight">{headerTitle}</div>
+        {/* Connect Google Calendar banner */}
+        {status && !status.connected && (
+          <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/40 rounded-lg px-4 py-3">
+            <div>
+              <p className="text-[13px] font-semibold text-blue-900 dark:text-blue-300">Connect Google Calendar</p>
+              <p className="text-[12px] text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
+            </div>
+            <a
+              href={`${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Fcalendar`}
+              className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-[12.5px] font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Connect
+            </a>
+          </div>
+        )}
+
+        {/* Connection status pill */}
+        {status?.connected && (
+          <div className="flex items-center gap-2 text-[12px] text-slate-500 dark:text-slate-400">
+            <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+            Connected as <span className="font-medium text-slate-700 dark:text-slate-300 ml-1">{status.googleEmail}</span>
+            {status.lastSyncedAt && (
+              <span className="ml-auto tabular-nums">
+                Last synced {new Date(status.lastSyncedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── Main content area ────────────────────────────────────────────── */}
+      {/* On mobile: flex-col + overflow-y-auto (natural page scroll)        */}
+      {/* On desktop: grid two-column + overflow-hidden (internal scroll)    */}
+      <div className={cn(
+        'flex-1 min-h-0 px-4 md:px-6 pb-4 md:pb-5 pt-3',
+        'flex flex-col gap-4',
+        'lg:grid lg:grid-cols-[1fr_280px]',
+        'overflow-y-auto lg:overflow-hidden',
+      )}>
+
+        {/* ── Calendar column ───────────────────────────────────────────── */}
+        <div className="flex flex-col min-h-0">
+
+          {/* Nav header */}
+          <div className="shrink-0 flex items-center gap-2 mb-3 flex-wrap">
+            <div className="text-[15px] font-bold text-slate-900 dark:text-white tracking-tight truncate">
+              {headerTitle}
+            </div>
             <div className="ml-auto flex items-center gap-1.5 flex-wrap">
               {/* Month / Week toggle */}
               <div className="flex rounded-lg overflow-hidden border border-black/[.06] dark:border-white/[.08]">
-                <button
-                  onClick={() => setView('month')}
-                  className={cn(
-                    'px-3 py-1.5 text-[11.5px] font-medium transition-colors',
-                    view === 'month'
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
-                  )}
-                >
-                  Month
-                </button>
-                <button
-                  onClick={() => setView('week')}
-                  className={cn(
-                    'px-3 py-1.5 text-[11.5px] font-medium border-l border-black/[.06] dark:border-white/[.08] transition-colors',
-                    view === 'week'
-                      ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
-                  )}
-                >
-                  Week
-                </button>
+                {(['month', 'week'] as CalendarView[]).map((v, i) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={cn(
+                      'px-3 py-1.5 text-[11.5px] font-medium transition-colors',
+                      i > 0 && 'border-l border-black/[.06] dark:border-white/[.08]',
+                      view === v
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+                    )}
+                  >
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
               </div>
 
               <button
@@ -745,13 +788,13 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
             </div>
           </div>
 
-          {/* Month view */}
+          {/* Month view — natural height, scroll on mobile */}
           {view === 'month' && (
-            <>
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21]">
                 <div className="grid grid-cols-7 border-b border-black/[.06] dark:border-white/[.08]">
                   {DAYS.map(d => (
-                    <div key={d} className="py-2.5 text-center text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{d}</div>
+                    <div key={d} className="py-2.5 text-center text-[9.5px] font-semibold text-slate-400 uppercase tracking-wide">{d}</div>
                   ))}
                 </div>
                 <div className="grid grid-cols-7">
@@ -766,7 +809,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                         key={i}
                         onClick={() => { if (cell.current) { setClickedDate(cell.dateKey); setShowCreateModal(true) } }}
                         className={cn(
-                          'min-h-[72px] md:min-h-[96px] px-1.5 py-1 transition-colors',
+                          'min-h-[72px] md:min-h-[88px] px-1.5 py-1 transition-colors',
                           !isLastCol && 'border-r border-black/[.06] dark:border-white/[.08]',
                           !isLastRow && 'border-b border-black/[.06] dark:border-white/[.08]',
                           isToday && 'bg-slate-50 dark:bg-white/[.04]',
@@ -781,20 +824,25 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                           {cell.day}
                         </div>
                         <div className="space-y-0.5">
-                          {cellEvents.slice(0, 3).map(ev => (
-                            <div
-                              key={ev.id}
-                              className={cn(
-                                'text-[10px] font-medium text-white rounded px-1 py-0.5 truncate leading-tight cursor-pointer hover:opacity-80 transition-opacity',
-                                EVENT_TYPE_COLORS[ev.eventType] ?? 'bg-slate-400',
-                              )}
-                              title={`${ev.title} · ${formatTime(ev.startAt)}`}
-                              onClick={e => { e.stopPropagation(); setSelectedEvent(ev) }}
-                            >
-                              <span className="hidden md:inline">{ev.title}</span>
-                              <span className="md:hidden">•</span>
-                            </div>
-                          ))}
+                          {cellEvents.slice(0, 3).map(ev => {
+                            const chipStyle = getEventChipStyle(ev)
+                            const isOwned = ev.isOwner !== false
+                            return (
+                              <div
+                                key={ev.id}
+                                className={cn(
+                                  'text-[10px] font-medium rounded px-1 py-px truncate leading-tight cursor-pointer hover:opacity-80 transition-opacity',
+                                  isOwned ? 'text-white' : '',
+                                )}
+                                style={chipStyle}
+                                title={`${ev.title} · ${formatTime(ev.startAt)}`}
+                                onClick={e => { e.stopPropagation(); setSelectedEvent(ev) }}
+                              >
+                                <span className="hidden md:inline">{ev.title}</span>
+                                <span className="md:hidden">•</span>
+                              </div>
+                            )
+                          })}
                           {cellEvents.length > 3 && (
                             <div className="text-[10px] text-slate-400 dark:text-slate-500 pl-1">
                               +{cellEvents.length - 3} more
@@ -809,33 +857,46 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
 
               {/* Legend */}
               <div className="flex items-center gap-4 mt-2.5 flex-wrap">
-                {Object.entries(EVENT_TYPE_COLORS).map(([type, color]) => (
+                {Object.entries(EVENT_TYPE_HEX).map(([type, hex]) => (
                   <div key={type} className="flex items-center gap-1.5">
-                    <span className={cn('w-2 h-2 rounded-sm', color)} />
+                    <span className="w-2 h-2 rounded-sm" style={{ background: hex }} />
                     <span className="text-[11px] text-slate-500 dark:text-slate-400 capitalize">{type.replace('_', ' ')}</span>
                   </div>
                 ))}
+                {/* Legend: owned vs invited */}
+                <div className="ml-auto flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm bg-violet-500" />
+                    <span className="text-[10.5px] text-slate-400">Organized</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-sm border-2 border-violet-500" style={{ background: 'rgba(139,92,246,0.1)' }} />
+                    <span className="text-[10.5px] text-slate-400">Invited</span>
+                  </div>
+                </div>
               </div>
-            </>
+            </div>
           )}
 
-          {/* Week view */}
+          {/* Week view — flex-1 so it fills remaining height on desktop */}
           {view === 'week' && (
-            <WeekView
-              weekStart={weekStart}
-              events={events}
-              onEventClick={setSelectedEvent}
-              onDayClick={dateKey => { setClickedDate(dateKey); setShowCreateModal(true) }}
-            />
+            <div className="flex-1 min-h-0">
+              <WeekView
+                weekStart={weekStart}
+                events={events}
+                onEventClick={setSelectedEvent}
+                onDayClick={dateKey => { setClickedDate(dateKey); setShowCreateModal(true) }}
+              />
+            </div>
           )}
         </div>
 
-        {/* Upcoming sidebar */}
-        <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden">
-          <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
+        {/* ── Upcoming sidebar ──────────────────────────────────────────── */}
+        <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden flex flex-col lg:max-h-full">
+          <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
             <p className="text-[13px] font-semibold text-slate-900 dark:text-white">Upcoming</p>
           </div>
-          <div className="p-3">
+          <div className="p-3 flex-1 overflow-y-auto">
             {!status?.connected ? (
               <EmptyState
                 icon="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
@@ -851,31 +912,42 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                 compact
               />
             ) : (
-              <div className="space-y-1">
-                {upcoming.map(ev => (
-                  <button
-                    key={ev.id}
-                    onClick={() => setSelectedEvent(ev)}
-                    className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.04] text-left transition-colors"
-                  >
-                    <div className={cn('w-1 self-stretch rounded-full shrink-0 mt-0.5', EVENT_TYPE_COLORS[ev.eventType])} />
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 truncate">{ev.title}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {new Date(ev.startAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {formatTime(ev.startAt)}
-                      </p>
-                      {ev.location && (
-                        <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{ev.location}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
+              <div className="space-y-0.5">
+                {upcoming.map(ev => {
+                  const hex = EVENT_TYPE_HEX[ev.eventType] ?? '#94a3b8'
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => setSelectedEvent(ev)}
+                      className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.04] text-left transition-colors"
+                    >
+                      {/* Color strip — solid for owned, dashed/outline for invited */}
+                      <div
+                        className="w-1 self-stretch rounded-full shrink-0 mt-0.5"
+                        style={{
+                          background: ev.isOwner !== false ? hex : 'transparent',
+                          border: ev.isOwner !== false ? 'none' : `1.5px solid ${hex}`,
+                        }}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-[12px] font-semibold text-slate-800 dark:text-slate-200 truncate">{ev.title}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          {new Date(ev.startAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {formatTime(ev.startAt)}
+                        </p>
+                        {ev.location && (
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5 truncate">{ev.location}</p>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
         </div>
       </div>
 
+      {/* ── Modals ───────────────────────────────────────────────────────── */}
       {showCreateModal && (
         <CreateEventModal
           defaultDate={clickedDate}

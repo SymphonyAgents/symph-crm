@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import {
-  cn, htmlToText, formatRelativeDate, formatChatTime, formatDateSeparator,
+  cn, htmlToText, cleanEmailBody, formatRelativeDate, formatChatTime, formatDateSeparator,
   isSameDay, getInitials, avatarColor, parseDisplayName, replySubject,
 } from '@/lib/utils'
 import type { GmailMessage, GmailThread, InboxResponse, FilterTab } from '@/lib/types'
@@ -160,12 +160,14 @@ function ChatBubble({
   isMine: boolean
   showAvatar: boolean
 }) {
-  // Extract readable text from HTML (prefer bodyText, fall back to stripping bodyHtml)
-  const bodyContent = message.bodyText
+  // Extract readable text from HTML (prefer bodyText, fall back to stripping bodyHtml),
+  // then strip quoted reply chains, signatures, and email footer boilerplate.
+  const rawBody = message.bodyText
     ? message.bodyText.trim()
     : message.bodyHtml
     ? htmlToText(message.bodyHtml)
     : message.snippet
+  const bodyContent = cleanEmailBody(rawBody)
 
   return (
     <div className={cn('flex items-end gap-2 px-4', isMine ? 'flex-row-reverse' : 'flex-row', 'mb-1')}>

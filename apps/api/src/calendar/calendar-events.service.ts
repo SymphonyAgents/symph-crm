@@ -57,11 +57,19 @@ export class CalendarEventsService {
     if (params.to) conditions.push(lte(calendarEvents.startAt, new Date(params.to)))
     if (params.dealId) conditions.push(eq(calendarEvents.dealId, params.dealId))
 
-    return this.db
+    const rows = await this.db
       .select()
       .from(calendarEvents)
       .where(and(...conditions))
       .orderBy(desc(calendarEvents.startAt))
+
+    // Derive isOwner from Google's rawJson.organizer.self field.
+    // Events created through the CRM always have organizer.self = true.
+    // Future Google Calendar sync may import events where the user is only an attendee.
+    return rows.map((row) => ({
+      ...row,
+      isOwner: (row.rawJson as Record<string, any> | null)?.organizer?.self !== false,
+    }))
   }
 
   async findOne(id: string) {
