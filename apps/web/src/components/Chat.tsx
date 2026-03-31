@@ -3,114 +3,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import imageCompression from 'browser-image-compression'
-import { cn } from '@/lib/utils'
-
-// Default workspace — the single Symph workspace seeded at setup
-const DEFAULT_WORKSPACE_ID = '60f84f03-283e-4c1a-8c88-b8330dc71d32'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type ActionRecord = {
-  tool: string
-  input: Record<string, unknown>
-  result: Record<string, unknown>
-}
-
-type ChatMessage = {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  actionsTaken?: ActionRecord[]
-  attachment?: PendingAttachment
-}
-
-type AttachmentType = 'file' | 'image' | 'voice'
-
-interface PendingAttachment {
-  type: AttachmentType
-  filename: string
-  blob: Blob
-  mimetype: string
-  // For image previews
-  previewUrl?: string
-  // For voice: duration in seconds
-  duration?: number
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getGreeting() {
-  const h = new Date().getHours()
-  if (h < 12) return 'Good morning'
-  if (h < 17) return 'Good afternoon'
-  return 'Good evening'
-}
-
-function formatDuration(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.floor(seconds % 60)
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function getAudioMimeType(): string {
-  const types = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'audio/ogg;codecs=opus',
-    'audio/ogg',
-  ]
-  return types.find(t => MediaRecorder.isTypeSupported(t)) ?? 'audio/webm'
-}
-
-function mimeToExt(mimetype: string): string {
-  const base = mimetype.split(';')[0]
-  const map: Record<string, string> = {
-    'audio/webm': 'webm',
-    'audio/mp4': 'm4a',
-    'audio/ogg': 'ogg',
-    'audio/mpeg': 'mp3',
-    'audio/wav': 'wav',
-  }
-  return map[base] ?? 'webm'
-}
-
-const ACCEPTED_FILE_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain',
-  'text/csv',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-].join(',')
-
-// ─── Suggested prompts ────────────────────────────────────────────────────────
-
-const SUGGESTED_PROMPTS = [
-  { label: 'Pipeline summary', prompt: 'Give me a pipeline summary' },
-  { label: 'Log a call', prompt: 'I just had a call with a prospect — help me log it' },
-  { label: 'Create a deal', prompt: 'Create a new deal' },
-  { label: 'Draft email', prompt: 'Draft a follow-up email for a prospect' },
-]
-
-// ─── Tool labels ──────────────────────────────────────────────────────────────
-
-const TOOL_LABELS: Record<string, string> = {
-  search_companies: 'Searched companies',
-  create_company: 'Created company',
-  list_products_and_tiers: 'Listed products',
-  create_deal: 'Created deal',
-  update_deal: 'Updated deal',
-  get_deal: 'Fetched deal',
-  list_deals: 'Listed deals',
-  write_deal_context: 'Updated deal context',
-  read_deal_context: 'Read deal context',
-  log_activity: 'Logged activity',
-  add_contact: 'Added contact',
-}
+import {
+  cn, getGreeting, formatDuration, getAudioMimeType, mimeToExt,
+} from '@/lib/utils'
+import type { ActionRecord, ChatMessage, PendingAttachment } from '@/lib/types'
+import {
+  DEFAULT_WORKSPACE_ID, ACCEPTED_FILE_TYPES, SUGGESTED_PROMPTS, TOOL_LABELS,
+} from '@/lib/constants'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

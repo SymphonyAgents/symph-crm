@@ -3,7 +3,12 @@
 import { useState, useMemo, useCallback, useEffect, useRef, type CSSProperties } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import { cn, toDateKey, formatTime, getWeekStart, monthRange, weekRange } from '@/lib/utils'
+import type { ApiCalendarEvent, CalendarStatus, CreateEventForm, CalendarView } from '@/lib/types'
+import {
+  API_BASE, MONTHS, MONTHS_SHORT, DAYS,
+  EVENT_TYPE_COLORS, EVENT_TYPE_BADGE, TIME_SLOTS, HOURS, HOUR_PX,
+} from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,108 +23,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { X, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react'
-
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-
-const EVENT_TYPE_COLORS: Record<string, string> = {
-  demo:           'bg-violet-500',
-  discovery_call: 'bg-blue-500',
-  followup:       'bg-amber-500',
-  general:        'bg-slate-400',
-}
-
-const EVENT_TYPE_BADGE: Record<string, string> = {
-  demo:           'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300',
-  discovery_call: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300',
-  followup:       'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300',
-  general:        'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300',
-}
-
-// 7:00 AM to 10:00 PM in 15-minute intervals
-const TIME_SLOTS = Array.from({ length: (22 - 7) * 4 + 1 }, (_, i) => {
-  const totalMinutes = 7 * 60 + i * 15
-  const h = Math.floor(totalMinutes / 60)
-  const m = totalMinutes % 60
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
-  const label = `${h12}:${String(m).padStart(2, '0')} ${ampm}`
-  const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  return { label, value }
-})
-
-// Hours shown in week view grid (7am–10pm)
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 7)
-const HOUR_PX = 64
-
-type ApiCalendarEvent = {
-  id: string
-  googleEventId: string
-  userId: string
-  title: string
-  description: string | null
-  startAt: string
-  endAt: string
-  location: string | null
-  attendeeEmails: string[]
-  dealId: string | null
-  eventType: 'demo' | 'discovery_call' | 'followup' | 'general'
-}
-
-type CalendarStatus = {
-  connected: boolean
-  googleEmail?: string
-  lastSyncedAt?: string
-}
-
-type CreateEventForm = {
-  title: string
-  startDate: string
-  startTime: string
-  endDate: string
-  endTime: string
-  description: string
-  location: string
-  eventType: 'demo' | 'discovery_call' | 'followup' | 'general'
-}
-
-type CalendarView = 'month' | 'week'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function toDateKey(iso: string) {
-  const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit', hour12: true })
-}
-
-function getWeekStart(date: Date): Date {
-  const d = new Date(date)
-  d.setDate(d.getDate() - d.getDay())
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function monthRange(year: number, month: number) {
-  const from = new Date(year, month, 1).toISOString()
-  const to = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
-  return { from, to }
-}
-
-function weekRange(weekStart: Date) {
-  const from = new Date(weekStart)
-  from.setHours(0, 0, 0, 0)
-  const to = new Date(weekStart)
-  to.setDate(to.getDate() + 6)
-  to.setHours(23, 59, 59, 999)
-  return { from: from.toISOString(), to: to.toISOString() }
-}
 
 // ─── TimePicker ───────────────────────────────────────────────────────────────
 
@@ -265,7 +168,7 @@ function CreateEventModal({
     mutationFn: async (data: CreateEventForm) => {
       const startAt = new Date(`${data.startDate}T${data.startTime}`).toISOString()
       const endAt = new Date(`${data.endDate}T${data.endTime}`).toISOString()
-      const res = await fetch(`${API}/calendar/events`, {
+      const res = await fetch(`${API_BASE}/calendar/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': userId ?? '' },
         body: JSON.stringify({
@@ -643,14 +546,14 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
   const { data: status } = useQuery<CalendarStatus>({
     queryKey: queryKeys.calendar.status,
     queryFn: () =>
-      fetch(`${API}/auth/google-calendar/status`, { headers: { 'x-user-id': userId ?? '' } }).then(r => r.json()),
+      fetch(`${API_BASE}/auth/google-calendar/status`, { headers: { 'x-user-id': userId ?? '' } }).then(r => r.json()),
     enabled: !!userId,
   })
 
   const { data: events = [] } = useQuery<ApiCalendarEvent[]>({
     queryKey: queryKeys.calendar.events({ from, to }),
     queryFn: () =>
-      fetch(`${API}/calendar/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
+      fetch(`${API_BASE}/calendar/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, {
         headers: { 'x-user-id': userId ?? '' },
       }).then(r => r.json()),
     enabled: !!status?.connected,
@@ -761,7 +664,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
             <p className="text-[12px] text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
           </div>
           <a
-            href={`${API}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Fcalendar`}
+            href={`${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Fcalendar`}
             className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-[12.5px] font-medium rounded-lg hover:bg-blue-700 transition-colors"
           >
             Connect
