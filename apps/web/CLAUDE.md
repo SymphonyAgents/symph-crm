@@ -127,12 +127,21 @@ Category badges:
 
 ## NEVER
 
-- Never use dark mode / dark backgrounds — this is a light-mode-only app
+- Never use native `<select>` or `<input type="...">` for dropdowns — **ALWAYS use shadcn `Select` + `SelectTrigger` + `SelectContent` + `SelectItem`**. This is non-negotiable. Every filter, every dropdown, every form select must be shadcn.
 - Never use custom CSS tokens like `text-text-primary`, `bg-surface`, `bg-accent-dim` — use Tailwind slate classes and raw rgba values
 - Never use `Card` / `CardContent` from shadcn — use plain divs
 - Never add mount animations or framer-motion
 - Never use Inter font
 - Never use emojis in code
+
+## Dark Mode
+
+This app **fully supports dark mode** via the `.dark` class strategy. All components must work in both light and dark.
+
+- Stage/accent colors use CSS variables (`--stage-{id}`) defined in `globals.css`. Dark mode remaps these to lighter, desaturated values — **never hardcode hex stage colors via inline styles**. Always use `var(--stage-{stageid})` for stage-colored text/backgrounds.
+- Use `color-mix(in srgb, var(--stage-{id}) 12%, transparent)` for tinted surface backgrounds on stage badges.
+- Primary (`--primary`) in dark mode is a lighter, less saturated blue — designed to read on dark surfaces and still support white text on `bg-primary` buttons.
+- Service tags and doc type badges: use `bg-primary/10 text-primary` (Tailwind) — auto-adapts via CSS vars.
 
 ---
 

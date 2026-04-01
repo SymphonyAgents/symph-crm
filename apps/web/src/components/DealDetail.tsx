@@ -156,14 +156,16 @@ function parseDocStage(tags?: string[] | null): string | null {
   return tag ? tag.slice('deal_stage:'.length) : null
 }
 
-/** Small colored stage pill */
+/** Small colored stage pill — uses CSS vars so dark mode remaps to muted tones */
 function StagePill({ stage }: { stage: string }) {
-  const color = STAGE_COLORS[stage] ?? '#94a3b8'
   const label = STAGE_LABELS[stage] ?? stage
   return (
     <span
       className="text-[9px] font-semibold px-1.5 py-0.5 rounded-md shrink-0"
-      style={{ background: `${color}18`, color }}
+      style={{
+        color: `var(--stage-${stage}, #94a3b8)`,
+        background: `color-mix(in srgb, var(--stage-${stage}, #94a3b8) 12%, transparent)`,
+      }}
     >
       {label}
     </span>
@@ -199,6 +201,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [noteTypeFilter, setNoteTypeFilter] = useState<string>('all')
   const [resourceExtFilter, setResourceExtFilter] = useState<string>('all')
+  const [docSearch, setDocSearch] = useState('')
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<string>('general')
   const [addingNote, setAddingNote] = useState(false)
@@ -256,18 +259,26 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
 
   // ── Filtered docs ────────────────────────────────────────────────────────
   const filteredNotes = useMemo(() => {
-    if (noteTypeFilter === 'all') return noteDocs
-    return noteDocs.filter(d => d.type === noteTypeFilter)
-  }, [noteDocs, noteTypeFilter])
+    let docs = noteTypeFilter === 'all' ? noteDocs : noteDocs.filter(d => d.type === noteTypeFilter)
+    if (docSearch.trim()) {
+      const q = docSearch.toLowerCase()
+      docs = docs.filter(d => d.title.toLowerCase().includes(q))
+    }
+    return docs
+  }, [noteDocs, noteTypeFilter, docSearch])
 
   const filteredResources = useMemo(() => {
-    if (resourceExtFilter === 'all') return resourceDocs
-    return resourceDocs.filter(d => {
+    let docs = resourceExtFilter === 'all' ? resourceDocs : resourceDocs.filter(d => {
       const ext = d.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))?.toUpperCase() ?? ''
       if (resourceExtFilter === 'image') return ['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(ext)
       return ext === resourceExtFilter.toUpperCase()
     })
-  }, [resourceDocs, resourceExtFilter])
+    if (docSearch.trim()) {
+      const q = docSearch.toLowerCase()
+      docs = docs.filter(d => d.title.toLowerCase().includes(q))
+    }
+    return docs
+  }, [resourceDocs, resourceExtFilter, docSearch])
 
   // ── Unique note types for filter ─────────────────────────────────────────
   const noteTypes = useMemo(() => {
@@ -503,7 +514,10 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
             </div>
             <span
               className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: `${stageColor}18`, color: stageColor }}
+              style={{
+                color: `var(--stage-${deal.stage}, ${stageColor})`,
+                background: `color-mix(in srgb, var(--stage-${deal.stage}, ${stageColor}) 12%, transparent)`,
+              }}
             >
               {stageLabel}
             </span>
@@ -549,7 +563,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
               ] as const).map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => { setActiveTab(tab.id); setDocSearch('') }}
                   className={cn(
                     'flex items-center gap-1.5 px-4 py-3 text-[13px] font-medium border-b-2 -mb-px transition-colors',
                     activeTab === tab.id
@@ -562,7 +576,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                     <span className={cn(
                       'text-[10px] font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center',
                       activeTab === tab.id
-                        ? 'bg-primary text-white'
+                        ? 'bg-primary/15 text-primary dark:bg-primary/20'
                         : 'bg-slate-100 dark:bg-white/[.08] text-slate-500'
                     )}>
                       {tab.count}
@@ -572,37 +586,61 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
               ))}
             </div>
 
-            {/* Right controls — filter + view toggle (hidden for timeline) */}
+            {/* Right controls — search + filter + view toggle (hidden for timeline) */}
             {activeTab !== 'timeline' && (
               <div className="flex items-center gap-1 shrink-0">
-                {/* Type / ext filter */}
+
+                {/* Search input */}
+                <div className="flex items-center gap-1 h-7 bg-slate-50 dark:bg-white/[.04] border border-black/[.06] dark:border-white/[.07] rounded-md px-2">
+                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="text-slate-400 shrink-0">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={docSearch}
+                    onChange={e => setDocSearch(e.target.value)}
+                    placeholder="Search…"
+                    className="bg-transparent text-[11px] text-slate-700 dark:text-slate-300 placeholder:text-slate-400 outline-none w-[72px]"
+                  />
+                  {docSearch && (
+                    <button onClick={() => setDocSearch('')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">
+                      <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+
+                {/* Type / ext filter — shadcn Select */}
                 {activeTab === 'notes' && noteTypes.length > 1 && (
-                  <select
-                    value={noteTypeFilter}
-                    onChange={e => setNoteTypeFilter(e.target.value)}
-                    className="text-[11px] text-slate-500 dark:text-slate-400 bg-transparent border-none outline-none cursor-pointer py-1 pr-1 pl-1"
-                  >
-                    <option value="all">All types</option>
-                    {noteTypes.map(t => (
-                      <option key={t} value={t}>{DOC_TYPE_LABELS[t] ?? t}</option>
-                    ))}
-                  </select>
+                  <Select value={noteTypeFilter} onValueChange={setNoteTypeFilter}>
+                    <SelectTrigger className="h-7 w-auto min-w-[84px] text-[11px] border-none bg-transparent shadow-none px-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1 focus:ring-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-[12px]">All types</SelectItem>
+                      {noteTypes.map(t => (
+                        <SelectItem key={t} value={t} className="text-[12px]">{DOC_TYPE_LABELS[t] ?? t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
                 {activeTab === 'resources' && (
-                  <select
-                    value={resourceExtFilter}
-                    onChange={e => setResourceExtFilter(e.target.value)}
-                    className="text-[11px] text-slate-500 dark:text-slate-400 bg-transparent border-none outline-none cursor-pointer py-1 pr-1 pl-1"
-                  >
-                    <option value="all">All files</option>
-                    <option value="pdf">PDF</option>
-                    <option value="docx">DOCX</option>
-                    <option value="image">Images</option>
-                  </select>
+                  <Select value={resourceExtFilter} onValueChange={setResourceExtFilter}>
+                    <SelectTrigger className="h-7 w-auto min-w-[80px] text-[11px] border-none bg-transparent shadow-none px-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1 focus:ring-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="text-[12px]">All files</SelectItem>
+                      <SelectItem value="pdf" className="text-[12px]">PDF</SelectItem>
+                      <SelectItem value="docx" className="text-[12px]">DOCX</SelectItem>
+                      <SelectItem value="image" className="text-[12px]">Images</SelectItem>
+                    </SelectContent>
+                  </Select>
                 )}
 
                 {/* Divider */}
-                <div className="w-px h-4 bg-black/[.06] dark:bg-white/[.08] mx-1" />
+                <div className="w-px h-4 bg-black/[.06] dark:bg-white/[.08] mx-0.5" />
 
                 {/* List / Grid toggle */}
                 <button
@@ -813,11 +851,6 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                           <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate leading-tight group-hover:text-primary transition-colors">
                             {doc.title}
                           </p>
-                          {doc.excerpt && (
-                            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
-                              {doc.excerpt}
-                            </p>
-                          )}
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
                               {DOC_TYPE_LABELS[doc.type] ?? doc.type}

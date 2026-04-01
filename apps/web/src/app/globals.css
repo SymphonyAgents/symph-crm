@@ -23,6 +23,19 @@
   --input: oklch(91.94% 0 0);
   --ring: oklch(48.79% 0.2432 264.5);           /* matches primary */
   --radius: 0.5rem;
+
+  /* Stage accent colors — light mode (saturated, for light surfaces) */
+  --stage-lead: #94a3b8;
+  --stage-discovery: #2563eb;
+  --stage-assessment: #7c3aed;
+  --stage-qualified: #0369a1;
+  --stage-demo: #d97706;
+  --stage-proposal: #d97706;
+  --stage-proposal_demo: #d97706;
+  --stage-negotiation: #f59e0b;
+  --stage-followup: #f59e0b;
+  --stage-closed_won: #16a34a;
+  --stage-closed_lost: #dc2626;
 }
 
 .dark {
@@ -32,7 +45,11 @@
   --card-foreground: oklch(98.51% 0 0);
   --popover: oklch(17% 0.004 285.8);
   --popover-foreground: oklch(98.51% 0 0);
-  --primary: oklch(42.60% 0.1971 265.4);        /* #193db8 */
+  /* Primary in dark mode: lighter + less saturated so text/borders read on dark surfaces
+     without the neon/electric look of the saturated light-mode blue.
+     This value (~#6b9af4) works for text, borders, underlines, AND button backgrounds
+     with white text at ~3.5:1 contrast (AA large/UI threshold). */
+  --primary: oklch(60% 0.14 258);
   --primary-foreground: #ffffff;
   --secondary: oklch(27.35% 0.0037 286.0);      /* #272729 */
   --secondary-foreground: oklch(98.51% 0 0);
@@ -43,8 +60,21 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(30.60% 0.0036 286.0);         /* #2f2f31 */
   --input: oklch(30.60% 0.0036 286.0);
-  --ring: oklch(42.60% 0.1971 265.4);           /* matches dark primary */
+  --ring: oklch(60% 0.14 258);                  /* matches dark primary */
   --radius: 0.5rem;
+
+  /* Stage accent colors — dark mode (lighter, desaturated — native to dark surfaces) */
+  --stage-lead: #94a3b8;           /* unchanged — already muted */
+  --stage-discovery: #7eaaff;      /* muted light blue */
+  --stage-assessment: #b39af5;     /* muted light purple */
+  --stage-qualified: #7ecef8;      /* muted light sky */
+  --stage-demo: #fbbf24;           /* lighter amber */
+  --stage-proposal: #fbbf24;
+  --stage-proposal_demo: #fbbf24;
+  --stage-negotiation: #fde68a;    /* lighter yellow */
+  --stage-followup: #fde68a;
+  --stage-closed_won: #4ade80;     /* lighter green */
+  --stage-closed_lost: #f87171;    /* lighter red */
 }
 
 @theme inline {
