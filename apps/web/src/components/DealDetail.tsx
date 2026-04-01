@@ -1018,21 +1018,15 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
             </div>
           )}
 
-          {/* Probability */}
-          {deal.probability != null && (
-            <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Win Probability</p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-slate-100 dark:bg-white/[.08] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${deal.probability}%`, background: 'var(--primary)' }}
-                  />
-                </div>
-                <span className="text-[13px] font-bold text-primary tabular-nums">{deal.probability}%</span>
-              </div>
+          {/* Next Step (static placeholder — will be dynamic later) */}
+          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
+            <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Next Step</p>
+            <div className="bg-amber-50 dark:bg-amber-500/10 rounded-lg p-3 border border-amber-100 dark:border-amber-500/20">
+              <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Action Required</p>
+              <p className="text-[13px] text-slate-700 dark:text-slate-200 leading-snug">Initial outreach — intro email + schedule call</p>
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5">Due Mar 22, 2026</p>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

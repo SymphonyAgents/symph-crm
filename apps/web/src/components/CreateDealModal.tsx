@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGetProducts, useGetTiers } from '@/lib/hooks/queries'
+// Product/Tier inputs removed per Vins — not needed in create flow
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -19,7 +19,7 @@ import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SERVICE_TYPES,
 } from '@/lib/constants'
-import type { ApiCompanyDetail, ApiProduct, ApiTier } from '@/lib/types'
+import type { ApiCompanyDetail } from '@/lib/types'
 
 type Props = {
   companies: ApiCompanyDetail[]
@@ -70,18 +70,8 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   const [outreachCategory, setOutreachCategory] = useState('')
   const [pricingModel, setPricingModel] = useState('')
   const [serviceType, setServiceType] = useState('')
-  const [productId, setProductId] = useState('')
-  const [tierId, setTierId] = useState('')
-
   const qc = useQueryClient()
   const { userId } = useUser()
-
-  const { data: products = [] } = useGetProducts()
-  const { data: tiers = [] } = useGetTiers()
-
-  // Auto-select first product/tier when there's only one
-  const effectiveProductId = productId || (products.length === 1 ? products[0].id : '')
-  const effectiveTierId = tierId || (tiers.length === 1 ? tiers[0].id : '')
 
   const { mutate, isPending, error } = useCreateDeal({
     onSuccess: () => {
@@ -101,10 +91,10 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
     mutate({
       title: title.trim(),
       companyId: companyId || null,
-      productId: effectiveProductId || null,
-      tierId: effectiveTierId || null,
+      productId: null,
+      tierId: null,
       stage,
-      value: value.trim() || null,
+      value: value.replace(/,/g, '').trim() || null,
       outreachCategory: outreachCategory || null,
       pricingModel: pricingModel || null,
       servicesTags: tags,
@@ -212,8 +202,14 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
               <Input
                 value={value}
-                onChange={e => setValue(e.target.value.replace(/[^0-9.]/g, ''))}
-                placeholder="e.g. 250000"
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9.]/g, '')
+                  // Format with commas for display, strip on submit
+                  const parts = raw.split('.')
+                  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+                  setValue(parts.join('.'))
+                }}
+                placeholder="e.g. 250,000"
                 className="h-9 text-[13px]"
               />
             </div>
@@ -232,41 +228,6 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
             </div>
           </div>
 
-          {/* Product + Tier (only shown when more than one option) */}
-          {(products.length > 1 || tiers.length > 1) && (
-            <div className="grid grid-cols-2 gap-3">
-              {products.length > 1 && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Product</label>
-                  <Select value={productId} onValueChange={setProductId}>
-                    <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {products.map(p => (
-                        <SelectItem key={p.id} value={p.id} className="text-[13px]">{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              {tiers.length > 1 && (
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em]">Tier</label>
-                  <Select value={tierId} onValueChange={setTierId}>
-                    <SelectTrigger className="h-9 text-[13px]">
-                      <SelectValue placeholder="Select…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiers.map(t => (
-                        <SelectItem key={t.id} value={t.id} className="text-[13px]">{t.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-            </div>
-          )}
 
           {error && (
             <p className="text-[12px] text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
