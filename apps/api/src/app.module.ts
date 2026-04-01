@@ -19,6 +19,7 @@ import { CalendarModule } from './calendar/calendar.module'
 import { UsersModule } from './users/users.module'
 import { AuditLogsModule } from './audit-logs/audit-logs.module'
 import { GmailModule } from './gmail/gmail.module'
+import { BillingModule } from './billing/billing.module'
 
 @Module({
   providers: [
@@ -44,6 +45,7 @@ import { GmailModule } from './gmail/gmail.module'
     UsersModule,
     AuditLogsModule,
     GmailModule,
+    BillingModule,
   ],
 })
 export class AppModule {}

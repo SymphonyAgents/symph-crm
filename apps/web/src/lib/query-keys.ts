@@ -70,6 +70,9 @@ export const queryKeys = {
     all: ['audit-logs'] as const,
     filtered: (params: AuditFilterParams) => ['audit-logs', params] as const,
   },
+  billing: {
+    byDeal: (dealId: string) => ['billing', 'deal', dealId] as const,
+  },
   documents: {
     all: ['documents'] as const,
     byDeal: (dealId: string) => ['documents', 'deal', dealId] as const,

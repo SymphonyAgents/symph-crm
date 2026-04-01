@@ -19,6 +19,7 @@ import type {
   ApiTier,
   Activity,
   ApiDocument,
+  ApiBilling,
   PipelineSummary,
   AuditLogsResponse,
   ApiCalendarEvent,
@@ -120,6 +121,24 @@ export function useGetActivitiesByCompany(
     queryKey: queryKeys.activities.byCompany(companyId),
     queryFn: () => api.get<Activity[]>('/activities', { companyId, limit: 30 }),
     enabled: !!companyId,
+    ...options,
+  })
+}
+
+// ─── Billing ─────────────────────────────────────────────────────────────────
+
+export function useGetBillingByDeal(
+  dealId: string | undefined,
+  options?: Partial<UseQueryOptions<ApiBilling | null>>,
+) {
+  return useQuery<ApiBilling | null>({
+    queryKey: queryKeys.billing.byDeal(dealId ?? ''),
+    queryFn: async () => {
+      const res = await api.get<ApiBilling | { billing: null }>(`/deals/${dealId}/billing`)
+      if ('billing' in res && res.billing === null) return null
+      return res as ApiBilling
+    },
+    enabled: !!dealId,
     ...options,
   })
 }

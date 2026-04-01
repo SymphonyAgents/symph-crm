@@ -17,6 +17,7 @@ import {
   BarChart3,
   FileText,
   ClipboardList,
+  Receipt,
   Sun,
   Moon,
 } from 'lucide-react'
@@ -68,6 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
       { path: '/calendar', label: 'Calendar', icon: Calendar },
       { path: '/reports', label: 'Reports', icon: BarChart3 },
       { path: '/proposals', label: 'Proposals', icon: FileText },
+      { path: '/bills', label: 'Bills', icon: Receipt },
       { path: '/audit-logs', label: 'Audit Log', icon: ClipboardList },
     ],
   },

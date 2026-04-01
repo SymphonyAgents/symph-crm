@@ -28,6 +28,7 @@ import {
 } from '@/lib/constants'
 import { DocumentViewerModal } from './DocumentViewerModal'
 import { PasteChip, PastePreviewModal } from './PasteChip'
+import { BillingSection } from './BillingSection'
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -1336,6 +1337,11 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
               )}
             </div>
           </SidebarSection>
+
+          {/* Billing — only for won deals */}
+          {deal.stage === 'closed_won' && (
+            <BillingSection dealId={dealId} />
+          )}
 
           {/* Deal flags */}
           {deal.isFlagged && (

@@ -215,6 +215,33 @@ export type InboxResponse = {
 
 export type FilterTab = 'all' | 'unread'
 
+// ── Billing ─────────────────────────────────────────────────────────────────
+
+export type ApiBillingMilestone = {
+  id: string
+  billingId: string
+  name: string
+  amount: string
+  percentage: string | null
+  sortOrder: number
+  isPaid: boolean
+  paidAt: string | null
+  createdAt: string
+}
+
+export type ApiBilling = {
+  id: string
+  dealId: string
+  billingType: 'annual' | 'monthly' | 'milestone'
+  contractStart: string | null
+  contractEnd: string | null
+  amount: string | null
+  monthlyDerived: string | null
+  createdAt: string
+  updatedAt: string
+  milestones: ApiBillingMilestone[]
+}
+
 // ── Chat ─────────────────────────────────────────────────────────────────────
 
 export type ActionRecord = {
