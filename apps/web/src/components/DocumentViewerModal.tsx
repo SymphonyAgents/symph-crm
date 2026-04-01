@@ -94,7 +94,21 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
             <div className="text-[14px] font-semibold text-slate-900 dark:text-white truncate">
               {doc.title}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+              {/* Breadcrumb from storagePath */}
+              {doc.storagePath && (() => {
+                const parts = doc.storagePath.replace(/^\//, '').split('/').filter(Boolean)
+                return parts.length > 1 ? (
+                  <>
+                    {parts.slice(0, -1).map((seg, i) => (
+                      <span key={i} className="flex items-center gap-1.5">
+                        <span className="text-slate-300 dark:text-slate-600">{seg}</span>
+                        <span className="text-slate-200 dark:text-slate-700">/</span>
+                      </span>
+                    ))}
+                  </>
+                ) : null
+              })()}
               <span>{getFileTypeLabel(doc)}</span>
               <span>·</span>
               <span>{new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
@@ -199,13 +213,13 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
               prose-p:text-[15px] prose-p:leading-[1.75] prose-p:my-3
               prose-strong:font-semibold
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              prose-hr:my-8 prose-hr:border-black/10 dark:prose-hr:border-white/10
+              prose-hr:my-8 prose-hr:border-0 prose-hr:h-px prose-hr:bg-gradient-to-r prose-hr:from-transparent prose-hr:via-primary/30 prose-hr:to-transparent
               prose-ul:my-3 prose-ul:pl-5 prose-li:my-1 prose-li:text-[15px] prose-li:leading-[1.7]
               prose-ol:my-3 prose-ol:pl-5
-              prose-blockquote:border-l-[3px] prose-blockquote:border-black/20 dark:prose-blockquote:border-white/20
+              prose-blockquote:border-l-[3px] prose-blockquote:border-primary/50
               prose-blockquote:pl-4 prose-blockquote:py-0 prose-blockquote:my-3
               prose-blockquote:not-italic prose-blockquote:text-slate-600 dark:prose-blockquote:text-slate-400
-              prose-blockquote:bg-transparent prose-blockquote:font-normal
+              prose-blockquote:bg-primary/[.03] dark:prose-blockquote:bg-primary/[.06] prose-blockquote:rounded-r prose-blockquote:font-normal
               prose-code:text-[13px] prose-code:font-mono prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
               prose-code:bg-black/[.06] dark:prose-code:bg-white/[.08]
               prose-code:text-slate-800 dark:prose-code:text-slate-200

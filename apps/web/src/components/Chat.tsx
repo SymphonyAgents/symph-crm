@@ -267,6 +267,123 @@ function TypingIndicator() {
   )
 }
 
+// ─── PasteChip ────────────────────────────────────────────────────────────────
+
+function PasteChip({
+  text,
+  onRemove,
+  onClick,
+}: {
+  text: string
+  onRemove: () => void
+  onClick: () => void
+}) {
+  const lineCount = text.split('\n').length
+  const preview = text.replace(/\n/g, ' ').slice(0, 100)
+  return (
+    <div className="px-4 pt-2 pb-1 flex items-center gap-2">
+      <button
+        onClick={onClick}
+        className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2 rounded-lg bg-slate-50 dark:bg-white/[.04] border border-black/[.07] dark:border-white/[.07] hover:border-black/20 dark:hover:border-white/20 transition-colors group text-left"
+      >
+        {/* Clipboard icon */}
+        <svg className="shrink-0 text-slate-300 dark:text-slate-600" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+          <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+        </svg>
+        {/* Preview text */}
+        <span className="flex-1 min-w-0 font-mono text-[11.5px] text-slate-400 dark:text-slate-500 truncate leading-none">
+          {preview}{text.length > 100 && '…'}
+        </span>
+        {/* Badge + hint */}
+        <span className="shrink-0 flex items-center gap-1.5">
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary leading-none">
+            {lineCount > 1 ? `${lineCount} lines` : `${text.length} chars`}
+          </span>
+          <span className="text-[10px] text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors leading-none">
+            View
+          </span>
+        </span>
+      </button>
+      <button
+        onClick={onRemove}
+        className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors shrink-0"
+      >
+        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+  )
+}
+
+// ─── PastePreviewModal ────────────────────────────────────────────────────────
+
+function PastePreviewModal({
+  text,
+  onClose,
+}: {
+  text: string
+  onClose: () => void
+}) {
+  const lineCount = text.split('\n').length
+  const charCount = text.length
+  const sizeLabel = charCount < 1024 ? `${charCount} chars` : `${(charCount / 1024).toFixed(1)} KB`
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  useEffect(() => { contentRef.current?.focus() }, [])
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[86vw] max-w-[720px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
+        onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-3.5 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
+          <svg className="text-slate-400 shrink-0" width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <div className="text-[14px] font-semibold text-slate-900 dark:text-white">Pasted content</div>
+            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+              <span>{lineCount} {lineCount === 1 ? 'line' : 'lines'}</span>
+              <span>·</span>
+              <span>{sizeLabel}</span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors shrink-0"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        {/* Content */}
+        <div ref={contentRef} className="flex-1 overflow-y-auto outline-none" tabIndex={0}>
+          <pre className="px-6 py-5 text-[12.5px] font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-x-auto">
+            {text}
+          </pre>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function Chat({ dealId }: { dealId?: string }) {
@@ -285,6 +402,10 @@ export function Chat({ dealId }: { dealId?: string }) {
   const [attachmentError, setAttachmentError] = useState<string | null>(null)
   // Live AnalyserNode — passed to AudioVisualizer while recording
   const [liveAnalyser, setLiveAnalyser] = useState<AnalyserNode | null>(null)
+
+  // Paste chip — bulk text pastes are captured as a chip, not inserted inline
+  const [pasteChip, setPasteChip] = useState<string | null>(null)
+  const [showPastePreview, setShowPastePreview] = useState(false)
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -379,16 +500,25 @@ export function Chat({ dealId }: { dealId?: string }) {
 
   const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
     const items = Array.from(e.clipboardData.items)
+
+    // Image paste → attachment
     const imageItem = items.find(item => item.type.startsWith('image/'))
-    if (!imageItem) return
+    if (imageItem) {
+      e.preventDefault()
+      const file = imageItem.getAsFile()
+      if (!file) return
+      const filename = `screenshot-${Date.now()}.${file.type.split('/')[1] || 'png'}`
+      const namedFile = new File([file], filename, { type: file.type })
+      await setImageAttachment(namedFile)
+      return
+    }
 
-    e.preventDefault()
-    const file = imageItem.getAsFile()
-    if (!file) return
-
-    const filename = `screenshot-${Date.now()}.${file.type.split('/')[1] || 'png'}`
-    const namedFile = new File([file], filename, { type: file.type })
-    await setImageAttachment(namedFile)
+    // Bulk text paste → chip (replaces any previous chip)
+    const text = e.clipboardData.getData('text/plain')
+    if (text && (text.length > 80 || text.includes('\n'))) {
+      e.preventDefault()
+      setPasteChip(text)
+    }
   }, [setImageAttachment])
 
   // ── Voice recording ──────────────────────────────────────────────────────
@@ -489,6 +619,7 @@ export function Chat({ dealId }: { dealId?: string }) {
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setPendingAttachment(null)
+    setPasteChip(null)
     if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl)
     setTyping(true)
     setApiError(null)
@@ -627,8 +758,12 @@ export function Chat({ dealId }: { dealId?: string }) {
 
   function handleSubmit() {
     const trimmed = input.trim()
-    if ((!trimmed && !pendingAttachment) || typing) return
-    sendMessage(trimmed, pendingAttachment ?? undefined)
+    // If there's a paste chip, append it to (or use it as) the message text
+    const textToSend = pasteChip
+      ? trimmed ? `${trimmed}\n\n${pasteChip}` : pasteChip
+      : trimmed
+    if ((!textToSend && !pendingAttachment) || typing) return
+    sendMessage(textToSend, pendingAttachment ?? undefined)
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -638,7 +773,7 @@ export function Chat({ dealId }: { dealId?: string }) {
     }
   }
 
-  const canSubmit = (input.trim() || pendingAttachment) && !typing
+  const canSubmit = (input.trim() || pendingAttachment || pasteChip) && !typing
 
   // ── Input box ────────────────────────────────────────────────────────────
 
@@ -666,7 +801,16 @@ export function Chat({ dealId }: { dealId?: string }) {
           <AttachmentPreview attachment={pendingAttachment} onRemove={clearAttachment} />
         )}
 
-        <div className={cn('px-4 pt-4 pb-2', (pendingAttachment || recording) && 'pt-2')}>
+        {/* Paste chip */}
+        {pasteChip && !recording && (
+          <PasteChip
+            text={pasteChip}
+            onRemove={() => setPasteChip(null)}
+            onClick={() => setShowPastePreview(true)}
+          />
+        )}
+
+        <div className={cn('px-4 pt-4 pb-2', (pendingAttachment || pasteChip || recording) && 'pt-2')}>
           <textarea
             ref={inputRef}
             value={input}
@@ -785,38 +929,43 @@ export function Chat({ dealId }: { dealId?: string }) {
 
   if (isEmpty) {
     return (
-      <div
-        ref={containerRef}
-        className="h-full flex flex-col items-center justify-center px-6"
-      >
-        <div className="flex flex-col items-center gap-6 max-w-[680px] w-full">
-          <div className="flex items-center gap-3 mb-2">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-[15px] shrink-0"
-              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
-            >
-              S
-            </div>
-            <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">
-              {getGreeting()}, {userName}
-            </h1>
-          </div>
-
-          {inputBox}
-
-          <div className="flex flex-wrap gap-2 justify-center">
-            {SUGGESTED_PROMPTS.map((p) => (
-              <button
-                key={p.prompt}
-                onClick={() => sendMessage(p.prompt)}
-                className="px-3.5 py-2 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
+      <>
+        <div
+          ref={containerRef}
+          className="h-full flex flex-col items-center justify-center px-6"
+        >
+          <div className="flex flex-col items-center gap-6 max-w-[680px] w-full">
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white text-[15px] shrink-0"
+                style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
               >
-                {p.label}
-              </button>
-            ))}
+                S
+              </div>
+              <h1 className="text-[28px] font-bold text-slate-900 dark:text-white tracking-tight leading-none">
+                {getGreeting()}, {userName}
+              </h1>
+            </div>
+
+            {inputBox}
+
+            <div className="flex flex-wrap gap-2 justify-center">
+              {SUGGESTED_PROMPTS.map((p) => (
+                <button
+                  key={p.prompt}
+                  onClick={() => sendMessage(p.prompt)}
+                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-[12px] font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+        {showPastePreview && pasteChip && (
+          <PastePreviewModal text={pasteChip} onClose={() => setShowPastePreview(false)} />
+        )}
+      </>
     )
   }
 
@@ -862,6 +1011,9 @@ export function Chat({ dealId }: { dealId?: string }) {
         )}
         {inputBox}
       </div>
+      {showPastePreview && pasteChip && (
+        <PastePreviewModal text={pasteChip} onClose={() => setShowPastePreview(false)} />
+      )}
     </div>
   )
 }
