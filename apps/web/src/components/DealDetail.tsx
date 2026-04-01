@@ -150,7 +150,7 @@ function QuickActionRow({
 }
 
 /** Accepted upload MIME types for resource files */
-const RESOURCE_ACCEPT = [
+const RESOURCE_ACCEPT_LIST = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/html',
@@ -160,7 +160,8 @@ const RESOURCE_ACCEPT = [
   'image/jpeg',
   'image/png',
   'image/webp',
-].join(',')
+]
+const RESOURCE_ACCEPT = RESOURCE_ACCEPT_LIST.join(',')
 
 type DealDetailProps = {
   dealId: string
@@ -682,8 +683,10 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                     e.stopPropagation()
                     const files = e.dataTransfer?.files
                     if (!files?.length || !deal || !userId) return
+                    const accepted = Array.from(files).filter(f => RESOURCE_ACCEPT_LIST.includes(f.type))
+                    if (!accepted.length) return
                     setUploading(true)
-                    uploadFiles.mutate({ dealId, authorId: userId, files: Array.from(files) })
+                    uploadFiles.mutate({ dealId, authorId: userId, files: accepted })
                   }}
                 >
                   {uploading ? (

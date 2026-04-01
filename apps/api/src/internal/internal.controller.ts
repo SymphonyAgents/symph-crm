@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   Body,
+  Headers,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -37,6 +38,14 @@ import { PipelineService } from '../pipeline/pipeline.service'
  * Aria authenticates with the X-Internal-Secret header (same secret used by
  * Cloud Scheduler). The secret is stored in GCP Secret Manager as
  * `symph-crm-internal-secret` and injected as INTERNAL_SECRET in Cloud Run.
+ *
+ * ─── Audit Attribution ─────────────────────────────────────────────────
+ *
+ * All mutating routes accept optional headers for audit attribution:
+ *   X-Performed-By      CRM user ID (FK to users.id) — resolves name/image in audit queries
+ *   X-Performed-By-Name Display name (stored in audit details JSONB as fallback)
+ *
+ * When headers are absent, performedBy defaults to undefined and source is 'aria'.
  *
  * Endpoint summary:
  *
@@ -110,6 +119,18 @@ export class InternalController {
     private readonly auditLogs: AuditLogsService,
     private readonly pipeline: PipelineService,
   ) {}
+
+  /**
+   * Resolve performer identity from request headers.
+   * - performedBy: CRM user ID (valid FK for audit log LEFT JOIN) or undefined
+   * - performerName: display name for JSONB details
+   * - source: always 'aria' for internal API calls
+   */
+  private resolvePerformer(headers: Record<string, string | string[] | undefined>) {
+    const performedBy = (headers['x-performed-by'] as string) || undefined
+    const performerName = (headers['x-performed-by-name'] as string) || undefined
+    return { performedBy, performerName, source: 'aria' as const }
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Infrastructure (Cloud Scheduler)
@@ -207,6 +228,7 @@ export class InternalController {
   /** POST /api/internal/deals — Create a new deal */
   @Post('deals')
   async createDeal(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       title: string
       companyId?: string
@@ -219,20 +241,23 @@ export class InternalController {
       [key: string]: unknown
     },
   ) {
-    const deal = await this.deals.create(body as any, 'aria')
+    const { performedBy } = this.resolvePerformer(headers)
+    const deal = await this.deals.create(body as any, performedBy)
     return { ok: true, deal }
   }
 
   /** PATCH /api/internal/deals/:id — Update deal fields */
   @Patch('deals/:id')
   async updateDeal(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body() body: { stage?: string; value?: number; title?: string; assignedTo?: string; [key: string]: unknown },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const { stage, ...rest } = body
 
     if (stage) {
-      await this.deals.updateStage(id, stage, 'aria')
+      await this.deals.updateStage(id, stage, performedBy)
     }
 
     const updatableFields = ['value', 'title', 'notes', 'assignedTo', 'companyId', 'productId', 'tierId'] as const
@@ -240,7 +265,7 @@ export class InternalController {
       Object.entries(rest).filter(([k]) => (updatableFields as readonly string[]).includes(k)),
     )
     if (Object.keys(otherFields).length > 0) {
-      await this.deals.update(id, otherFields as any, 'aria')
+      await this.deals.update(id, otherFields as any, performedBy)
     }
 
     const updated = await this.deals.findOne(id)
@@ -250,12 +275,14 @@ export class InternalController {
   /** PATCH /api/internal/deals/:id/stage — Explicit stage transition */
   @Patch('deals/:id/stage')
   async updateDealStage(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body() body: { stage: string },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const deal = await this.deals.findOne(id)
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
-    await this.deals.updateStage(id, body.stage, 'aria')
+    await this.deals.updateStage(id, body.stage, performedBy)
     const updated = await this.deals.findOne(id)
     return { ok: true, deal: updated }
   }
@@ -263,22 +290,28 @@ export class InternalController {
   /** PATCH /api/internal/deals/:id/assign — Reassign deal to a user */
   @Patch('deals/:id/assign')
   async reassignDeal(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body() body: { assignedTo: string },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const deal = await this.deals.findOne(id)
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
-    await this.deals.update(id, { assignedTo: body.assignedTo } as any, 'aria')
+    await this.deals.update(id, { assignedTo: body.assignedTo } as any, performedBy)
     const updated = await this.deals.findOne(id)
     return { ok: true, deal: updated }
   }
 
   /** DELETE /api/internal/deals/:id — Remove deal */
   @Delete('deals/:id')
-  async removeDeal(@Param('id') id: string) {
+  async removeDeal(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const deal = await this.deals.findOne(id)
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
-    await this.deals.remove(id, 'aria')
+    await this.deals.remove(id, performedBy)
     return { ok: true, deleted: id }
   }
 
@@ -311,6 +344,7 @@ export class InternalController {
   /** POST /api/internal/companies — Create a new company */
   @Post('companies')
   async createCompany(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       name: string
       domain?: string
@@ -319,9 +353,10 @@ export class InternalController {
       [key: string]: unknown
     },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const company = await this.companies.create(
-      { ...body, createdBy: body.createdBy ?? 'aria' } as any,
-      'aria',
+      { ...body, createdBy: body.createdBy ?? performedBy } as any,
+      performedBy,
     )
     return { ok: true, company }
   }
@@ -329,21 +364,27 @@ export class InternalController {
   /** PUT /api/internal/companies/:id — Update company */
   @Put('companies/:id')
   async updateCompany(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body() body: { name?: string; domain?: string; [key: string]: unknown },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const company = await this.companies.findOne(id)
     if (!company) throw new NotFoundException(`Company ${id} not found`)
-    const updated = await this.companies.update(id, body as any, 'aria')
+    const updated = await this.companies.update(id, body as any, performedBy)
     return { ok: true, company: updated }
   }
 
   /** DELETE /api/internal/companies/:id — Remove company */
   @Delete('companies/:id')
-  async removeCompany(@Param('id') id: string) {
+  async removeCompany(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const company = await this.companies.findOne(id)
     if (!company) throw new NotFoundException(`Company ${id} not found`)
-    await this.companies.remove(id, 'aria')
+    await this.companies.remove(id, performedBy)
     return { ok: true, deleted: id }
   }
 
@@ -445,6 +486,7 @@ export class InternalController {
   /** POST /api/internal/activities — Log an activity */
   @Post('activities')
   async createActivity(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       dealId?: string
       companyId?: string
@@ -457,9 +499,10 @@ export class InternalController {
       [key: string]: unknown
     },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const activity = await this.activities.create({
       ...body,
-      performedBy: body.performedBy ?? 'aria',
+      performedBy: body.performedBy ?? performedBy,
     } as any)
     return { ok: true, activity }
   }
@@ -499,6 +542,7 @@ export class InternalController {
   /** POST /api/internal/documents — Create a document (metadata + optional content) */
   @Post('documents')
   async createDocument(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: {
       dealId?: string
       companyId?: string
@@ -515,9 +559,10 @@ export class InternalController {
       [key: string]: unknown
     },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const doc = await this.documents.create(
-      { ...body, authorId: body.authorId ?? 'aria' } as any,
-      'aria',
+      { ...body, authorId: body.authorId ?? performedBy } as any,
+      performedBy,
     )
     return { ok: true, document: doc }
   }
@@ -525,6 +570,7 @@ export class InternalController {
   /** PUT /api/internal/documents/:id — Update document (metadata + optional content) */
   @Put('documents/:id')
   async updateDocument(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Param('id') id: string,
     @Body() body: {
       title?: string
@@ -535,15 +581,20 @@ export class InternalController {
       [key: string]: unknown
     },
   ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const doc = await this.documents.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
-    const updated = await this.documents.update(id, body as any, 'aria')
+    const updated = await this.documents.update(id, body as any, performedBy)
     return { ok: true, document: updated }
   }
 
   /** DELETE /api/internal/documents/:id — Soft-delete document */
   @Delete('documents/:id')
-  async removeDocument(@Param('id') id: string) {
+  async removeDocument(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
     const doc = await this.documents.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
     await this.documents.remove(id)
