@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import { useGetDocumentContent } from '@/lib/hooks/queries'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import type { ApiDocument } from '@/lib/types'
@@ -230,7 +231,7 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
               prose-table:text-[14px]
               prose-th:font-semibold prose-th:border-b prose-th:border-black/10 dark:prose-th:border-white/10
               prose-td:border-b prose-td:border-black/[.05] dark:prose-td:border-white/[.05]">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                 {content}
               </ReactMarkdown>
             </div>
