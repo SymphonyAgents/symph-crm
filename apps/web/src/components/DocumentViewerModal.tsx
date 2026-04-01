@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useGetDocumentContent } from '@/lib/hooks/queries'
@@ -45,11 +45,17 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
   const isMarkdown = isMarkdownDoc(doc)
   const isImage = isImageDoc(doc)
   const [viewMode, setViewMode] = useState<ViewMode>('rendered')
+  const contentRef = useRef<HTMLDivElement>(null)
 
   // Fetch content for all non-image documents (text, extracted PDF text, etc.)
   const { data, isLoading } = useGetDocumentContent(!isImage ? doc.id : null)
 
   useEscapeKey(useCallback(onClose, [onClose]))
+
+  // Auto-focus the content area on mount so Ctrl+A selects within the modal
+  useEffect(() => {
+    contentRef.current?.focus()
+  }, [])
 
   const content = data?.content ?? ''
 
@@ -59,8 +65,9 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[90vw] max-w-[780px] max-h-[85vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
+        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[860px] max-h-[88vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
       >
         {/* ── Header ────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
@@ -138,7 +145,8 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
         </div>
 
         {/* ── Content ───────────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
+        {/* tabIndex + ref: makes this div focusable so Ctrl+A selects only its text */}
+        <div ref={contentRef} className="flex-1 overflow-y-auto outline-none" tabIndex={0}>
           {isLoading ? (
             <div className="flex items-center justify-center h-48">
               <div className="w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
@@ -176,24 +184,45 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
               )}
             </div>
           ) : isMarkdown && viewMode === 'rendered' ? (
-            /* Rendered markdown with typography plugin */
-            <div className="px-7 py-6 prose prose-sm dark:prose-invert max-w-none
-              prose-headings:font-semibold prose-headings:text-slate-900 dark:prose-headings:text-white
-              prose-p:text-slate-700 dark:prose-p:text-slate-300
-              prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-              prose-pre:bg-slate-50 dark:prose-pre:bg-white/[.04] prose-pre:border prose-pre:border-black/[.06] dark:prose-pre:border-white/[.08]
-              prose-blockquote:border-primary/40 prose-blockquote:text-slate-500
+            /*
+             * Rendered markdown — Warp IDE layout:
+             * Large H1, bold H2s, simple left-border blockquotes,
+             * HR section dividers, comfortable 15px body, generous spacing.
+             * Colors follow the app's own light/dark theme.
+             */
+            <div className="px-8 py-7 max-w-none overflow-x-auto
+              prose dark:prose-invert
+              prose-headings:font-bold prose-headings:tracking-tight
+              prose-h1:text-[1.9rem] prose-h1:leading-tight prose-h1:mb-3 prose-h1:mt-0
+              prose-h2:text-[1.3rem] prose-h2:leading-snug prose-h2:mt-8 prose-h2:mb-3
+              prose-h3:text-[1.05rem] prose-h3:mt-6 prose-h3:mb-2
+              prose-p:text-[15px] prose-p:leading-[1.75] prose-p:my-3
+              prose-strong:font-semibold
               prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              prose-strong:text-slate-900 dark:prose-strong:text-white
-              prose-th:text-slate-700 dark:prose-th:text-slate-300
-              prose-td:text-slate-600 dark:prose-td:text-slate-400">
+              prose-hr:my-8 prose-hr:border-black/10 dark:prose-hr:border-white/10
+              prose-ul:my-3 prose-ul:pl-5 prose-li:my-1 prose-li:text-[15px] prose-li:leading-[1.7]
+              prose-ol:my-3 prose-ol:pl-5
+              prose-blockquote:border-l-[3px] prose-blockquote:border-black/20 dark:prose-blockquote:border-white/20
+              prose-blockquote:pl-4 prose-blockquote:py-0 prose-blockquote:my-3
+              prose-blockquote:not-italic prose-blockquote:text-slate-600 dark:prose-blockquote:text-slate-400
+              prose-blockquote:bg-transparent prose-blockquote:font-normal
+              prose-code:text-[13px] prose-code:font-mono prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+              prose-code:bg-black/[.06] dark:prose-code:bg-white/[.08]
+              prose-code:text-slate-800 dark:prose-code:text-slate-200
+              prose-code:before:content-none prose-code:after:content-none
+              prose-pre:rounded-lg prose-pre:text-[13px]
+              prose-pre:bg-black/[.04] dark:prose-pre:bg-white/[.05]
+              prose-pre:border prose-pre:border-black/[.07] dark:prose-pre:border-white/[.08]
+              prose-table:text-[14px]
+              prose-th:font-semibold prose-th:border-b prose-th:border-black/10 dark:prose-th:border-white/10
+              prose-td:border-b prose-td:border-black/[.05] dark:prose-td:border-white/[.05]">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {content}
               </ReactMarkdown>
             </div>
           ) : (
             /* Raw / plain text — mono font, whitespace preserved */
-            <pre className="px-7 py-6 text-[12px] font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-x-auto">
+            <pre className="px-8 py-7 text-[13px] font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-x-auto">
               {content}
             </pre>
           )}
