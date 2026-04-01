@@ -59,18 +59,21 @@ export function Dashboard() {
 
   const { from, to } = getDateRange(filter)
 
-  const { data: summary, isLoading: loadingSummary } = useQuery<PipelineSummary>({
+  const { data: summary, isLoading: loadingSummary, isError: errorSummary } = useQuery<PipelineSummary>({
     queryKey: queryKeys.pipeline.summaryFiltered({ from, to }),
     queryFn: () => api.get<PipelineSummary>('/pipeline/summary', { from, to }),
     staleTime: 60_000,
+    retry: false,
   })
 
-  const { data: deals = [], isLoading: loadingDeals } = useQuery<ApiDeal[]>({
+  const { data: deals = [], isLoading: loadingDeals, isError: errorDeals } = useQuery<ApiDeal[]>({
     queryKey: [...queryKeys.deals.all, { from, to }],
     queryFn: () => api.get<ApiDeal[]>('/deals', { from, to }),
+    retry: false,
   })
 
   const isLoading = loadingSummary || loadingDeals
+  const isError = errorSummary || errorDeals
 
   const totalPipeline = summary?.totalPipeline ?? 0
   const activeDeals   = summary?.activeDeals ?? 0
@@ -121,7 +124,11 @@ export function Dashboard() {
           variant={filter.mode === 'lifetime' ? 'default' : 'outline'}
           size="sm"
           className="h-8 text-xs font-medium"
-          onClick={() => setFilter(f => ({ ...f, mode: 'lifetime' }))}
+          onClick={() => setFilter(f =>
+            f.mode === 'lifetime'
+              ? { mode: 'month', year: now.getFullYear(), month: now.getMonth() }
+              : { ...f, mode: 'lifetime' }
+          )}
         >
           Lifetime
         </Button>
@@ -207,22 +214,22 @@ export function Dashboard() {
         <div className="flex flex-col gap-4">
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4">Pipeline by Stage</div>
-            {isLoading ? <PipelineBarSkeleton /> : <PipelineBar deals={deals} />}
+            {isLoading ? <PipelineBarSkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <PipelineBar deals={deals} />}
           </div>
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">Top Deals</div>
-            {isLoading ? <TopDealsSkeleton /> : <TopDeals deals={topDeals} />}
+            {isLoading ? <TopDealsSkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <TopDeals deals={topDeals} />}
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">AM Leaderboard</div>
-            {isLoading ? <AMLeaderboardSkeleton /> : <AMLeaderboard entries={amEntries} />}
+            {isLoading ? <AMLeaderboardSkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <AMLeaderboard entries={amEntries} />}
           </div>
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">Recent Activity</div>
-            {isLoading ? <RecentActivitySkeleton /> : <RecentActivity entries={recentEntries} />}
+            {isLoading ? <RecentActivitySkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <RecentActivity entries={recentEntries} />}
           </div>
         </div>
       </div>
