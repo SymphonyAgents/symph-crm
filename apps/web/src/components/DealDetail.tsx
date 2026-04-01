@@ -179,9 +179,11 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const [viewingDoc, setViewingDoc] = useState<ApiDocument | null>(null)
   const [notePasteChips, setNotePasteChips] = useState<string[]>([])
   const [notePastePreviewText, setNotePastePreviewText] = useState<string | null>(null)
+  const [noteFocused, setNoteFocused] = useState(false)
   const [showAssignDropdown, setShowAssignDropdown] = useState(false)
   const assignRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   const queryClient = useQueryClient()
   const router = useRouter()
@@ -290,6 +292,14 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       setNotePasteChips(prev => [...prev, text])
     }
   }, [])
+
+  // Auto-resize note textarea
+  useEffect(() => {
+    const el = noteTextareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px'
+  }, [noteText])
 
   // Close assign dropdown on outside click or Escape
   useEffect(() => {
@@ -493,50 +503,89 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           {/* ── Notes tab ─────────────────────────────────────────────────── */}
           {activeTab === 'notes' && (
             <div>
-              {/* Note input */}
+              {/* Note input — Chat-style unified container */}
               <div className="p-4 border-b border-black/[.05] dark:border-white/[.06]">
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Add Note</p>
-                {/* Paste chips — stacked when multiple pastes occur */}
-                {notePasteChips.length > 0 && (
-                  <div className="mb-2 flex flex-wrap -mx-1">
-                    {notePasteChips.map((chip, i) => (
-                      <PasteChip
-                        key={i}
-                        text={chip}
-                        onRemove={() => setNotePasteChips(prev => prev.filter((_, idx) => idx !== i))}
-                        onClick={() => setNotePastePreviewText(chip)}
-                      />
-                    ))}
+                <div
+                  className={cn(
+                    'rounded-xl bg-white dark:bg-[#1e1e21] transition-all duration-150',
+                    noteFocused
+                      ? 'border border-black/20 dark:border-white/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)] dark:shadow-none'
+                      : 'border border-black/[.08] dark:border-white/[.08]',
+                  )}
+                >
+                  {/* Paste chips inside the container */}
+                  {notePasteChips.length > 0 && (
+                    <div className="flex flex-wrap pt-1">
+                      {notePasteChips.map((chip, i) => (
+                        <PasteChip
+                          key={i}
+                          text={chip}
+                          onRemove={() => setNotePasteChips(prev => prev.filter((_, idx) => idx !== i))}
+                          onClick={() => setNotePastePreviewText(chip)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Borderless textarea */}
+                  <div className={cn('px-4 pb-2', notePasteChips.length > 0 ? 'pt-3' : 'pt-4')}>
+                    <textarea
+                      ref={noteTextareaRef}
+                      value={noteText}
+                      onChange={e => setNoteText(e.target.value)}
+                      onPaste={handleNotePaste}
+                      onFocus={() => setNoteFocused(true)}
+                      onBlur={() => setNoteFocused(false)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          handleAddNote()
+                        }
+                      }}
+                      placeholder={notePasteChips.length > 0 ? 'Add context (optional)…' : 'Add notes, paste a transcript, drop a link…'}
+                      rows={1}
+                      className="w-full bg-transparent border-none outline-none text-[13px] text-slate-900 dark:text-white leading-[1.6] resize-none overflow-hidden placeholder:text-slate-400"
+                      style={{ minHeight: '28px', maxHeight: '160px' }}
+                    />
                   </div>
-                )}
-                <textarea
-                  value={noteText}
-                  onChange={e => setNoteText(e.target.value)}
-                  onPaste={handleNotePaste}
-                  placeholder={notePasteChips.length > 0 ? 'Add context (optional)…' : 'Add notes, paste a transcript, drop a link…'}
-                  rows={3}
-                  className="w-full text-[13px] text-slate-800 dark:text-white bg-slate-50 dark:bg-white/[.04] border border-black/[.06] dark:border-white/[.08] rounded-lg px-3 py-2.5 placeholder:text-slate-400 resize-none outline-none focus:outline-none focus:border-primary/40 transition-colors"
-                />
-                <div className="flex items-center justify-between mt-2">
-                  <Select value={noteType} onValueChange={setNoteType}>
-                    <SelectTrigger className="w-[140px] h-8 text-[12px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general" className="text-[12px]">Note</SelectItem>
-                      <SelectItem value="discovery" className="text-[12px]">Discovery</SelectItem>
-                      <SelectItem value="meeting" className="text-[12px]">Meeting Notes</SelectItem>
-                      <SelectItem value="transcript_raw" className="text-[12px]">Transcript</SelectItem>
-                      <SelectItem value="proposal" className="text-[12px]">Proposal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <button
-                    onClick={handleAddNote}
-                    disabled={(!noteText.trim() && notePasteChips.length === 0) || addingNote}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-white text-[12px] font-semibold disabled:opacity-40 hover:bg-primary/90 transition-colors"
-                  >
-                    {addingNote ? 'Saving\u2026' : 'Add'}
-                  </button>
+
+                  {/* Bottom toolbar */}
+                  <div className="flex items-center gap-2 px-3 pb-3 pt-1">
+                    <Select value={noteType} onValueChange={setNoteType}>
+                      <SelectTrigger className="h-7 w-auto min-w-[90px] text-[11px] border-none bg-transparent shadow-none px-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general" className="text-[12px]">Note</SelectItem>
+                        <SelectItem value="discovery" className="text-[12px]">Discovery</SelectItem>
+                        <SelectItem value="meeting" className="text-[12px]">Meeting Notes</SelectItem>
+                        <SelectItem value="transcript_raw" className="text-[12px]">Transcript</SelectItem>
+                        <SelectItem value="proposal" className="text-[12px]">Proposal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="flex-1" />
+                    <button
+                      onClick={handleAddNote}
+                      disabled={(!noteText.trim() && notePasteChips.length === 0) || addingNote}
+                      className={cn(
+                        'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 active:scale-[0.94]',
+                        (!noteText.trim() && notePasteChips.length === 0) || addingNote
+                          ? 'bg-slate-100 dark:bg-white/[.06] cursor-default'
+                          : 'bg-primary hover:bg-primary/90 cursor-pointer',
+                      )}
+                    >
+                      {addingNote ? (
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                      ) : (
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+                          stroke={((!noteText.trim() && notePasteChips.length === 0) || addingNote) ? '#94a3b8' : '#fff'}
+                          strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="12" y1="19" x2="12" y2="5" />
+                          <polyline points="5 12 12 5 19 12" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 
