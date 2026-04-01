@@ -37,37 +37,45 @@ function StageProgress({ currentStage }: { currentStage: string }) {
 
   return (
     <div className="mt-5 px-1">
-      {/* Row 1: circles + connector lines */}
       <div className="flex items-center">
         {PROGRESS_STAGES.map((stage, i) => (
           <>
-            {/* Connector (between steps) */}
+            {/* Connector line between stages */}
             {i > 0 && (
               <div
                 key={`line-${stage.id}`}
-                className="flex-1 h-[1.5px] mx-0.5"
-                style={{ background: i <= currentIdx ? 'var(--primary)' : 'var(--color-border, #e2e8f0)' }}
+                className="flex-1 h-[1.5px] mx-2 shrink"
+                style={{
+                  background: i <= currentIdx
+                    ? 'var(--primary)'
+                    : 'color-mix(in srgb, var(--foreground) 12%, transparent)',
+                }}
               />
             )}
-            {/* Step circle */}
-            <div
-              key={stage.id}
-              className={cn(
-                'w-[26px] h-[26px] rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 transition-all',
-                i < currentIdx
-                  ? 'bg-primary text-white'
-                  : i === currentIdx
-                  ? 'bg-white dark:bg-[#1e1e21] border-2 border-primary text-primary shadow-sm'
-                  : 'bg-white dark:bg-[#1e1e21] border border-slate-200 dark:border-white/10 text-slate-400'
-              )}
-            >
-              {i < currentIdx ? (
-                <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                i + 1
-              )}
+            {/* Dot + label */}
+            <div key={stage.id} className="flex items-center gap-1.5 shrink-0">
+              <div
+                className={cn(
+                  'rounded-full shrink-0 transition-all',
+                  i < currentIdx
+                    ? 'w-2 h-2 bg-primary'
+                    : i === currentIdx
+                    ? 'w-2.5 h-2.5 bg-primary ring-2 ring-offset-1 ring-primary/30 dark:ring-offset-[#191a1c]'
+                    : 'w-2 h-2 bg-slate-300 dark:bg-slate-600'
+                )}
+              />
+              <span
+                className={cn(
+                  'text-[11px] whitespace-nowrap',
+                  i === currentIdx
+                    ? 'font-semibold text-primary'
+                    : i < currentIdx
+                    ? 'font-medium text-slate-500 dark:text-slate-400'
+                    : 'text-slate-400 dark:text-slate-500'
+                )}
+              >
+                {stage.label}
+              </span>
             </div>
           </>
         ))}
@@ -78,23 +86,6 @@ function StageProgress({ currentStage }: { currentStage: string }) {
             </span>
           </div>
         )}
-      </div>
-      {/* Row 2: labels — aligned under each circle */}
-      <div className="hidden sm:flex items-start mt-1.5">
-        {PROGRESS_STAGES.map((stage, i) => (
-          <>
-            {i > 0 && <div key={`spacer-${stage.id}`} className="flex-1" />}
-            <span
-              key={`label-${stage.id}`}
-              className={cn(
-                'text-[10px] font-medium whitespace-nowrap w-[26px] text-center shrink-0',
-                i === currentIdx ? 'text-primary font-semibold' : i < currentIdx ? 'text-slate-500' : 'text-slate-300 dark:text-slate-600'
-              )}
-            >
-              {stage.label}
-            </span>
-          </>
-        ))}
       </div>
     </div>
   )
