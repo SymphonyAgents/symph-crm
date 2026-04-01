@@ -7,6 +7,9 @@ import { CompaniesModule } from '../companies/companies.module'
 import { ContactsModule } from '../contacts/contacts.module'
 import { DocumentsModule } from '../documents/documents.module'
 import { ActivitiesModule } from '../activities/activities.module'
+import { UsersModule } from '../users/users.module'
+import { AuditLogsModule } from '../audit-logs/audit-logs.module'
+import { PipelineModule } from '../pipeline/pipeline.module'
 
 @Module({
   imports: [
@@ -16,6 +19,9 @@ import { ActivitiesModule } from '../activities/activities.module'
     ContactsModule,
     DocumentsModule,
     ActivitiesModule,
+    UsersModule,
+    AuditLogsModule,
+    PipelineModule,
   ],
   controllers: [InternalController],
   providers: [InternalService],

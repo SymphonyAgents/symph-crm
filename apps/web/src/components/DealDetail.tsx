@@ -675,6 +675,16 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                       ? 'border-primary/30 bg-primary/5'
                       : 'border-slate-200 dark:border-white/[.1] hover:border-primary/40 hover:bg-primary/[.02]'
                   )}
+                  onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+                  onDragEnter={e => { e.preventDefault(); e.stopPropagation() }}
+                  onDrop={e => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    const files = e.dataTransfer?.files
+                    if (!files?.length || !deal || !userId) return
+                    setUploading(true)
+                    uploadFiles.mutate({ dealId, authorId: userId, files: Array.from(files) })
+                  }}
                 >
                   {uploading ? (
                     <div className="w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />

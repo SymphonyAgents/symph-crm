@@ -210,9 +210,10 @@ export class DocumentsService {
 
   private derivePath(data: Partial<typeof documents.$inferInsert>): string {
     const type = data.type ?? 'general'
-    if (data.dealId) return `deals/${data.dealId}/${type}.md`
-    if (data.companyId) return `companies/${data.companyId}/${type}.md`
-    if (data.contactId) return `contacts/${data.contactId}/${type}.md`
-    return `workspace/${data.workspaceId ?? 'default'}/${type}-${Date.now()}.md`
+    const ts = Date.now()
+    if (data.dealId) return `deals/${data.dealId}/${type}/${type}-${ts}.md`
+    if (data.companyId) return `companies/${data.companyId}/${type}/${type}-${ts}.md`
+    if (data.contactId) return `contacts/${data.contactId}/${type}/${type}-${ts}.md`
+    return `workspace/${data.workspaceId ?? 'default'}/${type}-${ts}.md`
   }
 }

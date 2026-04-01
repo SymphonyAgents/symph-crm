@@ -68,7 +68,7 @@ export function DocumentViewerModal({ doc, onClose }: DocumentViewerModalProps) 
       <div
         className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[860px] max-h-[88vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
-        onKeyDown={e => e.stopPropagation()}
+        onKeyDown={e => { if (e.key === 'Escape') { onClose(); } e.stopPropagation(); }}
       >
         {/* ── Header ────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 px-5 py-3.5 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
