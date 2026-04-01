@@ -253,7 +253,9 @@ function DealCard({
   const isLost = deal.stage === 'closed_lost'
   const outreach = deal.outreachCategory || 'outbound'
   const services = deal.servicesTags || []
-  const amName = deal.assignedTo || 'Unassigned'
+  // Resolve UUID to display name — deal.assignedTo stores a user ID from the API
+  const resolvedAm = users?.find(u => u.id === deal.assignedTo)
+  const amName = resolvedAm?.name ?? resolvedAm?.email ?? deal.assignedTo ?? 'Unassigned'
 
   return (
     <div

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useCreateDocument, useUploadDocumentFile } from '@/lib/hooks/mutations'
-import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDocumentsByDeal } from '@/lib/hooks/queries'
+import { usePatchDealStage, useCreateDocument, useUploadDocumentFile, useUpdateDeal } from '@/lib/hooks/mutations'
+import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDocumentsByDeal, useGetUsers } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
@@ -176,12 +176,15 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const [addingNote, setAddingNote] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [viewingDoc, setViewingDoc] = useState<ApiDocument | null>(null)
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false)
+  const assignRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const queryClient = useQueryClient()
   const router = useRouter()
   const { userId, isSales } = useUser()
   const patchStage = usePatchDealStage()
+  const updateDeal = useUpdateDeal()
 
   // ── Queries ──────────────────────────────────────────────────────────────
 
@@ -189,6 +192,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const { data: company } = useGetCompany(deal?.companyId)
   const { data: activities = [], isLoading: loadingActivities } = useGetActivitiesByDeal(dealId, { enabled: !!deal })
   const { data: documents = [], isLoading: loadingDocs, refetch: refetchDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal })
+  const { data: users = [] } = useGetUsers()
 
   // ── Derived values ───────────────────────────────────────────────────────
 
@@ -198,6 +202,18 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const isTerminal = deal ? (deal.stage === 'closed_won' || deal.stage === 'closed_lost') : false
   const daysInStage = deal ? getDaysInStage(activities, deal.createdAt) : 0
   const brandColor = getBrandColor(company?.name ?? deal?.companyId)
+
+  // ── User map + AM resolution ─────────────────────────────────────────────
+  const userNameMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of users) m.set(u.id, u.name || u.email)
+    return m
+  }, [users])
+
+  // deal.assignedTo stores a user UUID — resolve to display name
+  const amDisplayName = deal?.assignedTo
+    ? (userNameMap.get(deal.assignedTo) ?? deal.assignedTo)
+    : null
 
   // ── Notes vs Resources split ─────────────────────────────────────────────
   // Resources: docs uploaded to the /resources/ bucket path
@@ -260,6 +276,41 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       { onSettled: () => setAddingNote(false) },
     )
   }, [noteText, noteType, deal, dealId, userId, saveNote])
+
+  // Close assign dropdown on outside click or Escape
+  useEffect(() => {
+    if (!showAssignDropdown) return
+    function handleOutside(e: MouseEvent) {
+      if (assignRef.current && !assignRef.current.contains(e.target as Node)) {
+        setShowAssignDropdown(false)
+      }
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowAssignDropdown(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('keydown', handleEsc)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('keydown', handleEsc)
+    }
+  }, [showAssignDropdown])
+
+  const handleAssignAM = useCallback((assignUserId: string) => {
+    setShowAssignDropdown(false)
+    const newValue = assignUserId || null
+    const prev = queryClient.getQueryData(queryKeys.deals.detail(dealId))
+    queryClient.setQueryData(queryKeys.deals.detail(dealId), (old: any) =>
+      old ? { ...old, assignedTo: newValue } : old
+    )
+    updateDeal.mutate({ id: dealId, data: { assignedTo: newValue } }, {
+      onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
+      onSettled: () => {
+        queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
+        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+      },
+    })
+  }, [dealId, updateDeal, queryClient])
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -765,17 +816,76 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
 
           {/* Account Manager */}
           <SidebarSection title="Account Manager">
-            {deal.assignedTo ? (
-              <div className="flex items-center gap-2.5">
-                <Avatar name={deal.assignedTo} size={36} />
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-800 dark:text-white">{deal.assignedTo}</p>
-                  <p className="text-[11px] text-slate-400">Account Manager</p>
+            <div ref={assignRef} className="relative">
+              {/* Current AM — click to open assign dropdown */}
+              <button
+                onClick={() => setShowAssignDropdown(v => !v)}
+                className="flex items-center gap-2.5 w-full rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.04] px-1 py-1 -mx-1 transition-colors group"
+              >
+                {amDisplayName ? (
+                  <>
+                    <Avatar name={amDisplayName} size={34} />
+                    <div className="text-left min-w-0 flex-1">
+                      <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate">{amDisplayName}</p>
+                      <p className="text-[11px] text-slate-400">Account Manager</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-[34px] h-[34px] rounded-full border-2 border-dashed border-slate-200 dark:border-white/[.12] flex items-center justify-center shrink-0">
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                    <span className="text-[12px] text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+                      Click to assign
+                    </span>
+                  </>
+                )}
+                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600 shrink-0 ml-auto">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {/* Assign dropdown */}
+              {showAssignDropdown && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-100">
+                  {users.length === 0 ? (
+                    <div className="px-3 py-3 text-[11px] text-slate-400 italic text-center">No team members found</div>
+                  ) : (
+                    <div className="max-h-[180px] overflow-y-auto py-1">
+                      {amDisplayName && (
+                        <button
+                          onClick={() => handleAssignAM('')}
+                          className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-red-500 hover:bg-red-50 dark:hover:bg-red-500/[.08] transition-colors"
+                        >
+                          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                          Unassign
+                        </button>
+                      )}
+                      {users.map(u => (
+                        <button
+                          key={u.id}
+                          onClick={() => handleAssignAM(u.id)}
+                          className={cn(
+                            'flex items-center gap-2 w-full px-3 py-1.5 text-[12px] transition-colors',
+                            u.id === deal.assignedTo
+                              ? 'text-primary bg-primary/[.06]'
+                              : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06]'
+                          )}
+                        >
+                          <Avatar name={u.name || u.email} size={18} />
+                          <span className="truncate">{u.name || u.email}</span>
+                          {u.id === deal.assignedTo && (
+                            <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="ml-auto shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ) : (
-              <p className="text-[12px] text-slate-400 italic">Unassigned</p>
-            )}
+              )}
+            </div>
           </SidebarSection>
 
           {/* Quick Actions */}
