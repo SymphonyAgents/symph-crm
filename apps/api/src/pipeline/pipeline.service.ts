@@ -27,19 +27,21 @@ export class PipelineService {
   constructor(@Inject(DB) private db: Database) {}
 
   async getSummary(params: PipelineSummaryParams = {}): Promise<PipelineSummary> {
-    const fromDate = params.from ? new Date(params.from) : null
-    const toDate = params.to ? new Date(params.to) : null
+    // Pass as ISO strings + explicit ::timestamptz cast so postgres.js doesn't
+    // trip on type inference when mixed with ::int / ::float8 casts in the same query.
+    const from = params.from ?? null
+    const to = params.to ?? null
 
     // Stage grouping query — with optional date filter
     let stageQuery
-    if (fromDate && toDate) {
-      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value::numeric), 0)::float8 AS total_value FROM deals WHERE created_at >= ${fromDate} AND created_at <= ${toDate} GROUP BY stage`)
-    } else if (fromDate) {
-      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value::numeric), 0)::float8 AS total_value FROM deals WHERE created_at >= ${fromDate} GROUP BY stage`)
-    } else if (toDate) {
-      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value::numeric), 0)::float8 AS total_value FROM deals WHERE created_at <= ${toDate} GROUP BY stage`)
+    if (from && to) {
+      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value), 0)::float8 AS total_value FROM deals WHERE created_at >= ${from}::timestamptz AND created_at <= ${to}::timestamptz GROUP BY stage`)
+    } else if (from) {
+      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value), 0)::float8 AS total_value FROM deals WHERE created_at >= ${from}::timestamptz GROUP BY stage`)
+    } else if (to) {
+      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value), 0)::float8 AS total_value FROM deals WHERE created_at <= ${to}::timestamptz GROUP BY stage`)
     } else {
-      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value::numeric), 0)::float8 AS total_value FROM deals GROUP BY stage`)
+      stageQuery = this.db.execute(sql`SELECT stage, COUNT(*)::int AS count, COALESCE(SUM(value), 0)::float8 AS total_value FROM deals GROUP BY stage`)
     }
     const rows = await stageQuery
 
@@ -62,14 +64,14 @@ export class PipelineService {
 
     // Value query — with optional date filter
     let valueQuery
-    if (fromDate && toDate) {
-      valueQuery = this.db.execute(sql`SELECT value::numeric AS v FROM deals WHERE value IS NOT NULL AND created_at >= ${fromDate} AND created_at <= ${toDate}`)
-    } else if (fromDate) {
-      valueQuery = this.db.execute(sql`SELECT value::numeric AS v FROM deals WHERE value IS NOT NULL AND created_at >= ${fromDate}`)
-    } else if (toDate) {
-      valueQuery = this.db.execute(sql`SELECT value::numeric AS v FROM deals WHERE value IS NOT NULL AND created_at <= ${toDate}`)
+    if (from && to) {
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL AND created_at >= ${from}::timestamptz AND created_at <= ${to}::timestamptz`)
+    } else if (from) {
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL AND created_at >= ${from}::timestamptz`)
+    } else if (to) {
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL AND created_at <= ${to}::timestamptz`)
     } else {
-      valueQuery = this.db.execute(sql`SELECT value::numeric AS v FROM deals WHERE value IS NOT NULL`)
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL`)
     }
     const valueRows = await valueQuery
 
