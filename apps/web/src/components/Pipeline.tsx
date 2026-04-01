@@ -255,6 +255,10 @@ function DealCard({
   const services = deal.servicesTags || []
   // Resolve UUID to display name — deal.assignedTo stores a user ID from the API
   const resolvedAm = users?.find(u => u.id === deal.assignedTo)
+  // Kanban card: prefer nickname → firstName → first word of name → email prefix
+  const amShortName = resolvedAm
+    ? (resolvedAm.nickname ?? resolvedAm.firstName ?? resolvedAm.name?.split(' ')[0] ?? resolvedAm.email?.split('@')[0] ?? '?')
+    : (deal.assignedTo ? '?' : '—')
   const amName = resolvedAm?.name ?? resolvedAm?.email ?? deal.assignedTo ?? 'Unassigned'
 
   return (
@@ -344,8 +348,8 @@ function DealCard({
             </div>
           )}
           <div className="flex items-center gap-1">
-            <Avatar name={amName} size={20} />
-            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{amName}</span>
+            <Avatar name={amName} email={resolvedAm?.email ?? undefined} size={20} />
+            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{amShortName}</span>
           </div>
         </div>
       </div>
