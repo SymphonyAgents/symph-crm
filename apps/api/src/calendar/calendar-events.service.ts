@@ -53,8 +53,14 @@ export class CalendarEventsService {
 
   async findAll(userId: string, params: { from?: string; to?: string; dealId?: string } = {}) {
     const conditions = [eq(calendarEvents.userId, userId)]
-    if (params.from) conditions.push(gte(calendarEvents.startAt, new Date(params.from)))
-    if (params.to) conditions.push(lte(calendarEvents.startAt, new Date(params.to)))
+    if (params.from) {
+      const fromDate = new Date(params.from)
+      conditions.push(gte(calendarEvents.startAt, fromDate))
+    }
+    if (params.to) {
+      const toDate = new Date(params.to)
+      conditions.push(lte(calendarEvents.startAt, toDate))
+    }
     if (params.dealId) conditions.push(eq(calendarEvents.dealId, params.dealId))
 
     const rows = await this.db

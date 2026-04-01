@@ -23,6 +23,8 @@ const SUPPORTED_MIME_TYPES = new Set([
   'text/plain',
   'text/csv',
   'application/csv',
+  'text/markdown',
+  'text/html',
 ])
 
 @Injectable()
@@ -56,7 +58,11 @@ export class FileParserService {
         return this.parseXlsx(buffer)
       }
 
-      // Plain text / CSV
+      if (mimetype === 'text/html') {
+        return this.parseHtml(buffer)
+      }
+
+      // Plain text / CSV / Markdown
       return this.parsePlainText(buffer)
     } catch (err) {
       this.logger.error(`Failed to parse ${filename}: ${(err as Error).message}`)
@@ -94,6 +100,28 @@ export class FileParserService {
     }
 
     const text = lines.join('\n\n')
+    return { text, wordCount: this.countWords(text) }
+  }
+
+  private parseHtml(buffer: Buffer): ParseResult {
+    let html = buffer.toString('utf-8')
+
+    // Remove script and style tags (including their content)
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+
+    // Remove HTML tags
+    const text = html
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim()
+
     return { text, wordCount: this.countWords(text) }
   }
 
