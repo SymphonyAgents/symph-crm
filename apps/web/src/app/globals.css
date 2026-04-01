@@ -63,18 +63,18 @@
   --ring: oklch(60% 0.14 258);                  /* matches dark primary */
   --radius: 0.5rem;
 
-  /* Stage accent colors — dark mode (lighter, desaturated — native to dark surfaces) */
-  --stage-lead: #94a3b8;           /* unchanged — already muted */
-  --stage-discovery: #7eaaff;      /* muted light blue */
-  --stage-assessment: #b39af5;     /* muted light purple */
-  --stage-qualified: #7ecef8;      /* muted light sky */
-  --stage-demo: #fbbf24;           /* lighter amber */
-  --stage-proposal: #fbbf24;
-  --stage-proposal_demo: #fbbf24;
-  --stage-negotiation: #fde68a;    /* lighter yellow */
-  --stage-followup: #fde68a;
-  --stage-closed_won: #4ade80;     /* lighter green */
-  --stage-closed_lost: #f87171;    /* lighter red */
+  /* Stage accent colors — dark mode (Tailwind 400-level — vivid on dark surfaces) */
+  --stage-lead: #94a3b8;           /* slate-400 — neutral, unchanged */
+  --stage-discovery: #60a5fa;      /* blue-400 */
+  --stage-assessment: #a78bfa;     /* violet-400 */
+  --stage-qualified: #38bdf8;      /* sky-400 */
+  --stage-demo: #fb923c;           /* orange-400 */
+  --stage-proposal: #fb923c;
+  --stage-proposal_demo: #fb923c;
+  --stage-negotiation: #fbbf24;    /* amber-400 */
+  --stage-followup: #fbbf24;
+  --stage-closed_won: #4ade80;     /* green-400 */
+  --stage-closed_lost: #f87171;    /* red-400 */
 }
 
 @theme inline {
