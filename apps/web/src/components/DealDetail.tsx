@@ -233,6 +233,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<string>('general')
   const [addingNote, setAddingNote] = useState(false)
+  const [showAdvanceConfirm, setShowAdvanceConfirm] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [viewingDoc, setViewingDoc] = useState<ApiDocument | null>(null)
@@ -509,6 +510,54 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
         <PastePreviewModal text={notePastePreviewText} onClose={() => setNotePastePreviewText(null)} />
       )}
 
+      {/* Advance confirmation dialog */}
+      {showAdvanceConfirm && nextStage && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowAdvanceConfirm(false)}
+        >
+          <div
+            className="w-full sm:w-auto sm:min-w-[320px] bg-white dark:bg-[#1e1e21] rounded-t-2xl sm:rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-5 pb-8 sm:pb-5 animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Stage transition indicator */}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `var(--stage-${deal.stage}, #94a3b8)` }} />
+              <span className="text-[12px] font-semibold" style={{ color: `var(--stage-${deal.stage}, #94a3b8)` }}>{stageLabel}</span>
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="text-slate-300">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `var(--stage-${nextStage}, #94a3b8)` }} />
+              <span className="text-[12px] font-semibold" style={{ color: `var(--stage-${nextStage}, #94a3b8)` }}>{STAGE_LABELS[nextStage] ?? nextStage}</span>
+            </div>
+            <p className="text-[15px] font-bold text-slate-900 dark:text-white mb-1">
+              Advance this deal?
+            </p>
+            <p className="text-[13px] text-slate-500 dark:text-slate-400 mb-5">
+              Move <span className="font-medium text-slate-700 dark:text-slate-200">{deal.title}</span> to <span className="font-medium" style={{ color: `var(--stage-${nextStage}, #94a3b8)` }}>{STAGE_LABELS[nextStage] ?? nextStage}</span>. This can't be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAdvanceConfirm(false)}
+                className="flex-1 py-2.5 rounded-lg text-[13px] font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setShowAdvanceConfirm(false); handleAdvance() }}
+                disabled={patchStage.isPending}
+                className="flex-1 py-2.5 rounded-lg text-[13px] font-semibold text-white disabled:opacity-60 transition-opacity"
+                style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+              >
+                {patchStage.isPending ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin mx-auto" />
+                ) : 'Advance'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Back */}
       <button
         onClick={onBack}
@@ -521,12 +570,12 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       {/* ── Mobile header (sm:hidden) ────────────────────────────────────────── */}
       <div className="sm:hidden bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4 mb-4 flex flex-col gap-3">
         {/* Company tag */}
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide leading-none">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide leading-none truncate">
           {company?.name ?? 'No Brand'}
         </p>
 
         {/* Deal title */}
-        <h1 className="text-[20px] font-bold text-slate-900 dark:text-white leading-snug -mt-1">
+        <h1 className="text-[20px] font-bold text-slate-900 dark:text-white leading-snug -mt-1 line-clamp-2">
           {deal.title}
         </h1>
 
@@ -562,7 +611,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
         <div className="flex items-center gap-2 mt-1">
           {nextStage ? (
             <button
-              onClick={handleAdvance}
+              onClick={() => setShowAdvanceConfirm(true)}
               disabled={patchStage.isPending}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg font-semibold text-[13px] text-white disabled:opacity-60"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
@@ -630,7 +679,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
             </span>
             {nextStage && (
               <button
-                onClick={handleAdvance}
+                onClick={() => setShowAdvanceConfirm(true)}
                 disabled={patchStage.isPending}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-semibold text-[12px] text-white transition-opacity disabled:opacity-60 shrink-0 mt-0.5"
                 style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
@@ -941,7 +990,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                     return (
                       <div
                         key={doc.id}
-                        className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
+                        className="flex items-start gap-3 px-4 py-3 min-w-0 hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
                         onClick={() => setViewingDoc(doc)}
                       >
                         {/* Obsidian-style file icon */}
@@ -1158,7 +1207,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                           return (
                             <div
                               key={doc.id}
-                              className="flex items-center gap-3 px-3.5 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
+                              className="flex items-center gap-3 px-3.5 py-2.5 min-w-0 hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
                               onClick={() => setViewingDoc(doc)}
                             >
                               {/* File type indicator */}
