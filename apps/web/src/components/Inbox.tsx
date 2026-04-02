@@ -245,7 +245,7 @@ function ChatBubble({
         >
           {/* Message body — 16px desktop, 15px mobile for readability */}
           <p className={cn(
-            'text-[15px] sm:text-[16px] leading-[1.57] whitespace-pre-wrap break-words max-w-[460px]',
+            'text-[14px] leading-[1.57] whitespace-pre-wrap break-words max-w-[460px]',
             isMine ? 'text-white/95' : 'text-slate-800 dark:text-slate-200',
           )}>
             {bodyContent}
@@ -766,7 +766,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
       <div className="flex-1 flex overflow-hidden">
         {/* ── Left panel — conversation list ──────────────────────────────── */}
         <div className={cn(
-          'w-full sm:w-[360px] shrink-0 sm:border-r border-black/[.06] dark:border-white/[.06] flex-col h-full bg-white dark:bg-card',
+          'w-full sm:w-[420px] shrink-0 sm:border-r border-black/[.06] dark:border-white/[.06] flex-col h-full bg-white dark:bg-card',
           mobileView === 'chat' ? 'hidden sm:flex' : 'flex',
         )}>
 
@@ -810,9 +810,8 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
                       setMobileView('list')
                     }}
                     className={cn(
-                      'relative flex-shrink-0 flex items-center gap-1.5 rounded-t-lg transition-all duration-150 border-b-2',
-                      // Desktop: px-3 py-2 with label; Mobile: px-2.5 py-2 icon-only
-                      'px-2.5 py-2.5 sm:px-3',
+                      'relative flex-shrink-0 flex items-center justify-center rounded-t-lg transition-all duration-150 border-b-2',
+                      'w-[52px] py-2.5',
                       isActive
                         ? 'border-b-primary text-primary bg-primary/[0.04] dark:bg-primary/[0.08]'
                         : 'border-b-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
@@ -828,25 +827,9 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
                       {ch.icon}
                     </span>
 
-                    {/* Label — desktop only (hidden on mobile) */}
-                    <span className="hidden sm:inline text-[12px] font-semibold whitespace-nowrap">
-                      {ch.label}
-                    </span>
-
-                    {/* Unread badge */}
+                    {/* Unread dot — shown on all sizes when there are unread messages */}
                     {badge > 0 && (
-                      <span className={cn(
-                        'hidden sm:flex min-w-[17px] h-[17px] rounded-full text-[10px] font-semibold items-center justify-center px-1 tabular-nums',
-                        isActive
-                          ? 'bg-primary text-white'
-                          : 'bg-slate-100 dark:bg-white/[.10] text-slate-500 dark:text-slate-400',
-                      )}>
-                        {badge > 99 ? '99+' : badge}
-                      </span>
-                    )}
-                    {/* Mobile unread dot */}
-                    {badge > 0 && (
-                      <span className="sm:hidden absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
+                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary" />
                     )}
                   </button>
                 )
