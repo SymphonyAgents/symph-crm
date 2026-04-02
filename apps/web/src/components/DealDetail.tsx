@@ -705,7 +705,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       </div>
 
       {/* ── Body: left content + right sidebar ─────────── */}
-      <div className="flex flex-col sm:flex-row sm:gap-4 items-start">
+      <div className="flex flex-col sm:flex-row sm:gap-4 sm:items-start">
 
         {/* Left: tabs + content */}
         <div className="flex-1 min-w-0 bg-white dark:bg-[#1e1e21] sm:rounded-xl border-y sm:border border-black/[.06] dark:border-white/[.08] sm:shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
@@ -991,7 +991,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                     return (
                       <div
                         key={doc.id}
-                        className="flex items-start gap-3 px-4 py-3 min-w-0 hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
+                        className="flex items-start gap-3 px-4 py-3 w-full min-w-0 overflow-hidden hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
                         onClick={() => setViewingDoc(doc)}
                       >
                         {/* Obsidian-style file icon */}
@@ -1162,10 +1162,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                         {filteredResources.map(doc => {
                           const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
                           const ext = getMimeLabel(extRaw, doc.title)
-                          const extLower = extRaw ? `.${extRaw.toLowerCase()}` : ''
-                          const displayName = extLower === '' || doc.title.toLowerCase().endsWith(extLower)
-                            ? doc.title
-                            : `${doc.title}${extLower}`
+                          const displayName = doc.title
                           const isImg = isImage(extRaw)
                           const docStage = parseDocStage(doc.tags)
                           const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
@@ -1217,10 +1214,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                         {filteredResources.map(doc => {
                           const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
                           const ext = getMimeLabel(extRaw, doc.title)
-                          const extLower = extRaw ? `.${extRaw.toLowerCase()}` : ''
-                          const displayName = extLower === '' || doc.title.toLowerCase().endsWith(extLower)
-                            ? doc.title
-                            : `${doc.title}${extLower}`
+                          const displayName = doc.title
                           const isImg = isImage(extRaw)
                           const showWordCount = supportsWordCount(extRaw) && doc.wordCount
                           const docStage = parseDocStage(doc.tags)
@@ -1229,7 +1223,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                           return (
                             <div
                               key={doc.id}
-                              className="flex items-center gap-3 px-3.5 py-2.5 min-w-0 hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
+                              className="flex items-center gap-3 px-3.5 py-2.5 w-full min-w-0 overflow-hidden hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
                               onClick={() => setViewingDoc(doc)}
                             >
                               {/* File type indicator */}
