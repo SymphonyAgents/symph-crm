@@ -499,7 +499,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   // ── Render: deal content ──────────────────────────────────────────────────
 
   return (
-    <div className="p-4 md:p-6">
+    <div className="px-0 pt-4 pb-6 sm:p-4 md:p-6">
       {/* Document viewer modal */}
       {viewingDoc && (
         <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
@@ -513,11 +513,11 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       {/* Advance confirmation dialog */}
       {showAdvanceConfirm && nextStage && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
           onClick={() => setShowAdvanceConfirm(false)}
         >
           <div
-            className="w-full sm:w-auto sm:min-w-[320px] bg-white dark:bg-[#1e1e21] rounded-t-2xl sm:rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-5 pb-8 sm:pb-5 animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-5 animate-in zoom-in-95 fade-in-0 duration-150"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -561,14 +561,14 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1 text-[12px] font-medium text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors mb-4 w-fit"
+        className="flex items-center gap-1 text-[12px] font-medium text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors mb-4 w-fit px-4 sm:px-0"
       >
         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><polyline points="15 18 9 12 15 6" /></svg>
         Back to Pipeline
       </button>
 
       {/* ── Mobile header (sm:hidden) ────────────────────────────────────────── */}
-      <div className="sm:hidden bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4 mb-4 flex flex-col gap-3">
+      <div className="sm:hidden bg-white dark:bg-[#1e1e21] border-y border-black/[.06] dark:border-white/[.08] p-4 mb-0 flex flex-col gap-3">
         {/* Company tag */}
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide leading-none truncate">
           {company?.name ?? 'No Brand'}
@@ -704,10 +704,10 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       </div>
 
       {/* ── Body: left content + right sidebar ─────────── */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start">
+      <div className="flex flex-col sm:flex-row sm:gap-4 items-start">
 
         {/* Left: tabs + content */}
-        <div className="flex-1 min-w-0 bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="flex-1 min-w-0 bg-white dark:bg-[#1e1e21] sm:rounded-xl border-y sm:border border-black/[.06] dark:border-white/[.08] sm:shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
           {/* Tab bar — includes filters + view toggle flushed right */}
           <div className="flex items-center border-b border-black/[.06] dark:border-white/[.08] gap-0 pr-2">
             {/* Tabs */}
@@ -1149,7 +1149,12 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Uploaded Files</p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {filteredResources.map(doc => {
-                          const ext = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))?.toUpperCase() ?? 'FILE'
+                          const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
+                          const ext = extRaw?.toUpperCase() ?? 'FILE'
+                          const extLower = extRaw ? `.${extRaw.toLowerCase()}` : ''
+                          const displayName = extLower === '' || doc.title.toLowerCase().endsWith(extLower)
+                            ? doc.title
+                            : `${doc.title}${extLower}`
                           const isImg = ['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(ext)
                           const docStage = parseDocStage(doc.tags)
                           const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
@@ -1174,7 +1179,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                               </div>
                               {/* Filename */}
                               <p className="text-[12px] font-medium text-slate-800 dark:text-white line-clamp-2 leading-snug group-hover:text-primary transition-colors">
-                                {doc.title}
+                                {displayName}
                               </p>
                               {/* Footer: author + date */}
                               <div className="flex items-center gap-1.5 mt-auto">
@@ -1199,7 +1204,12 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Uploaded Files</p>
                       <div className="divide-y divide-black/[.04] dark:divide-white/[.05] border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden">
                         {filteredResources.map(doc => {
-                          const ext = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))?.toUpperCase() ?? 'FILE'
+                          const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
+                          const ext = extRaw?.toUpperCase() ?? 'FILE'
+                          const extLower = extRaw ? `.${extRaw.toLowerCase()}` : ''
+                          const displayName = extLower === '' || doc.title.toLowerCase().endsWith(extLower)
+                            ? doc.title
+                            : `${doc.title}${extLower}`
                           const isImg = ['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(ext)
                           const docStage = parseDocStage(doc.tags)
                           const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
@@ -1219,9 +1229,9 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                               )}>
                                 {ext.slice(0, 4)}
                               </div>
-                              <div className="flex-1 min-w-0">
+                              <div className="flex-1 min-w-0 overflow-hidden">
                                 <p className="text-[12px] font-medium text-slate-800 dark:text-white truncate group-hover:text-primary transition-colors">
-                                  {doc.title}
+                                  {displayName}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                   {authorUser && (
@@ -1347,7 +1357,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
         </div>
 
         {/* ── Right sidebar ────────── */}
-        <div className="w-full sm:w-[260px] sm:shrink-0 flex flex-col gap-3">
+        <div className="w-full sm:w-[260px] sm:shrink-0 flex flex-col gap-3 px-4 sm:px-0 pt-4 sm:pt-0">
 
           {/* Deal Info */}
           <SidebarSection title="Deal Info">
