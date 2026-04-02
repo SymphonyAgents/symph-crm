@@ -234,6 +234,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const [noteType, setNoteType] = useState<string>('general')
   const [addingNote, setAddingNote] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [viewingDoc, setViewingDoc] = useState<ApiDocument | null>(null)
   const [notePasteChips, setNotePasteChips] = useState<string[]>([])
   const [notePastePreviewText, setNotePastePreviewText] = useState<string | null>(null)
@@ -433,10 +434,17 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (!files?.length || !deal || !userId) return
+    if (!files?.length) return
+    setPendingFiles(prev => [...prev, ...Array.from(files).filter(f => RESOURCE_ACCEPT_LIST.includes(f.type))])
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }, [])
+
+  const handleConfirmUpload = useCallback(() => {
+    if (!pendingFiles.length || !deal || !userId) return
     setUploading(true)
-    uploadFiles.mutate({ dealId, authorId: userId, files: Array.from(files), dealStage: deal.stage })
-  }, [deal, dealId, userId, uploadFiles])
+    uploadFiles.mutate({ dealId, authorId: userId, files: pendingFiles, dealStage: deal.stage })
+    setPendingFiles([])
+  }, [pendingFiles, deal, dealId, userId, uploadFiles])
 
   // ── Render: loading / error ───────────────────────────────────────────────
 
@@ -654,7 +662,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           {/* Tab bar — includes filters + view toggle flushed right */}
           <div className="flex items-center border-b border-black/[.06] dark:border-white/[.08] gap-0 pr-2">
             {/* Tabs */}
-            <div className="flex flex-1">
+            <div className="flex flex-1 min-w-0 overflow-x-auto scrollbar-none">
               {([
                 { id: 'notes', label: 'Notes', count: noteDocs.length },
                 { id: 'resources', label: 'Resources', count: resourceDocs.length },
@@ -665,7 +673,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                   key={tab.id}
                   onClick={() => { setActiveTab(tab.id); setDocSearch('') }}
                   className={cn(
-                    'flex items-center gap-1.5 px-4 py-3 text-[13px] font-medium border-b-2 -mb-px transition-colors',
+                    'flex items-center gap-1.5 px-3 sm:px-4 py-3 text-[13px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                     activeTab === tab.id
                       ? 'border-primary text-primary'
                       : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -688,7 +696,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
 
             {/* Right controls — search + filter + view toggle (hidden for timeline) */}
             {activeTab !== 'timeline' && activeTab !== 'billing' && (
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="hidden sm:flex items-center gap-1 shrink-0">
 
                 {/* Search input */}
                 <div className="flex items-center gap-1 h-7 bg-slate-50 dark:bg-white/[.04] border border-black/[.06] dark:border-white/[.07] rounded-md px-2">
@@ -1012,11 +1020,10 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                     e.preventDefault()
                     e.stopPropagation()
                     const files = e.dataTransfer?.files
-                    if (!files?.length || !deal || !userId) return
+                    if (!files?.length) return
                     const accepted = Array.from(files).filter(f => RESOURCE_ACCEPT_LIST.includes(f.type))
                     if (!accepted.length) return
-                    setUploading(true)
-                    uploadFiles.mutate({ dealId, authorId: userId, files: accepted, dealStage: deal.stage })
+                    setPendingFiles(prev => [...prev, ...accepted])
                   }}
                 >
                   {uploading ? (
@@ -1037,6 +1044,48 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                     </p>
                   </div>
                 </label>
+                {/* Pending file chips + confirm upload */}
+                {pendingFiles.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2 items-start">
+                    {pendingFiles.map((file, i) => (
+                      <div key={i} className="relative group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-white/[.06] border border-black/[.08] dark:border-white/[.10] max-w-[180px]">
+                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-400 shrink-0">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span className="text-[11px] text-slate-600 dark:text-slate-300 truncate leading-tight">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
+                          className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white dark:bg-[#2a2c30] border border-black/[.12] dark:border-white/[.15] flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        >
+                          <svg width={7} height={7} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={handleConfirmUpload}
+                      disabled={uploading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-semibold text-[12px] text-white disabled:opacity-60 transition-opacity"
+                      style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+                    >
+                      {uploading ? (
+                        <div className="w-3 h-3 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                      ) : (
+                        <>
+                          Upload {pendingFiles.length} file{pendingFiles.length !== 1 ? 's' : ''}
+                          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Uploaded resource files */}

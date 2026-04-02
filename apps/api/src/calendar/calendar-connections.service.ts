@@ -138,10 +138,10 @@ export class CalendarConnectionsService {
 
       const listParams: calendar_v3.Params$Resource$Events$List = {
         calendarId: 'primary',
-        singleEvents: true,
         ...(conn.syncToken
           ? { syncToken: conn.syncToken }
           : {
+              singleEvents: true,
               timeMin: monthStart.toISOString(),
               timeMax: new Date(Date.now() + SYNC_WINDOW_DAYS * 86400000).toISOString(),
               maxResults: 250,
