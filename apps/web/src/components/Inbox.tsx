@@ -152,8 +152,8 @@ function ConversationRow({
       className={cn(
         'w-full text-left px-3.5 py-3 border-b border-black/[.05] dark:border-white/[.04] transition-colors duration-150 flex items-start gap-3',
         selected
-          ? 'bg-primary/[0.06] dark:bg-primary/[0.12] border-l-2 border-l-primary'
-          : 'hover:bg-slate-50 dark:hover:bg-white/[.03] border-l-2 border-l-transparent',
+          ? 'bg-primary/[0.06] dark:bg-primary/[0.12]'
+          : 'hover:bg-slate-50 dark:hover:bg-white/[.03]',
       )}
     >
       <div className="relative shrink-0 mt-0.5">
