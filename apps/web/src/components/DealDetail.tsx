@@ -517,7 +517,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           onClick={() => setShowAdvanceConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-5 animate-in zoom-in-95 fade-in-0 duration-150"
+            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-5 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
