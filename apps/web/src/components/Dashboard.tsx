@@ -52,7 +52,7 @@ function getYearOptions(): number[] {
 export function Dashboard() {
   const now = new Date()
   const [filter, setFilter] = useState<DashboardFilter>({
-    mode: 'month',
+    mode: 'lifetime',
     year: now.getFullYear(),
     month: now.getMonth(),
   })
@@ -126,7 +126,7 @@ export function Dashboard() {
           className="h-8 text-xs font-medium"
           onClick={() => setFilter(f =>
             f.mode === 'lifetime'
-              ? { mode: 'month', year: now.getFullYear(), month: now.getMonth() }
+              ? { ...f, mode: 'month' }
               : { ...f, mode: 'lifetime' }
           )}
         >
@@ -152,7 +152,7 @@ export function Dashboard() {
 
           <Select
             value={String(filter.year)}
-            onValueChange={(v) => setFilter(f => ({ ...f, mode: 'month', year: parseInt(v, 10) }))}
+            onValueChange={(v) => setFilter(f => ({ ...f, mode: 'lifetime', year: parseInt(v, 10) }))}
           >
             <SelectTrigger className="h-8 text-xs w-[80px]">
               <SelectValue />

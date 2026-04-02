@@ -192,9 +192,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       onMouseEnter={() => setHoveredPath(item.path)}
                       onMouseLeave={() => setHoveredPath(null)}
                       className={cn(
-                        'flex items-center gap-[9px] px-[10px] py-[6px] rounded text-[12.5px] w-full text-left transition-colors duration-150',
+                        'relative flex items-center gap-[9px] px-[10px] py-[6px] rounded text-[12.5px] w-full text-left transition-colors duration-150',
                         active
-                          ? 'bg-slate-100 dark:bg-white/[.06] text-slate-900 dark:text-white font-semibold'
+                          ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary dark:text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
                           : 'font-medium',
                         !active && hovered && 'bg-slate-100 dark:bg-white/[.06] text-slate-900 dark:text-white',
                         !active && !hovered && 'text-slate-600 dark:text-slate-400',

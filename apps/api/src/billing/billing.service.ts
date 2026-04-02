@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common'
+import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common'
 import { eq, and, asc } from 'drizzle-orm'
 import { dealBilling, billingMilestones } from '@symph-crm/database'
 import { DB } from '../database/database.module'
@@ -19,8 +19,44 @@ export type UpsertMilestoneDto = {
 }
 
 @Injectable()
-export class BillingService {
+export class BillingService implements OnModuleInit {
+  private readonly logger = new Logger(BillingService.name)
+
   constructor(@Inject(DB) private db: Database) {}
+
+  async onModuleInit() {
+    try {
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS deal_billing (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          deal_id UUID NOT NULL UNIQUE REFERENCES deals(id) ON DELETE CASCADE,
+          billing_type TEXT NOT NULL CHECK (billing_type IN ('annual', 'monthly', 'milestone')),
+          contract_start DATE,
+          contract_end DATE,
+          amount NUMERIC,
+          monthly_derived NUMERIC,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `)
+      await this.db.execute(`
+        CREATE TABLE IF NOT EXISTS billing_milestones (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          billing_id UUID NOT NULL REFERENCES deal_billing(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          amount NUMERIC NOT NULL,
+          percentage NUMERIC,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          is_paid BOOLEAN NOT NULL DEFAULT FALSE,
+          paid_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `)
+      this.logger.log('Billing tables ready')
+    } catch (err) {
+      this.logger.warn('Billing migration skipped or failed (tables may already exist):', err)
+    }
+  }
 
   async getByDeal(dealId: string) {
     const [billing] = await this.db

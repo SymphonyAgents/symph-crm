@@ -32,6 +32,16 @@ import { BillingSection } from './BillingSection'
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
+// Maps PROGRESS_STAGES ids → CSS variable names for dot colors
+const STAGE_STEP_COLOR: Record<string, string> = {
+  lead:       'var(--stage-lead)',
+  discovery:  'var(--stage-discovery)',
+  assessment: 'var(--stage-assessment)',
+  demo_prop:  'var(--stage-demo)',
+  followup:   'var(--stage-followup)',
+  won:        'var(--stage-closed_won)',
+}
+
 function StageProgress({ currentStage }: { currentStage: string }) {
   const isLost = currentStage === 'closed_lost'
   const currentIdx = isLost ? -1 : getStageProgressIndex(currentStage)
@@ -39,7 +49,9 @@ function StageProgress({ currentStage }: { currentStage: string }) {
   return (
     <div className="mt-5 px-1">
       <div className="flex items-center">
-        {PROGRESS_STAGES.map((stage, i) => (
+        {PROGRESS_STAGES.map((stage, i) => {
+          const stageColor = STAGE_STEP_COLOR[stage.id] ?? 'var(--stage-lead)'
+          return (
           <>
             {/* Connector line between stages */}
             {i > 0 && (
@@ -59,11 +71,15 @@ function StageProgress({ currentStage }: { currentStage: string }) {
                 className={cn(
                   'rounded-full shrink-0 transition-all',
                   i < currentIdx
-                    ? 'w-2 h-2 bg-primary'
+                    ? 'w-2.5 h-2.5'
                     : i === currentIdx
-                    ? 'w-2.5 h-2.5 bg-primary ring-2 ring-offset-1 ring-primary/30 dark:ring-offset-[#191a1c]'
-                    : 'w-2 h-2 bg-slate-300 dark:bg-slate-600'
+                    ? 'w-3 h-3 ring-2 ring-offset-1 dark:ring-offset-[#191a1c]'
+                    : 'w-2.5 h-2.5 opacity-30'
                 )}
+                style={i === currentIdx
+                  ? { background: stageColor, '--tw-ring-color': `color-mix(in srgb, ${stageColor} 35%, transparent)` } as React.CSSProperties
+                  : { background: stageColor }
+                }
               />
               <span
                 className={cn(
@@ -79,7 +95,8 @@ function StageProgress({ currentStage }: { currentStage: string }) {
               </span>
             </div>
           </>
-        ))}
+          )
+        })}
         {isLost && (
           <div className="ml-3 shrink-0">
             <span className="text-[11px] font-semibold text-red-500 bg-red-50 dark:bg-red-950/30 px-2.5 py-0.5 rounded-full border border-red-100 dark:border-red-500/20">
@@ -189,7 +206,7 @@ type DealDetailProps = {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function DealDetail({ dealId, onBack }: DealDetailProps) {
-  const [activeTab, setActiveTab] = useState<'notes' | 'resources' | 'timeline'>('notes')
+  const [activeTab, setActiveTab] = useState<'notes' | 'resources' | 'timeline' | 'billing'>('notes')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [noteTypeFilter, setNoteTypeFilter] = useState<string>('all')
   const [resourceExtFilter, setResourceExtFilter] = useState<string>('all')
@@ -552,6 +569,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                 { id: 'notes', label: 'Notes', count: noteDocs.length },
                 { id: 'resources', label: 'Resources', count: resourceDocs.length },
                 { id: 'timeline', label: 'Timeline', count: activities.length },
+                ...(deal.stage === 'closed_won' ? [{ id: 'billing' as const, label: 'Billing', count: null }] : []),
               ] as const).map(tab => (
                 <button
                   key={tab.id}
@@ -579,7 +597,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
             </div>
 
             {/* Right controls — search + filter + view toggle (hidden for timeline) */}
-            {activeTab !== 'timeline' && (
+            {activeTab !== 'timeline' && activeTab !== 'billing' && (
               <div className="flex items-center gap-1 shrink-0">
 
                 {/* Search input */}
@@ -844,16 +862,16 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                             {doc.title}
                           </p>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
-                              {DOC_TYPE_LABELS[doc.type] ?? doc.type}
-                            </span>
-                            {docStage && <StagePill stage={docStage} />}
                             {authorUser && (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 shrink-0">
                                 <Avatar name={authorUser.name || authorUser.email} email={authorUser.email ?? undefined} src={authorUser.image ?? undefined} size={14} />
                                 <span className="text-[10px] text-slate-400">{authorName?.split(' ')[0] ?? 'AM'}</span>
                               </div>
                             )}
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
+                              {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+                            </span>
+                            {docStage && <StagePill stage={docStage} />}
                             <span className="text-[10px] text-slate-400">
                               {new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                             </span>
@@ -1018,13 +1036,13 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                                   {doc.title}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                  {docStage && <StagePill stage={docStage} />}
                                   {authorUser && (
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 shrink-0">
                                       <Avatar name={authorUser.name || authorUser.email} email={authorUser.email ?? undefined} src={authorUser.image ?? undefined} size={12} />
                                       <span className="text-[10px] text-slate-400">{authorName?.split(' ')[0] ?? 'AM'}</span>
                                     </div>
                                   )}
+                                  {docStage && <StagePill stage={docStage} />}
                                   <span className="text-[10px] text-slate-400">
                                     {new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                                     {doc.wordCount ? ` · ${doc.wordCount} words` : ''}
@@ -1085,6 +1103,13 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Billing tab ───────────────────────────────────────────────── */}
+          {activeTab === 'billing' && (
+            <div className="p-4">
+              <BillingSection dealId={dealId} />
             </div>
           )}
 
@@ -1337,11 +1362,6 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
               )}
             </div>
           </SidebarSection>
-
-          {/* Billing — only for won deals */}
-          {deal.stage === 'closed_won' && (
-            <BillingSection dealId={dealId} />
-          )}
 
           {/* Deal flags */}
           {deal.isFlagged && (
