@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { X, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react'
+import { EventPopover, type CalendarEventDraft } from './EventPopover'
 
 // ─── Event style helpers ───────────────────────────────────────────────────────
 // Google Calendar convention:
@@ -330,25 +331,29 @@ function WeekView({
   events,
   onEventClick,
   onDayClick,
+  onTimeCellClick,
 }: {
   weekStart: Date
   events: ApiCalendarEvent[]
   onEventClick: (ev: ApiCalendarEvent) => void
   onDayClick: (dateKey: string) => void
+  onTimeCellClick?: (dateKey: string, hour: number, rect: DOMRect) => void
 }) {
   const now = new Date()
   const today = toDateKey(now.toISOString())
   const scrollRef = useRef<HTMLDivElement>(null)
   const [nowMinutes, setNowMinutes] = useState(() => now.getHours() * 60 + now.getMinutes())
 
+  const gridStartHour = HOURS[0]
+
   // Scroll to current time (or 8 AM if before 8) on mount
   useEffect(() => {
     if (scrollRef.current) {
       const currentHour = new Date().getHours()
-      const scrollHour = Math.max(currentHour - 1, 7)
-      scrollRef.current.scrollTop = (scrollHour - 7) * HOUR_PX
+      const scrollHour = Math.max(currentHour - 1, gridStartHour)
+      scrollRef.current.scrollTop = (scrollHour - gridStartHour) * HOUR_PX
     }
-  }, [])
+  }, [gridStartHour])
 
   // Update current time indicator every minute
   useEffect(() => {
@@ -362,8 +367,8 @@ function WeekView({
 
   // Position of "now" line
   const nowTop = (() => {
-    const gridStartMin = 7 * 60
-    const gridEndMin = 22 * 60
+    const gridStartMin = gridStartHour * 60
+    const gridEndMin = HOURS[HOURS.length - 1] * 60
     if (nowMinutes < gridStartMin || nowMinutes > gridEndMin) return null
     return ((nowMinutes - gridStartMin) / 60) * HOUR_PX
   })()
@@ -388,7 +393,7 @@ function WeekView({
     const end = new Date(ev.endAt)
     const startMin = start.getHours() * 60 + start.getMinutes()
     const endMin = end.getHours() * 60 + end.getMinutes()
-    const gridStartMin = 7 * 60
+    const gridStartMin = gridStartHour * 60
     const top = Math.max(((startMin - gridStartMin) / 60) * HOUR_PX, 0)
     const height = Math.max(((endMin - startMin) / 60) * HOUR_PX, HOUR_PX * 0.4)
     return { top, height, position: 'absolute', ...getEventChipStyle(ev) }
@@ -454,14 +459,31 @@ function WeekView({
                   isToday && 'bg-primary/[.02]',
                 )}
                 style={{ height: totalHeight }}
-                onClick={() => onDayClick(key)}
+                onClick={(e) => {
+                  // Calculate which hour was clicked based on position
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  const clickY = e.clientY - rect.top
+                  const clickedHour = gridStartHour + Math.floor(clickY / HOUR_PX)
+                  if (onTimeCellClick) {
+                    // Get position for popover anchoring
+                    const cellRect = new DOMRect(
+                      rect.left,
+                      rect.top + (clickedHour - gridStartHour) * HOUR_PX,
+                      rect.width,
+                      HOUR_PX,
+                    )
+                    onTimeCellClick(key, clickedHour, cellRect)
+                  } else {
+                    onDayClick(key)
+                  }
+                }}
               >
                 {/* Hour lines */}
                 {HOURS.map(h => (
                   <div
                     key={h}
                     className="absolute left-0 right-0 border-t border-black/[.04] dark:border-white/[.04]"
-                    style={{ top: (h - 7) * HOUR_PX }}
+                    style={{ top: (h - gridStartHour) * HOUR_PX }}
                   />
                 ))}
 
@@ -470,7 +492,7 @@ function WeekView({
                   <div
                     key={`${h}-half`}
                     className="absolute left-0 right-0 border-t border-black/[.02] dark:border-white/[.02]"
-                    style={{ top: (h - 7) * HOUR_PX + HOUR_PX / 2 }}
+                    style={{ top: (h - gridStartHour) * HOUR_PX + HOUR_PX / 2 }}
                   />
                 ))}
 
@@ -526,6 +548,12 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [clickedDate, setClickedDate] = useState<string | undefined>()
   const [selectedEvent, setSelectedEvent] = useState<ApiCalendarEvent | null>(null)
+  // EventPopover state (for week/day view time cell clicks)
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [popoverDate, setPopoverDate] = useState<Date | undefined>()
+  const [popoverTime, setPopoverTime] = useState<string | undefined>()
+  const popoverAnchorRef = useRef<HTMLDivElement>(null)
+  const [popoverAnchorStyle, setPopoverAnchorStyle] = useState<{top:number;left:number}>({top:0,left:0})
   const [oauthBanner, setOauthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const searchParams = useSearchParams()
@@ -859,6 +887,13 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                 events={events}
                 onEventClick={setSelectedEvent}
                 onDayClick={dateKey => { setClickedDate(dateKey); setShowCreateModal(true) }}
+                onTimeCellClick={(dateKey, hour, rect) => {
+                  const [y, m, d] = dateKey.split('-').map(Number)
+                  setPopoverDate(new Date(y, m - 1, d))
+                  setPopoverTime(`${String(hour).padStart(2, '0')}:00`)
+                  setPopoverAnchorStyle({ top: rect.top, left: rect.left })
+                  setPopoverOpen(true)
+                }}
               />
             </div>
           )}
@@ -937,6 +972,34 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
           onOpenDeal={onOpenDeal}
         />
       )}
+
+      {/* Invisible anchor for EventPopover positioning */}
+      <div
+        ref={popoverAnchorRef}
+        style={{
+          position: 'fixed',
+          top: popoverAnchorStyle.top,
+          left: popoverAnchorStyle.left,
+          width: 1,
+          height: 1,
+          pointerEvents: 'none',
+        }}
+      />
+
+      {/* Google Calendar-style quick event creation popover */}
+      <EventPopover
+        open={popoverOpen}
+        onOpenChange={setPopoverOpen}
+        anchorRef={popoverAnchorRef}
+        initialDate={popoverDate}
+        initialTime={popoverTime}
+        onSave={(draft) => {
+          // TODO: integrate with createCalendarEvent mutation
+          console.log('EventPopover save:', draft)
+          setPopoverOpen(false)
+        }}
+        onCancel={() => setPopoverOpen(false)}
+      />
     </div>
   )
 }

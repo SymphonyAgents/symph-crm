@@ -262,7 +262,7 @@ export const TIME_SLOTS = Array.from({ length: (22 - 7) * 4 + 1 }, (_, i) => {
   return { label, value }
 })
 
-export const HOURS = Array.from({ length: 16 }, (_, i) => i + 7)
+export const HOURS = Array.from({ length: 23 }, (_, i) => i + 1)
 export const HOUR_PX = 64
 
 // ─── Audit Log ───────────────────────────────────────────────────────────────
