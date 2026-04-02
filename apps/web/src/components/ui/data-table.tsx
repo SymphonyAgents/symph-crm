@@ -55,6 +55,8 @@ interface DataTableProps<TData, TValue> {
   emptyDescription?: string
   /** Called when a row is clicked */
   onRowClick?: (row: TData) => void
+  /** Optional callback to add extra class names to a row */
+  rowClassName?: (row: TData) => string | undefined
 }
 
 export function DataTable<TData, TValue>({
@@ -64,6 +66,7 @@ export function DataTable<TData, TValue>({
   emptyMessage = 'No results found',
   emptyDescription,
   onRowClick,
+  rowClassName,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -109,6 +112,7 @@ export function DataTable<TData, TValue>({
               className={cn(
                 'hover:bg-slate-50/50 dark:hover:bg-white/[.02] transition-colors',
                 onRowClick && 'cursor-pointer',
+                rowClassName?.(row.original),
               )}
               onClick={onRowClick ? () => onRowClick(row.original) : undefined}
             >

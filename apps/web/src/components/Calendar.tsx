@@ -552,8 +552,6 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [popoverDate, setPopoverDate] = useState<Date | undefined>()
   const [popoverTime, setPopoverTime] = useState<string | undefined>()
-  const popoverAnchorRef = useRef<HTMLDivElement>(null)
-  const [popoverAnchorStyle, setPopoverAnchorStyle] = useState<{top:number;left:number}>({top:0,left:0})
   const [oauthBanner, setOauthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const searchParams = useSearchParams()
@@ -887,11 +885,10 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                 events={events}
                 onEventClick={setSelectedEvent}
                 onDayClick={dateKey => { setClickedDate(dateKey); setShowCreateModal(true) }}
-                onTimeCellClick={(dateKey, hour, rect) => {
+                onTimeCellClick={(dateKey, hour) => {
                   const [y, m, d] = dateKey.split('-').map(Number)
                   setPopoverDate(new Date(y, m - 1, d))
                   setPopoverTime(`${String(hour).padStart(2, '0')}:00`)
-                  setPopoverAnchorStyle({ top: rect.top, left: rect.left })
                   setPopoverOpen(true)
                 }}
               />
@@ -973,24 +970,10 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
         />
       )}
 
-      {/* Invisible anchor for EventPopover positioning */}
-      <div
-        ref={popoverAnchorRef}
-        style={{
-          position: 'fixed',
-          top: popoverAnchorStyle.top,
-          left: popoverAnchorStyle.left,
-          width: 1,
-          height: 1,
-          pointerEvents: 'none',
-        }}
-      />
-
-      {/* Google Calendar-style quick event creation popover */}
+      {/* Dialog modal for quick event creation */}
       <EventPopover
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
-        anchorRef={popoverAnchorRef}
         initialDate={popoverDate}
         initialTime={popoverTime}
         onSave={(draft) => {
@@ -998,7 +981,6 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
           console.log('EventPopover save:', draft)
           setPopoverOpen(false)
         }}
-        onCancel={() => setPopoverOpen(false)}
       />
     </div>
   )

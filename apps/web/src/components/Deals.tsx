@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetCompanies, useGetDeals, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
-import { getInitials, getBrandColor, formatDealValue, totalNumericValue } from '@/lib/utils'
+import { cn, getInitials, getBrandColor, formatDealValue, totalNumericValue } from '@/lib/utils'
 import { STAGE_DISPLAY, STAGE_COLORS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -14,6 +14,7 @@ import { EmptyState } from './EmptyState'
 import { CreateBrandModal } from './CreateBrandModal'
 import { CreateDealModal } from './CreateDealModal'
 import { DealsGraph } from './DealsGraph'
+import { BrandSlideOver } from './BrandSlideOver'
 import { Paperclip } from 'lucide-react'
 import { useUser } from '@/lib/hooks/use-user'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -29,6 +30,7 @@ type BrandTableRow = {
   documentCount: number
   totalValue: number
   createdByName: string | null
+  lastActivityAt: string | null
 }
 
 type BrandGroup = {
@@ -173,14 +175,41 @@ function BrandDetailModal({
 
 // ── BrandsDataTable ───────────────────────────────────────────────────────────
 
+function LastActivityCell({ iso }: { iso: string | null }) {
+  if (!iso) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+        <span className="text-[12px] text-slate-400">No activity</span>
+      </div>
+    )
+  }
+  const diffDays = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000)
+  let dotColor: string
+  if (diffDays < 7) dotColor = 'bg-green-500'
+  else if (diffDays <= 30) dotColor = 'bg-amber-500'
+  else dotColor = 'bg-red-500'
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={cn('w-2 h-2 rounded-full shrink-0', dotColor)} />
+      <span className="text-[12px] text-slate-600 dark:text-slate-400 tabular-nums">
+        {diffDays === 0 ? 'Today' : diffDays === 1 ? '1 day ago' : `${diffDays} days ago`}
+      </span>
+    </div>
+  )
+}
+
 function BrandsDataTable({
   rows,
   onRowClick,
   search,
+  selectedBrandId,
 }: {
   rows: BrandTableRow[]
   onRowClick: (row: BrandTableRow) => void
   search: string
+  selectedBrandId?: string | null
 }) {
   const columns: ColumnDef<BrandTableRow>[] = [
     // 1. Brand
@@ -264,7 +293,15 @@ function BrandsDataTable({
       },
       size: 100,
     },
-    // 5. Created By (last)
+    // 5. Last Activity
+    {
+      id: 'lastActivity',
+      accessorFn: r => r.lastActivityAt ?? '',
+      header: ({ column }) => <SortableHeader column={column}>Last Activity</SortableHeader>,
+      cell: ({ row }) => <LastActivityCell iso={row.original.lastActivityAt} />,
+      size: 140,
+    },
+    // 6. Created By (last)
     {
       id: 'createdBy',
       accessorFn: r => r.createdByName ?? '—',
@@ -288,6 +325,11 @@ function BrandsDataTable({
       data={rows}
       globalFilter={search}
       onRowClick={onRowClick}
+      rowClassName={(row) =>
+        selectedBrandId && row.company.id === selectedBrandId
+          ? 'bg-blue-50 dark:bg-blue-950/20'
+          : undefined
+      }
       emptyMessage="No brands found"
       emptyDescription="Try adjusting your search"
     />
@@ -310,7 +352,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const [showCreateBrand, setShowCreateBrand] = useState(false)
   const [showCreateDeal, setShowCreateDeal] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('table')
-  const [brandModalId, setBrandModalId] = useState<string | null>(null)
+  const [selectedBrand, setSelectedBrand] = useState<ApiCompanyDetail | null>(null)
   const { isSales } = useUser()
 
   // Ctrl+F / Cmd+F focuses search bar (matches Pipeline behavior)
@@ -395,14 +437,25 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
   // ── DataTable brand rows ─────────────────────────────────────────────────
   const brandTableRows = useMemo<BrandTableRow[]>(() => {
-    return groups.map(g => ({
-      company: g.company,
-      color: g.color,
-      dealCount: g.deals.length,
-      documentCount: g.deals.reduce((sum, d) => sum + (d.documentCount ?? 0), 0),
-      totalValue: g.totalValue,
-      createdByName: g.company.createdBy ? (userNameMap.get(g.company.createdBy) ?? null) : null,
-    }))
+    return groups.map(g => {
+      // Most recent lastActivityAt across all deals for this brand
+      const activityDates = g.deals
+        .map(d => d.lastActivityAt)
+        .filter((v): v is string => !!v)
+      const lastActivityAt = activityDates.length > 0
+        ? activityDates.reduce((a, b) => a > b ? a : b)
+        : null
+
+      return {
+        company: g.company,
+        color: g.color,
+        dealCount: g.deals.length,
+        documentCount: g.deals.reduce((sum, d) => sum + (d.documentCount ?? 0), 0),
+        totalValue: g.totalValue,
+        createdByName: g.company.createdBy ? (userNameMap.get(g.company.createdBy) ?? null) : null,
+        lastActivityAt,
+      }
+    })
   }, [groups, userNameMap])
 
   const filteredTableRows = useMemo<BrandTableRow[]>(() => {
@@ -417,17 +470,12 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const totalDeals = deals.length
   const activePipeline = totalNumericValue(deals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)))
 
-  const brandModalGroup = brandModalId ? groups.find(g => g.company.id === brandModalId) ?? null : null
-
   return (
     <>
-      {brandModalGroup && (
-        <BrandDetailModal
-          group={brandModalGroup}
-          onClose={() => setBrandModalId(null)}
-          onOpenDeal={onOpenDeal}
-        />
-      )}
+      <BrandSlideOver
+        brand={selectedBrand}
+        onClose={() => setSelectedBrand(null)}
+      />
       {showCreateBrand && (
         <CreateBrandModal
           onClose={() => setShowCreateBrand(false)}
@@ -554,8 +602,9 @@ export function Deals({ onOpenDeal }: DealsProps) {
           <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <BrandsDataTable
               rows={filteredTableRows}
-              onRowClick={(row) => setBrandModalId(row.company.id)}
+              onRowClick={(row) => setSelectedBrand(row.company)}
               search={search}
+              selectedBrandId={selectedBrand?.id}
             />
           </div>
         )}
@@ -567,7 +616,10 @@ export function Deals({ onOpenDeal }: DealsProps) {
               companies={companies}
               deals={deals}
               onOpenDeal={onOpenDeal}
-              onOpenBrand={(companyId) => setBrandModalId(companyId)}
+              onOpenBrand={(companyId) => {
+                const company = companyMap.get(companyId)
+                if (company) setSelectedBrand(company)
+              }}
               searchQuery={search}
             />
           </div>
