@@ -21,6 +21,7 @@ import {
   cn, formatCurrencyFull, timeAgo, formatDate,
   getDaysInStage, getBrandColor, getInitials, getStageProgressIndex,
 } from '@/lib/utils'
+import { getMimeLabel, supportsWordCount, isImage } from '@/lib/utils/document-utils'
 import type { ApiDealDetail, ApiCompanyDetail, ApiDocument } from '@/lib/types'
 import {
   STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
@@ -1008,6 +1009,16 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                           <p className="text-[13px] font-semibold text-slate-800 dark:text-white truncate leading-tight group-hover:text-primary transition-colors">
                             {doc.title}
                           </p>
+                          {/* Excerpt */}
+                          {doc.excerpt ? (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                              {doc.excerpt}
+                            </p>
+                          ) : (
+                            <p className="text-[10px] text-slate-300 dark:text-slate-600 italic mt-0.5">
+                              Empty note
+                            </p>
+                          )}
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             {authorUser && (
                               <div className="flex items-center gap-1 shrink-0">
@@ -1150,12 +1161,12 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {filteredResources.map(doc => {
                           const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
-                          const ext = extRaw?.toUpperCase() ?? 'FILE'
+                          const ext = getMimeLabel(extRaw, doc.title)
                           const extLower = extRaw ? `.${extRaw.toLowerCase()}` : ''
                           const displayName = extLower === '' || doc.title.toLowerCase().endsWith(extLower)
                             ? doc.title
                             : `${doc.title}${extLower}`
-                          const isImg = ['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(ext)
+                          const isImg = isImage(extRaw)
                           const docStage = parseDocStage(doc.tags)
                           const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
                           const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
@@ -1173,12 +1184,12 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                                     ? 'bg-purple-50 dark:bg-purple-500/[.12] text-purple-600 dark:text-purple-400'
                                     : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
                                 )}>
-                                  {ext.slice(0, 4)}
+                                  {ext}
                                 </div>
                                 {docStage && <StagePill stage={docStage} />}
                               </div>
                               {/* Filename */}
-                              <p className="text-[12px] font-medium text-slate-800 dark:text-white line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                              <p className="text-[12px] font-medium text-slate-800 dark:text-white line-clamp-2 leading-snug group-hover:text-primary transition-colors" title={displayName}>
                                 {displayName}
                               </p>
                               {/* Footer: author + date */}
@@ -1205,12 +1216,13 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                       <div className="divide-y divide-black/[.04] dark:divide-white/[.05] border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden">
                         {filteredResources.map(doc => {
                           const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
-                          const ext = extRaw?.toUpperCase() ?? 'FILE'
+                          const ext = getMimeLabel(extRaw, doc.title)
                           const extLower = extRaw ? `.${extRaw.toLowerCase()}` : ''
                           const displayName = extLower === '' || doc.title.toLowerCase().endsWith(extLower)
                             ? doc.title
                             : `${doc.title}${extLower}`
-                          const isImg = ['JPEG', 'JPG', 'PNG', 'WEBP', 'GIF'].includes(ext)
+                          const isImg = isImage(extRaw)
+                          const showWordCount = supportsWordCount(extRaw) && doc.wordCount
                           const docStage = parseDocStage(doc.tags)
                           const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
                           const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
@@ -1227,10 +1239,10 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                                   ? 'bg-purple-50 dark:bg-purple-500/[.12] text-purple-600 dark:text-purple-400'
                                   : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
                               )}>
-                                {ext.slice(0, 4)}
+                                {ext}
                               </div>
                               <div className="flex-1 min-w-0 overflow-hidden">
-                                <p className="text-[12px] font-medium text-slate-800 dark:text-white truncate group-hover:text-primary transition-colors">
+                                <p className="text-[12px] font-medium text-slate-800 dark:text-white truncate group-hover:text-primary transition-colors" title={displayName}>
                                   {displayName}
                                 </p>
                                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -1243,7 +1255,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                                   {docStage && <StagePill stage={docStage} />}
                                   <span className="text-[10px] text-slate-400">
                                     {new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                    {doc.wordCount ? ` · ${doc.wordCount} words` : ''}
+                                    {showWordCount ? ` · ${doc.wordCount} words` : ''}
                                   </span>
                                 </div>
                               </div>
