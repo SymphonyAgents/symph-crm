@@ -101,11 +101,15 @@ export function useGetPipelineSummary(
 }
 
 export function useGetFunnel(
+  params?: { from?: string; to?: string },
   options?: Partial<UseQueryOptions<FunnelResponse>>,
 ) {
+  const hasFilter = params?.from || params?.to
   return useQuery<FunnelResponse>({
-    queryKey: queryKeys.pipeline.funnel,
-    queryFn: () => api.get<FunnelResponse>('/pipeline/funnel'),
+    queryKey: hasFilter
+      ? queryKeys.pipeline.funnelFiltered(params!)
+      : queryKeys.pipeline.funnel,
+    queryFn: () => api.get<FunnelResponse>('/pipeline/funnel', params ?? {}),
     ...options,
   })
 }

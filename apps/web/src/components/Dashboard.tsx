@@ -3,19 +3,20 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { MetricCard } from './MetricCard'
-import { PipelineBar } from './PipelineBar'
+import { StageFunnelChart } from './StageFunnelChart'
 import { TopDeals } from './TopDeals'
 import { AMLeaderboard } from './AMLeaderboard'
 import { RecentActivity } from './RecentActivity'
 import {
   MetricCardSkeletonRow,
-  PipelineBarSkeleton,
+  FunnelSkeleton,
   TopDealsSkeleton,
   AMLeaderboardSkeleton,
   RecentActivitySkeleton,
 } from './Skeletons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { useGetFunnel } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { formatCurrency, timeAgo } from '@/lib/utils'
 import { api } from '@/lib/api'
@@ -71,6 +72,8 @@ export function Dashboard() {
     queryFn: () => api.get<ApiDeal[]>('/deals', { from, to }),
     retry: false,
   })
+
+  const { data: funnelData, isLoading: loadingFunnel } = useGetFunnel({ from, to })
 
   const isLoading = loadingSummary || loadingDeals
   const isError = errorSummary || errorDeals
@@ -213,8 +216,8 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
-            <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4">Pipeline by Stage</div>
-            {isLoading ? <PipelineBarSkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <PipelineBar deals={deals} />}
+            <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-4">Stage Conversion Funnel</div>
+            {loadingFunnel ? <FunnelSkeleton /> : <StageFunnelChart data={funnelData} isLoading={loadingFunnel} />}
           </div>
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-[13px] font-semibold text-slate-900 dark:text-white mb-3.5">Top Deals</div>
