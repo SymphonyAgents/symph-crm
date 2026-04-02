@@ -11,7 +11,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import { KANBAN_STAGES, CLOSED_STAGE_IDS } from '@/lib/constants'
+import { CalendarIcon } from 'lucide-react'
+import { format, parse } from 'date-fns'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -100,7 +104,7 @@ function TimePickerDropdown({
             type="button"
             onClick={() => { onChange(slot.value); onClose() }}
             className={cn(
-              'w-full text-left px-3 py-1.5 text-sm transition-colors',
+              'w-full text-left px-3 py-1.5 text-[13px] transition-colors',
               slot.value === value
                 ? 'bg-blue-600 text-white'
                 : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[.08]',
@@ -129,7 +133,7 @@ function TimeButton({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full h-10 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-sm px-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white"
+        className="w-full h-9 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-[13px] px-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white"
       >
         {slot?.label ?? value}
       </button>
@@ -144,10 +148,57 @@ function TimeButton({
   )
 }
 
+// ─── DatePickerButton — shadcn Calendar in a popover ────────────────────────
+
+function DatePickerButton({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+}) {
+  const [open, setOpen] = useState(false)
+
+  const selected = value ? parse(value, 'yyyy-MM-dd', new Date()) : undefined
+
+  function handleSelect(day: Date | undefined) {
+    if (day) {
+      onChange(format(day, 'yyyy-MM-dd'))
+      setOpen(false)
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full h-9 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-[13px] px-3 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white"
+        >
+          <span className={!value ? 'text-slate-400' : ''}>
+            {selected ? format(selected, 'MMM d, yyyy') : (placeholder ?? 'Select date')}
+          </span>
+          <CalendarIcon size={13} className="text-slate-400 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 z-[60]" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={handleSelect}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 // ─── Input/label styles ──────────────────────────────────────────────────────
 
-const labelClass = 'text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block'
-const inputClass = 'w-full h-10 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-sm px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
+const labelClass = 'text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-[0.05em] mb-1.5 block'
+const inputClass = 'w-full h-9 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-[13px] px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
 
 // ─── EventPopover — floating popover panel ───────────────────────────────────
 
@@ -293,12 +344,12 @@ export function EventPopover({
           <div>
             <label className={labelClass}>Stage</label>
             <Select value={stage} onValueChange={setStage}>
-              <SelectTrigger className="h-10 text-sm w-full rounded-lg border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04]">
+              <SelectTrigger className="h-9 text-[13px] w-full rounded-lg border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {STAGE_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value} className="text-sm">
+                  <SelectItem key={opt.value} value={opt.value} className="text-[13px]">
                     {opt.label}
                   </SelectItem>
                 ))}
@@ -310,14 +361,12 @@ export function EventPopover({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>Start date *</label>
-              <input
-                type="date"
+              <DatePickerButton
                 value={startDateVal}
-                onChange={e => {
-                  setStartDateVal(e.target.value)
-                  if (!endDateVal || endDateVal < e.target.value) setEndDateVal(e.target.value)
+                onChange={(v) => {
+                  setStartDateVal(v)
+                  if (!endDateVal || endDateVal < v) setEndDateVal(v)
                 }}
-                className={cn(inputClass, 'dark:[color-scheme:dark]')}
               />
             </div>
             <div>
@@ -330,12 +379,7 @@ export function EventPopover({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelClass}>End date *</label>
-              <input
-                type="date"
-                value={endDateVal}
-                onChange={e => setEndDateVal(e.target.value)}
-                className={cn(inputClass, 'dark:[color-scheme:dark]')}
-              />
+              <DatePickerButton value={endDateVal} onChange={setEndDateVal} />
             </div>
             <div>
               <label className={labelClass}>End time *</label>
@@ -370,14 +414,14 @@ export function EventPopover({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-black/[.06] dark:border-white/[.08] shrink-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" className="text-[13px]" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
             type="button"
             onClick={handleSave}
             disabled={!title.trim()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="bg-blue-600 hover:bg-blue-700 text-white text-[13px]"
           >
             Create Event
           </Button>
