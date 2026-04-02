@@ -1,17 +1,20 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { cn, getInitials, getBrandColor, formatDealValue, timeAgo, totalNumericValue } from '@/lib/utils'
 import { STAGE_DISPLAY, STAGE_COLORS, CLOSED_STAGE_IDS } from '@/lib/constants'
-import { useGetDeals, useGetActivitiesByCompany } from '@/lib/hooks/queries'
+import { useGetDeals, useGetActivitiesByCompany, useGetUsers } from '@/lib/hooks/queries'
 import type { ApiCompanyDetail, ApiDeal, Activity } from '@/lib/types'
 import { X } from 'lucide-react'
+import { Avatar } from './Avatar'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 interface BrandSlideOverProps {
   brand: ApiCompanyDetail | null  // null = closed
   onClose: () => void
+  onOpenDeal?: (dealId: string) => void
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -44,9 +47,11 @@ function StatCard({ label, value, color }: { label: string; value: string; color
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
-export function BrandSlideOver({ brand, onClose }: BrandSlideOverProps) {
+export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverProps) {
   const [tab, setTab] = useState<'deals' | 'people'>('deals')
   const isOpen = !!brand
+
+  useEscapeKey(useCallback(onClose, [onClose]), isOpen)
 
   // Reset tab when brand changes
   useEffect(() => {
@@ -60,9 +65,17 @@ export function BrandSlideOver({ brand, onClose }: BrandSlideOverProps) {
     return allDeals.filter(d => d.companyId === brand.id)
   }, [allDeals, brand?.id])
 
-  // Fetch activities for the people tab
+  // Fetch users for assigned person display
+  const { data: users = [] } = useGetUsers()
+  const userMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of users) if (u.name) m.set(u.id, u.name)
+    return m
+  }, [users])
+
+  // Fetch activities (always when brand is open, not just on people tab)
   const { data: activities = [] } = useGetActivitiesByCompany(brand?.id ?? '', {
-    enabled: !!brand?.id && tab === 'people',
+    enabled: !!brand?.id,
   })
 
   // Stats
@@ -101,6 +114,7 @@ export function BrandSlideOver({ brand, onClose }: BrandSlideOverProps) {
     return Array.from(contactMap.entries()).map(([id, info]) => ({ id, ...info }))
   }, [activities])
 
+  const contactCount = people.length
   const brandColor = brand ? getBrandColor(brand.name) : '#94a3b8'
 
   return (
@@ -141,9 +155,19 @@ export function BrandSlideOver({ brand, onClose }: BrandSlideOverProps) {
                   <h2 className="text-[15px] font-semibold text-slate-900 dark:text-white truncate">
                     {brand.name}
                   </h2>
-                  <div className="flex items-center gap-1.5 text-[11.5px] text-slate-400 mt-0.5 flex-wrap">
-                    {brand.industry && <span>{brand.industry}</span>}
-                    {brand.industry && brand.website && <span>&#183;</span>}
+                  <div className="flex items-center gap-1 text-[11.5px] text-slate-400 mt-0.5 flex-wrap">
+                    {brand.industry && (
+                      <span>{brand.industry}</span>
+                    )}
+                    {brand.industry && contactCount > 0 && (
+                      <span>&#183;</span>
+                    )}
+                    {contactCount > 0 && (
+                      <span>{contactCount} contact{contactCount !== 1 ? 's' : ''}</span>
+                    )}
+                    {(brand.industry || contactCount > 0) && brand.website && (
+                      <span>&#183;</span>
+                    )}
                     {brand.website && (
                       <a
                         href={brand.website.startsWith('http') ? brand.website : `https://${brand.website}`}
@@ -205,7 +229,11 @@ export function BrandSlideOver({ brand, onClose }: BrandSlideOverProps) {
                     brandDeals.map(deal => (
                       <div
                         key={deal.id}
-                        className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.03] transition-colors"
+                        onClick={() => onOpenDeal?.(deal.id)}
+                        className={cn(
+                          "flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                          onOpenDeal ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[.04]" : "hover:bg-slate-50 dark:hover:bg-white/[.03]"
+                        )}
                       >
                         <div className="min-w-0 flex-1">
                           <div className="text-[13px] font-medium text-slate-900 dark:text-white truncate">
@@ -217,6 +245,12 @@ export function BrandSlideOver({ brand, onClose }: BrandSlideOverProps) {
                               <> &#183; {new Date(deal.updatedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</>
                             )}
                           </div>
+                          {deal.assignedTo && userMap.get(deal.assignedTo) && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Avatar name={userMap.get(deal.assignedTo)!} size={14} />
+                              <span className="text-[10px] text-slate-400 truncate">{userMap.get(deal.assignedTo)}</span>
+                            </div>
+                          )}
                         </div>
                         <StagePill stage={deal.stage} />
                       </div>

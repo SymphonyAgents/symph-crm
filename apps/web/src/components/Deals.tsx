@@ -27,6 +27,7 @@ type BrandTableRow = {
   company: ApiCompanyDetail
   color: string
   dealCount: number
+  stageSummary: Array<{ id: string; label: string; bg: string; color: string }>
   documentCount: number
   totalValue: number
   createdByName: string | null
@@ -269,6 +270,32 @@ function BrandsDataTable({
       ),
       size: 80,
     },
+    // 3b. Current Stage
+    {
+      id: 'currentStage',
+      header: ({ column }) => <SortableHeader column={column}>Stage</SortableHeader>,
+      cell: ({ row }) => {
+        const stages = row.original.stageSummary
+        if (!stages.length) return <span className="text-[12px] text-slate-300 dark:text-slate-600">&mdash;</span>
+        return (
+          <div className="flex flex-wrap gap-1">
+            {stages.slice(0, 2).map(s => (
+              <span
+                key={s.id}
+                className="inline-block px-2 py-px rounded-full text-[11px] font-medium leading-[18px] whitespace-nowrap"
+                style={{ background: s.bg, color: s.color }}
+              >
+                {s.label}
+              </span>
+            ))}
+            {stages.length > 2 && (
+              <span className="text-[11px] text-slate-400">+{stages.length - 2}</span>
+            )}
+          </div>
+        )
+      },
+      size: 180,
+    },
     // 4. # Resources
     {
       id: 'documentCount',
@@ -446,10 +473,21 @@ export function Deals({ onOpenDeal }: DealsProps) {
         ? activityDates.reduce((a, b) => a > b ? a : b)
         : null
 
+      const seenStages = new Set<string>()
+      const stageSummary: Array<{ id: string; label: string; bg: string; color: string }> = []
+      for (const d of g.deals.filter(dd => !CLOSED_STAGE_IDS.has(dd.stage))) {
+        if (!seenStages.has(d.stage)) {
+          seenStages.add(d.stage)
+          const cfg = STAGE_DISPLAY[d.stage] || { label: d.stage, bg: '#f1f5f9', color: '#475569' }
+          stageSummary.push({ id: d.stage, label: cfg.label, bg: cfg.bg, color: cfg.color })
+        }
+      }
+
       return {
         company: g.company,
         color: g.color,
         dealCount: g.deals.length,
+        stageSummary,
         documentCount: g.deals.reduce((sum, d) => sum + (d.documentCount ?? 0), 0),
         totalValue: g.totalValue,
         createdByName: g.company.createdBy ? (userNameMap.get(g.company.createdBy) ?? null) : null,
@@ -475,6 +513,10 @@ export function Deals({ onOpenDeal }: DealsProps) {
       <BrandSlideOver
         brand={selectedBrand}
         onClose={() => setSelectedBrand(null)}
+        onOpenDeal={(dealId) => {
+          setSelectedBrand(null)
+          onOpenDeal(dealId)
+        }}
       />
       {showCreateBrand && (
         <CreateBrandModal

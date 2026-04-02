@@ -1,13 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -34,6 +29,7 @@ export interface CalendarEventDraft {
 export interface EventPopoverProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  anchorRect?: DOMRect | null
   initialDate?: Date
   initialTime?: string  // "HH:MM" 24h
   onSave?: (event: CalendarEventDraft) => void
@@ -74,7 +70,7 @@ const STAGE_OPTIONS = [
     .map(s => ({ value: s.id, label: s.label })),
 ]
 
-// ─── Custom time picker (preserved from original) ──────────────────────────
+// ─── Custom time picker (preserved exactly) ─────────────────────────────────
 
 function TimePickerDropdown({
   value,
@@ -85,7 +81,6 @@ function TimePickerDropdown({
   onChange: (v: string) => void
   onClose: () => void
 }) {
-  const listRef = useRef<HTMLDivElement>(null)
   const selectedRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -96,12 +91,8 @@ function TimePickerDropdown({
 
   return (
     <>
-      {/* Invisible backdrop to close picker when clicking outside */}
-      <div className="fixed inset-0 z-[60]" onClick={onClose} />
-      <div
-        ref={listRef}
-        className="absolute top-full left-0 mt-1 z-[61] w-full max-h-[200px] overflow-y-auto rounded-lg bg-popover ring-1 ring-foreground/10 shadow-lg"
-      >
+      <div className="fixed inset-0 z-[70]" onClick={onClose} />
+      <div className="absolute top-full left-0 mt-1 z-[71] w-full max-h-[200px] overflow-y-auto rounded-lg bg-popover ring-1 ring-foreground/10 shadow-lg">
         {ALL_TIME_SLOTS.map(slot => (
           <button
             key={slot.value}
@@ -153,20 +144,28 @@ function TimeButton({
   )
 }
 
-// ─── Label style ────────────────────────────────────────────────────────────
+// ─── Input/label styles ──────────────────────────────────────────────────────
 
 const labelClass = 'text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5 block'
 const inputClass = 'w-full h-10 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-sm px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
 
-// ─── EventPopover (now a Dialog modal) ─────────────────────────────────────
+// ─── EventPopover — floating popover panel ───────────────────────────────────
+
+const PANEL_W = 390
+const PANEL_MAX_H = 580
+const GAP = 12
 
 export function EventPopover({
   open,
   onOpenChange,
+  anchorRect,
   initialDate,
   initialTime,
   onSave,
 }: EventPopoverProps) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const now = new Date()
   const date = initialDate ?? now
   const startTime = initialTime ?? `${String(now.getHours()).padStart(2, '0')}:00`
@@ -183,7 +182,7 @@ export function EventPopover({
 
   const titleRef = useRef<HTMLInputElement>(null)
 
-  // Reset form state when the modal opens with new values
+  // Reset form when opening
   useEffect(() => {
     if (open) {
       const st = initialTime ?? `${String(now.getHours()).padStart(2, '0')}:00`
@@ -201,6 +200,16 @@ export function EventPopover({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialDate?.getTime(), initialTime])
 
+  // ESC to close
+  useEffect(() => {
+    if (!open) return
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onOpenChange(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [open, onOpenChange])
+
   const handleSave = useCallback(() => {
     if (!title.trim()) return
     onSave?.({
@@ -216,27 +225,56 @@ export function EventPopover({
     onOpenChange(false)
   }, [title, stage, startDateVal, startTimeVal, endDateVal, endTimeVal, location, description, onSave, onOpenChange])
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="w-full max-w-[480px] mx-4"
-        onOpenAutoFocus={e => e.preventDefault()}
+  if (!open || !mounted) return null
+
+  // ── Smart positioning ───────────────────────────────────────────────────
+  let left: number
+  let top: number
+
+  if (anchorRect) {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    // Try right of anchor first
+    left = anchorRect.right + GAP
+    if (left + PANEL_W > vw - 16) {
+      // flip left
+      left = Math.max(16, anchorRect.left - PANEL_W - GAP)
+    }
+    // Vertical: align to anchor top, clamp so panel stays on screen
+    top = Math.max(16, Math.min(anchorRect.top, vh - PANEL_MAX_H - 16))
+  } else {
+    // Centered fallback
+    left = Math.max(16, (window.innerWidth - PANEL_W) / 2)
+    top = Math.max(16, (window.innerHeight - PANEL_MAX_H) / 2)
+  }
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40" onClick={() => onOpenChange(false)} />
+
+      {/* Floating panel */}
+      <div
+        className="fixed z-50 rounded-xl bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] shadow-2xl overflow-hidden flex flex-col"
+        style={{ left, top, width: PANEL_W }}
+        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
-          <DialogTitle>New Event</DialogTitle>
-          <DialogDescription className="sr-only">Create a new calendar event</DialogDescription>
+        <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
+          <span className="text-[14px] font-semibold text-slate-900 dark:text-white">New Event</span>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
           >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-5 py-4 space-y-4 overflow-y-auto" style={{ maxHeight: PANEL_MAX_H - 120 }}>
           {/* Title */}
           <div>
             <label className={labelClass}>Title *</label>
@@ -331,12 +369,8 @@ export function EventPopover({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-black/[.06] dark:border-white/[.08]">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
+        <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-black/[.06] dark:border-white/[.08] shrink-0">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
@@ -348,7 +382,8 @@ export function EventPopover({
             Create Event
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>,
+    document.body,
   )
 }
