@@ -26,7 +26,7 @@ export class InternalGuard implements CanActivate {
       throw new UnauthorizedException('INTERNAL_SECRET not configured')
     }
 
-    if (!secretStr || secretStr !== expected) {
+    if (!secretStr || secretStr.trim() !== expected?.trim()) {
       throw new UnauthorizedException('Invalid internal secret')
     }
 
