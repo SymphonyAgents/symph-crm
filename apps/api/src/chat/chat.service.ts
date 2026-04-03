@@ -77,7 +77,7 @@ export class ChatService {
     this.gatewayUrl = (
       config.get<string>('ARIA_GATEWAY_URL') ?? 'https://aria-gateway.symph.co'
     ).replace(/\/+$/, '')
-    this.apiToken = config.getOrThrow<string>('ARIA_API_TOKEN')
+    this.apiToken = config.get<string>('ARIA_API_TOKEN') ?? ''
     this.internalSecret = config.get<string>('INTERNAL_SECRET')
   }
 
