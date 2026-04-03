@@ -125,15 +125,13 @@ BEGIN
     SELECT 1 FROM pipeline_stages WHERE workspace_id = ws_id LIMIT 1
   ) THEN
     INSERT INTO pipeline_stages (workspace_id, slug, label, color, sort_order) VALUES
-      (ws_id, 'lead',          'Lead',           '#94a3b8', 10),
-      (ws_id, 'qualified',     'Qualified',      '#60a5fa', 20),
-      (ws_id, 'discovery',     'Discovery',      '#a78bfa', 30),
-      (ws_id, 'assessment',    'Assessment',     '#f472b6', 40),
-      (ws_id, 'proposal',      'Proposal',       '#fb923c', 50),
-      (ws_id, 'demo',          'Demo',           '#facc15', 60),
-      (ws_id, 'negotiation',   'Negotiation',    '#4ade80', 70),
-      (ws_id, 'closed_won',    'Closed Won',     '#22c55e', 80),
-      (ws_id, 'closed_lost',   'Closed Lost',    '#f87171', 90);
+      (ws_id, 'lead',          'Lead',             '#94a3b8', 10),
+      (ws_id, 'discovery',     'Discovery',        '#a78bfa', 20),
+      (ws_id, 'assessment',    'Assessment',       '#f472b6', 30),
+      (ws_id, 'demo_proposal', 'Demo + Proposal',  '#fb923c', 40),
+      (ws_id, 'follow_up',    'Follow Up',         '#facc15', 50),
+      (ws_id, 'won',          'Won',               '#22c55e', 60),
+      (ws_id, 'lost',         'Lost',              '#f87171', 70);
   END IF;
 END $$;
 
