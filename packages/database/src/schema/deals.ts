@@ -9,8 +9,8 @@ import { pipelineStages, amRoster } from './pipeline'
 export const deals = pgTable('deals', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id),
-  productId: uuid('product_id').references(() => products.id).notNull(),
-  tierId: uuid('tier_id').references(() => tiers.id).notNull(),
+  productId: uuid('product_id').references(() => products.id),
+  tierId: uuid('tier_id').references(() => tiers.id),
   title: text('title').notNull(),
 
   // Pipeline stage — FK to workspace-configured stages (replaces hardcoded stage enum)
