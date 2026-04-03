@@ -384,3 +384,33 @@ export function useDeleteBrand(
     ...withToast('Brand deleted', options),
   })
 }
+
+// ─── Chat Session mutations ──────────────────────────────────────────────────
+
+export type CreateChatSessionInput = {
+  userId: string
+  workspaceId: string
+  dealId?: string
+  title?: string
+}
+
+export type ApiChatSessionResult = {
+  id: string
+  workspaceId: string
+  userId: string
+  title: string | null
+  contextType: string | null
+  contextId: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export function useCreateChatSession(
+  options?: UseMutationOptions<ApiChatSessionResult, Error, CreateChatSessionInput>,
+) {
+  return useMutation<ApiChatSessionResult, Error, CreateChatSessionInput>({
+    mutationFn: (input) => api.post<ApiChatSessionResult>('/chat/sessions', input),
+    ...options,
+  })
+}

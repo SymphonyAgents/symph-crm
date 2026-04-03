@@ -11,6 +11,10 @@ import {
   DEFAULT_WORKSPACE_ID, ACCEPTED_FILE_TYPES, SUGGESTED_PROMPTS, TOOL_LABELS,
 } from '@/lib/constants'
 import { PasteChip, PastePreviewModal } from './PasteChip'
+import { useGetChatSessions, useGetChatHistory } from '@/lib/hooks/queries'
+import { useCreateChatSession } from '@/lib/hooks/mutations'
+import { useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -268,16 +272,129 @@ function TypingIndicator() {
   )
 }
 
+
+// ─── Session Sidebar ──────────────────────────────────────────────────────────
+
+function SessionSidebar({
+  sessions,
+  activeSessionId,
+  onSelect,
+  onNewChat,
+  isOpen,
+  onToggle,
+}: {
+  sessions: { id: string; title: string | null; updatedAt: string; contextType: string | null }[]
+  activeSessionId: string | undefined
+  onSelect: (id: string) => void
+  onNewChat: () => void
+  isOpen: boolean
+  onToggle: () => void
+}) {
+  return (
+    <>
+      {/* Mobile toggle button */}
+      <button
+        onClick={onToggle}
+        className="lg:hidden fixed top-3 left-3 z-40 w-8 h-8 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-white shadow-sm transition-colors"
+      >
+        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+          {isOpen ? (
+            <path d="M18 6L6 18M6 6l12 12" />
+          ) : (
+            <>
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </>
+          )}
+        </svg>
+      </button>
+
+      {/* Backdrop for mobile */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          onClick={onToggle}
+        />
+      )}
+
+      {/* Sidebar panel */}
+      <div
+        className={cn(
+          'fixed lg:relative z-30 top-0 left-0 h-full w-[260px] bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08] flex flex-col transition-transform duration-200 ease-out shrink-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
+        {/* Header + New Chat */}
+        <div className="px-3 pt-3 pb-2 shrink-0">
+          <button
+            onClick={onNewChat}
+            className="w-full h-9 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-white/[.04] hover:bg-slate-50 dark:hover:bg-white/[.06] flex items-center gap-2 px-3 text-[12px] font-semibold text-slate-600 dark:text-slate-300 transition-colors"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Chat
+          </button>
+        </div>
+
+        {/* Session list */}
+        <div className="flex-1 overflow-y-auto px-1.5 pb-3">
+          {sessions.length === 0 ? (
+            <div className="px-3 py-6 text-center">
+              <p className="text-[11px] text-slate-400">No conversations yet</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-0.5">
+              {sessions.map((s) => {
+                const isActive = s.id === activeSessionId
+                const label = s.title || s.id.slice(0, 8)
+                const time = new Date(s.updatedAt)
+                const timeStr = time.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => onSelect(s.id)}
+                    className={cn(
+                      'w-full text-left px-3 py-2.5 rounded-lg transition-colors group',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="shrink-0 opacity-50">
+                        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                      </svg>
+                      <span className="text-[12px] font-medium truncate flex-1">{label}</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-0.5 pl-[22px]">{timeStr}</div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function Chat({ dealId }: { dealId?: string }) {
   const { data: session } = useSession()
+  const queryClient = useQueryClient()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | undefined>()
   const [input, setInput] = useState('')
   const [typing, setTyping] = useState(false)
   const [focused, setFocused] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+
+  // Sidebar state
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Attachment state
   const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null)
@@ -303,6 +420,45 @@ export function Chat({ dealId }: { dealId?: string }) {
 
   const userName = session?.user?.name?.split(' ')[0] || 'there'
   const userId = (session?.user as { id?: string })?.id || 'anonymous'
+
+  // Session management hooks
+  const { data: chatSessions = [] } = useGetChatSessions(userId !== 'anonymous' ? userId : null)
+  const createSession = useCreateChatSession({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.chatSessions.byUser(userId) })
+    },
+  })
+  const { data: historyMessages } = useGetChatHistory(sessionId)
+
+  // Load history when switching sessions
+  useEffect(() => {
+    if (historyMessages && historyMessages.length > 0) {
+      const loaded: ChatMessage[] = historyMessages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        actionsTaken: (m.actionsTaken ?? []) as ActionRecord[],
+      }))
+      setMessages(loaded)
+    }
+  }, [historyMessages])
+
+  const handleSelectSession = useCallback((id: string) => {
+    setSessionId(id)
+    setMessages([])
+    setApiError(null)
+    setSidebarOpen(false)
+  }, [])
+
+  const handleNewChat = useCallback(() => {
+    setSessionId(undefined)
+    setMessages([])
+    setApiError(null)
+    setInput('')
+    setPasteChips([])
+    setPendingAttachment(null)
+    setSidebarOpen(false)
+  }, [])
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 300)
@@ -494,6 +650,24 @@ export function Chat({ dealId }: { dealId?: string }) {
   // ── Send message ─────────────────────────────────────────────────────────
 
   async function sendMessage(text: string, attachment?: PendingAttachment) {
+    // Auto-create session if none active
+    let activeSessionId = sessionId
+    if (!activeSessionId) {
+      try {
+        const newSession = await createSession.mutateAsync({
+          userId,
+          workspaceId: '60f84f03-283e-4c1a-8c88-b8330dc71d32',
+          dealId,
+          title: text.slice(0, 60) || 'New chat',
+        })
+        activeSessionId = newSession.id
+        setSessionId(newSession.id)
+      } catch (err) {
+        setApiError('Failed to create chat session')
+        return
+      }
+    }
+
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       role: 'user',
@@ -537,7 +711,7 @@ export function Chat({ dealId }: { dealId?: string }) {
           content: text,
           userId,
           userName: 'AM',
-          sessionId,
+          sessionId: activeSessionId,
           dealId,
           attachment: attachmentData,
         }),
@@ -822,7 +996,16 @@ export function Chat({ dealId }: { dealId?: string }) {
 
   if (isEmpty) {
     return (
-      <>
+      <div className="h-full flex">
+        <SessionSidebar
+          sessions={chatSessions}
+          activeSessionId={sessionId}
+          onSelect={handleSelectSession}
+          onNewChat={handleNewChat}
+          isOpen={sidebarOpen}
+          onToggle={() => setSidebarOpen(p => !p)}
+        />
+        <div className="flex-1 min-w-0 flex flex-col">
         <div
           ref={containerRef}
           className="h-full flex flex-col items-center justify-center px-6"
@@ -858,14 +1041,24 @@ export function Chat({ dealId }: { dealId?: string }) {
         {pastePreviewText && (
           <PastePreviewModal text={pastePreviewText} onClose={() => setPastePreviewText(null)} />
         )}
-      </>
+        </div>
+      </div>
     )
   }
 
   // ── Active chat ──────────────────────────────────────────────────────────
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex">
+      <SessionSidebar
+        sessions={chatSessions}
+        activeSessionId={sessionId}
+        onSelect={handleSelectSession}
+        onNewChat={handleNewChat}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(p => !p)}
+      />
+      <div ref={containerRef} className="flex-1 min-w-0 h-full flex flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-[680px] w-full mx-auto px-6 pt-8 pb-4 flex flex-col gap-5">
           {messages.map((msg) => (
@@ -907,6 +1100,7 @@ export function Chat({ dealId }: { dealId?: string }) {
       {pastePreviewText && (
         <PastePreviewModal text={pastePreviewText} onClose={() => setPastePreviewText(null)} />
       )}
+      </div>
     </div>
   )
 }

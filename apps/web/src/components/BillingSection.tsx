@@ -111,8 +111,24 @@ export function BillingSection({ dealId }: BillingSectionProps) {
     return (
       <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
         <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>
-        <div className="flex items-center justify-center py-4">
-          <div className="w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        <div className="animate-pulse flex flex-col gap-3">
+          {/* Type badge skeleton */}
+          <div className="flex items-center justify-between">
+            <div className="h-5 w-16 rounded-full bg-slate-100 dark:bg-white/[.06]" />
+            <div className="h-3 w-8 rounded bg-slate-100 dark:bg-white/[.06]" />
+          </div>
+          {/* Row skeletons */}
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
+              <div className="h-3 w-16 rounded bg-slate-100 dark:bg-white/[.06]" />
+              <div className="h-3 w-20 rounded bg-slate-100 dark:bg-white/[.06]" />
+            </div>
+          ))}
+          {/* History skeleton */}
+          <div className="mt-2 pt-3 border-t border-black/[.04] dark:border-white/[.05]">
+            <div className="h-2.5 w-14 rounded bg-slate-100 dark:bg-white/[.06] mb-2" />
+            <div className="h-2.5 w-40 rounded bg-slate-100 dark:bg-white/[.06]" />
+          </div>
         </div>
       </div>
     )

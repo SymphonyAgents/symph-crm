@@ -140,7 +140,7 @@ function CardActionsMenu({
                         onClick={(e) => { e.stopPropagation(); setOpen(false); setShowAssign(false); onAssign(u.id, u.name || u.email) }}
                         className="flex items-center gap-2 w-full px-3 py-1.5 text-[12px] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
                       >
-                        <Avatar name={u.name || u.email} size={16} />
+                        <Avatar name={u.name || u.email} src={u.image ?? undefined} size={16} />
                         {u.name || u.email}
                       </button>
                     ))
@@ -366,7 +366,7 @@ function DealCard({
             </div>
           )}
           <div className="flex items-center gap-1">
-            <Avatar name={amName} email={resolvedAm?.email ?? undefined} size={20} />
+            <Avatar name={amName} email={resolvedAm?.email ?? undefined} src={resolvedAm?.image ?? undefined} size={20} />
             <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">{amShortName}</span>
           </div>
         </div>

@@ -85,4 +85,9 @@ export const queryKeys = {
   notifications: {
     all: ['notifications'] as const,
   },
+  chatSessions: {
+    all: ['chat-sessions'] as const,
+    byUser: (userId: string) => ['chat-sessions', userId] as const,
+    history: (sessionId: string) => ['chat-sessions', 'history', sessionId] as const,
+  },
 } as const

@@ -8,6 +8,7 @@ type AMEntry = {
   name: string
   deals: string
   value: string
+  image?: string | null
 }
 
 type AMLeaderboardProps = {
@@ -34,7 +35,7 @@ export function AMLeaderboard({ entries }: AMLeaderboardProps) {
               <div className={cn('text-[11px] font-bold tabular-nums text-center', i === 0 ? 'text-primary' : 'text-slate-400')}>
                 {i + 1}
               </div>
-              <Avatar name={entry.name} size={26} />
+              <Avatar name={entry.name} src={entry.image ?? undefined} size={26} />
               <div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-white">{entry.name}</div>
                 <div className="text-[10px] text-slate-400">{entry.deals}</div>

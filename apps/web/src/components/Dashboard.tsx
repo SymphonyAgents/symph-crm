@@ -16,7 +16,7 @@ import {
 } from './Skeletons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { useGetFunnel } from '@/lib/hooks/queries'
+import { useGetFunnel, useGetUsers } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { formatCurrency, timeAgo } from '@/lib/utils'
 import { api } from '@/lib/api'
@@ -75,6 +75,10 @@ export function Dashboard() {
 
   const { data: funnelData, isLoading: loadingFunnel } = useGetFunnel({ from, to })
 
+  const { data: users = [] } = useGetUsers()
+  // Build a map from user ID → display name for AM resolution
+  const userMap = new Map(users.map(u => [u.id, u.name || u.email]))
+
   const isLoading = loadingSummary || loadingDeals
   const isError = errorSummary || errorDeals
 
@@ -94,21 +98,23 @@ export function Dashboard() {
     .sort((a, b) => parseFloat(b.value ?? '0') - parseFloat(a.value ?? '0'))
     .slice(0, 5)
 
-  // AM Leaderboard — group by assignedTo
+  // AM Leaderboard — group by assignedTo, resolve UUID to name
   const amMap = new Map<string, { deals: number; value: number }>()
   for (const d of deals) {
-    const name = d.assignedTo || 'Unassigned'
-    const cur = amMap.get(name) || { deals: 0, value: 0 }
+    const key = d.assignedTo || 'Unassigned'
+    const cur = amMap.get(key) || { deals: 0, value: 0 }
     cur.deals++
     cur.value += parseFloat(d.value || '0') || 0
-    amMap.set(name, cur)
+    amMap.set(key, cur)
   }
   const amEntries = Array.from(amMap.entries())
     .sort((a, b) => b[1].value - a[1].value)
-    .map(([name, stats]) => ({
-      name,
+    .map(([key, stats]) => ({
+      name: key === 'Unassigned' ? 'Unassigned' : (userMap.get(key) ?? key),
       deals: `${stats.deals} deal${stats.deals !== 1 ? 's' : ''}`,
       value: formatCurrency(stats.value),
+      userId: key,
+      image: users.find(u => u.id === key)?.image ?? undefined,
     }))
 
   // Recent Activity — last-touched deals sorted by lastActivityAt

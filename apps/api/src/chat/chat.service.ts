@@ -111,6 +111,34 @@ export class ChatService {
     return session
   }
 
+  async listSessions(userId: string) {
+    const { desc } = await import('drizzle-orm')
+    return this.db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.userId, userId))
+      .orderBy(desc(chatSessions.updatedAt))
+  }
+
+  async createSession(params: {
+    userId: string
+    workspaceId: string
+    dealId?: string
+    title?: string
+  }) {
+    const [session] = await this.db
+      .insert(chatSessions)
+      .values({
+        workspaceId: params.workspaceId,
+        userId: params.userId,
+        contextType: params.dealId ? 'deal' : 'global',
+        contextId: params.dealId ?? null,
+        title: params.title ?? 'New chat',
+      })
+      .returning()
+    return session
+  }
+
   async getHistory(sessionId: string) {
     return this.db
       .select()

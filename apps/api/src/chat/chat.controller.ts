@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Body,
+  Query,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -125,6 +126,25 @@ export class ChatController {
     }
 
     return this.chatService.sendMessage({ ...body, attachmentContext })
+  }
+
+  /**
+   * GET /api/chat/sessions?userId=xxx
+   * List all chat sessions for a user, most recent first.
+   */
+  @Get('sessions')
+  listSessions(@Query('userId') userId: string) {
+    if (!userId) throw new BadRequestException('userId query param is required')
+    return this.chatService.listSessions(userId)
+  }
+
+  /**
+   * POST /api/chat/sessions
+   * Create a new chat session.
+   */
+  @Post('sessions')
+  createSession(@Body() body: { userId: string; workspaceId: string; dealId?: string; title?: string }) {
+    return this.chatService.createSession(body)
   }
 
   /**

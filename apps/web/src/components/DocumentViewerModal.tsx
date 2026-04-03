@@ -99,32 +99,28 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload }: Docu
           </div>
 
           {/* Title + meta */}
-          <div className="flex-1 min-w-0">
-            <div className="text-[14px] font-semibold text-slate-900 dark:text-white truncate">
+          <div className="flex-1 min-w-0 max-w-[calc(100%-200px)] md:max-w-none">
+            <div className="text-[14px] font-semibold text-slate-900 dark:text-white truncate" title={doc.title}>
               {doc.title}
             </div>
-            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
-              {/* Breadcrumb from storagePath */}
+            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5 overflow-hidden whitespace-nowrap">
+              {/* Clean breadcrumb — just category / filename, not the full UUID path */}
               {doc.storagePath && (() => {
                 const parts = doc.storagePath.replace(/^\//, '').split('/').filter(Boolean)
-                return parts.length > 1 ? (
-                  <>
-                    {parts.slice(0, -1).map((seg, i) => (
-                      <span key={i} className="flex items-center gap-1.5">
-                        <span className="text-slate-300 dark:text-slate-600">{seg}</span>
-                        <span className="text-slate-200 dark:text-slate-700">/</span>
-                      </span>
-                    ))}
-                  </>
+                const category = parts.find(p => ['notes', 'resources', 'uploads', 'documents'].includes(p.toLowerCase()))
+                const filename = parts[parts.length - 1]
+                const breadcrumb = category ? `${category} / ${filename}` : filename
+                return breadcrumb ? (
+                  <span className="text-slate-300 dark:text-slate-600 truncate max-w-[180px]" title={doc.storagePath}>{breadcrumb}</span>
                 ) : null
               })()}
-              <span>{getFileTypeLabel(doc)}</span>
+              <span className="shrink-0">{getFileTypeLabel(doc)}</span>
               <span>·</span>
-              <span>{new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <span className="shrink-0">{new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
               {doc.wordCount != null && doc.wordCount > 0 && (
                 <>
                   <span>·</span>
-                  <span>{doc.wordCount} words</span>
+                  <span className="shrink-0">{doc.wordCount} words</span>
                 </>
               )}
             </div>
@@ -160,14 +156,15 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload }: Docu
           {onDownload && (
             <button
               onClick={() => onDownload(doc)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
+              className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors shrink-0"
               title="Download"
             >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
+              Download
             </button>
           )}
 
@@ -175,13 +172,14 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload }: Docu
           {onDelete && (
             <button
               onClick={() => onDelete(doc)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors shrink-0"
+              className="h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-[11px] font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-500/15 transition-colors shrink-0"
               title="Delete"
             >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                 <polyline points="3 6 5 6 21 6" />
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
               </svg>
+              Delete
             </button>
           )}
 
