@@ -162,8 +162,31 @@ export class DealsService {
     return deal
   }
 
-  async create(data: typeof deals.$inferInsert, performedBy?: string) {
-    const [deal] = await this.db.insert(deals).values(data).returning()
+  async create(
+    data: Omit<typeof deals.$inferInsert, 'stageId'> & {
+      stage?: string | null
+      stageId?: string | null
+      pricingModel?: unknown
+      productId?: unknown
+      tierId?: unknown
+    },
+    performedBy?: string,
+  ) {
+    // Strip fields that no longer exist in the schema
+    const { stage, pricingModel, productId, tierId, ...cleanData } = data as any
+
+    // Resolve stage slug → stageId UUID if a slug was passed
+    let stageId: string | null = cleanData.stageId ?? null
+    if (!stageId && stage) {
+      const [ps] = await this.db
+        .select({ id: pipelineStages.id })
+        .from(pipelineStages)
+        .where(eq(pipelineStages.slug, stage))
+        .limit(1)
+      stageId = ps?.id ?? null
+    }
+
+    const [deal] = await this.db.insert(deals).values({ ...cleanData, stageId }).returning()
 
     // Auto-add assigned user to AM roster
     if (deal.assignedTo) {
@@ -182,8 +205,10 @@ export class DealsService {
     return deal
   }
 
-  async update(id: string, data: Partial<typeof deals.$inferInsert>, performedBy?: string) {
-    const [deal] = await this.db.update(deals).set(data).where(eq(deals.id, id)).returning()
+  async update(id: string, data: Partial<typeof deals.$inferInsert> & { pricingModel?: unknown }, performedBy?: string) {
+    // Strip any dropped columns that FE might still send
+    const { pricingModel, ...cleanData } = data as any
+    const [deal] = await this.db.update(deals).set(cleanData).where(eq(deals.id, id)).returning()
 
     // Auto-add assigned user to AM roster when assignedTo changes
     if (data.assignedTo && deal) {

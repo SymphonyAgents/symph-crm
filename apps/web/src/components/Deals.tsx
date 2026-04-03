@@ -632,7 +632,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
         )}
 
         {/* Empty state */}
-        {!isLoading && deals.length === 0 && (
+        {!isLoading && companies.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
             <EmptyState
               title="No deals yet"
@@ -642,7 +642,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
         )}
 
         {/* Table view */}
-        {!isLoading && deals.length > 0 && viewMode === 'table' && (
+        {!isLoading && companies.length > 0 && viewMode === 'table' && (
           <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <BrandsDataTable
               rows={filteredTableRows}
