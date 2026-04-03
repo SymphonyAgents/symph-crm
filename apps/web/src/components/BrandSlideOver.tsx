@@ -4,10 +4,11 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn, getInitials, getBrandColor, formatDealValue, timeAgo, totalNumericValue, toPascalCase } from '@/lib/utils'
 import { STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
-import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies } from '@/lib/hooks/queries'
-import { useAssignDealBrand } from '@/lib/hooks/mutations'
+import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies, useGetContactsByCompany } from '@/lib/hooks/queries'
+import { useAssignDealBrand, useCreateContact, useDeleteBrand } from '@/lib/hooks/mutations'
 import type { ApiCompanyDetail, ApiDeal, Activity } from '@/lib/types'
-import { X } from 'lucide-react'
+import { queryKeys } from '@/lib/query-keys'
+import { X, Plus, Trash2 } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
@@ -95,14 +96,22 @@ function AssignBrandSelect({
 
 export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverProps) {
   const [tab, setTab] = useState<'deals' | 'people'>('deals')
+  const [showAddPerson, setShowAddPerson] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [personForm, setPersonForm] = useState({ name: '', phone: '', title: '', role: '' })
   const isOpen = !!brand
   const isUnassigned = brand?.id === UNASSIGNED_ID
 
   useEscapeKey(useCallback(onClose, [onClose]), isOpen)
 
-  // Reset tab when brand changes
+  // Reset tab and form state when brand changes
   useEffect(() => {
-    if (brand) setTab('deals')
+    if (brand) {
+      setTab('deals')
+      setShowAddPerson(false)
+      setShowDeleteConfirm(false)
+      setPersonForm({ name: '', phone: '', title: '', role: '' })
+    }
   }, [brand?.id])
 
   // Fetch deals
@@ -130,6 +139,26 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
     return m
   }, [users])
 
+  // Contacts from DB (real source of truth)
+  const { data: dbContacts = [] } = useGetContactsByCompany(brand?.id !== UNASSIGNED_ID ? brand?.id : undefined)
+
+  // Mutations
+  const qc = useQueryClient()
+  const createContact = useCreateContact({
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(brand?.id ?? '') })
+      setShowAddPerson(false)
+      setPersonForm({ name: '', phone: '', title: '', role: '' })
+    },
+  })
+  const deleteBrand = useDeleteBrand({
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.companies.all })
+      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
+      onClose()
+    },
+  })
+
   // Fetch activities (skip for unassigned pseudo-brand)
   const { data: activities = [] } = useGetActivitiesByCompany(brand?.id ?? '', {
     enabled: !!brand?.id && !isUnassigned,
@@ -148,28 +177,42 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
     return Math.round((won / closed.length) * 100)
   }, [brandDeals])
 
-  // People: extract unique contacts from activities
+  // People: merge DB contacts + activity-derived contacts (DB is primary)
   const people = useMemo(() => {
-    if (!activities.length) return []
-    const contactMap = new Map<string, { name: string; role: string | null; lastActivity: string }>()
+    const contactMap = new Map<string, { name: string; phone: string | null; role: string | null; title: string | null; lastActivity: string | null; source: 'db' | 'activity' }>()
+
+    // DB contacts are the source of truth
+    for (const c of dbContacts) {
+      contactMap.set(c.id, {
+        name: c.name,
+        phone: c.phone,
+        role: c.title, // title field serves as role
+        title: c.title,
+        lastActivity: c.updatedAt,
+        source: 'db',
+      })
+    }
+
+    // Supplement with activity-derived contacts not already in DB
     for (const act of activities) {
       const meta = act.metadata as Record<string, unknown>
       const contactId = meta?.contactId as string | undefined
       const contactName = meta?.contactName as string | undefined
       const contactRole = meta?.contactRole as string | undefined
-      if (contactId && contactName) {
-        const existing = contactMap.get(contactId)
-        if (!existing || act.createdAt > existing.lastActivity) {
-          contactMap.set(contactId, {
-            name: contactName,
-            role: contactRole ?? existing?.role ?? null,
-            lastActivity: act.createdAt,
-          })
-        }
+      if (contactId && contactName && !contactMap.has(contactId)) {
+        contactMap.set(contactId, {
+          name: contactName,
+          phone: null,
+          role: contactRole ?? null,
+          title: contactRole ?? null,
+          lastActivity: act.createdAt,
+          source: 'activity',
+        })
       }
     }
+
     return Array.from(contactMap.entries()).map(([id, info]) => ({ id, ...info }))
-  }, [activities])
+  }, [dbContacts, activities])
 
   const contactCount = people.length
   const brandColor = brand ? getBrandColor(brand.name) : '#94a3b8'
@@ -237,12 +280,23 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                   )}
                 </div>
 
-                <button
-                  onClick={onClose}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors shrink-0"
-                >
-                  <X size={14} />
-                </button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {!isUnassigned && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                      title="Delete brand"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                  <button
+                    onClick={onClose}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -330,7 +384,82 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
               {tab === 'people' && !isUnassigned && (
                 <div className="p-3 space-y-1">
-                  {people.length === 0 ? (
+                  {/* Add Person button / inline form */}
+                  {!showAddPerson ? (
+                    <button
+                      onClick={() => setShowAddPerson(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors w-full"
+                    >
+                      <Plus size={14} />
+                      Add Person
+                    </button>
+                  ) : (
+                    <div className="bg-slate-50 dark:bg-white/[.03] rounded-lg p-3 space-y-2 mb-2">
+                      <input
+                        autoFocus
+                        type="text"
+                        placeholder="Full name *"
+                        value={personForm.name}
+                        onChange={e => setPersonForm(f => ({ ...f, name: e.target.value }))}
+                        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                      />
+                      <input
+                        type="tel"
+                        placeholder="Phone (optional)"
+                        value={personForm.phone}
+                        onChange={e => setPersonForm(f => ({ ...f, phone: e.target.value }))}
+                        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Notes / description (optional)"
+                        value={personForm.title}
+                        onChange={e => setPersonForm(f => ({ ...f, title: e.target.value }))}
+                        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                      />
+                      <select
+                        value={personForm.role}
+                        onChange={e => setPersonForm(f => ({ ...f, role: e.target.value }))}
+                        className="w-full text-[13px] px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                      >
+                        <option value="">Role (optional)</option>
+                        <option value="poc">POC</option>
+                        <option value="stakeholder">Stakeholder</option>
+                        <option value="champion">Champion</option>
+                        <option value="blocker">Blocker</option>
+                        <option value="technical">Technical</option>
+                        <option value="executive">Executive</option>
+                      </select>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            if (!personForm.name.trim() || !brand?.id) return
+                            createContact.mutate({
+                              companyId: brand.id,
+                              name: personForm.name.trim(),
+                              phone: personForm.phone.trim() || null,
+                              title: [personForm.role, personForm.title.trim()].filter(Boolean).join(' — ') || null,
+                            })
+                          }}
+                          disabled={!personForm.name.trim() || createContact.isPending}
+                          className="px-3 py-1.5 text-[12px] font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {createContact.isPending ? 'Adding...' : 'Add'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowAddPerson(false)
+                            setPersonForm({ name: '', phone: '', title: '', role: '' })
+                          }}
+                          className="px-3 py-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {people.length === 0 && !showAddPerson ? (
                     <div className="py-8 text-center text-[13px] text-slate-400">
                       No contacts found for this brand
                     </div>
@@ -360,9 +489,14 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">
-                              Last met: {timeAgo(person.lastActivity)}
-                            </div>
+                            {person.phone && (
+                              <div className="text-[11px] text-slate-400 mt-0.5">{person.phone}</div>
+                            )}
+                            {person.lastActivity && (
+                              <div className="text-[11px] text-slate-400 mt-0.5">
+                                {person.source === 'activity' ? 'Last met: ' : 'Added: '}{timeAgo(person.lastActivity)}
+                              </div>
+                            )}
                           </div>
                         </div>
                       )
@@ -372,6 +506,36 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
               )}
             </div>
           </>
+        )}
+
+        {/* Delete confirmation dialog */}
+        {showDeleteConfirm && brand && !isUnassigned && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-black/50 rounded-l-xl">
+            <div className="bg-white dark:bg-[#1e1e21] rounded-xl shadow-xl p-5 mx-6 max-w-[320px] w-full border border-black/[.06] dark:border-white/[.08]">
+              <h3 className="text-[14px] font-semibold text-slate-900 dark:text-white">Delete brand?</h3>
+              <p className="text-[12.5px] text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                This will permanently delete <strong>{brand.name}</strong>.
+                {brandDeals.length > 0 && (
+                  <> Its {brandDeals.length} deal{brandDeals.length !== 1 ? 's' : ''} will become &ldquo;No Brand&rdquo; deals.</>
+                )}
+              </p>
+              <div className="flex items-center gap-2 mt-4 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-3 py-1.5 text-[12px] font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[.06] rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteBrand.mutate(brand.id)}
+                  disabled={deleteBrand.isPending}
+                  className="px-3 py-1.5 text-[12px] font-medium bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors"
+                >
+                  {deleteBrand.isPending ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>

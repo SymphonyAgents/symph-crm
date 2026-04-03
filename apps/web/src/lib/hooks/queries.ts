@@ -53,6 +53,33 @@ export function useGetCompany(
   })
 }
 
+// ─── Contacts ─────────────────────────────────────────────────────────────────
+
+export type ApiContact = {
+  id: string
+  companyId: string
+  name: string
+  email: string | null
+  phone: string | null
+  title: string | null
+  linkedinUrl: string | null
+  isPrimary: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export function useGetContactsByCompany(
+  companyId: string | undefined,
+  options?: Partial<UseQueryOptions<ApiContact[]>>,
+) {
+  return useQuery<ApiContact[]>({
+    queryKey: queryKeys.contacts.byCompany(companyId ?? ''),
+    queryFn: () => api.get<ApiContact[]>('/contacts', { companyId }),
+    enabled: !!companyId,
+    ...options,
+  })
+}
+
 // ─── Deals ────────────────────────────────────────────────────────────────────
 
 export function useGetDeals(

@@ -144,6 +144,13 @@ export class CompaniesService {
 
   async remove(id: string, performedBy?: string) {
     const existing = await this.findOne(id)
+
+    // Nullify companyId on all associated deals so they become "No Brand" deals
+    await this.db
+      .update(deals)
+      .set({ companyId: null, updatedAt: new Date() })
+      .where(eq(deals.companyId, id))
+
     await this.db.delete(companies).where(eq(companies.id, id))
 
     this.auditLogs.log({
@@ -152,7 +159,7 @@ export class CompaniesService {
       entityType: 'company',
       entityId: id,
       performedBy: performedBy ?? undefined,
-      details: { name: existing?.name },
+      details: { name: existing?.name, dealCount: existing?.dealIds?.length ?? 0 },
     }).catch(() => {})
   }
 }

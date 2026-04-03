@@ -354,3 +354,33 @@ export function useAssignDealBrand(
     ...withToast('Brand assigned', options),
   })
 }
+
+// ─── Contact mutations ────────────────────────────────────────────────────────
+
+export type CreateContactInput = {
+  companyId: string
+  name: string
+  phone?: string | null
+  title?: string | null
+  email?: string | null
+}
+
+export function useCreateContact(
+  options?: UseMutationOptions<unknown, Error, CreateContactInput>,
+) {
+  return useMutation({
+    mutationFn: (input: CreateContactInput) => api.post('/contacts', input),
+    ...withToast('Contact added', options),
+  })
+}
+
+// ─── Brand deletion ───────────────────────────────────────────────────────────
+
+export function useDeleteBrand(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/companies/${id}`),
+    ...withToast('Brand deleted', options),
+  })
+}
