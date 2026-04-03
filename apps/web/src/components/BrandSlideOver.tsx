@@ -175,10 +175,10 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
       return { previousCompanies }
     },
-    onError: (_err, _vars, context: { previousCompanies?: unknown } | undefined) => {
+    onError: (_err, _vars, onMutateResult: { previousCompanies?: unknown } | undefined) => {
       // Rollback the optimistic removal on error
-      if (context?.previousCompanies) {
-        qc.setQueryData(queryKeys.companies.all, context.previousCompanies)
+      if (onMutateResult?.previousCompanies) {
+        qc.setQueryData(queryKeys.companies.all, onMutateResult.previousCompanies)
       }
       isDeleting.current = false
     },
