@@ -41,11 +41,6 @@ export const deals = pgTable('deals', {
   flagReason: text('flag_reason'),
   workspaceId: uuid('workspace_id').references(() => workspaces.id),
 
-  // Engagement model — tightened to enum
-  engagementModel: text('engagement_model', {
-    enum: ['fixed_scope', 'retainer', 'time_and_materials'],
-  }),
-
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })

@@ -6,9 +6,8 @@
 --   1. Wipe dev data (deals, pitch_decks, deal-related activities)
 --   2. Drop denormalized / redundant columns from deals
 --   3. Add FK columns: stage_id, am_roster_id, build_assigned_to (FK)
---   4. Tighten engagement_model to a CHECK constraint
---   5. Update pitch_decks: drop content jsonb, add storage_path + deal_id
---   6. Update contacts: drop inline notes text
+--   4. Update pitch_decks: drop content jsonb, add storage_path + deal_id
+--   5. Update contacts: drop inline notes text
 --   7. Create deal_contacts junction table
 --   8. Seed pipeline_stages with default stages for the default workspace
 -- =============================================================================
@@ -38,7 +37,8 @@ ALTER TABLE deals
   DROP COLUMN IF EXISTS build_notes,
   DROP COLUMN IF EXISTS proposal_link,
   DROP COLUMN IF EXISTS pricing_model,
-  DROP COLUMN IF EXISTS poc_contact_id;
+  DROP COLUMN IF EXISTS poc_contact_id,
+  DROP COLUMN IF EXISTS engagement_model;
 
 -- ---------------------------------------------------------------------------
 -- 3. Add new FK columns to deals
@@ -61,23 +61,7 @@ ALTER TABLE deals
   ADD COLUMN IF NOT EXISTS build_assigned_to TEXT REFERENCES users(id);
 
 -- ---------------------------------------------------------------------------
--- 4. Tighten engagement_model to a CHECK constraint
--- ---------------------------------------------------------------------------
-
--- Remove any values that don't fit the new enum before adding the constraint
-UPDATE deals
-  SET engagement_model = NULL
-  WHERE engagement_model NOT IN ('fixed_scope', 'retainer', 'time_and_materials');
-
-ALTER TABLE deals
-  DROP CONSTRAINT IF EXISTS deals_engagement_model_check;
-
-ALTER TABLE deals
-  ADD CONSTRAINT deals_engagement_model_check
-    CHECK (engagement_model IN ('fixed_scope', 'retainer', 'time_and_materials'));
-
--- ---------------------------------------------------------------------------
--- 5. Update pitch_decks
+-- 4. Update pitch_decks
 -- ---------------------------------------------------------------------------
 
 -- Drop inline content (files go in Supabase Storage)
