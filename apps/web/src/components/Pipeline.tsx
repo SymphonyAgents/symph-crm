@@ -327,7 +327,7 @@ function DealCard({
 
       {/* Deal title */}
       <div className="text-[12.5px] font-semibold text-slate-900 dark:text-white leading-snug mb-2.5">
-        {toPascalCase(deal.title)}
+        {deal.title.toUpperCase()}
       </div>
 
       {/* Services tags */}
