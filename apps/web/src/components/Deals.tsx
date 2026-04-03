@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetCompanies, useGetDeals, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
-import { cn, getInitials, getBrandColor, formatDealValue, totalNumericValue, formatDealTitle } from '@/lib/utils'
+import { cn, getInitials, getBrandColor, formatDealValue, formatServiceType, totalNumericValue, formatDealTitle } from '@/lib/utils'
 import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -155,7 +155,7 @@ function BrandDetailModal({
                       <div className="flex gap-1 mt-0.5 flex-wrap">
                         {tags.slice(0, 3).map(s => (
                           <span key={s} className="text-[9px] font-medium px-1.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[.06] text-slate-500 whitespace-nowrap">
-                            {s}
+                            {formatServiceType(s)}
                           </span>
                         ))}
                       </div>

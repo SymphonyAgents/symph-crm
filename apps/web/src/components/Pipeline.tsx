@@ -15,7 +15,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetDeals, useGetCompanies, useGetUsers } from '@/lib/hooks/queries'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { cn, formatPeso, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
+import { cn, formatPeso, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
 import type { ApiDeal, ApiCompany, ApiUser } from '@/lib/types'
 import {
   KANBAN_STAGES, COLUMN_TO_STAGE, STAGE_ORDER,
@@ -339,7 +339,7 @@ function DealCard({
               className="text-[10px] font-medium px-2 py-0.5 rounded-full"
               style={{ background: `${colColor}18`, color: colColor }}
             >
-              {s}
+              {formatServiceType(s)}
             </span>
           ))}
           {services.length > 3 && (
