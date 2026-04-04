@@ -1,14 +1,14 @@
 'use client'
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { cn, getInitials, getBrandColor, formatDealValue, timeAgo, totalNumericValue, formatDealTitle, toPascalCase, formatPeso } from '@/lib/utils'
 import { STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies, useGetContactsByCompany } from '@/lib/hooks/queries'
-import { useAssignDealBrand, useCreateContact, useDeleteBrand } from '@/lib/hooks/mutations'
+import { useAssignDealBrand, useCreateContact } from '@/lib/hooks/mutations'
 import type { ApiCompanyDetail, ApiDeal, Activity } from '@/lib/types'
 import { queryKeys } from '@/lib/query-keys'
-import { X, Plus, Trash2, Copy, Check } from 'lucide-react'
+import { X, Plus, Copy, Check } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
@@ -122,10 +122,8 @@ function AssignBrandSelect({
 export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverProps) {
   const [tab, setTab] = useState<'deals' | 'people'>('deals')
   const [showAddPerson, setShowAddPerson] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [personForm, setPersonForm] = useState({ name: '', phone: '', email: '', title: '', role: '' })
-  const isDeleting = useRef(false)
-  const isOpen = !!brand && !isDeleting.current
+  const isOpen = !!brand
   const isUnassigned = brand?.id === UNASSIGNED_ID
 
   useEscapeKey(useCallback(onClose, [onClose]), isOpen)
@@ -133,10 +131,8 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
   // Reset tab and form state when brand changes
   useEffect(() => {
     if (brand) {
-      isDeleting.current = false
       setTab('deals')
       setShowAddPerson(false)
-      setShowDeleteConfirm(false)
       setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
     }
   }, [brand?.id])
@@ -184,45 +180,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
       setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
     },
   })
-  const deleteBrand = useDeleteBrand({
-    onMutate: async () => {
-      // Optimistic: dismiss confirmation dialog, close slide-over, remove brand from cache
-      isDeleting.current = true
-      setShowDeleteConfirm(false)
 
-      // Cancel any outgoing refetches so they don't overwrite our optimistic update
-      await qc.cancelQueries({ queryKey: queryKeys.companies.all })
-
-      // Snapshot previous companies for rollback
-      const previousCompanies = qc.getQueryData(queryKeys.companies.all)
-
-      // Optimistically remove the brand from the companies cache
-      qc.setQueryData(queryKeys.companies.all, (old: ApiCompanyDetail[] | undefined) =>
-        old ? old.filter(c => c.id !== brand?.id) : [],
-      )
-
-      // Close the slide-over immediately
-      onClose()
-
-      return { previousCompanies }
-    },
-    onError: (_err, _vars, ctx) => {
-      // Rollback the optimistic removal on error
-      const rollback = ctx as { previousCompanies?: unknown } | undefined
-      if (rollback?.previousCompanies) {
-        qc.setQueryData(queryKeys.companies.all, rollback.previousCompanies)
-      }
-      isDeleting.current = false
-    },
-    onSuccess: () => {
-      // Sync full state from server
-      qc.invalidateQueries({ queryKey: queryKeys.companies.all })
-      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-    },
-    onSettled: () => {
-      isDeleting.current = false
-    },
-  })
 
   // Fetch activities (skip for unassigned pseudo-brand)
   const { data: activities = [] } = useGetActivitiesByCompany(brand?.id ?? '', {
@@ -342,23 +300,12 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0">
-                  {!isUnassigned && (
-                    <button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                      title="Delete brand"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                  <button
-                    onClick={onClose}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
+                <button
+                  onClick={onClose}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
               </div>
             </div>
 
@@ -606,41 +553,6 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
           </>
         )}
 
-        {/* Delete confirmation dialog */}
-        {showDeleteConfirm && brand && !isUnassigned && (
-          <div
-            className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm px-4 flex items-center justify-center"
-            onClick={() => setShowDeleteConfirm(false)}
-          >
-            <div
-              className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
-              onClick={e => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete brand?</p>
-              <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                This will permanently delete <strong>{brand.name}</strong>.
-                {brandDeals.length > 0 && (
-                  <> Its {brandDeals.length} deal{brandDeals.length !== 1 ? 's' : ''} will become &ldquo;No Brand&rdquo; deals.</>
-                )}
-              </p>
-              <div className="flex gap-2.5 mt-4">
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => deleteBrand.mutate(brand.id)}
-                  disabled={deleteBrand.isPending}
-                  className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
-                >
-                  <>{deleteBrand.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Delete</>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   )

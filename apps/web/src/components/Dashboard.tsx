@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { MetricCard } from './MetricCard'
 import { StageFunnelChart } from './StageFunnelChart'
@@ -16,7 +17,7 @@ import {
 } from './Skeletons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { useGetFunnel, useGetUsers, useGetAuditLogs } from '@/lib/hooks/queries'
+import { useGetFunnel, useGetUsers } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { formatCurrency, timeAgo, formatDealTitle } from '@/lib/utils'
 import { api } from '@/lib/api'
@@ -51,6 +52,7 @@ function getYearOptions(): number[] {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export function Dashboard() {
+  const router = useRouter()
   const now = new Date()
   const [filter, setFilter] = useState<DashboardFilter>({
     mode: 'month',
@@ -76,9 +78,6 @@ export function Dashboard() {
   const { data: funnelData, isLoading: loadingFunnel } = useGetFunnel({ from, to })
 
   const { data: users = [] } = useGetUsers()
-  const { data: auditData } = useGetAuditLogs({ limit: 8, offset: 0 })
-  const auditEntries = auditData?.rows ?? []
-
   // Build a map from user ID -> display name for AM resolution
   const userMap = new Map(users.map(u => [u.id, u.name || u.email]))
 
@@ -120,33 +119,19 @@ export function Dashboard() {
       image: users.find(u => u.id === key)?.image ?? undefined,
     }))
 
-  // Recent Activity — real audit log entries
+  // Recent Activity — deals with recent activity, clickable to navigate
   const recentEntries = useMemo(() => {
-    return auditEntries.slice(0, 5).map(entry => {
-      const actionMap: Record<string, string> = {
-        create: 'Created',
-        update: 'Updated',
-        delete: 'Deleted',
-        status_change: 'Moved',
-      }
-      const verb = actionMap[entry.action] || entry.action
-      const entity = entry.details?.name || entry.details?.title || entry.entityType
-      const entityDisplay = typeof entity === 'string' ? formatDealTitle(entity) : entry.entityType
-
-      const colorMap: Record<string, string> = {
-        create: '#16a34a',
-        update: '#2563eb',
-        delete: '#dc2626',
-        status_change: '#d97706',
-      }
-
-      return {
-        color: colorMap[entry.action] || '#94a3b8',
-        text: `${verb} ${entityDisplay}`,
-        time: timeAgo(entry.createdAt),
-      }
-    })
-  }, [auditEntries])
+    return deals
+      .filter(d => d.lastActivityAt)
+      .sort((a, b) => new Date(b.lastActivityAt!).getTime() - new Date(a.lastActivityAt!).getTime())
+      .slice(0, 5)
+      .map(d => ({
+        color: '#2563eb',
+        text: formatDealTitle(d.title),
+        time: timeAgo(d.lastActivityAt),
+        dealId: d.id,
+      }))
+  }, [deals])
 
   const yearOptions = getYearOptions()
 
@@ -267,7 +252,7 @@ export function Dashboard() {
           </div>
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg px-5 py-[18px] shadow-[var(--shadow-card)]">
             <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-3.5">Recent Activity</div>
-            {isLoading ? <RecentActivitySkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <RecentActivity entries={recentEntries} />}
+            {isLoading ? <RecentActivitySkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <RecentActivity entries={recentEntries} onOpenDeal={(id) => router.push(`/deals/${id}`)} />}
           </div>
         </div>
       </div>

@@ -38,7 +38,7 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
   const toColor = STAGE_COLORS[toStage] ?? '#94a3b8'
   const fromLabel = STAGE_LABELS[fromStage] ?? fromStage
   const toLabel = STAGE_LABELS[toStage] ?? toStage
-  toast.success(
+  toast(
     <span className="flex items-center gap-1.5">
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: fromColor }} />
       {fromLabel}
@@ -46,7 +46,7 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: toColor }} />
       {toLabel}
     </span>,
-    { description: `${dealTitle} updated` },
+    { description: `${toPascalCase(dealTitle)} updated` },
   )
 }
 
@@ -127,7 +127,7 @@ function CardActionsMenu({
           {/* Assign — locked for won/lost deals */}
           {isTerminal ? (
             <div
-              className="flex items-center justify-between w-full px-3 py-2 text-sm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none"
+              className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none"
               title="Cannot reassign AM — deal is won/lost"
             >
               <span className="flex items-center gap-2">
@@ -142,7 +142,7 @@ function CardActionsMenu({
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAssign(v => !v); setShowAdvanceTo(false); setShowMoveTo(false) }}
-                className="flex items-center justify-between w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
               >
                 <span className="flex items-center gap-2"><UserIcon size={14} /> Assign</span>
                 <ChevronRight size={12} className={cn('text-slate-400 transition-transform duration-150', showAssign && 'rotate-90')} />
@@ -156,7 +156,7 @@ function CardActionsMenu({
                       <button
                         key={u.id}
                         onClick={(e) => { e.stopPropagation(); setOpen(false); setShowAssign(false); onAssign(u.id, u.name || u.email) }}
-                        className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                        className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
                       >
                         <Avatar name={u.name || u.email} src={u.image ?? undefined} size={18} />
                         {u.name || u.email}
@@ -173,7 +173,7 @@ function CardActionsMenu({
             <button
               onClick={(e) => { e.stopPropagation(); onAdvance() }}
               disabled={isAdvancing}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors disabled:opacity-50"
             >
               {isAdvancing ? <Spinner size={14} /> : <ChevronRight size={14} />}
               {isAdvancing ? 'Advancing…' : 'Advance'}
@@ -185,7 +185,7 @@ function CardActionsMenu({
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAdvanceTo(v => !v); setShowAssign(false); setShowMoveTo(false) }}
-                className="flex items-center justify-between w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
               >
                 <span className="flex items-center gap-2"><ChevronRight size={14} /> Advance to…</span>
                 <ChevronDown size={12} className={cn('text-slate-400 transition-transform duration-150', showAdvanceTo && 'rotate-180')} />
@@ -196,7 +196,7 @@ function CardActionsMenu({
                     <button
                       key={t.id}
                       onClick={(e) => { e.stopPropagation(); setOpen(false); onAdvanceTo(t.dbStage) }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
                       {t.label}
@@ -212,7 +212,7 @@ function CardActionsMenu({
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMoveTo(v => !v); setShowAssign(false); setShowAdvanceTo(false) }}
-                className="flex items-center justify-between w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
               >
                 <span className="flex items-center gap-2"><ChevronDown size={14} className="rotate-90" /> Move back…</span>
                 <ChevronDown size={12} className={cn('text-slate-400 transition-transform duration-150', showMoveTo && 'rotate-180')} />
@@ -223,7 +223,7 @@ function CardActionsMenu({
                     <button
                       key={t.id}
                       onClick={(e) => { e.stopPropagation(); setOpen(false); onMoveTo(t.dbStage) }}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
                       {t.label}
@@ -237,7 +237,7 @@ function CardActionsMenu({
           {/* Open deal */}
           <button
             onClick={(e) => { e.stopPropagation(); setOpen(false); onOpen() }}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
           >
             <ExternalLink size={14} /> Open deal
           </button>
@@ -246,7 +246,7 @@ function CardActionsMenu({
           {isSales && (
             <button
               onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete() }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
             >
               <Trash2 size={14} /> Delete
             </button>
@@ -449,7 +449,7 @@ function DroppableColumn({ col, children }: { col: (typeof KANBAN_STAGES)[number
       ref={setNodeRef}
       data-stage-id={col.id}
       className={cn(
-        'w-[252px] shrink-0 flex flex-col rounded-lg transition-all duration-150',
+        'w-[252px] shrink-0 flex flex-col rounded-lg transition-all duration-150 self-stretch',
         'bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]',
         isOver ? 'border-2 border-dashed' : 'border border-black/[.07] dark:border-white/[.08]',
       )}
@@ -909,7 +909,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex gap-2.5 px-4 pb-4" style={{ minWidth: 'max-content' }}>
+            <div className="flex items-stretch gap-2.5 px-4 pb-4 min-h-full" style={{ minWidth: 'max-content' }}>
               {columnDeals.map(col => (
                 <DroppableColumn key={col.id} col={col}>
                   {/* Column header */}

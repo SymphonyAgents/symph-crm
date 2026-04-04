@@ -40,7 +40,7 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
   const toColor = STAGE_COLORS[toStage] ?? '#94a3b8'
   const fromLabel = STAGE_LABELS[fromStage] ?? fromStage
   const toLabel = STAGE_LABELS[toStage] ?? toStage
-  toast.success(
+  toast(
     <span className="flex items-center gap-1.5">
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: fromColor }} />
       {fromLabel}
@@ -48,7 +48,7 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: toColor }} />
       {toLabel}
     </span>,
-    { description: `${dealTitle} updated` },
+    { description: `${toPascalCase(dealTitle)} updated` },
   )
 }
 
