@@ -401,10 +401,13 @@ function SessionSidebar({
                 const showMenu = menuOpenId === s.id
                 return (
                   <div key={s.id} className="relative">
-                    <button
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onSelect(s.id)}
+                      onKeyDown={e => e.key === 'Enter' && onSelect(s.id)}
                       className={cn(
-                        'w-full text-left rounded-md transition-colors group',
+                        'w-full text-left rounded-md transition-colors group cursor-pointer',
                         expanded ? 'p-1.5' : 'p-1.5 flex items-center justify-center',
                         isActive
                           ? 'bg-primary/10 text-primary'
@@ -437,7 +440,7 @@ function SessionSidebar({
                           <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                         </svg>
                       )}
-                    </button>
+                    </div>
 
                     {/* Dropdown menu */}
                     {showMenu && expanded && (

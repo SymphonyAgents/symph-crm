@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
@@ -74,11 +74,10 @@ function StageProgress({ currentStage }: { currentStage: string }) {
         {PROGRESS_STAGES.map((stage, i) => {
           const stageColor = STAGE_STEP_COLOR[stage.id] ?? 'var(--stage-lead)'
           return (
-          <>
+          <React.Fragment key={stage.id}>
             {/* Connector line between stages */}
             {i > 0 && (
               <div
-                key={`line-${stage.id}`}
                 className="flex-1 h-[1.5px] mx-2 shrink"
                 style={{
                   background: i <= currentIdx
@@ -116,7 +115,7 @@ function StageProgress({ currentStage }: { currentStage: string }) {
                 {stage.label}
               </span>
             </div>
-          </>
+          </React.Fragment>
           )
         })}
         {isLost && (

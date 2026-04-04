@@ -53,8 +53,11 @@ function TopLoaderInner() {
   const startLoading = useCallback(() => {
     clearTimers()
     progressRef.current = 8
-    setProgress(8)
-    setOpacity(1)
+    // Defer state updates to avoid scheduling during useInsertionEffect
+    requestAnimationFrame(() => {
+      setProgress(8)
+      setOpacity(1)
+    })
 
     intervalRef.current = setInterval(() => {
       const curr = progressRef.current
