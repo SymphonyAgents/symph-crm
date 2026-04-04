@@ -10,6 +10,8 @@ import type { ApiCompanyDetail, ApiDeal, Activity } from '@/lib/types'
 import { queryKeys } from '@/lib/query-keys'
 import { X, Plus, Trash2, Copy } from 'lucide-react'
 import { Avatar } from './Avatar'
+import { Input } from './ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -343,15 +345,15 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
             {/* Tab switcher — hide People tab for unassigned */}
             {!isUnassigned && (
-              <div className="shrink-0 px-5 flex gap-1 border-b border-black/[.06] dark:border-white/[.08]">
+              <div className="shrink-0 px-5 flex gap-4 border-b border-black/[.06] dark:border-white/[.08]">
                 {(['deals', 'people'] as const).map(t => (
                   <button
                     key={t}
                     onClick={() => setTab(t)}
                     className={cn(
-                      'px-3 py-2.5 text-ssm font-medium border-b-2 transition-colors capitalize',
+                      'px-1 py-2.5 text-xs font-semibold border-b-2 transition-colors capitalize',
                       tab === t
-                        ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
+                        ? 'border-primary text-primary'
                         : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300',
                     )}
                   >
@@ -365,7 +367,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
             <div className="flex-1 overflow-y-auto">
               {/* Deals list */}
               {(tab === 'deals' || isUnassigned) && (
-                <div className="p-3 space-y-2">
+                <div className="p-3 space-y-1.5">
                   {brandDeals.length === 0 ? (
                     <div className="py-8 text-center text-ssm text-slate-400">
                       No deals for this brand yet
@@ -376,26 +378,30 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                         key={deal.id}
                         onClick={() => onOpenDeal?.(deal.id)}
                         className={cn(
-                          'flex items-start gap-3 px-3 py-2.5 rounded-lg transition-colors border border-black/[.08] dark:border-white/[.08] bg-transparent',
-                          onOpenDeal ? 'cursor-pointer hover:border-black/[.15] dark:hover:border-white/[.15] hover:bg-slate-50 dark:hover:bg-white/[.03]' : 'hover:border-black/[.15] dark:hover:border-white/[.15] hover:bg-slate-50 dark:hover:bg-white/[.03]',
+                          'flex items-center gap-3 px-3.5 py-3 rounded-lg transition-colors border border-black/[.06] dark:border-white/[.08]',
+                          onOpenDeal && 'cursor-pointer hover:border-black/[.12] dark:hover:border-white/[.15] hover:bg-slate-50 dark:hover:bg-white/[.02]',
                         )}
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="text-ssm font-medium text-slate-900 dark:text-white truncate">
+                          <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
                             {formatDealTitle(deal.title)}
                           </div>
-                          <div className="text-xxs text-slate-400 mt-0.5">
-                            {formatDealValue(deal.value)}
+                          <div className="flex items-center gap-1.5 mt-1 text-xxs text-slate-400">
+                            <span className="tabular-nums">{formatDealValue(deal.value)}</span>
                             {deal.updatedAt && (
-                              <> &#183; {new Date(deal.updatedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</>
+                              <>
+                                <span>&#183;</span>
+                                <span>{new Date(deal.updatedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}</span>
+                              </>
+                            )}
+                            {deal.assignedTo && userMap.get(deal.assignedTo) && (
+                              <>
+                                <span>&#183;</span>
+                                <Avatar name={userMap.get(deal.assignedTo)!} src={userImageMap.get(deal.assignedTo!) ?? undefined} size={14} />
+                                <span className="truncate">{userMap.get(deal.assignedTo)}</span>
+                              </>
                             )}
                           </div>
-                          {deal.assignedTo && userMap.get(deal.assignedTo) && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <Avatar name={userMap.get(deal.assignedTo)!} src={userImageMap.get(deal.assignedTo!) ?? undefined} size={14} />
-                              <span className="text-atom text-slate-400 truncate">{userMap.get(deal.assignedTo)}</span>
-                            </div>
-                          )}
                           {/* Assign brand dropdown — only shown in the "No Brand" slide-over */}
                           {isUnassigned && assignableCompanies.length > 0 && (
                             <div className="mt-1.5" onClick={e => e.stopPropagation()}>
@@ -417,60 +423,63 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
               )}
 
               {tab === 'people' && !isUnassigned && (
-                <div className="p-3 space-y-1">
+                <div className="p-3 space-y-2.5">
                   {/* Add Person button / inline form */}
                   {!showAddPerson ? (
                     <button
                       onClick={() => setShowAddPerson(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-colors w-full"
+                      className="flex items-center gap-1.5 w-full px-3.5 py-2.5 text-xs font-medium text-primary hover:bg-primary/[.06] rounded-lg border border-dashed border-black/[.1] dark:border-white/[.1] transition-colors"
                     >
                       <Plus size={14} />
                       Add Person
                     </button>
                   ) : (
-                    <div className="bg-slate-50 dark:bg-white/[.03] rounded-lg p-3 space-y-2 mb-2">
-                      <input
+                    <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-3.5 space-y-2.5">
+                      <Input
                         autoFocus
                         type="text"
                         placeholder="Full name *"
                         value={personForm.name}
                         onChange={e => setPersonForm(f => ({ ...f, name: e.target.value }))}
-                        className="w-full text-ssm px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="text-ssm"
                       />
-                      <input
+                      <Input
                         type="tel"
                         placeholder="Phone (optional)"
                         value={personForm.phone}
                         onChange={e => setPersonForm(f => ({ ...f, phone: e.target.value }))}
-                        className="w-full text-ssm px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="text-ssm"
                       />
-                      <input
+                      <Input
                         type="email"
                         placeholder="Email (optional)"
                         value={personForm.email}
                         onChange={e => setPersonForm(f => ({ ...f, email: e.target.value }))}
-                        className="w-full text-ssm px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="text-ssm"
                       />
-                      <input
+                      <Input
                         type="text"
                         placeholder="Notes / description (optional)"
                         value={personForm.title}
                         onChange={e => setPersonForm(f => ({ ...f, title: e.target.value }))}
-                        className="w-full text-ssm px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white placeholder:text-slate-400"
+                        className="text-ssm"
                       />
-                      <select
-                        value={personForm.role}
-                        onChange={e => setPersonForm(f => ({ ...f, role: e.target.value }))}
-                        className="w-full text-ssm px-2.5 py-1.5 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                      <Select
+                        value={personForm.role || undefined}
+                        onValueChange={v => setPersonForm(f => ({ ...f, role: v }))}
                       >
-                        <option value="">Role (optional)</option>
-                        <option value="poc">POC</option>
-                        <option value="stakeholder">Stakeholder</option>
-                        <option value="champion">Champion</option>
-                        <option value="blocker">Blocker</option>
-                        <option value="technical">Technical</option>
-                        <option value="executive">Executive</option>
-                      </select>
+                        <SelectTrigger className="text-ssm">
+                          <SelectValue placeholder="Role (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="poc" className="text-ssm">POC</SelectItem>
+                          <SelectItem value="stakeholder" className="text-ssm">Stakeholder</SelectItem>
+                          <SelectItem value="champion" className="text-ssm">Champion</SelectItem>
+                          <SelectItem value="blocker" className="text-ssm">Blocker</SelectItem>
+                          <SelectItem value="technical" className="text-ssm">Technical</SelectItem>
+                          <SelectItem value="executive" className="text-ssm">Executive</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <div className="flex items-center gap-2 pt-1">
                         <button
                           onClick={() => {
@@ -484,16 +493,17 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                             })
                           }}
                           disabled={!personForm.name.trim() || createContact.isPending}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                         >
-                          <>{createContact.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Add</>
+                          <>{createContact.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Add Person</>
                         </button>
                         <button
                           onClick={() => {
                             setShowAddPerson(false)
                             setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
                           }}
-                          className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                          className="h-8 px-3.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
                         >
                           Cancel
                         </button>
