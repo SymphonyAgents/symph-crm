@@ -1406,7 +1406,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   ) : (
                     <Plus size={13} />
                   )}
-                  Upload
+                  Upload or Drop files
                 </button>
               </div>
 
@@ -1423,9 +1423,9 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       <button
                         type="button"
                         onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-white dark:bg-[#2a2c30] border border-black/[.12] dark:border-white/[.15] flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white dark:bg-[#2a2c30] border border-black/[.12] dark:border-white/[.15] flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shadow-sm"
                       >
-                        <svg width={7} height={7} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round">
+                        <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                         </svg>
                       </button>
@@ -1460,7 +1460,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : filteredResources.length > 0 ? (
                 <div className="mb-4">
-                  <div className="divide-y divide-black/[.04] dark:divide-white/[.05]">
+                  <div className="flex flex-col gap-1">
                     {filteredResources.map(doc => {
                       const extRaw = doc.tags?.find(t => !['resources', 'notes'].includes(t) && !t.startsWith('deal_stage:'))
                       const ext = getMimeLabel(extRaw, doc.title)
@@ -1504,23 +1504,23 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             </div>
                           </div>
                           {/* Actions */}
-                          <div className="shrink-0 flex items-center gap-1">
+                          <div className="shrink-0 flex items-center gap-2">
                             <button
                               onClick={(e) => { e.stopPropagation(); setViewingDoc(doc) }}
-                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
                               title="View"
                             >
-                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                                 <circle cx="12" cy="12" r="3" />
                               </svg>
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDownloadDoc(doc) }}
-                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
                               title="Download"
                             >
-                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                                 <polyline points="7 10 12 15 17 10" />
                                 <line x1="12" y1="15" x2="12" y2="3" />
@@ -1528,10 +1528,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
-                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"
+                              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"
                               title="Delete"
                             >
-                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                                 <polyline points="3 6 5 6 21 6" />
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                               </svg>
