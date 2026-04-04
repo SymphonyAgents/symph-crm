@@ -462,9 +462,10 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const scrolledRef = useRef(false)
   const { isSales } = useUser()
 
-  const { data: deals = [], isLoading } = useGetDeals()
-  const { data: companies = [] } = useGetCompanies()
-  const { data: users = [] } = useGetUsers()
+  const { data: deals = [], isLoading: dealsLoading } = useGetDeals()
+  const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
+  const { data: users = [], isLoading: usersLoading } = useGetUsers()
+  const isLoading = dealsLoading || companiesLoading || usersLoading
 
   const companyMap = useMemo(() => {
     const m = new Map<string, string>()

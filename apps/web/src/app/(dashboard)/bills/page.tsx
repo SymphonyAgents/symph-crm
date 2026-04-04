@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useGetDeals, useGetBillingByDeal, useGetCompanies } from '@/lib/hooks/queries'
-import { cn } from '@/lib/utils'
+import { cn, formatDealTitle } from '@/lib/utils'
 import type { ApiDeal, ApiBilling } from '@/lib/types'
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
@@ -50,7 +50,7 @@ function BillRow({ deal, companyMap, onClick }: { deal: ApiDeal; companyMap: Map
       className="border-b border-black/[.04] dark:border-white/[.05] hover:bg-slate-50 dark:hover:bg-white/[.02] cursor-pointer transition-colors"
     >
       <td className="px-4 py-3 text-xs font-medium text-slate-800 dark:text-white">
-        {deal.title}
+        {formatDealTitle(deal.title)}
       </td>
       <td className="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
         {deal.companyId ? (companyMap.get(deal.companyId) ?? deal.companyId.slice(0, 8)) : '--'}

@@ -4,8 +4,8 @@ import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useCreateDocument, useUploadDocumentFile, useUpdateDeal, useDeleteDocument } from '@/lib/hooks/mutations'
-import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDocumentsByDeal, useGetUsers } from '@/lib/hooks/queries'
+import { usePatchDealStage, useCreateDocument, useUploadDocumentFile, useUpdateDeal, useDeleteDocument, useCreateContact } from '@/lib/hooks/mutations'
+import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
@@ -19,7 +19,7 @@ import {
 import { toast } from 'sonner'
 import {
   cn, formatCurrencyFull, timeAgo, formatDate,
-  getDaysInStage, getBrandColor, getInitials, getStageProgressIndex, formatServiceType, formatDealTitle,
+  getDaysInStage, getBrandColor, getInitials, getStageProgressIndex, formatServiceType, formatDealTitle, toPascalCase,
 } from '@/lib/utils'
 import { getMimeLabel, supportsWordCount, isImage } from '@/lib/utils/document-utils'
 import { api } from '@/lib/api'
@@ -28,6 +28,8 @@ import {
   STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
   PROGRESS_STAGES, ACTIVITY_LABELS, DOC_TYPE_LABELS, ACCEPTED_FILE_TYPES,
 } from '@/lib/constants'
+import { Copy, Check, Plus } from 'lucide-react'
+import { Input } from './ui/input'
 import { DocumentViewerModal } from './DocumentViewerModal'
 import { PasteChip, PastePreviewModal } from './PasteChip'
 import { BillingSection } from './BillingSection'
@@ -203,7 +205,30 @@ function StagePill({ stage }: { stage: string }) {
   )
 }
 
-/** Accepted upload MIME types for resource files */
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={e => {
+        e.stopPropagation()
+        navigator.clipboard.writeText(value)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      }}
+      className={cn(
+        'shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xxs font-medium transition-colors',
+        copied
+          ? 'border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10'
+          : 'border-black/[.08] dark:border-white/[.1] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+      )}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
+}
+
+// Accepted upload MIME types for resource files
 const RESOURCE_ACCEPT_LIST = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -232,7 +257,7 @@ type DealDetailProps = {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export function DealDetail({ dealId, onBack }: DealDetailProps) {
-  const [activeTab, setActiveTab] = useState<'notes' | 'resources' | 'timeline' | 'billing'>('notes')
+  const [activeTab, setActiveTab] = useState<'notes' | 'resources' | 'timeline' | 'people' | 'billing'>('notes')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [noteTypeFilter, setNoteTypeFilter] = useState<string>('all')
   const [resourceExtFilter, setResourceExtFilter] = useState<string>('all')
@@ -252,6 +277,8 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const [notePastePreviewText, setNotePastePreviewText] = useState<string | null>(null)
   const [noteFocused, setNoteFocused] = useState(false)
   const [showAssignDropdown, setShowAssignDropdown] = useState(false)
+  const [showAddPerson, setShowAddPerson] = useState(false)
+  const [personForm, setPersonForm] = useState({ name: '', phone: '', email: '', title: '', role: '' })
   const assignRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null)
@@ -277,6 +304,14 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       setViewingDoc(null)
     },
   })
+  const { data: dbContacts = [] } = useGetContactsByCompany(deal?.companyId ?? undefined)
+  const createContact = useCreateContact({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(deal?.companyId ?? '') })
+      setShowAddPerson(false)
+      setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
+    },
+  })
 
   // ── Derived values ───────────────────────────────────────────────────────
 
@@ -286,6 +321,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
   const isTerminal = deal ? (deal.stage === 'closed_won' || deal.stage === 'closed_lost') : false
   const daysInStage = deal ? getDaysInStage(activities, deal.createdAt) : 0
   const brandColor = getBrandColor(company?.name ?? deal?.companyId)
+  const contactCount = dbContacts.length
 
   // ── User map + AM resolution ─────────────────────────────────────────────
   const userNameMap = useMemo(() => {
@@ -935,7 +971,8 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
                 { id: 'notes', label: 'Notes', count: noteDocs.length },
                 { id: 'resources', label: 'Resources', count: resourceDocs.length },
                 { id: 'timeline', label: 'Timeline', count: activities.length },
-                ...(deal.stage === 'closed_won' ? [{ id: 'billing' as const, label: 'Billing', count: null }] : []),
+                { id: 'people' as const, label: 'People', count: contactCount },
+                { id: 'billing' as const, label: 'Billing', count: null },
               ] as const).map(tab => (
                 <button
                   key={tab.id}
@@ -963,7 +1000,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
             </div>
 
             {/* Right controls — search + filter + view toggle (hidden for timeline) */}
-            {activeTab !== 'timeline' && activeTab !== 'billing' && (
+            {activeTab !== 'timeline' && activeTab !== 'billing' && activeTab !== 'people' && (
               <div className="hidden sm:flex items-center gap-1 shrink-0">
 
                 {/* Search input */}
@@ -1597,7 +1634,172 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
           {/* ── Billing tab ───────────────────────────────────────────────── */}
           {activeTab === 'billing' && (
             <div className="p-4">
-              <BillingSection dealId={dealId} />
+              {deal.stage === 'closed_won' ? (
+                <BillingSection dealId={dealId} />
+              ) : (
+                <div className="py-12 text-center">
+                  <p className="text-ssm font-medium text-slate-400">Billing not available yet</p>
+                  <p className="text-xxs text-slate-300 dark:text-slate-600 mt-1">Mark this deal as Won to enable billing</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── People tab ───────────────────────────────────────────────── */}
+          {activeTab === 'people' && (
+            <div className="p-3 space-y-2.5">
+              {/* Add Person button / inline form */}
+              {!showAddPerson ? (
+                <button
+                  onClick={() => setShowAddPerson(true)}
+                  className="flex items-center gap-1.5 w-full px-3.5 py-2.5 text-xs font-medium text-primary hover:bg-primary/[.06] rounded-lg border border-dashed border-black/[.1] dark:border-white/[.1] transition-colors"
+                >
+                  <Plus size={14} />
+                  Add Person
+                </button>
+              ) : (
+                <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-3.5 space-y-2.5">
+                  <Input
+                    autoFocus
+                    type="text"
+                    placeholder="Full name *"
+                    value={personForm.name}
+                    onChange={e => setPersonForm(f => ({ ...f, name: e.target.value }))}
+                    className="text-ssm"
+                  />
+                  <Input
+                    type="tel"
+                    placeholder="Phone (optional)"
+                    value={personForm.phone}
+                    onChange={e => setPersonForm(f => ({ ...f, phone: e.target.value }))}
+                    className="text-ssm"
+                  />
+                  <Input
+                    type="email"
+                    placeholder="Email (optional)"
+                    value={personForm.email}
+                    onChange={e => setPersonForm(f => ({ ...f, email: e.target.value }))}
+                    className="text-ssm"
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Notes / description (optional)"
+                    value={personForm.title}
+                    onChange={e => setPersonForm(f => ({ ...f, title: e.target.value }))}
+                    className="text-ssm"
+                  />
+                  <Select
+                    value={personForm.role || undefined}
+                    onValueChange={v => setPersonForm(f => ({ ...f, role: v }))}
+                  >
+                    <SelectTrigger className="text-ssm">
+                      <SelectValue placeholder="Role (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="poc" className="text-ssm">POC</SelectItem>
+                      <SelectItem value="stakeholder" className="text-ssm">Stakeholder</SelectItem>
+                      <SelectItem value="champion" className="text-ssm">Champion</SelectItem>
+                      <SelectItem value="blocker" className="text-ssm">Blocker</SelectItem>
+                      <SelectItem value="technical" className="text-ssm">Technical</SelectItem>
+                      <SelectItem value="executive" className="text-ssm">Executive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        if (!personForm.name.trim() || !deal?.companyId) return
+                        createContact.mutate({
+                          companyId: deal.companyId,
+                          name: personForm.name.trim(),
+                          phone: personForm.phone.trim() || null,
+                          email: personForm.email.trim() || null,
+                          title: [personForm.role, personForm.title.trim()].filter(Boolean).join(' — ') || null,
+                        })
+                      }}
+                      disabled={!personForm.name.trim() || createContact.isPending}
+                      className="flex items-center gap-1.5 h-8 px-3.5 text-xs font-semibold text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+                    >
+                      <>{createContact.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Add Person</>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddPerson(false)
+                        setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
+                      }}
+                      className="h-8 px-3.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {dbContacts.length === 0 && !showAddPerson ? (
+                <div className="py-8 text-center text-ssm text-slate-400">
+                  No contacts found for this deal
+                </div>
+              ) : (
+                dbContacts.map(person => {
+                  const initials = getInitials(person.name)
+                  const color = getBrandColor(person.name)
+                  return (
+                    <div
+                      key={person.id}
+                      className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
+                    >
+                      {/* Header: avatar + name + role */}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                          style={{ background: color }}
+                        >
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                              {toPascalCase(person.name)}
+                            </span>
+                            {person.title && (
+                              <span className="text-atom font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.08] text-slate-500 dark:text-slate-400 whitespace-nowrap uppercase tracking-wide">
+                                {person.title}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xxs text-slate-400 mt-0.5">
+                            {person.updatedAt ? 'Added ' + timeAgo(person.updatedAt) : 'Contact'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Contact info sections */}
+                      {(person.email || person.phone) && (
+                        <div className="mt-3 pt-3 border-t border-black/[.06] dark:border-white/[.06] space-y-3">
+                          {person.email && (
+                            <div>
+                              <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Email</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-ssm text-slate-800 dark:text-white truncate">{person.email}</span>
+                                <CopyButton value={person.email} />
+                              </div>
+                            </div>
+                          )}
+                          {person.phone && (
+                            <div>
+                              <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Phone</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-ssm text-slate-800 dark:text-white">{person.phone}</span>
+                                <CopyButton value={person.phone} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
             </div>
           )}
 
