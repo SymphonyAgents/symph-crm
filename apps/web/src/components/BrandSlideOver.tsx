@@ -512,55 +512,70 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                       return (
                         <div
                           key={person.id}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.03] transition-colors"
+                          className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
                         >
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-xxs font-bold text-white shrink-0"
-                            style={{ background: color }}
-                          >
-                            {initials}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-ssm font-medium text-slate-900 dark:text-white truncate">
-                                {toPascalCase(person.name)}
-                              </span>
-                              {person.role && (
-                                <span className="text-atom font-medium px-1.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                  {person.role.toUpperCase()}
+                          {/* Header: avatar + name + role + timestamp */}
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                              style={{ background: color }}
+                            >
+                              {initials}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                  {toPascalCase(person.name)}
                                 </span>
+                                {person.role && (
+                                  <span className="text-atom font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.08] text-slate-500 dark:text-slate-400 whitespace-nowrap uppercase tracking-wide">
+                                    {person.role}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xxs text-slate-400 mt-0.5">
+                                {person.lastActivity
+                                  ? (person.source === 'activity' ? 'Last met ' : 'Added ') + timeAgo(person.lastActivity)
+                                  : 'Contact'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Contact info sections */}
+                          {(person.email || person.phone) && (
+                            <div className="mt-3 pt-3 border-t border-black/[.06] dark:border-white/[.06] space-y-3">
+                              {person.email && (
+                                <div>
+                                  <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Email</div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-ssm text-slate-800 dark:text-white truncate">{person.email}</span>
+                                    <button
+                                      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(person.email!) }}
+                                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] text-xxs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                                    >
+                                      <Copy size={12} />
+                                      Copy
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                              {person.phone && (
+                                <div>
+                                  <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Phone</div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-ssm text-slate-800 dark:text-white">{person.phone}</span>
+                                    <button
+                                      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(person.phone!) }}
+                                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] text-xxs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                                    >
+                                      <Copy size={12} />
+                                      Copy
+                                    </button>
+                                  </div>
+                                </div>
                               )}
                             </div>
-                            {person.phone && (
-                              <div className="flex items-center gap-1 text-xxs text-slate-400 mt-0.5">
-                                <span>{person.phone}</span>
-                                <button
-                                  onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(person.phone!) }}
-                                  className="text-slate-300 hover:text-slate-500 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
-                                  title="Copy phone"
-                                >
-                                  <Copy size={11} />
-                                </button>
-                              </div>
-                            )}
-                            {person.email && (
-                              <div className="flex items-center gap-1 text-xxs text-slate-400 mt-0.5">
-                                <span>{person.email}</span>
-                                <button
-                                  onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(person.email!) }}
-                                  className="text-slate-300 hover:text-slate-500 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
-                                  title="Copy email"
-                                >
-                                  <Copy size={11} />
-                                </button>
-                              </div>
-                            )}
-                            {person.lastActivity && (
-                              <div className="text-xxs text-slate-400 mt-0.5">
-                                {person.source === 'activity' ? 'Last met: ' : 'Added: '}{timeAgo(person.lastActivity)}
-                              </div>
-                            )}
-                          </div>
+                          )}
                         </div>
                       )
                     })
