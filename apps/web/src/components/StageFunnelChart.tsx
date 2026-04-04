@@ -73,8 +73,9 @@ export function StageFunnelChart({ deals, isLoading, onStageClick }: PipelinePro
         <p className="text-xs text-slate-400 py-4 text-center">No deals yet</p>
       ) : (
         <>
-          {/* Stage row — evenly distributed */}
-          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${stages.length}, 1fr)` }}>
+          {/* Stage row — evenly distributed, scrollable on mobile */}
+          <div className="overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(100px, 1fr))` }}>
             {stages.map(stage => (
               <button
                 key={stage.id}
@@ -96,6 +97,7 @@ export function StageFunnelChart({ deals, isLoading, onStageClick }: PipelinePro
                 </div>
               </button>
             ))}
+          </div>
           </div>
 
           {/* Terminal row: Won + Lost */}

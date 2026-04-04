@@ -340,7 +340,7 @@ function SessionSidebar({
             <div className="flex items-center gap-1.5 px-1.5">
               <button
                 onClick={onNewChat}
-                className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-white/[.04] hover:bg-slate-50 dark:hover:bg-white/[.06] flex items-center gap-2 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors"
+                className="flex-1 h-9 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-white/[.04] hover:bg-slate-50 dark:hover:bg-white/[.06] flex items-center gap-2 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors"
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -404,8 +404,8 @@ function SessionSidebar({
                     <button
                       onClick={() => onSelect(s.id)}
                       className={cn(
-                        'w-full text-left rounded-lg transition-colors group',
-                        expanded ? 'p-2' : 'p-2 flex items-center justify-center',
+                        'w-full text-left rounded-md transition-colors group',
+                        expanded ? 'p-1.5' : 'p-1.5 flex items-center justify-center',
                         isActive
                           ? 'bg-primary/10 text-primary'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]'

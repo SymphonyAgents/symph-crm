@@ -74,7 +74,7 @@ function BrandDetailModal({
   useEscapeKey(useCallback(onClose, [onClose]))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200" onClick={onClose}>
       <div
         className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[90vw] max-w-[640px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
@@ -625,11 +625,11 @@ export function Deals({ initialView = 'table', onOpenDeal }: DealsProps) {
       {/* Edit Brand Modal */}
       {editingBrand && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in-0 duration-200"
           onClick={() => setEditingBrand(null)}
         >
           <div
-            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4"
+            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
             onClick={e => e.stopPropagation()}
           >
             <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
@@ -752,7 +752,7 @@ export function Deals({ initialView = 'table', onOpenDeal }: DealsProps) {
       {/* Delete Brand Confirmation Modal */}
       {deletingBrand && (
         <div
-          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm px-4 flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm px-4 flex items-center justify-center animate-in fade-in-0 duration-200"
           onClick={() => setDeletingBrand(null)}
         >
           <div
