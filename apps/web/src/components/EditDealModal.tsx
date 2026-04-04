@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,13 +16,80 @@ import { useGetCompanies } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
-  STAGE_OPTIONS, OUTREACH_OPTIONS, SERVICE_TYPES,
+  STAGE_OPTIONS, OUTREACH_OPTIONS, SERVICE_TYPES, SYSTEM_TYPES,
 } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 import type { ApiDealDetail } from '@/lib/types'
 
 type Props = {
   deal: ApiDealDetail
   onClose: () => void
+}
+
+// ─── Deal Name Input with system type autocomplete ──────────────────────────
+
+function DealNameInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [focused, setFocused] = useState(false)
+
+  const suggestions = useMemo(() => {
+    if (!value || value.length < 1) return []
+    const q = value.toUpperCase().trim()
+    const words = q.split(/\s+/)
+    const lastWord = words[words.length - 1]
+    if (!lastWord || lastWord.length < 2) return []
+    return SYSTEM_TYPES.filter(s =>
+      s.acronym.startsWith(lastWord) || s.fullName.toUpperCase().includes(lastWord)
+    ).slice(0, 6)
+  }, [value])
+
+  const showSuggestions = focused && suggestions.length > 0
+
+  function applySuggestion(s: typeof SYSTEM_TYPES[number]) {
+    const words = value.trim().split(/\s+/)
+    const lastWord = words[words.length - 1]?.toUpperCase() ?? ''
+    if (s.acronym.startsWith(lastWord)) {
+      words[words.length - 1] = s.acronym
+    } else {
+      words.push(s.acronym)
+    }
+    onChange(words.join(' '))
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+        Deal Name <span className="text-red-400">*</span>
+      </label>
+      <div className="relative">
+        <Input
+          autoFocus
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 150)}
+          placeholder="e.g. Jollibee HRIS Implementation"
+          className="h-9 text-ssm"
+          required
+        />
+        {showSuggestions && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-1 max-h-[200px] overflow-y-auto">
+            {suggestions.map((s, i) => (
+              <button
+                key={`${s.acronym}-${s.category}-${i}`}
+                type="button"
+                onMouseDown={e => { e.preventDefault(); applySuggestion(s) }}
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors flex items-center gap-2"
+              >
+                <span className="font-semibold text-slate-900 dark:text-white">{s.acronym}</span>
+                <span className="text-slate-400 truncate">{s.fullName}</span>
+                <span className="ml-auto text-atom text-slate-300 dark:text-slate-600 shrink-0">{s.category}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 }
 
 /** Flatten SERVICE_TYPES for display in grouped select */
@@ -181,20 +248,8 @@ export function EditDealModal({ deal, onClose }: Props) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
-          {/* Title */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
-              Deal Name <span className="text-red-400">*</span>
-            </label>
-            <Input
-              autoFocus
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="e.g. Jollibee HRIS Implementation"
-              className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
-              required
-            />
-          </div>
+          {/* Title with system type suggestions */}
+          <DealNameInput value={title} onChange={setTitle} />
 
           {/* Brand / Company */}
           <div className="flex flex-col gap-1.5">

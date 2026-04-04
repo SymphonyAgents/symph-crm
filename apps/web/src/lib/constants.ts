@@ -166,6 +166,103 @@ export const ALL_SERVICE_VALUES = SERVICE_TYPES.flatMap(s =>
   s.children ? [s.value, ...s.children.map(c => c.value)] : [s.value],
 )
 
+// ─── System Type Suggestions (deal name autocomplete) ───────────────────────
+
+export type SystemType = {
+  readonly acronym: string
+  readonly fullName: string
+  readonly category: string
+}
+
+export const SYSTEM_TYPES: readonly SystemType[] = [
+  // HR & People
+  { acronym: 'HRIS', fullName: 'Human Resource Information System', category: 'HR' },
+  { acronym: 'HRM', fullName: 'Human Resource Management', category: 'HR' },
+  { acronym: 'HCM', fullName: 'Human Capital Management', category: 'HR' },
+  { acronym: 'ATS', fullName: 'Applicant Tracking System', category: 'HR' },
+  { acronym: 'LMS', fullName: 'Learning Management System', category: 'HR' },
+  { acronym: 'TMS', fullName: 'Talent Management System', category: 'HR' },
+  { acronym: 'PMS', fullName: 'Performance Management System', category: 'HR' },
+
+  // Finance & Accounting
+  { acronym: 'ERP', fullName: 'Enterprise Resource Planning', category: 'Finance' },
+  { acronym: 'AIS', fullName: 'Accounting Information System', category: 'Finance' },
+  { acronym: 'AP', fullName: 'Accounts Payable System', category: 'Finance' },
+  { acronym: 'AR', fullName: 'Accounts Receivable System', category: 'Finance' },
+  { acronym: 'GL', fullName: 'General Ledger System', category: 'Finance' },
+  { acronym: 'FMS', fullName: 'Financial Management System', category: 'Finance' },
+  { acronym: 'BMS', fullName: 'Budget Management System', category: 'Finance' },
+  { acronym: 'POS', fullName: 'Point of Sale System', category: 'Finance' },
+
+  // Sales & Marketing
+  { acronym: 'CRM', fullName: 'Customer Relationship Management', category: 'Sales' },
+  { acronym: 'SFA', fullName: 'Sales Force Automation', category: 'Sales' },
+  { acronym: 'MAP', fullName: 'Marketing Automation Platform', category: 'Sales' },
+  { acronym: 'CMS', fullName: 'Content Management System', category: 'Sales' },
+  { acronym: 'DAM', fullName: 'Digital Asset Management', category: 'Sales' },
+  { acronym: 'CPQ', fullName: 'Configure Price Quote', category: 'Sales' },
+  { acronym: 'CLM', fullName: 'Contract Lifecycle Management', category: 'Sales' },
+
+  // Operations & Supply Chain
+  { acronym: 'WMS', fullName: 'Warehouse Management System', category: 'Operations' },
+  { acronym: 'TMS', fullName: 'Transport Management System', category: 'Operations' },
+  { acronym: 'SCM', fullName: 'Supply Chain Management', category: 'Operations' },
+  { acronym: 'MES', fullName: 'Manufacturing Execution System', category: 'Operations' },
+  { acronym: 'IMS', fullName: 'Inventory Management System', category: 'Operations' },
+  { acronym: 'OMS', fullName: 'Order Management System', category: 'Operations' },
+  { acronym: 'FMS', fullName: 'Fleet Management System', category: 'Operations' },
+  { acronym: 'PLM', fullName: 'Product Lifecycle Management', category: 'Operations' },
+  { acronym: 'QMS', fullName: 'Quality Management System', category: 'Operations' },
+
+  // IT & Infrastructure
+  { acronym: 'ITSM', fullName: 'IT Service Management', category: 'IT' },
+  { acronym: 'ITAM', fullName: 'IT Asset Management', category: 'IT' },
+  { acronym: 'MDM', fullName: 'Master Data Management', category: 'IT' },
+  { acronym: 'IAM', fullName: 'Identity & Access Management', category: 'IT' },
+  { acronym: 'SIEM', fullName: 'Security Information & Event Management', category: 'IT' },
+  { acronym: 'PAM', fullName: 'Privileged Access Management', category: 'IT' },
+  { acronym: 'RPA', fullName: 'Robotic Process Automation', category: 'IT' },
+  { acronym: 'iPaaS', fullName: 'Integration Platform as a Service', category: 'IT' },
+  { acronym: 'ESB', fullName: 'Enterprise Service Bus', category: 'IT' },
+  { acronym: 'BPM', fullName: 'Business Process Management', category: 'IT' },
+
+  // Analytics & BI
+  { acronym: 'BI', fullName: 'Business Intelligence Platform', category: 'Analytics' },
+  { acronym: 'DWH', fullName: 'Data Warehouse', category: 'Analytics' },
+  { acronym: 'ETL', fullName: 'Extract Transform Load Pipeline', category: 'Analytics' },
+  { acronym: 'CDP', fullName: 'Customer Data Platform', category: 'Analytics' },
+  { acronym: 'DMP', fullName: 'Data Management Platform', category: 'Analytics' },
+
+  // Healthcare
+  { acronym: 'EMR', fullName: 'Electronic Medical Records', category: 'Healthcare' },
+  { acronym: 'EHR', fullName: 'Electronic Health Records', category: 'Healthcare' },
+  { acronym: 'HIS', fullName: 'Hospital Information System', category: 'Healthcare' },
+  { acronym: 'LIS', fullName: 'Laboratory Information System', category: 'Healthcare' },
+  { acronym: 'RIS', fullName: 'Radiology Information System', category: 'Healthcare' },
+  { acronym: 'PACS', fullName: 'Picture Archiving & Communication System', category: 'Healthcare' },
+  { acronym: 'PIS', fullName: 'Pharmacy Information System', category: 'Healthcare' },
+
+  // Communication & Collaboration
+  { acronym: 'UCaaS', fullName: 'Unified Communications as a Service', category: 'Communication' },
+  { acronym: 'CCaaS', fullName: 'Contact Center as a Service', category: 'Communication' },
+  { acronym: 'DMS', fullName: 'Document Management System', category: 'Communication' },
+  { acronym: 'KMS', fullName: 'Knowledge Management System', category: 'Communication' },
+
+  // Legal & Compliance
+  { acronym: 'GRC', fullName: 'Governance Risk & Compliance', category: 'Legal' },
+  { acronym: 'ECM', fullName: 'Enterprise Content Management', category: 'Legal' },
+  { acronym: 'RMS', fullName: 'Records Management System', category: 'Legal' },
+
+  // Education
+  { acronym: 'SIS', fullName: 'Student Information System', category: 'Education' },
+  { acronym: 'LMS', fullName: 'Library Management System', category: 'Education' },
+
+  // Real Estate & Property
+  { acronym: 'PMS', fullName: 'Property Management System', category: 'Real Estate' },
+  { acronym: 'CAFM', fullName: 'Computer Aided Facility Management', category: 'Real Estate' },
+  { acronym: 'CMMS', fullName: 'Computerized Maintenance Management System', category: 'Real Estate' },
+]
+
 // ─── Industry Options ────────────────────────────────────────────────────────
 
 export const INDUSTRY_OPTIONS = [
