@@ -1,148 +1,106 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { EmptyState } from './EmptyState'
+import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-import type { FunnelResponse, FunnelStage } from '@/lib/types'
+import { KANBAN_STAGES } from '@/lib/constants'
+import type { ApiDeal } from '@/lib/types'
 
-// Conversion rate pill color helpers
-function conversionPillClasses(rate: number): string {
-  if (rate >= 70) return 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400'
-  if (rate >= 40) return 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400'
-  return 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400'
+// Compute stage counts from deals array
+function useStageData(deals: ApiDeal[]) {
+  return useMemo(() => {
+    const stageCounts = new Map<string, number>()
+    let wonCount = 0
+    let lostCount = 0
+
+    for (const deal of deals) {
+      const stage = deal.stage ?? 'lead'
+      if (stage === 'closed_won') { wonCount++; continue }
+      if (stage === 'closed_lost') { lostCount++; continue }
+      // Map DB stage to kanban column
+      const col = KANBAN_STAGES.find(c => c.matches.includes(stage))
+      if (col) {
+        stageCounts.set(col.id, (stageCounts.get(col.id) ?? 0) + 1)
+      }
+    }
+
+    const stages = KANBAN_STAGES
+      .filter(c => c.id !== 'closed_won' && c.id !== 'closed_lost')
+      .map(col => ({
+        id: col.id,
+        label: col.label,
+        color: col.color,
+        count: stageCounts.get(col.id) ?? 0,
+      }))
+
+    return { stages, wonCount, lostCount }
+  }, [deals])
 }
 
-function Spinner() {
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="w-6 h-6 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-      <p className="text-xs text-slate-400">Loading...</p>
-    </div>
-  )
-}
-
-// Single stage block
-function StageBlock({
-  stage,
-  isSelected,
-  onSelect,
-}: {
-  stage: FunnelStage
-  isSelected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'rounded-lg border px-3 py-2 text-left shrink-0 min-w-[100px] transition-colors duration-150 cursor-pointer',
-        isSelected
-          ? 'border-primary ring-1 ring-primary/20 bg-primary/[.04]'
-          : 'border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]'
-      )}
-    >
-      <div className="flex items-center gap-1.5">
-        <span
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: stage.color || '#94a3b8' }}
-        />
-        <span className="text-xxs font-semibold text-slate-700 dark:text-slate-300 truncate">
-          {stage.label}
-        </span>
-      </div>
-      <div className="text-sbase font-bold tabular-nums text-slate-900 dark:text-white">
-        {stage.entryCount}
-      </div>
-      {stage.conversionRate !== null ? (
-        <span
-          className={cn(
-            'inline-flex items-center text-xxs font-semibold tabular-nums rounded-full py-0.5',
-            conversionPillClasses(stage.conversionRate)
-          )}
-        >
-          {stage.conversionRate}%
-        </span>
-      ) : (
-        <span className="inline-block text-xxs text-slate-300 dark:text-slate-600">--</span>
-      )}
-    </button>
-  )
-}
-
-// Main component
-interface StageFunnelChartProps {
-  data: FunnelResponse | undefined
+interface PipelineProgressProps {
+  deals: ApiDeal[]
   isLoading: boolean
 }
 
-export function StageFunnelChart({ data, isLoading }: StageFunnelChartProps) {
+export function StageFunnelChart({ deals, isLoading }: PipelineProgressProps) {
   const [selectedStage, setSelectedStage] = useState<string | null>(null)
-
-  const stages = data?.stages ?? []
-  const wonCount = data?.wonCount ?? 0
-  const lostCount = data?.lostCount ?? 0
-  const hasData = stages.some(s => s.entryCount > 0) || wonCount > 0 || lostCount > 0
+  const { stages, wonCount, lostCount } = useStageData(deals)
   const total = wonCount + lostCount
-  const winRate = total > 0 ? Math.round((wonCount / total) * 100) : null
+  const hasData = deals.length > 0
 
   return (
-    <Card>
-      <CardContent>
-        {/* Card header */}
-        <div className="flex items-center justify-between mb-4 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">
-            Pipeline Progress
-          </div>
+    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)] px-5 py-[18px]">
+      <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-4">
+        Pipeline Progress
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-[80px]">
+          <div className="w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
         </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center h-[120px]">
-            <Spinner />
+      ) : !hasData ? (
+        <p className="text-xs text-slate-400 py-4 text-center">No deals yet</p>
+      ) : (
+        <>
+          {/* Stage row — evenly distributed */}
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${stages.length}, 1fr)` }}>
+            {stages.map(stage => (
+              <button
+                key={stage.id}
+                type="button"
+                onClick={() => setSelectedStage(prev => prev === stage.id ? null : stage.id)}
+                className={cn(
+                  'rounded-lg border px-2.5 py-2 text-left transition-colors duration-150',
+                  selectedStage === stage.id
+                    ? 'border-primary ring-1 ring-primary/20 bg-primary/[.04]'
+                    : 'border-black/[.06] dark:border-white/[.08] hover:border-black/[.12] dark:hover:border-white/[.15]'
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
+                  <span className="text-xxs font-medium text-slate-500 dark:text-slate-400 truncate">{stage.label}</span>
+                </div>
+                <div className="text-sbase font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
+                  {stage.count}
+                </div>
+              </button>
+            ))}
           </div>
-        ) : !hasData ? (
-          <EmptyState
-            icon="M3 4h18M4 8h16M6 12h12M8 16h8M10 20h4"
-            title="No funnel data yet"
-            description="Stage conversion data appears as deals move through the pipeline"
-            compact
-          />
-        ) : (
-          <div className="overflow-x-auto -mx-1 px-1 pb-1">
-            <div className="flex flex-row gap-3">
-              {/* Stage blocks */}
-              {stages.map(stage => (
-                <StageBlock
-                  key={stage.stage}
-                  stage={stage}
-                  isSelected={selectedStage === stage.stage}
-                  onSelect={() =>
-                    setSelectedStage(prev =>
-                      prev === stage.stage ? null : stage.stage
-                    )
-                  }
-                />
-              ))}
 
+          {/* Terminal row: Won + Lost */}
+          <div className="grid grid-cols-2 gap-1.5 mt-2">
+            <div className="flex items-center justify-between rounded-lg bg-green-900/20 dark:bg-green-900/30 px-3 py-2">
+              <span className="text-xs font-semibold text-green-700 dark:text-green-400">Won</span>
+              <span className="text-xs font-bold tabular-nums text-green-700 dark:text-green-400">{wonCount}</span>
             </div>
-
-            {/* Terminal row: Won + Lost */}
-            <div className="flex gap-2 mt-3 pt-3 border-t border-black/[.06] dark:border-white/[.08]">
-              <div className="flex-1 flex items-center justify-between rounded-lg bg-green-900/20 dark:bg-green-900/30 px-3.5 py-2">
-                <span className="text-xs font-semibold text-green-700 dark:text-green-400">Won</span>
-                <span className="text-xs font-bold tabular-nums text-green-700 dark:text-green-400">{wonCount}</span>
-              </div>
-              <div className="flex-1 flex items-center justify-between rounded-lg bg-red-900/20 dark:bg-red-900/30 px-3.5 py-2">
-                <span className="text-xs font-semibold text-red-700 dark:text-red-400">
-                  Lost{total > 0 && <span className="font-normal"> · {total} total</span>}
-                </span>
-                <span className="text-xs font-bold tabular-nums text-red-700 dark:text-red-400">{lostCount}</span>
-              </div>
+            <div className="flex items-center justify-between rounded-lg bg-red-900/20 dark:bg-red-900/30 px-3 py-2">
+              <span className="text-xs font-semibold text-red-700 dark:text-red-400">
+                Lost{total > 0 && <span className="font-normal"> · {total} total</span>}
+              </span>
+              <span className="text-xs font-bold tabular-nums text-red-700 dark:text-red-400">{lostCount}</span>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </>
+      )}
+    </div>
   )
 }

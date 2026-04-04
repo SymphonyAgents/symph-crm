@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from './EmptyState'
 import { formatCurrency } from '@/lib/utils'
 import { STAGE_LABELS, STAGE_COLORS } from '@/lib/constants'
-import { useGetPipelineSummary, useGetDeals, useGetFunnel, useGetUsers } from '@/lib/hooks/queries'
+import { useGetPipelineSummary, useGetDeals, useGetUsers } from '@/lib/hooks/queries'
 import { StageFunnelChart } from './StageFunnelChart'
 import { Skeleton } from './ui/skeleton'
 
@@ -68,7 +68,6 @@ function AMTableSkeleton() {
 export function Reports() {
   const { data: summary, isLoading } = useGetPipelineSummary()
   const { data: deals = [], isLoading: loadingDeals } = useGetDeals()
-  const { data: funnelData, isLoading: loadingFunnel } = useGetFunnel()
   const { data: users = [] } = useGetUsers()
   const userMap = new Map(users.map(u => [u.id, u.name || u.email]))
 
@@ -200,7 +199,7 @@ export function Reports() {
         </Card>
 
         {/* Stage Conversion Funnel */}
-        <StageFunnelChart data={funnelData} isLoading={loadingFunnel} />
+        <StageFunnelChart deals={deals} isLoading={loadingDeals} />
       </div>
 
       {/* AM Performance */}
