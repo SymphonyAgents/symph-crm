@@ -45,9 +45,11 @@ async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
     const err = await res.json().catch(() => ({})) as { message?: string }
     throw new Error(err.message || `API error: ${res.status}`)
   }
-  // 204 No Content
+  // 204 No Content or empty body (some DELETE endpoints return 200 with no body)
   if (res.status === 204) return undefined as T
-  return res.json()
+  const text = await res.text()
+  if (!text) return undefined as T
+  return JSON.parse(text)
 }
 
 // ─── Public API client ────────────────────────────────────────────────────────

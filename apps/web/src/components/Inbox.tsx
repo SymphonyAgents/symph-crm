@@ -5,12 +5,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import {
   cn, htmlToText, cleanEmailBody, formatRelativeDate, formatChatTime, formatDateSeparator,
-  isSameDay, getInitials, avatarColor, parseDisplayName, replySubject,
+  isSameDay, parseDisplayName, replySubject,
 } from '@/lib/utils'
 import type { GmailMessage, GmailThread, FilterTab, InboxChannel } from '@/lib/types'
 import { API_BASE } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
+import { Avatar } from './Avatar'
 import { ComposeWindow } from './ComposeWindow'
 import { MoreHorizontal, Archive, Trash2, Mail } from 'lucide-react'
 import { useGetInbox, useGetGmailUser } from '@/lib/hooks/queries'
@@ -124,16 +125,6 @@ function ChannelBadge({ channel }: { channel: Exclude<InboxChannel, 'all'> }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Avatar({ name, email, size = 32 }: { name: string; email: string; size?: number }) {
-  return (
-    <div
-      className="rounded-full flex items-center justify-center shrink-0 text-white font-semibold"
-      style={{ width: size, height: size, background: avatarColor(email), fontSize: size * 0.36 }}
-    >
-      {getInitials(name || email)}
-    </div>
-  )
-}
 
 function ConversationRow({
   thread,

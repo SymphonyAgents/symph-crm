@@ -31,6 +31,7 @@ type BrandTableRow = {
   documentCount: number
   totalValue: number
   createdByName: string | null
+  createdByImage: string | null
   lastActivityAt: string | null
 }
 
@@ -334,11 +335,12 @@ function BrandsDataTable({
       id: 'createdBy',
       accessorFn: r => r.createdByName ?? '—',
       header: ({ column }) => <SortableHeader column={column}>Created By</SortableHeader>,
-      cell: ({ getValue }) => {
-        const name = getValue<string>()
+      cell: ({ row }) => {
+        const name = row.original.createdByName ?? '—'
+        const image = row.original.createdByImage
         return (
           <div className="flex items-center gap-1.5">
-            {name !== '—' && <Avatar name={name} size={20} />}
+            {name !== '—' && <Avatar name={name} src={image ?? undefined} size={20} />}
             <span className="text-xs text-slate-700 dark:text-slate-300">{name}</span>
           </div>
         )
@@ -407,6 +409,13 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const userNameMap = useMemo(() => {
     const m = new Map<string, string>()
     for (const u of users) if (u.name) m.set(u.id, u.name)
+    return m
+  }, [users])
+
+  // Map userId → profile image URL
+  const userImageMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of users) if (u.image) m.set(u.id, u.image)
     return m
   }, [users])
 
@@ -493,10 +502,11 @@ export function Deals({ onOpenDeal }: DealsProps) {
         documentCount: g.deals.reduce((sum, d) => sum + (d.documentCount ?? 0), 0),
         totalValue: g.totalValue,
         createdByName: g.company.createdBy ? (userNameMap.get(g.company.createdBy) ?? null) : null,
+        createdByImage: g.company.createdBy ? (userImageMap.get(g.company.createdBy) ?? null) : null,
         lastActivityAt,
       }
     })
-  }, [groups, userNameMap])
+  }, [groups, userNameMap, userImageMap])
 
   const filteredTableRows = useMemo<BrandTableRow[]>(() => {
     if (!search.trim()) return brandTableRows

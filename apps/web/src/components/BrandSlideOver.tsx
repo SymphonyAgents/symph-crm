@@ -141,6 +141,12 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
     return m
   }, [users])
 
+  const userImageMap = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const u of users) if (u.image) m.set(u.id, u.image)
+    return m
+  }, [users])
+
   // Contacts from DB (real source of truth)
   const { data: dbContacts = [] } = useGetContactsByCompany(brand?.id !== UNASSIGNED_ID ? brand?.id : undefined)
 
@@ -386,7 +392,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                           </div>
                           {deal.assignedTo && userMap.get(deal.assignedTo) && (
                             <div className="flex items-center gap-1 mt-0.5">
-                              <Avatar name={userMap.get(deal.assignedTo)!} size={14} />
+                              <Avatar name={userMap.get(deal.assignedTo)!} src={userImageMap.get(deal.assignedTo!) ?? undefined} size={14} />
                               <span className="text-atom text-slate-400 truncate">{userMap.get(deal.assignedTo)}</span>
                             </div>
                           )}
@@ -521,7 +527,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                               </span>
                               {person.role && (
                                 <span className="text-atom font-medium px-1.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                                  {person.role}
+                                  {person.role.toUpperCase()}
                                 </span>
                               )}
                             </div>

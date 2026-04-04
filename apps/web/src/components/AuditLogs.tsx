@@ -92,7 +92,7 @@ const columns: ColumnDef<AuditLogEntry>[] = [
       const entry = row.original
       return (
         <div className="flex items-center gap-2">
-          <Avatar name={entry.performerName || 'System'} size={24} />
+          <Avatar name={entry.performerName || 'System'} src={entry.performerImage ?? undefined} size={24} />
           <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
             {entry.performerName || 'System'}
           </span>
