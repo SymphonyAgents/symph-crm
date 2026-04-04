@@ -22,6 +22,7 @@ import { INDUSTRY_OPTIONS } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type ViewMode = 'table' | 'graph'
 
@@ -410,15 +411,18 @@ export type { ApiDeal } from '@/lib/types'
 // --- Main component ---
 
 type DealsProps = {
+  initialView?: ViewMode
   onOpenDeal: (id: string) => void
 }
 
-export function Deals({ onOpenDeal }: DealsProps) {
+export function Deals({ initialView = 'table', onOpenDeal }: DealsProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [search, setSearch] = useState('')
   const [showCreateBrand, setShowCreateBrand] = useState(false)
   const [showCreateDeal, setShowCreateDeal] = useState(false)
-  const [viewMode, setViewMode] = useState<ViewMode>('table')
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView)
   const [selectedBrand, setSelectedBrand] = useState<ApiCompanyDetail | null>(null)
   const [editingBrand, setEditingBrand] = useState<ApiCompanyDetail | null>(null)
   const [deletingBrand, setDeletingBrand] = useState<ApiCompanyDetail | null>(null)
@@ -795,7 +799,12 @@ export function Deals({ onOpenDeal }: DealsProps) {
             {/* View toggle */}
             <div className="flex items-center bg-slate-100 dark:bg-white/[.06] rounded-lg p-0.5 gap-0.5">
               <button
-                onClick={() => setViewMode('table')}
+                onClick={() => {
+                  setViewMode('table')
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.set('view', 'table')
+                  router.replace(`/deals?${params.toString()}`, { scroll: false })
+                }}
                 className={`h-[26px] px-2.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${viewMode === 'table' ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
               >
                 <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
@@ -804,7 +813,12 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 Table
               </button>
               <button
-                onClick={() => setViewMode('graph')}
+                onClick={() => {
+                  setViewMode('graph')
+                  const params = new URLSearchParams(searchParams.toString())
+                  params.set('view', 'graph')
+                  router.replace(`/deals?${params.toString()}`, { scroll: false })
+                }}
                 className={`h-[26px] px-2.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${viewMode === 'graph' ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'}`}
               >
                 <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">

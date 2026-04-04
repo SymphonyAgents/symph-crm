@@ -250,13 +250,14 @@ type ViewMode = 'list' | 'grid'
 
 type DealDetailProps = {
   dealId: string
+  backLabel?: string
   onBack: () => void
   onOpenDeal: (id: string) => void
 }
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-export function DealDetail({ dealId, onBack }: DealDetailProps) {
+export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: DealDetailProps) {
   const [activeTab, setActiveTab] = useState<'notes' | 'resources' | 'timeline' | 'people' | 'billing'>('notes')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [noteTypeFilter, setNoteTypeFilter] = useState<string>('all')
@@ -546,7 +547,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
       <div className="p-4 md:p-6 h-full flex flex-col">
         <button onClick={onBack} className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 mb-3 w-fit">
           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><polyline points="15 18 9 12 15 6" /></svg>
-          Back to Pipeline
+          {backLabel}
         </button>
         <div className="flex-1 flex items-center justify-center">
           <EmptyState
@@ -554,7 +555,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
             description="This deal may have been deleted or the link is invalid."
             action={
               <button onClick={onBack} className="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold">
-                Back to Pipeline
+                {backLabel}
               </button>
             }
           />
@@ -795,7 +796,7 @@ export function DealDetail({ dealId, onBack }: DealDetailProps) {
         className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors mb-4 w-fit px-4 sm:px-0"
       >
         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><polyline points="15 18 9 12 15 6" /></svg>
-        Back to Pipeline
+        {backLabel}
       </button>
 
       {/* ── Mobile header (sm:hidden) ────────────────────────────────────────── */}
