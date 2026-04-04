@@ -8,7 +8,7 @@ import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies, u
 import { useAssignDealBrand, useCreateContact, useDeleteBrand } from '@/lib/hooks/mutations'
 import type { ApiCompanyDetail, ApiDeal, Activity } from '@/lib/types'
 import { queryKeys } from '@/lib/query-keys'
-import { X, Plus, Trash2, Copy } from 'lucide-react'
+import { X, Plus, Trash2, Copy, Check } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { Input } from './ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
@@ -23,6 +23,29 @@ interface BrandSlideOverProps {
 }
 
 const UNASSIGNED_ID = '__unassigned__'
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      onClick={e => {
+        e.stopPropagation()
+        navigator.clipboard.writeText(value)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      }}
+      className={cn(
+        'shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xxs font-medium transition-colors',
+        copied
+          ? 'border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10'
+          : 'border-black/[.08] dark:border-white/[.1] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+      )}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -378,12 +401,12 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                         key={deal.id}
                         onClick={() => onOpenDeal?.(deal.id)}
                         className={cn(
-                          'flex items-center gap-3 px-3.5 py-3 rounded-lg transition-colors border border-black/[.06] dark:border-white/[.08]',
+                          'flex items-start gap-3 px-3.5 py-3 rounded-lg transition-colors border border-black/[.06] dark:border-white/[.08]',
                           onOpenDeal && 'cursor-pointer hover:border-black/[.12] dark:hover:border-white/[.15] hover:bg-slate-50 dark:hover:bg-white/[.02]',
                         )}
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">
                             {formatDealTitle(deal.title)}
                           </div>
                           <div className="flex items-center gap-1.5 mt-1 text-xxs text-slate-400">
@@ -402,18 +425,17 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                               </>
                             )}
                           </div>
-                          {/* Assign brand dropdown — only shown in the "No Brand" slide-over */}
                           {isUnassigned && assignableCompanies.length > 0 && (
                             <div className="mt-1.5" onClick={e => e.stopPropagation()}>
                               <AssignBrandSelect
                                 dealId={deal.id}
                                 companies={assignableCompanies}
-                                onAssigned={() => {/* deal disappears from list on next query refresh */}}
+                                onAssigned={() => {}}
                               />
                             </div>
                           )}
                         </div>
-                        <div className="shrink-0 pt-0.5">
+                        <div className="shrink-0">
                           <StagePill stage={deal.stage ?? ''} />
                         </div>
                       </div>
@@ -559,13 +581,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                                   <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Email</div>
                                   <div className="flex items-center justify-between">
                                     <span className="text-ssm text-slate-800 dark:text-white truncate">{person.email}</span>
-                                    <button
-                                      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(person.email!) }}
-                                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] text-xxs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
-                                    >
-                                      <Copy size={12} />
-                                      Copy
-                                    </button>
+                                    <CopyButton value={person.email} />
                                   </div>
                                 </div>
                               )}
@@ -574,13 +590,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                                   <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Phone</div>
                                   <div className="flex items-center justify-between">
                                     <span className="text-ssm text-slate-800 dark:text-white">{person.phone}</span>
-                                    <button
-                                      onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(person.phone!) }}
-                                      className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] text-xxs font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
-                                    >
-                                      <Copy size={12} />
-                                      Copy
-                                    </button>
+                                    <CopyButton value={person.phone} />
                                   </div>
                                 </div>
                               )}
