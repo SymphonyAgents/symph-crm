@@ -376,8 +376,11 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
   const handleAdvance = useCallback(() => {
     if (!deal || !nextStage) return
+    const fromLabel = STAGE_LABELS[deal.stage] ?? deal.stage
+    const toLabel = STAGE_LABELS[nextStage] ?? nextStage
     const prev = queryClient.getQueryData(queryKeys.deals.detail(dealId))
     patchStage.mutate({ id: dealId, stage: nextStage }, {
+      onSuccess: () => toast.success(`${fromLabel} → ${toLabel}`, { description: `${deal.title} updated` }),
       onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
@@ -396,23 +399,27 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
   const confirmMarkWon = useCallback(() => {
     setShowWonConfirm(false)
+    const fromLabel = deal ? (STAGE_LABELS[deal.stage] ?? deal.stage) : 'Unknown'
     patchStage.mutate({ id: dealId, stage: 'closed_won' }, {
+      onSuccess: () => toast.success(`${fromLabel} → Won`, { description: `${deal?.title} updated` }),
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
       },
     })
-  }, [dealId, patchStage, queryClient])
+  }, [deal, dealId, patchStage, queryClient])
 
   const confirmMarkLost = useCallback(() => {
     setShowLostConfirm(false)
+    const fromLabel = deal ? (STAGE_LABELS[deal.stage] ?? deal.stage) : 'Unknown'
     patchStage.mutate({ id: dealId, stage: 'closed_lost' }, {
+      onSuccess: () => toast.success(`${fromLabel} → Lost`, { description: `${deal?.title} updated` }),
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
       },
     })
-  }, [dealId, patchStage, queryClient])
+  }, [deal, dealId, patchStage, queryClient])
 
   const saveNote = useCreateDocument({
     onSuccess: () => { setNoteText(''); setNotePasteChips([]); void refetchDocs() },
