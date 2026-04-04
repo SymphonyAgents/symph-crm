@@ -21,8 +21,6 @@ import {
   Receipt,
   Sun,
   Moon,
-  ChevronsLeft,
-  ChevronsRight,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -41,7 +39,6 @@ type SidebarProps = {
   isOpen?: boolean
   onClose?: () => void
   collapsed?: boolean
-  onToggleCollapse?: () => void
 }
 
 type NavItem = {
@@ -126,7 +123,7 @@ function LogoutConfirmModal({
   )
 }
 
-export function Sidebar({ isOpen, onClose, collapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -260,24 +257,6 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onToggleCollapse }
             </button>
           </div>
         )}
-
-        {/* Collapse/Expand toggle */}
-        <div className={cn(
-          'hidden md:flex py-1.5 border-t border-black/[.06] dark:border-white/[.08]',
-          collapsed ? 'md:px-1.5 px-[14px]' : 'px-[14px]'
-        )}>
-          <button
-            onClick={onToggleCollapse}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={cn(
-              'w-full flex items-center gap-2 px-[10px] py-[6px] rounded text-xs font-medium text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors',
-              collapsed && 'md:justify-center md:px-0'
-            )}
-          >
-            {collapsed ? <ChevronsRight size={14} strokeWidth={1.4} className="shrink-0" /> : <ChevronsLeft size={14} strokeWidth={1.4} className="shrink-0" />}
-            <span className={cn(collapsed && 'md:hidden')}>{collapsed ? 'Expand' : 'Collapse'}</span>
-          </button>
-        </div>
 
         {/* User profile */}
         <div className={cn(
