@@ -43,7 +43,7 @@ export class CalendarConnectionsService {
         'openid',
         'email',   // required: userinfo.get() needs email scope to return the address
         'https://www.googleapis.com/auth/calendar.events',
-        'https://www.googleapis.com/auth/gmail.readonly',
+        'https://www.googleapis.com/auth/gmail.modify',  // superset of readonly; required for mark-as-read + trash
         'https://www.googleapis.com/auth/gmail.send',
       ],
     })
