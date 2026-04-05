@@ -75,7 +75,6 @@ function getNavSections(dormantCount: number): NavSection[] {
         { path: '/proposals', label: 'Proposals', icon: FileText },
         { path: '/bills', label: 'Bills', icon: Receipt },
         { path: '/audit-logs', label: 'Audit Log', icon: ClipboardList },
-        { path: '/settings', label: 'Settings', icon: Settings },
       ],
     },
   ]
@@ -239,6 +238,25 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
             </div>
           ))}
         </nav>
+
+        {/* Settings — pinned bottom, outside nav sections */}
+        <div className={cn('mt-auto pt-1', collapsed ? 'md:px-1.5 px-2' : 'px-2')}>
+          <Link
+            href="/settings"
+            onClick={() => onClose?.()}
+            title={collapsed ? 'Settings' : undefined}
+            className={cn(
+              'relative flex items-center gap-[9px] px-[10px] py-[6px] rounded text-ssm w-full transition-colors duration-150',
+              isActive('/settings', pathname)
+                ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
+                : 'font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] hover:text-slate-900 dark:hover:text-white',
+              collapsed && 'md:justify-center md:px-0 md:py-[8px]'
+            )}
+          >
+            <Settings size={15} strokeWidth={1.4} className="shrink-0" />
+            <span className={cn('flex-1', collapsed && 'md:hidden')}>Settings</span>
+          </Link>
+        </div>
 
         {/* Theme toggle */}
         {mounted && (
