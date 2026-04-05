@@ -68,7 +68,9 @@ export function Settings() {
   const user = session?.user
   const userId = (session?.user as { id?: string })?.id
 
-  const { data: calendarStatus, isLoading: statusLoading } = useGetCalendarStatus()
+  // Only query after userId is resolved — prevents race condition where the hook
+  // fires before the session is loaded and returns connected: false (no x-user-id header).
+  const { data: calendarStatus, isLoading: statusLoading } = useGetCalendarStatus({ enabled: !!userId })
   const [disconnecting, setDisconnecting] = useState(false)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
