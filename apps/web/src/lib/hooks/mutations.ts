@@ -317,6 +317,12 @@ export function useSendEmail(
   })
 }
 
+export function useMarkThreadRead() {
+  return useMutation<unknown, Error, string>({
+    mutationFn: (threadId: string) => api.post(`/gmail/threads/${threadId}/read`, {}),
+  })
+}
+
 export function useArchiveEmailThread(
   options?: UseMutationOptions<void, Error, string>,
 ) {
@@ -331,7 +337,7 @@ export function useDeleteEmailThread(
 ) {
   return useMutation<void, Error, string>({
     mutationFn: (threadId: string) => api.delete<void>(`/gmail/threads/${threadId}`),
-    ...withToast('Deleted', options),
+    ...withToast('Moved to trash', options),
   })
 }
 

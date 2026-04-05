@@ -217,6 +217,8 @@ export type GmailThread = {
   subject: string
   from: string
   fromEmail: string
+  contactName: string
+  contactEmail: string
   latestDate: string
   snippet: string
   unread: boolean

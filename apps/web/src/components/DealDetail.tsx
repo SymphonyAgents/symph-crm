@@ -151,7 +151,7 @@ function SegmentedProgressBar({ currentStage }: { currentStage: string }) {
 
 function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
+    <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
       <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">{title}</p>
       {children}
     </div>
@@ -953,7 +953,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       </div>
 
       {/* ── Desktop header (hidden sm:block) ────────────────────────────────── */}
-      <div className="hidden sm:block bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-5 mb-4">
+      <div className="hidden sm:block bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3 mb-4">
         {/* Top row: brand info + value/advance */}
         <div className="flex sm:items-start sm:justify-between gap-3">
           {/* Left: Brand + deal info */}
@@ -2069,7 +2069,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           )}
 
           {/* Next Step (static placeholder — will be dynamic later) */}
-          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
+          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
             <p className="text-atom font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Next Step</p>
             <div className="bg-amber-50 dark:bg-amber-500/10 rounded-lg p-3 border border-amber-100 dark:border-amber-500/20">
               <p className="text-atom font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Action Required</p>

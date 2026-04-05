@@ -54,6 +54,8 @@ export type GmailThread = {
   subject: string
   from: string
   fromEmail: string
+  contactName: string
+  contactEmail: string
   latestDate: string
   snippet: string
   unread: boolean
@@ -85,6 +87,12 @@ function parseEmailAddress(raw: string): { display: string; email: string } {
 function parseEmailList(raw: string): string[] {
   if (!raw?.trim()) return []
   return raw.split(',').map(s => s.trim()).filter(Boolean)
+}
+
+const TEAM_EMAILS = new Set(INBOX_SENDERS.map(e => e.toLowerCase()))
+
+function isTeamMember(email: string): boolean {
+  return TEAM_EMAILS.has(email.toLowerCase())
 }
 
 function getHeader(
@@ -216,9 +224,26 @@ export class GmailService {
     })
   }
 
-  /**
-   * Trash a thread — moves it to Gmail Trash.
-   */
+  // Mark all messages in a thread as read by removing the UNREAD label
+  async markThreadRead(userId: string, threadId: string): Promise<void> {
+    if (!userId) throw new Error('Not authenticated')
+    const oauth2 = await this.connections.getAuthedOAuth2Client(userId)
+    if (!oauth2) throw new Error('Google account not connected.')
+    const gmail = google.gmail({ version: 'v1', auth: oauth2 })
+    const thread = await gmail.users.threads.get({ userId: 'me', id: threadId, format: 'minimal' })
+    const unreadMessages = (thread.data.messages ?? []).filter(m => (m.labelIds ?? []).includes('UNREAD'))
+    await Promise.all(
+      unreadMessages.map(m =>
+        gmail.users.messages.modify({
+          userId: 'me',
+          id: m.id!,
+          requestBody: { removeLabelIds: ['UNREAD'] },
+        })
+      )
+    )
+  }
+
+  // Trash a thread — moves it to Gmail Trash
   async trashThread(userId: string, threadId: string): Promise<void> {
     if (!userId) throw new Error('Not authenticated')
     const oauth2 = await this.connections.getAuthedOAuth2Client(userId)
@@ -302,20 +327,25 @@ export class GmailService {
               const headers: { name?: string | null; value?: string | null }[] =
                 msg.payload?.headers ?? []
 
-              const ccRaw = getHeader(headers, 'Cc')
-              const ccList = parseEmailList(ccRaw)
-
-              // Exclude message if no CC
-              if (ccList.length === 0) {
-                this.logger.debug(`Message ${msg.id}: filtered out (no CC)`)
-                filteredOutCount++
-                continue
-              }
-
               const fromRaw = getHeader(headers, 'From')
               const fromParsed = parseEmailAddress(fromRaw)
               const subject = getHeader(headers, 'Subject') || '(no subject)'
               const toRaw = getHeader(headers, 'To')
+              const ccRaw = getHeader(headers, 'Cc')
+              const ccList = parseEmailList(ccRaw)
+
+              // Collect all recipients (To + CC)
+              const allRecipients = [...parseEmailList(toRaw), ...ccList]
+              const allParticipants = [fromParsed.email, ...allRecipients.map(r => parseEmailAddress(r).email)]
+
+              // Only include messages with at least one external (non-team) participant
+              const hasExternal = allParticipants.some(e => !isTeamMember(e))
+              if (!hasExternal) {
+                this.logger.debug(`Message ${msg.id}: filtered out (internal only)`)
+                filteredOutCount++
+                continue
+              }
+
               const dateRaw = getHeader(headers, 'Date')
               const rfcMessageId = getHeader(headers, 'Message-ID')
               const isUnread = (msg.labelIds ?? []).includes('UNREAD')
@@ -342,11 +372,45 @@ export class GmailService {
             const first = messages[0]
             const last = messages[messages.length - 1]
 
+            // Find the first external (non-team) participant across all messages
+            let contactName = first.from
+            let contactEmail = first.fromEmail
+            for (const m of messages) {
+              // Check sender
+              if (!isTeamMember(m.fromEmail)) {
+                contactName = m.from
+                contactEmail = m.fromEmail
+                break
+              }
+              // Check To recipients
+              for (const addr of parseEmailList(m.to)) {
+                const parsed = parseEmailAddress(addr)
+                if (!isTeamMember(parsed.email)) {
+                  contactName = parsed.display
+                  contactEmail = parsed.email
+                  break
+                }
+              }
+              if (!isTeamMember(contactEmail)) break
+              // Check CC recipients
+              for (const addr of m.cc) {
+                const parsed = parseEmailAddress(addr)
+                if (!isTeamMember(parsed.email)) {
+                  contactName = parsed.display
+                  contactEmail = parsed.email
+                  break
+                }
+              }
+              if (!isTeamMember(contactEmail)) break
+            }
+
             threads.push({
               id: item.id!,
               subject: first.subject,
               from: first.from,
               fromEmail: first.fromEmail,
+              contactName,
+              contactEmail,
               latestDate: last.date,
               snippet: last.snippet,
               unread: messages.some(m => m.unread),

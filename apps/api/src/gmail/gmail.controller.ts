@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Req, HttpCode, HttpException, HttpStatus } from '@nestjs/common'
+import { Controller, Get, Post, Delete, Param, Headers, Body, Req, HttpCode, HttpException, HttpStatus } from '@nestjs/common'
 import type { Request } from 'express'
 import { GmailService, SendEmailDto } from './gmail.service'
 
@@ -56,10 +56,19 @@ export class GmailController {
     }
   }
 
-  /**
-   * POST /api/gmail/threads/:id/archive
-   * Archive a thread — removes INBOX label (keeps in All Mail).
-   */
+  // POST /api/gmail/threads/:id/read — mark all messages in thread as read
+  @Post('gmail/threads/:id/read')
+  @HttpCode(200)
+  async markRead(@Param('id') threadId: string, @Headers('x-user-id') userId?: string) {
+    try {
+      await this.gmail.markThreadRead(userId ?? '', threadId)
+      return { ok: true }
+    } catch (err: any) {
+      throw new HttpException(err.message ?? 'Failed to mark thread as read', HttpStatus.BAD_REQUEST)
+    }
+  }
+
+  // POST /api/gmail/threads/:id/archive — archive a thread (remove INBOX label)
   @Post('gmail/threads/:id/archive')
   @HttpCode(200)
   async archive(@Req() req: Request, @Param('id') threadId: string) {

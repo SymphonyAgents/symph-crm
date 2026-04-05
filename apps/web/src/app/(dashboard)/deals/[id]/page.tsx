@@ -9,7 +9,15 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
   const router = useRouter()
   const searchParams = useSearchParams()
   const from = searchParams.get('from')
-  const backLabel = from === 'brands' ? 'Back to Brands' : 'Back to Pipeline'
+  const backLabels: Record<string, string> = {
+    brands: 'Back to Brands',
+    pipeline: 'Back to Pipeline',
+    dashboard: 'Back to Dashboard',
+    bills: 'Back to Bills',
+    calendar: 'Back to Calendar',
+    inbox: 'Back to Inbox',
+  }
+  const backLabel = backLabels[from ?? ''] ?? 'Go Back'
 
   return (
     <DealDetail

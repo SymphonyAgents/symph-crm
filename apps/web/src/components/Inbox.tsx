@@ -15,7 +15,7 @@ import { Avatar } from './Avatar'
 import { ComposeWindow } from './ComposeWindow'
 import { MoreHorizontal, Archive, Trash2, Mail, X } from 'lucide-react'
 import { useGetInbox, useGetGmailUser } from '@/lib/hooks/queries'
-import { useSendEmail, useArchiveEmailThread, useDeleteEmailThread } from '@/lib/hooks/mutations'
+import { useSendEmail, useArchiveEmailThread, useDeleteEmailThread, useMarkThreadRead } from '@/lib/hooks/mutations'
 
 interface ComposeState {
   to: string[]
@@ -131,52 +131,121 @@ function ConversationRow({
   selected,
   channel,
   onClick,
+  menuOpenId,
+  onMenuToggle,
+  onMarkRead,
+  onArchive,
+  onTrash,
 }: {
   thread: GmailThread
   selected: boolean
   channel: Exclude<InboxChannel, 'all'>
   onClick: () => void
+  menuOpenId: string | null
+  onMenuToggle: (id: string | null) => void
+  onMarkRead: (threadId: string) => void
+  onArchive: (threadId: string) => void
+  onTrash: (threadId: string) => void
 }) {
+  const isMenuOpen = menuOpenId === thread.id
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full text-left px-3.5 py-3 border-b border-black/[.05] dark:border-white/[.04] transition-colors duration-150 flex items-start gap-3',
-        selected
-          ? 'bg-primary/[0.06] dark:bg-primary/[0.12]'
-          : 'hover:bg-slate-50 dark:hover:bg-white/[.03]',
-      )}
-    >
-      <div className="relative shrink-0 mt-0.5">
-        <Avatar name={thread.from} email={thread.fromEmail} size={38} />
-        {thread.unread && (
-          <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white dark:border-[#1e1e21]" />
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        className={cn(
+          'w-full text-left px-3.5 py-3 border-b border-black/[.05] dark:border-white/[.04] transition-colors duration-150 flex items-start gap-3',
+          selected
+            ? 'bg-primary/[0.06] dark:bg-primary/[0.12]'
+            : 'hover:bg-slate-50 dark:hover:bg-white/[.03]',
         )}
-        <ChannelBadge channel={channel} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className={cn(
-            'text-sm truncate',
-            thread.unread ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-300',
+      >
+        <div className="relative shrink-0 mt-0.5">
+          <Avatar name={thread.contactName || thread.from} email={thread.contactEmail || thread.fromEmail} size={38} />
+          {thread.unread && (
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white dark:border-[#1e1e21]" />
+          )}
+          <ChannelBadge channel={channel} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 pr-8">
+            <span className={cn(
+              'text-sm truncate',
+              thread.unread ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-300',
+            )}>
+              {thread.contactName || thread.from}
+            </span>
+          </div>
+          <div className={cn(
+            'text-ssm truncate mb-0.5',
+            thread.unread ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400',
           )}>
-            {thread.from}
-          </span>
-          <span className="text-xxs text-slate-400 shrink-0 tabular-nums">
-            {formatRelativeDate(thread.latestDate)}
-          </span>
+            {thread.subject}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-slate-400 dark:text-slate-500 truncate leading-relaxed flex-1">{thread.snippet}</span>
+            <span className="text-xxs text-slate-400 shrink-0 tabular-nums">{formatRelativeDate(thread.latestDate)}</span>
+          </div>
         </div>
-        <div className={cn(
-          'text-ssm truncate mb-0.5',
-          thread.unread ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400',
-        )}>
-          {thread.subject}
-        </div>
-        <div className="text-xs text-slate-400 dark:text-slate-500 truncate leading-relaxed">
-          {thread.snippet}
-        </div>
-      </div>
-    </button>
+      </button>
+
+      {/* Ellipsis menu trigger — visible on hover or when menu is open */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onMenuToggle(isMenuOpen ? null : thread.id)
+        }}
+        className={cn(
+          'absolute right-2 top-3 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors',
+          isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
+        )}
+      >
+        <MoreHorizontal size={15} />
+      </button>
+
+      {/* Dropdown menu */}
+      {isMenuOpen && (
+        <>
+          {/* Backdrop to close menu on outside click */}
+          <div className="fixed inset-0 z-40" onClick={() => onMenuToggle(null)} />
+          <div className="absolute right-2 top-10 z-50 min-w-[170px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onMarkRead(thread.id)
+                onMenuToggle(null)
+              }}
+              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+            >
+              <Mail size={13} className="text-slate-400" />
+              {thread.unread ? 'Mark as read' : 'Mark as unread'}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onArchive(thread.id)
+                onMenuToggle(null)
+              }}
+              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+            >
+              <Archive size={13} className="text-slate-400" />
+              Archive
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onTrash(thread.id)
+                onMenuToggle(null)
+              }}
+              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 size={13} />
+              Move to trash
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -280,8 +349,9 @@ function ReplyBox({
     onSuccess: () => {
       setBody('')
       setError(null)
-      queryClient.invalidateQueries({ queryKey: queryKeys.gmail.inbox })
       onSent()
+      // Delay refetch to give Gmail time to index the sent message into the thread
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: queryKeys.gmail.inbox }), 2000)
     },
     onError: (err: Error) => setError(err.message),
   })
@@ -290,8 +360,9 @@ function ReplyBox({
     const trimmed = body.trim()
     if (!trimmed) return
     setError(null)
+    const replyTo = thread.contactEmail || thread.fromEmail
     mutation.mutate({
-      to: [lastMsg.from === myEmail ? thread.from : `${lastMsg.from} <${lastMsg.fromEmail}>`].filter(Boolean),
+      to: [replyTo],
       subject: replySubject(thread.subject),
       body: trimmed,
       threadId: thread.id,
@@ -326,7 +397,7 @@ function ReplyBox({
           value={body}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder={`Reply to ${thread.from}… (Ctrl+Enter to send)`}
+          placeholder={`Reply to ${thread.contactName || thread.from}… (Ctrl+Enter to send)`}
           rows={1}
           className="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-transparent outline-none border-none resize-none leading-[1.55] py-0.5 max-h-[120px]"
         />
@@ -422,7 +493,7 @@ function ThreadActionsMenu({
             onClick={() => {
               setOpen(false)
               onCompose({
-                to: [myEmail ? thread.fromEmail : thread.fromEmail],
+                to: [thread.contactEmail || thread.fromEmail],
                 cc: [],
                 subject: replySubject(thread.subject),
                 threadId: thread.id,
@@ -518,15 +589,15 @@ function ChatView({
             </svg>
           </button>
         )}
-        <Avatar name={thread.from} email={thread.fromEmail} size={36} />
+        <Avatar name={thread.contactName || thread.from} email={thread.contactEmail || thread.fromEmail} size={36} />
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{thread.from}</h2>
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{thread.contactName || thread.from}</h2>
           <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{thread.subject}</p>
         </div>
         <button
           onClick={() =>
             onCompose({
-              to: [thread.fromEmail],
+              to: [thread.contactEmail || thread.fromEmail],
               cc: [],
               subject: replySubject(thread.subject),
               threadId: thread.id,
@@ -663,10 +734,23 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
   const [compose, setCompose] = useState<ComposeState | null>(null)
   const [mobileView, setMobileView] = useState<'list' | 'chat'>('list')
   const [oauthBanner, setOauthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
 
   const { userId } = useUser()
   const searchParams = useSearchParams()
   const qc = useQueryClient()
+
+  const markReadMutation = useMarkThreadRead()
+  const archiveRowMutation = useArchiveEmailThread({
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.gmail.inbox, exact: false })
+    },
+  })
+  const trashRowMutation = useDeleteEmailThread({
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.gmail.inbox, exact: false })
+    },
+  })
 
   useEffect(() => {
     const connected = searchParams.get('connected')
@@ -904,9 +988,48 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
                   thread={thread}
                   selected={selectedId === thread.id}
                   channel="email"
+                  menuOpenId={menuOpenId}
+                  onMenuToggle={setMenuOpenId}
+                  onMarkRead={(id) => {
+                    markReadMutation.mutate(id, {
+                      onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.gmail.inbox, exact: false }),
+                    })
+                    // Optimistic update
+                    qc.setQueryData(queryKeys.gmail.inbox, (old: any) => {
+                      if (!old?.threads) return old
+                      return {
+                        ...old,
+                        threads: old.threads.map((t: any) =>
+                          t.id === id
+                            ? { ...t, unread: false, messages: t.messages.map((m: any) => ({ ...m, unread: false })) }
+                            : t
+                        ),
+                      }
+                    })
+                  }}
+                  onArchive={(id) => archiveRowMutation.mutate(id)}
+                  onTrash={(id) => trashRowMutation.mutate(id)}
                   onClick={() => {
                     setSelectedId(thread.id)
                     setMobileView('chat')
+                    // Mark as read when opening a thread
+                    if (thread.unread) {
+                      markReadMutation.mutate(thread.id, {
+                        onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.gmail.inbox, exact: false }),
+                      })
+                      // Optimistic update
+                      qc.setQueryData(queryKeys.gmail.inbox, (old: any) => {
+                        if (!old?.threads) return old
+                        return {
+                          ...old,
+                          threads: old.threads.map((t: any) =>
+                            t.id === thread.id
+                              ? { ...t, unread: false, messages: t.messages.map((m: any) => ({ ...m, unread: false })) }
+                              : t
+                          ),
+                        }
+                      })
+                    }
                   }}
                 />
               ))

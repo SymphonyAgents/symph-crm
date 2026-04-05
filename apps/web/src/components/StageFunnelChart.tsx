@@ -49,7 +49,7 @@ export function StageFunnelChart({ deals, isLoading, onStageClick }: PipelinePro
   const hasData = deals.length > 0
 
   return (
-    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)] px-5 py-[18px]">
+    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)] p-3">
       <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-4">
         Pipeline Progress
       </div>

@@ -233,8 +233,8 @@ export default function BillsPage() {
                     key={deal.id}
                     deal={deal}
                     companyMap={companyMap}
-                    onClick={() => router.push(`/deals/${deal.id}`)}
-                    onEdit={() => router.push(`/deals/${deal.id}?tab=billing`)}
+                    onClick={() => router.push(`/deals/${deal.id}?from=bills`)}
+                    onEdit={() => router.push(`/deals/${deal.id}?from=bills&tab=billing`)}
                     onDelete={() => setDeleteTarget({ dealId: deal.id, dealTitle: deal.title })}
                   />
                 ))}

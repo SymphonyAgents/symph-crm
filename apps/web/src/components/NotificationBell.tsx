@@ -93,7 +93,7 @@ export function NotificationBell() {
   function handleNotificationClick(n: ApiNotification) {
     markOneRead(n.id)
     setOpen(false)
-    if (n.dealId) router.push(`/deals/${n.dealId}`)
+    if (n.dealId) router.push(`/deals/${n.dealId}?from=dashboard`)
   }
 
   return (
