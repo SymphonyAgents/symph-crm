@@ -349,8 +349,9 @@ function ReplyBox({
     onSuccess: () => {
       setBody('')
       setError(null)
-      queryClient.invalidateQueries({ queryKey: queryKeys.gmail.inbox })
       onSent()
+      // Delay refetch to give Gmail time to index the sent message into the thread
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: queryKeys.gmail.inbox }), 2000)
     },
     onError: (err: Error) => setError(err.message),
   })
