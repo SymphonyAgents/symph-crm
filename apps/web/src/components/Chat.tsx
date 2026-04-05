@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useSession } from 'next-auth/react'
 import imageCompression from 'browser-image-compression'
 import {
@@ -297,6 +298,9 @@ function SessionSidebar({
   onToggleExpand: () => void
 }) {
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
 
   return (
     <>
@@ -424,7 +428,14 @@ function SessionSidebar({
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              setMenuOpenId(showMenu ? null : s.id)
+                              if (showMenu) {
+                                setMenuOpenId(null)
+                                setMenuPos(null)
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                setMenuPos({ x: rect.right, y: rect.bottom + 4 })
+                                setMenuOpenId(s.id)
+                              }
                             }}
                             className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/[.08] opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -442,15 +453,22 @@ function SessionSidebar({
                       )}
                     </div>
 
-                    {/* Dropdown menu */}
-                    {showMenu && expanded && (
+                    {/* Portal dropdown — renders at document.body so overflow-y-auto doesn't clip it */}
+                    {showMenu && expanded && menuPos && mounted && createPortal(
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setMenuOpenId(null)} />
-                        <div className="absolute right-1 top-full z-50 mt-0.5 w-32 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1">
+                        <div
+                          className="fixed inset-0 z-[9990]"
+                          onClick={() => { setMenuOpenId(null); setMenuPos(null) }}
+                        />
+                        <div
+                          className="fixed z-[9991] w-32 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-xl py-1 animate-in fade-in-0 zoom-in-95 duration-100"
+                          style={{ left: menuPos.x - 128, top: menuPos.y }}
+                        >
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
                               setMenuOpenId(null)
+                              setMenuPos(null)
                               onDeleteSession(s.id)
                             }}
                             className="w-full text-left px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
@@ -462,7 +480,8 @@ function SessionSidebar({
                             Delete
                           </button>
                         </div>
-                      </>
+                      </>,
+                      document.body
                     )}
                   </div>
                 )

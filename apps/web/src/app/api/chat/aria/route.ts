@@ -31,7 +31,10 @@ const GATEWAY_URL = (process.env.ARIA_GATEWAY_URL ?? 'https://aria-gateway.symph
   '',
 )
 const INTERNAL_BASE = 'https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api/internal'
-const NESTJS_API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api').replace(/\/+$/, '')
+// Must NOT use NEXT_PUBLIC_ here — NEXT_PUBLIC vars are baked at build time
+// as `http://localhost:3001/api` (Dockerfile ARG default) and the save call
+// would silently fail. Use a server-only env var or the hardcoded fallback.
+const NESTJS_API_BASE = (process.env.INTERNAL_API_URL ?? 'https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api').replace(/\/+$/, '')
 // Default workspace used when the client doesn't pass one explicitly.
 // Matches the single workspace seeded in the CRM DB.
 const DEFAULT_WORKSPACE_ID = '60f84f03-283e-4c1a-8c88-b8330dc71d32'
