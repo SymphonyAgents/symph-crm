@@ -66,7 +66,7 @@ export function Settings() {
   const { data: session } = useSession()
   const queryClient = useQueryClient()
   const user = session?.user
-  const userId = (session as any)?.userId as string | undefined
+  const userId = (session?.user as { id?: string })?.id
 
   const { data: calendarStatus, isLoading: statusLoading } = useGetCalendarStatus()
   const [disconnecting, setDisconnecting] = useState(false)
