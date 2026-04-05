@@ -360,8 +360,9 @@ function ReplyBox({
     const trimmed = body.trim()
     if (!trimmed) return
     setError(null)
+    const replyTo = thread.contactEmail || thread.fromEmail
     mutation.mutate({
-      to: [lastMsg.from === myEmail ? thread.from : `${lastMsg.from} <${lastMsg.fromEmail}>`].filter(Boolean),
+      to: [replyTo],
       subject: replySubject(thread.subject),
       body: trimmed,
       threadId: thread.id,
@@ -396,7 +397,7 @@ function ReplyBox({
           value={body}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
-          placeholder={`Reply to ${thread.from}… (Ctrl+Enter to send)`}
+          placeholder={`Reply to ${thread.contactName || thread.from}… (Ctrl+Enter to send)`}
           rows={1}
           className="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-transparent outline-none border-none resize-none leading-[1.55] py-0.5 max-h-[120px]"
         />
@@ -492,7 +493,7 @@ function ThreadActionsMenu({
             onClick={() => {
               setOpen(false)
               onCompose({
-                to: [myEmail ? thread.fromEmail : thread.fromEmail],
+                to: [thread.contactEmail || thread.fromEmail],
                 cc: [],
                 subject: replySubject(thread.subject),
                 threadId: thread.id,
@@ -596,7 +597,7 @@ function ChatView({
         <button
           onClick={() =>
             onCompose({
-              to: [thread.fromEmail],
+              to: [thread.contactEmail || thread.fromEmail],
               cc: [],
               subject: replySubject(thread.subject),
               threadId: thread.id,
