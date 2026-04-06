@@ -12,6 +12,7 @@ import {
 } from '@/lib/constants'
 import { PasteChip, PastePreviewModal } from './PasteChip'
 import { Popover, PopoverTrigger, PopoverContent } from './ui/popover'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from './ui/tooltip'
 import { useGetChatSessions, useGetChatHistory } from '@/lib/hooks/queries'
 import { useCreateChatSession, useDeleteChatSession } from '@/lib/hooks/mutations'
 import { useQueryClient } from '@tanstack/react-query'
@@ -389,6 +390,7 @@ function SessionSidebar({
         </div>
 
         {/* Session list */}
+        <TooltipProvider delayDuration={300}>
         <div className="flex-1 overflow-y-auto px-1.5 pb-3">
           {sessions.length === 0 ? (
             <div className={cn('py-6 text-center', expanded ? 'px-3' : 'px-1')}>
@@ -454,14 +456,14 @@ function SessionSidebar({
                         </div>
                       ) : (
                         /* Collapsed: show icon + tooltip on hover */
-                        <div className="relative group/tip">
-                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="opacity-60">
-                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                          </svg>
-                          <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 whitespace-nowrap rounded-md bg-slate-900 dark:bg-white px-2 py-1 text-xs font-medium text-white dark:text-slate-900 shadow-lg opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
-                            {label}
-                          </div>
-                        </div>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="opacity-60">
+                              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                            </svg>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">{label}</TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </div>
@@ -470,6 +472,7 @@ function SessionSidebar({
             </div>
           )}
         </div>
+        </TooltipProvider>
       </div>
     </>
   )

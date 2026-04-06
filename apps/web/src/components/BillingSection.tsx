@@ -18,6 +18,10 @@ import type { ApiBilling, ApiBillingMilestone } from '@/lib/types'
 type BillingSectionProps = {
   dealId: string
   onSaved?: () => void
+  initialEditing?: boolean
+  /** When true, strips the outer card border/shadow/rounded so the component
+   *  embeds cleanly inside a parent modal without double chrome. */
+  embedded?: boolean
 }
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
@@ -38,11 +42,11 @@ function formatDate(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export function BillingSection({ dealId, onSaved }: BillingSectionProps) {
+export function BillingSection({ dealId, onSaved, initialEditing = false, embedded = false }: BillingSectionProps) {
   const queryClient = useQueryClient()
   const { data: billing, isLoading } = useGetBillingByDeal(dealId)
 
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(initialEditing)
   const [billingType, setBillingType] = useState<'annual' | 'monthly' | 'milestone'>('monthly')
   const [contractStart, setContractStart] = useState('')
   const [contractEnd, setContractEnd] = useState('')
@@ -144,8 +148,8 @@ export function BillingSection({ dealId, onSaved }: BillingSectionProps) {
   const showSummary = billing && !isEditing
 
   return (
-    <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
-      <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>
+    <div className={embedded ? "p-4 bg-white dark:bg-[#1e1e21] rounded-b-xl border border-black/[.06] dark:border-white/[.08]" : "bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4"}>
+      {!embedded && <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>}
 
       {showSummary ? (
         <div>

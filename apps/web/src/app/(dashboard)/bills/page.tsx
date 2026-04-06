@@ -270,7 +270,7 @@ export default function BillsPage() {
                 </svg>
               </button>
             </div>
-            <BillingSection dealId={editTarget.dealId} onSaved={() => setEditTarget(null)} />
+            <BillingSection dealId={editTarget.dealId} onSaved={() => setEditTarget(null)} initialEditing embedded />
           </div>
         </div>
       )}
