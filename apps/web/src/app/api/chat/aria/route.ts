@@ -134,56 +134,56 @@ export async function POST(req: NextRequest) {
     ? `crm-${sessionId}`
     : `crm-web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-  // Step 1: send message to Aria
-  let ariaResolvedSessionId: string
-  try {
-    const sendResp = await fetch(`${GATEWAY_URL}/v1/chat/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiToken}`,
-      },
-      body: JSON.stringify({
-        session_id: ariaSessionId,
-        content: messageContent,
-        user_id: userId,
-        user_name: userName,
-        // Assert T3 so the gateway honours system_prompt_additions.
-        // Safe: this route is already gated by ARIA_API_TOKEN (server-side only).
-        user_tier: 3,
-        workspace_path: '/share/agency/products/symph-crm',
-        system_prompt_additions: systemPromptAdditions,
-      }),
-    })
+  // Fire send to Aria without awaiting — so we can open the stream in parallel.
+  // ariaSessionId is deterministic (we own it), so we don't need to wait for
+  // the gateway to confirm receipt before connecting to the stream.
+  // This removes one full HTTP round-trip from TTFB.
+  const sendPromise = fetch(`${GATEWAY_URL}/v1/chat/send`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiToken}`,
+    },
+    body: JSON.stringify({
+      session_id: ariaSessionId,
+      content: messageContent,
+      user_id: userId,
+      user_name: userName,
+      // Assert T3 so the gateway honours system_prompt_additions.
+      // Safe: this route is already gated by ARIA_API_TOKEN (server-side only).
+      user_tier: 3,
+      workspace_path: '/share/agency/products/symph-crm',
+      system_prompt_additions: systemPromptAdditions,
+    }),
+  })
 
-    if (!sendResp.ok) {
-      const errText = await sendResp.text()
-      return NextResponse.json(
-        { error: `Aria gateway send error: ${sendResp.status} ${errText}` },
-        { status: sendResp.status },
-      )
-    }
-
-    const result = (await sendResp.json()) as { session_id: string; seq: number }
-    ariaResolvedSessionId = result.session_id
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Unknown error'
-    return NextResponse.json({ error: `Failed to reach Aria gateway: ${msg}` }, { status: 502 })
-  }
-
-  // Step 2: open SSE stream from Aria and pipe to client
-  const streamUrl = new URL(`${GATEWAY_URL}/v1/chat/stream`)
-  streamUrl.searchParams.set('session_id', ariaResolvedSessionId)
-
-  let streamResp: Response
-  try {
-    streamResp = await fetch(streamUrl.toString(), {
-      method: 'GET',
+  // Open the SSE stream immediately in parallel.
+  // The gateway holds the connection open until Aria starts writing.
+  const openStream = () =>
+    fetch(`${GATEWAY_URL}/v1/chat/stream?session_id=${encodeURIComponent(ariaSessionId)}`, {
       headers: {
         Authorization: `Bearer ${apiToken}`,
         Accept: 'text/event-stream',
       },
     })
+
+  let streamResp: Response
+  try {
+    streamResp = await openStream()
+
+    // If the gateway 404s the stream, the session may not exist yet (lost the
+    // race with send). Wait for send to confirm, then retry once.
+    if (streamResp.status === 404) {
+      const sendResp = await sendPromise
+      if (!sendResp.ok) {
+        const errText = await sendResp.text()
+        return NextResponse.json(
+          { error: `Aria gateway send error: ${sendResp.status} ${errText}` },
+          { status: sendResp.status },
+        )
+      }
+      streamResp = await openStream()
+    }
 
     if (!streamResp.ok) {
       const errText = await streamResp.text()
@@ -195,6 +195,21 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: `Failed to open Aria stream: ${msg}` }, { status: 502 })
+  }
+
+  // Verify send succeeded — will already be resolved by the time we get here
+  try {
+    const sendResp = await sendPromise
+    if (!sendResp.ok) {
+      const errText = await sendResp.text()
+      return NextResponse.json(
+        { error: `Aria gateway send error: ${sendResp.status} ${errText}` },
+        { status: sendResp.status },
+      )
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Unknown error'
+    return NextResponse.json({ error: `Failed to reach Aria gateway: ${msg}` }, { status: 502 })
   }
 
   // Pipe the SSE stream line-by-line to the client.
