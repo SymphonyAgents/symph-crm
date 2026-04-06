@@ -414,7 +414,7 @@ function SessionSidebar({
                           ? 'bg-primary/10 text-primary'
                           : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]'
                       )}
-                      title={expanded ? undefined : label}
+                      title={undefined}
                     >
                       {expanded ? (
                         <div className="flex items-center gap-2 min-w-0">
@@ -453,9 +453,15 @@ function SessionSidebar({
                           </Popover>
                         </div>
                       ) : (
-                        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="opacity-60">
-                          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                        </svg>
+                        /* Collapsed: show icon + tooltip on hover */
+                        <div className="relative group/tip">
+                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="opacity-60">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                          </svg>
+                          <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 z-50 whitespace-nowrap rounded-md bg-slate-900 dark:bg-white px-2 py-1 text-xs font-medium text-white dark:text-slate-900 shadow-lg opacity-0 group-hover/tip:opacity-100 transition-opacity duration-150">
+                            {label}
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>

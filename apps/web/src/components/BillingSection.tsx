@@ -17,6 +17,7 @@ import type { ApiBilling, ApiBillingMilestone } from '@/lib/types'
 
 type BillingSectionProps = {
   dealId: string
+  onSaved?: () => void
 }
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
@@ -37,7 +38,7 @@ function formatDate(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export function BillingSection({ dealId }: BillingSectionProps) {
+export function BillingSection({ dealId, onSaved }: BillingSectionProps) {
   const queryClient = useQueryClient()
   const { data: billing, isLoading } = useGetBillingByDeal(dealId)
 
@@ -69,7 +70,7 @@ export function BillingSection({ dealId }: BillingSectionProps) {
     queryClient.invalidateQueries({ queryKey: queryKeys.billing.byDeal(dealId) })
   }, [queryClient, dealId])
 
-  const upsertBilling = useUpsertBilling({ onSuccess: () => { setDirty(false); setIsEditing(false); invalidate() } })
+  const upsertBilling = useUpsertBilling({ onSuccess: () => { setDirty(false); setIsEditing(false); invalidate(); onSaved?.() } })
   const addMilestone = useAddMilestone({ onSuccess: () => { setNewMilestoneName(''); setNewMilestoneAmount(''); invalidate() } })
   const updateMilestone = useUpdateMilestone({ onSuccess: invalidate })
   const deleteMilestone = useDeleteMilestone({ onSuccess: invalidate })

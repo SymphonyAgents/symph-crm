@@ -9,6 +9,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { cn, formatDealTitle, getInitials, getBrandColor, toPascalCase } from '@/lib/utils'
 import { Pencil, Trash2 } from 'lucide-react'
 import type { ApiDeal, ApiBilling } from '@/lib/types'
+import { BillingSection } from '@/components/BillingSection'
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
   annual: 'Annual',
@@ -139,6 +140,7 @@ export default function BillsPage() {
   const { data: deals = [], isLoading } = useGetDeals()
   const { data: companies = [] } = useGetCompanies()
   const [deleteTarget, setDeleteTarget] = useState<{ dealId: string; dealTitle: string } | null>(null)
+  const [editTarget, setEditTarget] = useState<{ dealId: string; dealTitle: string } | null>(null)
 
   const deleteBilling = useDeleteBilling({
     onSuccess: () => {
@@ -234,7 +236,7 @@ export default function BillsPage() {
                     deal={deal}
                     companyMap={companyMap}
                     onClick={() => router.push(`/deals/${deal.id}?from=bills`)}
-                    onEdit={() => router.push(`/deals/${deal.id}?from=bills&tab=billing`)}
+                    onEdit={() => setEditTarget({ dealId: deal.id, dealTitle: deal.title })}
                     onDelete={() => setDeleteTarget({ dealId: deal.id, dealTitle: deal.title })}
                   />
                 ))}
@@ -243,6 +245,35 @@ export default function BillsPage() {
           </div>
         )}
       </div>
+
+      {/* Edit billing modal */}
+      {editTarget && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm px-4 flex items-center justify-center"
+          onClick={() => setEditTarget(null)}
+        >
+          <div
+            className="max-w-sm w-full max-h-[80vh] overflow-y-auto rounded-xl animate-in zoom-in-95 fade-in-0 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-white dark:bg-[#1e1e21] rounded-t-xl border border-black/[.06] dark:border-white/[.08] border-b-0">
+              <div>
+                <p className="text-ssm font-semibold text-slate-900 dark:text-white">Edit Billing</p>
+                <p className="text-xxs text-slate-400 truncate max-w-[240px]">{formatDealTitle(editTarget.dealTitle)}</p>
+              </div>
+              <button
+                onClick={() => setEditTarget(null)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              >
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <BillingSection dealId={editTarget.dealId} onSaved={() => setEditTarget(null)} />
+          </div>
+        </div>
+      )}
 
       {/* Delete billing confirmation modal */}
       {deleteTarget && (
