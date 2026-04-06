@@ -129,7 +129,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload }: Docu
       onClick={isEditing ? undefined : onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[860px] max-h-[88vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
+        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[860px] min-h-[60vh] max-h-[88vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
         onKeyDown={e => {
           if (e.key === 'Escape') {
