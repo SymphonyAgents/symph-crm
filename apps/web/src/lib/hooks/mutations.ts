@@ -394,6 +394,32 @@ export function useCreateContact(
   })
 }
 
+export type UpdateContactInput = {
+  id: string
+  name?: string
+  phone?: string | null
+  email?: string | null
+  title?: string | null
+}
+
+export function useUpdateContact(
+  options?: UseMutationOptions<unknown, Error, UpdateContactInput>,
+) {
+  return useMutation({
+    mutationFn: ({ id, ...data }: UpdateContactInput) => api.put(`/contacts/${id}`, data),
+    ...withToast('Contact updated', options),
+  })
+}
+
+export function useDeleteContact(
+  options?: UseMutationOptions<unknown, Error, string>,
+) {
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/contacts/${id}`),
+    ...withToast('Contact removed', options),
+  })
+}
+
 // ─── Brand deletion ───────────────────────────────────────────────────────────
 
 export function useDeleteBrand(

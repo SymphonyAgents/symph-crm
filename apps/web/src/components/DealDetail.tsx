@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useCreateDocument, useUploadDocumentFile, useUpdateDeal, useDeleteDocument, useCreateContact, useDeleteDeal } from '@/lib/hooks/mutations'
+import { usePatchDealStage, useCreateDocument, useUploadDocumentFile, useUpdateDeal, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal } from '@/lib/hooks/mutations'
 import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
@@ -34,6 +34,8 @@ import { DocumentViewerModal } from './DocumentViewerModal'
 import { PasteChip, PastePreviewModal } from './PasteChip'
 import { BillingSection } from './BillingSection'
 import { EditDealModal } from './EditDealModal'
+import { EditContactModal } from './EditContactModal'
+import type { ApiContact } from '@/lib/hooks/queries'
 
 function stageToast(fromStage: string, toStage: string, dealTitle: string) {
   const fromColor = STAGE_COLORS[fromStage] ?? '#94a3b8'
@@ -313,6 +315,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const [showAssignDropdown, setShowAssignDropdown] = useState(false)
   const [showAddPerson, setShowAddPerson] = useState(false)
   const [personForm, setPersonForm] = useState({ name: '', phone: '', email: '', title: '', role: '' })
+  const [editingContact, setEditingContact] = useState<ApiContact | null>(null)
+  const [deletingContact, setDeletingContact] = useState<ApiContact | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const assignRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -350,6 +354,12 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       queryClient.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(deal?.companyId ?? '') })
       setShowAddPerson(false)
       setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
+    },
+  })
+  const deleteContact = useDeleteContact({
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(deal?.companyId ?? '') })
+      setDeletingContact(null)
     },
   })
 
@@ -674,6 +684,47 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       {/* Document viewer modal */}
       {showEditDeal && deal && (
         <EditDealModal deal={deal} onClose={() => setShowEditDeal(false)} />
+      )}
+
+      {/* Edit contact modal */}
+      {editingContact && (
+        <EditContactModal contact={editingContact} onClose={() => setEditingContact(null)} />
+      )}
+
+      {/* Delete contact confirmation */}
+      {deletingContact && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in-0 duration-200"
+          onClick={() => setDeletingContact(null)}
+        >
+          <div
+            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-slate-200 dark:border-white/[.08] w-full max-w-[360px] mx-4 p-5 animate-in zoom-in-95 fade-in-0 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Remove contact?</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              <span className="font-medium text-slate-700 dark:text-slate-300">{toPascalCase(deletingContact.name)}</span> will be removed from this deal. This cannot be undone.
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeletingContact(null)}
+                className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteContact.mutate(deletingContact.id)}
+                disabled={deleteContact.isPending}
+                className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {deleteContact.isPending && (
+                  <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete deal confirmation */}
@@ -1770,7 +1821,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       key={person.id}
                       className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
                     >
-                      {/* Header: avatar + name + role */}
+                      {/* Header: avatar + name + role + actions */}
                       <div className="flex items-center gap-3">
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -1785,13 +1836,36 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             </span>
                             {person.title && (
                               <span className="text-atom font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.08] text-slate-500 dark:text-slate-400 whitespace-nowrap uppercase tracking-wide">
-                                {person.title}
+                                {person.title.split(' — ')[0]}
                               </span>
                             )}
                           </div>
                           <div className="text-xxs text-slate-400 mt-0.5">
                             {person.updatedAt ? 'Added ' + timeAgo(person.updatedAt) : 'Contact'}
                           </div>
+                        </div>
+                        {/* Edit + delete actions */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => setEditingContact(person)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                            title="Edit contact"
+                          >
+                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setDeletingContact(person)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                            title="Remove contact"
+                          >
+                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
 
