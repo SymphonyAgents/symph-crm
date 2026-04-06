@@ -21,6 +21,13 @@ const nextConfig: NextConfig = {
     // build time) AND as a Cloud Run env var (for the standalone runtime).
     const apiUrl = process.env.API_URL || 'http://localhost:4000'
     return [
+      // Google Calendar integration routes live in NestJS under /api/auth/google-calendar/*.
+      // Must come BEFORE the NextAuth catch-all rule below — otherwise /api/auth/google-calendar/*
+      // matches /api/auth/:path* first and hits the NextAuth handler (returning 400 Bad Request).
+      {
+        source: '/api/auth/google-calendar/:path*',
+        destination: `${apiUrl}/api/auth/google-calendar/:path*`,
+      },
       // NextAuth routes (/api/auth/*) must NOT be proxied to the NestJS backend.
       // They are handled by the Next.js route handler at app/api/auth/[...nextauth]/route.ts.
       // Self-referential rewrites in Next.js are non-recursive — they resolve to the
