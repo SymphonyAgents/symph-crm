@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { cn, getBrandColor, getInitials, formatDealValue } from '@/lib/utils'
 import { STAGE_COLORS, STAGE_LABELS } from '@/lib/constants'
@@ -184,6 +184,37 @@ export function WikiSidebar({
     (selection.kind === 'deal' ? selection.deal.id : null)
 
   const activeTab = searchParams?.get('tab') ?? null
+
+  // Auto-expand the brand and deal nodes for the current URL selection
+  useEffect(() => {
+    if (selectedDealId) {
+      // Find the deal's company to auto-expand the brand node
+      const deal = deals.find(d => d.id === selectedDealId)
+      if (deal) {
+        const brandKey = deal.companyId ?? '__none__'
+        setExpandedBrands(prev => {
+          if (prev.has(brandKey)) return prev
+          const next = new Set(prev)
+          next.add(brandKey)
+          return next
+        })
+      }
+      // Auto-expand the deal node itself
+      setExpandedDeals(prev => {
+        if (prev.has(selectedDealId)) return prev
+        const next = new Set(prev)
+        next.add(selectedDealId)
+        return next
+      })
+    } else if (selectedCompanyId) {
+      setExpandedBrands(prev => {
+        if (prev.has(selectedCompanyId)) return prev
+        const next = new Set(prev)
+        next.add(selectedCompanyId)
+        return next
+      })
+    }
+  }, [selectedDealId, selectedCompanyId, deals])
 
   // Group deals by company, sorted alpha
   const groups = useMemo(() => {
@@ -404,7 +435,6 @@ export function WikiSidebar({
                                 {/* Deal row */}
                                 <div
                                   onClick={() => {
-                                    toggleExpandDeal(deal.id)
                                     router.push(`/wiki/deal/${deal.id}`)
                                     onSelect({ kind: 'deal', deal, company: company ?? null })
                                   }}
