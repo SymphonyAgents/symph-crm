@@ -14,6 +14,8 @@ type WikiContentProps = {
   onSelectDeal: (deal: ApiDeal, company: ApiCompanyDetail | null) => void
   /** On mobile: back button fires this to return to the sidebar */
   onBack?: () => void
+  /** Active tab from URL ?tab= param */
+  activeTab?: string
 }
 
 export function WikiContent({
@@ -22,6 +24,7 @@ export function WikiContent({
   deals,
   onSelectDeal,
   onBack,
+  activeTab,
 }: WikiContentProps) {
   const router = useRouter()
 
@@ -47,6 +50,7 @@ export function WikiContent({
       company={selection.company}
       onOpenFull={() => router.push(`/deals/${selection.deal.id}?from=wiki`)}
       onBack={onBack}
+      activeTab={activeTab}
     />
   )
 }
@@ -243,11 +247,13 @@ function WikiDeal({
   company,
   onOpenFull,
   onBack,
+  activeTab,
 }: {
   deal: ApiDeal
   company: ApiCompanyDetail | null
   onOpenFull: () => void
   onBack?: () => void
+  activeTab?: string
 }) {
   const stageColor = STAGE_COLORS[deal.stage] ?? '#94a3b8'
 
@@ -336,16 +342,6 @@ function WikiDeal({
           </div>
         )}
 
-        {/* Resources count */}
-        {(deal.documentCount ?? 0) > 0 && (
-          <div className="flex items-center gap-1.5 text-xxs text-slate-400 mb-6">
-            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-            </svg>
-            {deal.documentCount} resource{deal.documentCount !== 1 ? 's' : ''} attached
-          </div>
-        )}
-
         {/* Open full deal CTA */}
         <button
           onClick={onOpenFull}
@@ -360,8 +356,8 @@ function WikiDeal({
           </svg>
         </button>
 
-        {/* ── NFS Notes ──────────────────────────────────────────────── */}
-        <DealNotes dealId={deal.id} />
+        {/* Tab-based Notes */}
+        <DealNotesTabs dealId={deal.id} activeTab={activeTab} />
       </div>
     </div>
   )
@@ -449,13 +445,18 @@ function inlineBold(text: string): React.ReactNode {
   )
 }
 
-// ─── Notes section ───────────────────────────────────────────────────────────
+// ─── Tab-based Notes section ────────────────────────────────────────────────
 
-const CATEGORY_CONFIG = [
-  { key: 'meeting' as const, label: 'MEETING NOTES' },
-  { key: 'general' as const, label: 'GENERAL' },
-  { key: 'notes' as const, label: 'NOTES' },
+type NoteTabId = 'general' | 'meeting' | 'notes' | 'resources'
+
+const NOTE_TABS: Array<{ id: NoteTabId; label: string }> = [
+  { id: 'general', label: 'General' },
+  { id: 'meeting', label: 'Meeting' },
+  { id: 'notes', label: 'Notes' },
+  { id: 'resources', label: 'Resources' },
 ]
+
+const VALID_NOTE_TABS = new Set<NoteTabId>(['general', 'meeting', 'notes', 'resources'])
 
 function formatNoteDate(ts: number): string {
   if (!ts) return ''
@@ -469,7 +470,8 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / 1024).toFixed(1)} KB`
 }
 
-function DealNotes({ dealId }: { dealId: string }) {
+function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: string }) {
+  const router = useRouter()
   const { data, isLoading } = useGetDealNotes(dealId)
 
   if (isLoading) {
@@ -488,10 +490,26 @@ function DealNotes({ dealId }: { dealId: string }) {
 
   if (!data) return null
 
-  const hasNotes = CATEGORY_CONFIG.some(c => data.categories[c.key].length > 0)
-  const hasResources = data.resources.length > 0
+  const counts: Record<NoteTabId, number> = {
+    general: data.categories.general.length,
+    meeting: data.categories.meeting.length,
+    notes: data.categories.notes.length,
+    resources: data.resources.length,
+  }
 
-  if (!hasNotes && !hasResources) {
+  const hasAny = Object.values(counts).some(c => c > 0)
+
+  // Resolve active tab: use URL param if valid, else default to general if populated, else first non-empty
+  let resolvedTab: NoteTabId
+  if (activeTab && VALID_NOTE_TABS.has(activeTab as NoteTabId)) {
+    resolvedTab = activeTab as NoteTabId
+  } else if (counts.general > 0) {
+    resolvedTab = 'general'
+  } else {
+    resolvedTab = NOTE_TABS.find(t => counts[t.id] > 0)?.id ?? 'general'
+  }
+
+  if (!hasAny) {
     return (
       <div className="mt-6 border-t border-black/[.06] dark:border-white/[.06] pt-4">
         <p className="text-xxs text-slate-400 text-center py-3">No notes yet</p>
@@ -499,54 +517,98 @@ function DealNotes({ dealId }: { dealId: string }) {
     )
   }
 
-  return (
-    <div className="mt-6 border-t border-black/[.06] dark:border-white/[.06] pt-4 space-y-5">
-      {/* Note categories */}
-      {CATEGORY_CONFIG.map(({ key, label }) => {
-        const notes = data.categories[key]
-        if (notes.length === 0) return null
-        return (
-          <div key={key}>
-            <p className="text-xxs text-slate-400 font-medium tracking-wider mb-2">{label}</p>
-            <div className="space-y-3">
-              {notes.map((note: DealNoteFile) => (
-                <div
-                  key={note.filename}
-                  className="rounded-lg border border-black/[.06] dark:border-white/[.06] bg-white dark:bg-[#1e1e21] px-3 py-2.5"
-                >
-                  <p className="text-atom text-slate-400 mb-1.5">{formatNoteDate(note.createdAt)}</p>
-                  <div className="max-h-48 overflow-y-auto">
-                    {renderSimpleMarkdown(note.content)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      })}
+  function handleTabClick(tabId: NoteTabId) {
+    router.push(`/wiki/deal/${dealId}?tab=${tabId}`)
+  }
 
-      {/* Resources */}
-      {hasResources && (
-        <div>
-          <p className="text-xxs text-slate-400 font-medium tracking-wider mb-2">RESOURCES</p>
-          <div className="space-y-1">
-            {data.resources.map((res) => (
-              <div
-                key={res.filename}
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-slate-50 dark:bg-white/[.03]"
-              >
-                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" className="shrink-0 text-slate-400">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-                <span className="text-xxs text-slate-600 dark:text-slate-300 truncate flex-1" title={res.filename}>
-                  {res.filename}
+  return (
+    <div className="mt-6 border-t border-black/[.06] dark:border-white/[.06] pt-4">
+      {/* Tab bar */}
+      <div className="flex border-b border-black/[.06] dark:border-white/[.06] mb-3 -mx-1">
+        {NOTE_TABS.map(tab => {
+          const count = counts[tab.id]
+          const isActive = resolvedTab === tab.id
+
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleTabClick(tab.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xxs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              )}
+            >
+              {tab.label}
+              {count > 0 && (
+                <span className={cn(
+                  'text-[9px] font-semibold px-1.5 py-0.5 rounded-full min-w-[16px] text-center',
+                  isActive
+                    ? 'bg-primary/15 text-primary dark:bg-primary/20'
+                    : 'bg-slate-100 dark:bg-white/[.08] text-slate-500'
+                )}>
+                  {count}
                 </span>
-                <span className="text-atom text-slate-400 shrink-0">{formatFileSize(res.size)}</span>
-              </div>
-            ))}
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Tab content */}
+      {resolvedTab === 'resources' ? (
+        <ResourcesTabContent resources={data.resources} />
+      ) : (
+        <NotesTabContent notes={data.categories[resolvedTab]} />
+      )}
+    </div>
+  )
+}
+
+function NotesTabContent({ notes }: { notes: DealNoteFile[] }) {
+  if (notes.length === 0) {
+    return <p className="text-xxs text-slate-400 text-center py-3">No notes in this category</p>
+  }
+
+  // Newest first
+  const sorted = [...notes].sort((a, b) => b.createdAt - a.createdAt)
+
+  return (
+    <div className="space-y-6">
+      {sorted.map((note) => (
+        <div key={note.filename}>
+          <p className="text-[10px] text-slate-400 mb-2">{formatNoteDate(note.createdAt)}</p>
+          <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+            {renderSimpleMarkdown(note.content)}
           </div>
         </div>
-      )}
+      ))}
+    </div>
+  )
+}
+
+function ResourcesTabContent({ resources }: { resources: Array<{ filename: string; size: number; ext: string }> }) {
+  if (resources.length === 0) {
+    return <p className="text-xxs text-slate-400 text-center py-3">No resources attached</p>
+  }
+
+  return (
+    <div className="space-y-1">
+      {resources.map((res) => (
+        <div
+          key={res.filename}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-md bg-slate-50 dark:bg-white/[.03]"
+        >
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" className="shrink-0 text-slate-400">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+          </svg>
+          <span className="text-xxs text-slate-600 dark:text-slate-300 truncate flex-1" title={res.filename}>
+            {res.filename}
+          </span>
+          <span className="text-atom text-slate-400 shrink-0">{formatFileSize(res.size)}</span>
+        </div>
+      ))}
     </div>
   )
 }
