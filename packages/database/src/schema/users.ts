@@ -16,6 +16,7 @@ export const users = pgTable('users', {
   nickname: text('nickname'),
   currentTeam: text('current_team'),
   isOnboarded: boolean('is_onboarded').default(false).notNull(),
+  discordId: text('discord_id').unique(),
   createdAt: timestamp('createdAt', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).defaultNow().notNull(),
 })

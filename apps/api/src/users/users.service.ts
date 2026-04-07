@@ -104,6 +104,36 @@ export class UsersService {
     return user ?? null
   }
 
+  /** Find a user by their Discord ID */
+  async findByDiscordId(discordId: string) {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.discordId, discordId))
+      .limit(1)
+    return user ?? null
+  }
+
+  /** Link a Discord ID to a CRM user — idempotent, safe to call multiple times */
+  async linkDiscordId(id: string, discordId: string) {
+    const [user] = await this.db
+      .update(users)
+      .set({ discordId, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'user_discord_linked',
+      entityType: 'user',
+      entityId: id,
+      performedBy: id,
+      details: { discordId },
+    }).catch(() => {})
+
+    return user
+  }
+
   async findAll() {
     return this.db
       .select({

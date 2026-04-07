@@ -71,6 +71,7 @@ export type ApiUser = {
   firstName?: string | null
   lastName?: string | null
   nickname?: string | null
+  discordId: string | null
 }
 
 // ── Activities ───────────────────────────────────────────────────────────────

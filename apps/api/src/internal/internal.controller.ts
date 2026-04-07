@@ -100,6 +100,8 @@ import { PipelineService } from '../pipeline/pipeline.service'
  *   Users:
  *     GET    /api/internal/users               List all users
  *     GET    /api/internal/users/:id           Single user
+ *     GET    /api/internal/users/by-discord/:discordId  Find user by Discord ID
+ *     PATCH  /api/internal/users/:id/discord   Link Discord ID to CRM user
  *
  *   Audit Logs:
  *     GET    /api/internal/audit-logs          List audit logs (entityType, entityId, action, performedBy, from, to, limit, offset)
@@ -611,12 +613,32 @@ export class InternalController {
     return this.users.findAll()
   }
 
+  /** GET /api/internal/users/by-discord/:discordId — Find user by Discord ID */
+  @Get('users/by-discord/:discordId')
+  async findByDiscordId(@Param('discordId') discordId: string) {
+    const user = await this.users.findByDiscordId(discordId)
+    if (!user) throw new NotFoundException(`No user linked to Discord ID ${discordId}`)
+    return user
+  }
+
   /** GET /api/internal/users/:id — Single user */
   @Get('users/:id')
   async getUser(@Param('id') id: string) {
     const user = await this.users.findOne(id)
     if (!user) throw new NotFoundException(`User ${id} not found`)
     return user
+  }
+
+  /** PATCH /api/internal/users/:id/discord — Link Discord ID to CRM user */
+  @Patch('users/:id/discord')
+  async linkDiscordId(
+    @Param('id') id: string,
+    @Body() body: { discordId: string },
+  ) {
+    if (!body.discordId) throw new NotFoundException('discordId is required')
+    const user = await this.users.findOne(id)
+    if (!user) throw new NotFoundException(`User ${id} not found`)
+    return this.users.linkDiscordId(id, body.discordId)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
