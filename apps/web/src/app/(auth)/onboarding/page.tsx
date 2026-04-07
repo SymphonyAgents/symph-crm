@@ -2,6 +2,14 @@
 
 import { useState, useTransition } from 'react'
 import { useSession } from 'next-auth/react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { completeOnboardingAction } from './actions'
 
 const TEAM_OPTIONS = [
@@ -28,23 +36,16 @@ export default function OnboardingPage() {
     setError(null)
 
     startTransition(async () => {
-      // completeOnboardingAction is a Server Action — it patches the DB,
-      // then calls update() server-side to reliably flush isOnboarded=true
-      // into the JWT cookie before redirecting.  This avoids the previous
-      // client-side race where the cookie could still carry isOnboarded=false
-      // when window.location.href fired, causing the middleware to bounce the
-      // user back to /onboarding.
       const result = await completeOnboardingAction(userId, currentTeam)
       if (result?.error) {
         setError(result.error)
       }
-      // On success the server action calls redirect('/') — no client nav needed.
     })
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4">
-      <div className="w-full max-w-[400px]">
+    <div className="min-h-dvh flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-[360px]">
         {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
@@ -54,65 +55,56 @@ export default function OnboardingPage() {
             S
           </div>
           <div>
-            <div className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Symph CRM</div>
-            <div className="text-xxs text-slate-400">Sales Pipeline</div>
+            <div className="text-base font-bold text-foreground tracking-tight">Symph CRM</div>
+            <div className="text-xxs text-muted-foreground">Sales Pipeline</div>
           </div>
         </div>
 
         {/* Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-sm p-7">
-          {/* Header */}
+        <div className="bg-card rounded-xl border border-border shadow-sm p-6">
           <div className="mb-6">
-            <p className="text-ssm text-slate-400 dark:text-slate-500 mb-0.5">Welcome,</p>
-            <h1 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <p className="text-ssm text-muted-foreground mb-0.5">Welcome,</p>
+            <h1 className="text-lg font-semibold text-foreground">
               {displayName}
             </h1>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Current team */}
-            <div>
-              <label
-                htmlFor="currentTeam"
-                className="block text-xxs font-medium text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide"
-              >
-                Current
+            <div className="space-y-1.5">
+              <label className="block text-xxs font-medium text-muted-foreground uppercase tracking-wide">
+                Current Team
               </label>
-              <select
-                id="currentTeam"
-                required
-                value={currentTeam}
-                onChange={(e) => setCurrentTeam(e.target.value)}
-                className="w-full px-3 py-2 text-sm text-slate-900 dark:text-white bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-colors appearance-none cursor-pointer"
-              >
-                <option value="" disabled>Select your team…</option>
-                {TEAM_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              <Select value={currentTeam} onValueChange={setCurrentTeam}>
+                <SelectTrigger className="w-full h-9 text-sm">
+                  <SelectValue placeholder="Select your team…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Error */}
             {error && (
-              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/40 px-3.5 py-2.5 text-ssm text-red-600 dark:text-red-400">
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3.5 py-2.5 text-ssm text-destructive">
                 {error}
               </div>
             )}
 
-            {/* Submit */}
-            <button
+            <Button
               type="submit"
               disabled={isPending || !currentTeam}
-              className="w-full py-2.5 rounded-lg text-ssm font-semibold text-white transition-opacity disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+              className="w-full h-9 text-ssm"
             >
               {isPending ? 'Setting up…' : 'Get started →'}
-            </button>
+            </Button>
           </form>
         </div>
 
-        <p className="text-xxs text-slate-400 text-center mt-4">
+        <p className="text-xxs text-muted-foreground text-center mt-4">
           Symph internal use only
         </p>
       </div>
