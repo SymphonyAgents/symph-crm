@@ -82,7 +82,10 @@ steps:
       - --port=4000
       - --max-instances=5
       - --set-secrets=DATABASE_URL=symph-crm-db-url:latest,ANTHROPIC_API_KEY=symph-crm-anthropic-key:latest,CRON_SECRET=symph-crm-cron-secret:latest,SUPABASE_URL=symph-crm-supabase-url:latest,SUPABASE_SERVICE_ROLE_KEY=symph-crm-supabase-service-role:latest,GOOGLE_CLIENT_SECRET=symph-crm-google-client-secret:latest,CALENDAR_ENCRYPTION_KEY=symph-crm-calendar-encryption-key:latest,INTERNAL_SECRET=symph-crm-internal-secret:latest,ARIA_API_TOKEN=symph-crm-aria-api-token:latest
-      - --set-env-vars=NODE_ENV=production,NEXT_PUBLIC_APP_URL=https://crm.symph.co,GOOGLE_CLIENT_ID=188047996224-l74ln859dbge5cftjonk6nf8efuv62hb.apps.googleusercontent.com,GOOGLE_CALENDAR_REDIRECT_URI=https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api/auth/google-calendar/callback,WEB_BASE_URL=https://crm.symph.co,ARIA_GATEWAY_URL=https://aria-gateway-canary-7xgremp6pq-as.a.run.app
+      - --set-env-vars=NODE_ENV=production,NEXT_PUBLIC_APP_URL=https://crm.symph.co,GOOGLE_CLIENT_ID=188047996224-l74ln859dbge5cftjonk6nf8efuv62hb.apps.googleusercontent.com,GOOGLE_CALENDAR_REDIRECT_URI=https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api/auth/google-calendar/callback,WEB_BASE_URL=https://crm.symph.co,ARIA_GATEWAY_URL=https://aria-gateway-canary-7xgremp6pq-as.a.run.app,NFS_MOUNT_PATH=/share
+      - --network=projects/symph-aria/global/networks/aria-vpc
+      - --subnet=projects/symph-aria/regions/asia-southeast1/subnetworks/aria-subnet
+      - --vpc-egress=private-ranges-only
 
   # ── Step 3b: Deploy web to Cloud Run (after web push)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
