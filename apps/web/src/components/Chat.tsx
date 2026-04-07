@@ -519,6 +519,10 @@ export function Chat({ dealId }: { dealId?: string }) {
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const recordingStartRef = useRef<number>(0)
   const audioContextRef = useRef<AudioContext | null>(null)
+  // Ref that always reflects the latest sessionId so async callbacks can
+  // check whether the session is still active without stale-closure issues.
+  const sessionIdRef = useRef<string | undefined>(sessionId)
+  useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
   const userName = session?.user?.name?.split(' ')[0] || 'there'
   const userId = (session?.user as { id?: string })?.id || 'anonymous'
@@ -553,6 +557,7 @@ export function Chat({ dealId }: { dealId?: string }) {
   const handleSelectSession = useCallback((id: string) => {
     setSessionId(id)
     setMessages([])
+    setTyping(false)
     setApiError(null)
     setSidebarOpen(false)
   }, [])
@@ -560,6 +565,7 @@ export function Chat({ dealId }: { dealId?: string }) {
   const handleNewChat = useCallback(() => {
     setSessionId(undefined)
     setMessages([])
+    setTyping(false)
     setApiError(null)
     setInput('')
     setPasteChips([])
@@ -778,6 +784,7 @@ export function Chat({ dealId }: { dealId?: string }) {
         })
         activeSessionId = newSession.id
         setSessionId(newSession.id)
+        sessionIdRef.current = newSession.id
       } catch (err) {
         setApiError('Failed to create chat session')
         return
@@ -931,7 +938,12 @@ export function Chat({ dealId }: { dealId?: string }) {
         { id: `err-${Date.now()}`, role: 'assistant', content: 'Something went wrong. Please try again.' },
       ])
     } finally {
-      setTyping(false)
+      // Only clear the typing indicator if the user is still on the same
+      // session that initiated this request. If they switched sessions while
+      // the response was streaming, the new session's UI should be unaffected.
+      if (sessionIdRef.current === activeSessionId) {
+        setTyping(false)
+      }
     }
   }
 
