@@ -1,10 +1,14 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common'
 import { ContactsService } from './contacts.service'
+import { ContactNotesService } from './contact-notes.service'
 import { contacts } from '@symph-crm/database'
 
 @Controller('contacts')
 export class ContactsController {
-  constructor(private readonly contactsService: ContactsService) {}
+  constructor(
+    private readonly contactsService: ContactsService,
+    private readonly contactNotesService: ContactNotesService,
+  ) {}
 
   /**
    * GET /api/contacts
@@ -17,6 +21,11 @@ export class ContactsController {
     @Query('search') search?: string,
   ) {
     return this.contactsService.findAll({ companyId, search })
+  }
+
+  @Get(':id/notes')
+  getContactNotes(@Param('id') id: string) {
+    return this.contactNotesService.getNotes(id)
   }
 
   @Get(':id')

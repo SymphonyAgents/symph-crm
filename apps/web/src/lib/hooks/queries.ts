@@ -29,6 +29,7 @@ import type {
   InboxResponse,
   ApiNotification,
   DealNotesResponse,
+  ContactNotesResponse,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -114,6 +115,18 @@ export function useGetDealNotes(
     queryKey: queryKeys.deals.notes(dealId ?? ''),
     queryFn: () => api.get<DealNotesResponse>(`/deals/${dealId}/notes`),
     enabled: !!dealId,
+    ...options,
+  })
+}
+
+export function useGetContactNotes(
+  contactId: string | null,
+  options?: Partial<UseQueryOptions<ContactNotesResponse>>,
+) {
+  return useQuery<ContactNotesResponse>({
+    queryKey: queryKeys.contacts.notes(contactId ?? ''),
+    queryFn: () => api.get<ContactNotesResponse>(`/contacts/${contactId}/notes`),
+    enabled: !!contactId,
     ...options,
   })
 }

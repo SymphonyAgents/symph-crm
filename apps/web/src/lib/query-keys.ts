@@ -51,6 +51,7 @@ export const queryKeys = {
   contacts: {
     all: ['contacts'] as const,
     byCompany: (companyId: string) => ['contacts', 'company', companyId] as const,
+    notes: (id: string) => ['contacts', id, 'notes'] as const,
   },
   activities: {
     byDeal: (dealId: string) => ['activities', 'deal', dealId] as const,

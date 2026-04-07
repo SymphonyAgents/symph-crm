@@ -284,6 +284,23 @@ export type DealNotesResponse = {
   resources: Array<{ filename: string; size: number; ext: string }>
 }
 
+// ── Contact Notes (NFS) ─────────────────────────────────────────────────────
+
+export type ContactNoteFile = {
+  filename: string
+  content: string
+  createdAt: number
+}
+
+export type ContactNotesResponse = {
+  categories: {
+    general: ContactNoteFile[]
+    meeting: ContactNoteFile[]
+    log: ContactNoteFile[]
+  }
+  resources: Array<{ filename: string; size: number; ext: string }>
+}
+
 // ── Billing ─────────────────────────────────────────────────────────────────
 
 export type ApiBillingMilestone = {
