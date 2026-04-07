@@ -45,7 +45,10 @@ export default function OnboardingPage() {
         }
 
         await update({ refreshUser: true })
-        router.replace('/')
+        // Hard navigation — ensures the browser picks up the refreshed JWT cookie.
+        // router.replace() uses the cached session; the middleware may redirect
+        // back to /onboarding before isOnboarded=true propagates to the cookie.
+        window.location.href = '/'
       } catch {
         setError('Network error. Please check your connection and try again.')
       }
