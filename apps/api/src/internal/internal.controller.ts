@@ -14,6 +14,7 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { InternalService } from './internal.service'
 import { InternalGuard } from './internal.guard'
 import { CalendarConnectionsService } from '../calendar/calendar-connections.service'
@@ -109,7 +110,10 @@ import { PipelineService } from '../pipeline/pipeline.service'
 @Controller('internal')
 @UseGuards(InternalGuard)
 export class InternalController {
+  private readonly baseUrl: string
+
   constructor(
+    private readonly config: ConfigService,
     private readonly internalService: InternalService,
     private readonly calendarConnections: CalendarConnectionsService,
     private readonly deals: DealsService,
@@ -120,7 +124,26 @@ export class InternalController {
     private readonly users: UsersService,
     private readonly auditLogs: AuditLogsService,
     private readonly pipeline: PipelineService,
-  ) {}
+  ) {
+    this.baseUrl = (
+      config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
+    ).replace(/\/+$/, '')
+  }
+
+  /** Build a direct CRM link for the given entity type and ID. */
+  private crmUrl(type: 'deal' | 'company' | 'contact', id: string, companyId?: string): string {
+    switch (type) {
+      case 'deal':
+        return `${this.baseUrl}/deals/${id}`
+      case 'company':
+        return `${this.baseUrl}/wiki/brand/${id}`
+      case 'contact':
+        // Contacts live on their company's brand wiki page
+        return companyId
+          ? `${this.baseUrl}/wiki/brand/${companyId}`
+          : `${this.baseUrl}/wiki/brand`
+    }
+  }
 
   /**
    * Resolve performer identity from request headers.
@@ -245,7 +268,7 @@ export class InternalController {
   ) {
     const { performedBy } = this.resolvePerformer(headers)
     const deal = await this.deals.create(body as any, performedBy)
-    return { ok: true, deal }
+    return { ok: true, deal, url: this.crmUrl('deal', deal.id) }
   }
 
   /** PATCH /api/internal/deals/:id — Update deal fields */
@@ -271,7 +294,7 @@ export class InternalController {
     }
 
     const updated = await this.deals.findOne(id)
-    return { ok: true, deal: updated }
+    return { ok: true, deal: updated, url: this.crmUrl('deal', id) }
   }
 
   /** PATCH /api/internal/deals/:id/stage — Explicit stage transition */
@@ -286,7 +309,7 @@ export class InternalController {
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
     await this.deals.updateStage(id, body.stage, performedBy)
     const updated = await this.deals.findOne(id)
-    return { ok: true, deal: updated }
+    return { ok: true, deal: updated, url: this.crmUrl('deal', id) }
   }
 
   /** PATCH /api/internal/deals/:id/assign — Reassign deal to a user */
@@ -301,7 +324,7 @@ export class InternalController {
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
     await this.deals.update(id, { assignedTo: body.assignedTo } as any, performedBy)
     const updated = await this.deals.findOne(id)
-    return { ok: true, deal: updated }
+    return { ok: true, deal: updated, url: this.crmUrl('deal', id) }
   }
 
   /** DELETE /api/internal/deals/:id — Remove deal */
@@ -360,7 +383,7 @@ export class InternalController {
       { ...body, createdBy: body.createdBy ?? performedBy } as any,
       performedBy,
     )
-    return { ok: true, company }
+    return { ok: true, company, url: this.crmUrl('company', company.id) }
   }
 
   /** PUT /api/internal/companies/:id — Update company */
@@ -374,7 +397,7 @@ export class InternalController {
     const company = await this.companies.findOne(id)
     if (!company) throw new NotFoundException(`Company ${id} not found`)
     const updated = await this.companies.update(id, body as any, performedBy)
-    return { ok: true, company: updated }
+    return { ok: true, company: updated, url: this.crmUrl('company', id) }
   }
 
   /** DELETE /api/internal/companies/:id — Remove company */
@@ -425,7 +448,7 @@ export class InternalController {
     },
   ) {
     const contact = await this.contacts.create(body as any)
-    return { ok: true, contact }
+    return { ok: true, contact, url: this.crmUrl('contact', contact.id, contact.companyId ?? body.companyId) }
   }
 
   /** PUT /api/internal/contacts/:id — Update contact */
@@ -437,7 +460,7 @@ export class InternalController {
     const contact = await this.contacts.findOne(id)
     if (!contact) throw new NotFoundException(`Contact ${id} not found`)
     const updated = await this.contacts.update(id, body as any)
-    return { ok: true, contact: updated }
+    return { ok: true, contact: updated, url: this.crmUrl('contact', id, (updated as any).companyId ?? body.companyId) }
   }
 
   /** DELETE /api/internal/contacts/:id — Remove contact */
