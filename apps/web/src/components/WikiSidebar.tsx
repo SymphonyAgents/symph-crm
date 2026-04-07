@@ -185,13 +185,13 @@ export function WikiSidebar({
 
   const activeTab = searchParams?.get('tab') ?? null
 
-  // Auto-expand the brand and deal nodes for the current URL selection
+  // Auto-expand the brand node so the selected deal is visible in the list.
+  // Does NOT auto-expand the deal node (note categories) — that's manual via chevron only.
   useEffect(() => {
     if (selectedDealId) {
-      // Find the deal's company to auto-expand the brand node
       const deal = deals.find(d => d.id === selectedDealId)
-      if (deal) {
-        const brandKey = deal.companyId ?? '__none__'
+      const brandKey = deal?.companyId ?? (deal ? '__none__' : null)
+      if (brandKey) {
         setExpandedBrands(prev => {
           if (prev.has(brandKey)) return prev
           const next = new Set(prev)
@@ -199,13 +199,6 @@ export function WikiSidebar({
           return next
         })
       }
-      // Auto-expand the deal node itself
-      setExpandedDeals(prev => {
-        if (prev.has(selectedDealId)) return prev
-        const next = new Set(prev)
-        next.add(selectedDealId)
-        return next
-      })
     } else if (selectedCompanyId) {
       setExpandedBrands(prev => {
         if (prev.has(selectedCompanyId)) return prev
@@ -346,8 +339,8 @@ export function WikiSidebar({
       </div>
 
       {/* Body -- list view only; graph is rendered full-width by the parent page */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="overflow-y-auto h-full py-1">
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="py-1">
             {isLoading ? (
               <div className="flex items-center justify-center h-24">
                 <div className="w-4 h-4 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
