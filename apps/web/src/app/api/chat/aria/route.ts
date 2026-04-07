@@ -134,6 +134,22 @@ export async function POST(req: NextRequest) {
     ? `crm-${sessionId}`
     : `crm-web-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
+  // Persist the user message to the DB immediately — before the AI responds.
+  // This ensures the message is visible if the user navigates away mid-stream.
+  // Fire-and-forget: a failure here should not block the AI response.
+  if (sessionId && userId) {
+    fetch(`${NESTJS_API_BASE}/chat/sessions/${sessionId}/messages/user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+      },
+      body: JSON.stringify({ userId, userMessage: messageContent }),
+    }).catch((err) => {
+      console.error('[chat/aria] saveUserMessage failed:', err)
+    })
+  }
+
   // Fire send to Aria without awaiting — so we can open the stream in parallel.
   // ariaSessionId is deterministic (we own it), so we don't need to wait for
   // the gateway to confirm receipt before connecting to the stream.
@@ -273,9 +289,10 @@ export async function POST(req: NextRequest) {
 
               if (currentEventType === 'done' && sessionId && userId) {
                 const fullAssistantText = assembledTextParts.join('')
-                // Fire-and-forget: persist user + assistant message pair.
+                // Fire-and-forget: persist the assistant reply.
+                // The user message was already saved at request start — only the assistant half remains.
                 // x-user-id is required by the global RolesGuard for all POST mutations.
-                fetch(`${NESTJS_API_BASE}/chat/sessions/${sessionId}/messages`, {
+                fetch(`${NESTJS_API_BASE}/chat/sessions/${sessionId}/messages/assistant`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
@@ -283,11 +300,10 @@ export async function POST(req: NextRequest) {
                   },
                   body: JSON.stringify({
                     userId,
-                    userMessage: messageContent,
                     assistantMessage: fullAssistantText,
                   }),
                 }).catch((err) => {
-                  console.error('[chat/aria] saveMessages failed:', err)
+                  console.error('[chat/aria] saveAssistantMessage failed:', err)
                 })
               }
 

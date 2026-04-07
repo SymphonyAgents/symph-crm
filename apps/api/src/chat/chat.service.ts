@@ -147,6 +147,34 @@ export class ChatService {
       .orderBy(chatMessages.createdAt)
   }
 
+  async saveUserMessage(sessionId: string, userId: string, userMessage: string): Promise<{ id: string }> {
+    await this.db.update(chatSessions)
+      .set({ updatedAt: new Date() })
+      .where(eq(chatSessions.id, sessionId))
+
+    const [msg] = await this.db.insert(chatMessages).values({
+      sessionId,
+      userId,
+      role: 'user',
+      content: userMessage,
+    }).returning()
+    return { id: msg.id }
+  }
+
+  async saveAssistantMessage(sessionId: string, userId: string, assistantMessage: string): Promise<void> {
+    await this.db.update(chatSessions)
+      .set({ updatedAt: new Date() })
+      .where(eq(chatSessions.id, sessionId))
+
+    await this.db.insert(chatMessages).values({
+      sessionId,
+      userId,
+      role: 'assistant',
+      content: assistantMessage,
+      actionsTaken: [],
+    })
+  }
+
   async saveMessages(sessionId: string, userId: string, userMessage: string, assistantMessage: string) {
     // Update session updatedAt
     await this.db.update(chatSessions)

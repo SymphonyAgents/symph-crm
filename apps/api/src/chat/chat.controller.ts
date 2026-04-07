@@ -157,8 +157,34 @@ export class ChatController {
   }
 
   /**
+   * POST /api/chat/sessions/:sessionId/messages/user
+   * Persist the user's message immediately on send, before AI responds.
+   * Returns the saved message ID so the client can replace its optimistic placeholder.
+   */
+  @Post('sessions/:sessionId/messages/user')
+  saveUserMessage(
+    @Param('sessionId') sessionId: string,
+    @Body() body: { userId: string; userMessage: string },
+  ) {
+    return this.chatService.saveUserMessage(sessionId, body.userId, body.userMessage)
+  }
+
+  /**
+   * POST /api/chat/sessions/:sessionId/messages/assistant
+   * Persist the assistant's reply once the stream is complete.
+   */
+  @Post('sessions/:sessionId/messages/assistant')
+  saveAssistantMessage(
+    @Param('sessionId') sessionId: string,
+    @Body() body: { userId: string; assistantMessage: string },
+  ) {
+    return this.chatService.saveAssistantMessage(sessionId, body.userId, body.assistantMessage)
+  }
+
+  /**
    * POST /api/chat/sessions/:sessionId/messages
    * Save a user+assistant message pair after a completed Aria stream.
+   * Kept for backwards compatibility.
    */
   @Post('sessions/:sessionId/messages')
   saveMessages(
