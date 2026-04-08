@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn, getBrandColor, getInitials, formatDealValue, totalNumericValue } from '@/lib/utils'
 import { STAGE_COLORS, STAGE_LABELS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal, DealNoteFile } from '@/lib/types'
 import type { WikiSelection } from './WikiSidebar'
 import { useGetDealNotes } from '@/lib/hooks/queries'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 
 type WikiContentProps = {
   selection: WikiSelection
@@ -369,7 +370,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
     // ## headings
     if (line.startsWith('## ')) {
       nodes.push(
-        <p key={i} className="text-xs font-semibold text-slate-800 dark:text-slate-200 mt-3 mb-1">
+        <p key={i} className="text-sbase font-semibold text-slate-800 dark:text-slate-200 mt-4 mb-1.5">
           {line.slice(3)}
         </p>,
       )
@@ -379,7 +380,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
     // # headings
     if (line.startsWith('# ')) {
       nodes.push(
-        <p key={i} className="text-xs font-bold text-slate-900 dark:text-white mt-3 mb-1">
+        <p key={i} className="text-sbase font-bold text-slate-900 dark:text-white mt-4 mb-1.5">
           {line.slice(2)}
         </p>,
       )
@@ -389,7 +390,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
     // ### headings
     if (line.startsWith('### ')) {
       nodes.push(
-        <p key={i} className="text-xxs font-semibold text-slate-700 dark:text-slate-300 mt-2 mb-0.5">
+        <p key={i} className="text-sbase font-semibold text-slate-700 dark:text-slate-300 mt-3 mb-1">
           {line.slice(4)}
         </p>,
       )
@@ -399,8 +400,8 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
     // Bullet points
     if (line.startsWith('- ') || line.startsWith('* ')) {
       nodes.push(
-        <div key={i} className="flex gap-1.5 text-xxs text-slate-600 dark:text-slate-400 leading-relaxed">
-          <span className="shrink-0 mt-1 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500" />
+        <div key={i} className="flex gap-2 text-sm text-slate-600 dark:text-slate-400 leading-7">
+          <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
           <span>{inlineBold(line.slice(2))}</span>
         </div>,
       )
@@ -415,7 +416,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
 
     // Plain paragraph
     nodes.push(
-      <p key={i} className="text-xxs text-slate-600 dark:text-slate-400 leading-relaxed">
+      <p key={i} className="text-sm text-slate-600 dark:text-slate-400 leading-7">
         {inlineBold(line)}
       </p>,
     )
@@ -711,13 +712,13 @@ function NotesCompactList({
 
 function LogTabContent({ log }: { log: string | null }) {
   if (!log) {
-    return <p className="text-xxs text-slate-400 text-center py-6">No log entries yet</p>
+    return <p className="text-sm text-slate-400 text-center py-6">No log entries yet</p>
   }
 
   return (
-    <div className="space-y-1.5 rounded-lg bg-slate-50/60 px-3.5 py-3 dark:bg-white/[.03]">
+    <div className="space-y-2 rounded-lg bg-slate-50/60 px-3.5 py-3 dark:bg-white/[.03]">
       {log.split('\n').filter(Boolean).map((line, i) => (
-        <p key={i} className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 font-mono">
+        <p key={i} className="text-sm leading-7 text-slate-500 dark:text-slate-400 font-mono">
           {line}
         </p>
       ))}
@@ -740,6 +741,10 @@ function NoteDetailModal({
   const typeLabel = extractNoteType(note.filename, category)
   const typeColor = getNoteTypeColor(category)
 
+  useEscapeKey(useCallback(() => {
+    onClose()
+  }, [onClose]))
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -753,17 +758,17 @@ function NoteDetailModal({
         {/* Header */}
         <div className="flex items-start gap-3 px-6 py-4 border-b border-black/[.06] dark:border-white/[.06] shrink-0">
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white leading-snug mb-1.5">
+            <h3 className="text-sbase font-semibold text-slate-900 dark:text-white leading-snug mb-1.5">
               {title}
             </h3>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span
                 className="px-2 py-0.5 rounded text-atom font-semibold uppercase tracking-wide"
                 style={{ background: typeColor.bg, color: typeColor.text }}
               >
                 {typeLabel}
               </span>
-              <span className="text-xxs text-slate-400 tabular-nums">{formatNoteDate(note.createdAt)}</span>
+              <span className="text-sm text-slate-400 tabular-nums">{formatNoteDate(note.createdAt)}</span>
             </div>
           </div>
 
@@ -780,7 +785,7 @@ function NoteDetailModal({
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="prose-wiki">
+          <div className="prose-wiki space-y-2">
             {renderSimpleMarkdown(note.content)}
           </div>
         </div>
