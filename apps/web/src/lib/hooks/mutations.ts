@@ -501,6 +501,6 @@ export function useDeleteChatSession(
 ) {
   return useMutation<void, Error, string>({
     mutationFn: (sessionId) => api.delete(`/chat/sessions/${sessionId}`),
-    ...options,
+    ...withToast('Chat deleted', options),
   })
 }

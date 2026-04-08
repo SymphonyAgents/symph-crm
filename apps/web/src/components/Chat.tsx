@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import imageCompression from 'browser-image-compression'
 import {
   cn, getGreeting, formatDuration, getAudioMimeType, mimeToExt,
@@ -488,9 +489,13 @@ function SessionSidebar({
 export function Chat({ dealId }: { dealId?: string }) {
   const { data: session } = useSession()
   const queryClient = useQueryClient()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const { typing, typingSessionId, setTyping: setTypingCtx } = useChatTyping()
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [sessionId, setSessionId] = useState<string | undefined>()
+  const [sessionId, setSessionId] = useState<string | undefined>(
+    () => searchParams.get('session') ?? undefined,
+  )
   const [input, setInput] = useState('')
   const [focused, setFocused] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
@@ -565,7 +570,8 @@ export function Chat({ dealId }: { dealId?: string }) {
     setTypingCtx(id, false)
     setApiError(null)
     setSidebarOpen(false)
-  }, [setTypingCtx])
+    router.replace(`/chat?session=${id}`)
+  }, [setTypingCtx, router])
 
   const handleNewChat = useCallback(() => {
     setSessionId(undefined)
@@ -576,7 +582,8 @@ export function Chat({ dealId }: { dealId?: string }) {
     setPasteChips([])
     setPendingAttachment(null)
     setSidebarOpen(false)
-  }, [setTypingCtx])
+    router.replace('/chat')
+  }, [setTypingCtx, router])
 
   const handleDeleteSession = useCallback((id: string) => {
     deleteSession.mutate(id)
@@ -584,8 +591,9 @@ export function Chat({ dealId }: { dealId?: string }) {
       setSessionId(undefined)
       setMessages([])
       setApiError(null)
+      router.replace('/chat')
     }
-  }, [deleteSession, sessionId])
+  }, [deleteSession, sessionId, router])
 
   useEffect(() => {
     const t = setTimeout(() => inputRef.current?.focus(), 300)
@@ -823,6 +831,10 @@ export function Chat({ dealId }: { dealId?: string }) {
         activeSessionId = newSession.id
         setSessionId(newSession.id)
         sessionIdRef.current = newSession.id
+        // Refresh sidebar session list immediately
+        queryClient.invalidateQueries({ queryKey: queryKeys.chatSessions.byUser(userId) })
+        // Sync URL so the session survives page navigation
+        router.replace(`/chat?session=${newSession.id}`)
       } catch (err) {
         setApiError('Failed to create chat session')
         return
