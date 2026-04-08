@@ -447,16 +447,20 @@ function inlineBold(text: string): React.ReactNode {
 
 // ─── Tab-based Notes section ────────────────────────────────────────────────
 
-type NoteTabId = 'general' | 'meeting' | 'notes' | 'resources'
+type NoteTabId = 'general' | 'meeting' | 'discovery' | 'transcript' | 'proposal' | 'notes' | 'resources' | 'log'
 
 const NOTE_TABS: Array<{ id: NoteTabId; label: string }> = [
   { id: 'general', label: 'General' },
   { id: 'meeting', label: 'Meeting' },
+  { id: 'discovery', label: 'Discovery' },
+  { id: 'transcript', label: 'Transcript' },
+  { id: 'proposal', label: 'Proposal' },
   { id: 'notes', label: 'Notes' },
   { id: 'resources', label: 'Resources' },
+  { id: 'log', label: 'Log' },
 ]
 
-const VALID_NOTE_TABS = new Set<NoteTabId>(['general', 'meeting', 'notes', 'resources'])
+const VALID_NOTE_TABS = new Set<NoteTabId>(['general', 'meeting', 'discovery', 'transcript', 'proposal', 'notes', 'resources', 'log'])
 
 function formatNoteDate(ts: number): string {
   if (!ts) return ''
@@ -493,13 +497,17 @@ function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: stri
   const counts: Record<NoteTabId, number> = {
     general: data.categories.general.length,
     meeting: data.categories.meeting.length,
+    discovery: data.categories.discovery.length,
+    transcript: data.categories.transcript.length,
+    proposal: data.categories.proposal.length,
     notes: data.categories.notes.length,
     resources: data.resources.length,
+    log: data.log ? 1 : 0,
   }
 
   const hasAny = Object.values(counts).some(c => c > 0)
 
-  // Resolve active tab: use URL param if valid, else default to general if populated, else first non-empty
+  // Resolve active tab: use URL param if valid, else default to first non-empty category
   let resolvedTab: NoteTabId
   if (activeTab && VALID_NOTE_TABS.has(activeTab as NoteTabId)) {
     resolvedTab = activeTab as NoteTabId
@@ -559,8 +567,10 @@ function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: stri
       {/* Tab content */}
       {resolvedTab === 'resources' ? (
         <ResourcesTabContent resources={data.resources} />
+      ) : resolvedTab === 'log' ? (
+        <LogTabContent log={data.log} />
       ) : (
-        <NotesTabContent notes={data.categories[resolvedTab]} />
+        <NotesTabContent notes={data.categories[resolvedTab as keyof typeof data.categories] ?? []} />
       )}
     </div>
   )
@@ -583,6 +593,21 @@ function NotesTabContent({ notes }: { notes: DealNoteFile[] }) {
             {renderSimpleMarkdown(note.content)}
           </div>
         </div>
+      ))}
+    </div>
+  )
+}
+
+function LogTabContent({ log }: { log: string | null }) {
+  if (!log) {
+    return <p className="text-xxs text-slate-400 text-center py-3">No log entries yet</p>
+  }
+  return (
+    <div className="space-y-1">
+      {log.split('\n').filter(Boolean).map((line, i) => (
+        <p key={i} className="text-[10px] text-slate-500 dark:text-slate-400 font-mono leading-relaxed">
+          {line}
+        </p>
       ))}
     </div>
   )

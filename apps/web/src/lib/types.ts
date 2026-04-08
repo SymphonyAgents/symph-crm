@@ -299,8 +299,12 @@ export type DealNotesResponse = {
     general: DealNoteFile[]
     meeting: DealNoteFile[]
     notes: DealNoteFile[]
+    discovery: DealNoteFile[]
+    transcript: DealNoteFile[]
+    proposal: DealNoteFile[]
   }
   resources: Array<{ filename: string; size: number; ext: string }>
+  log: string | null
 }
 
 // ── Contact Notes (NFS) ─────────────────────────────────────────────────────

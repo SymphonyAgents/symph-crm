@@ -28,8 +28,12 @@ type WikiSidebarProps = {
 const NOTE_CATEGORIES = [
   { key: 'general' as const, label: 'general', icon: 'document' },
   { key: 'meeting' as const, label: 'meeting', icon: 'calendar' },
+  { key: 'discovery' as const, label: 'discovery', icon: 'search' },
+  { key: 'transcript' as const, label: 'transcript', icon: 'mic' },
+  { key: 'proposal' as const, label: 'proposal', icon: 'briefcase' },
   { key: 'notes' as const, label: 'notes', icon: 'pencil' },
   { key: 'resources' as const, label: 'resources', icon: 'paperclip' },
+  { key: 'log' as const, label: 'log', icon: 'log' },
 ] as const
 
 type NoteCategory = typeof NOTE_CATEGORIES[number]['key']
@@ -67,6 +71,33 @@ function NoteCategoryIcon({ type, className }: { type: string; className?: strin
           <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
         </svg>
       )
+    case 'search':
+      return (
+        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className={className}>
+          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+      )
+    case 'mic':
+      return (
+        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className={className}>
+          <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+          <path d="M19 10v2a7 7 0 01-14 0v-2" /><line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      )
+    case 'briefcase':
+      return (
+        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className={className}>
+          <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+          <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+        </svg>
+      )
+    case 'log':
+      return (
+        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className={className}>
+          <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+      )
     default:
       return null
   }
@@ -101,8 +132,12 @@ function DealNoteCategories({
   const counts: Record<NoteCategory, number> = {
     general: data.categories.general.length,
     meeting: data.categories.meeting.length,
+    discovery: data.categories.discovery.length,
+    transcript: data.categories.transcript.length,
+    proposal: data.categories.proposal.length,
     notes: data.categories.notes.length,
     resources: data.resources.length,
+    log: data.log ? 1 : 0,
   }
 
   return (

@@ -13,8 +13,12 @@ export type DealNotesResponse = {
     general: DealNoteFile[]
     meeting: DealNoteFile[]
     notes: DealNoteFile[]
+    discovery: DealNoteFile[]
+    transcript: DealNoteFile[]
+    proposal: DealNoteFile[]
   }
   resources: Array<{ filename: string; size: number; ext: string }>
+  log: string | null
 }
 
 export type NfsDealNote = {
@@ -33,10 +37,7 @@ export type NfsDealNote = {
   category: string
 }
 
-/** Original 3 categories used by the wiki sidebar / getNotes() response shape */
-const LEGACY_CATEGORIES = ['general', 'meeting', 'notes'] as const
-
-/** All supported NFS categories (superset) used by getNotesFlat / saveNote */
+/** All supported NFS note categories */
 const NOTE_CATEGORIES = ['general', 'meeting', 'notes', 'discovery', 'transcript', 'proposal'] as const
 
 const TYPE_TO_CATEGORY: Record<string, string> = {
@@ -140,15 +141,16 @@ export class DealNotesService {
     const dealDir = path.join(this.basePath, 'deals', dealId)
 
     const result: DealNotesResponse = {
-      categories: { general: [], meeting: [], notes: [] },
+      categories: { general: [], meeting: [], notes: [], discovery: [], transcript: [], proposal: [] },
       resources: [],
+      log: null,
     }
 
     // If the deal's NFS folder doesn't exist, return empty
     if (!fs.existsSync(dealDir)) return result
 
-    // Read markdown notes from the original 3 category folders
-    for (const category of LEGACY_CATEGORIES) {
+    // Read markdown notes from all category folders
+    for (const category of NOTE_CATEGORIES) {
       const catDir = path.join(dealDir, category)
       if (!fs.existsSync(catDir)) continue
 
@@ -166,6 +168,12 @@ export class DealNotesService {
       // Sort newest first
       noteFiles.sort((a, b) => b.createdAt - a.createdAt)
       result.categories[category] = noteFiles
+    }
+
+    // Read deal log.md if it exists
+    const logPath = path.join(dealDir, 'log.md')
+    if (fs.existsSync(logPath)) {
+      result.log = await fs.promises.readFile(logPath, 'utf-8')
     }
 
     // Read resources folder — metadata only, no content
