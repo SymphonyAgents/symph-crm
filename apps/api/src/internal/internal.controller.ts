@@ -26,6 +26,7 @@ import { ActivitiesService } from '../activities/activities.service'
 import { UsersService } from '../users/users.service'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PipelineService } from '../pipeline/pipeline.service'
+import { WikiService } from '../wiki/wiki.service'
 
 /**
  * InternalController — endpoints called by Cloud Scheduler, GCP infrastructure,
@@ -124,6 +125,7 @@ export class InternalController {
     private readonly users: UsersService,
     private readonly auditLogs: AuditLogsService,
     private readonly pipeline: PipelineService,
+    private readonly wiki: WikiService,
   ) {
     this.baseUrl = (
       config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
@@ -690,5 +692,104 @@ export class InternalController {
       limit: limit ? parseInt(limit, 10) : 50,
       offset: offset ? parseInt(offset, 10) : 0,
     })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Wiki (Karpathy-style persistent knowledge base)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * GET /api/internal/wiki/index — Read the master index or a scoped entity index.
+   *
+   * Query params:
+   *   scope = 'global' | 'deal' | 'company' | 'person'  (default: 'global')
+   *   id    = entity UUID (required when scope != 'global')
+   *
+   * Returns: { scope, id?, content: string | null }
+   * The content is the raw markdown of MASTER_INDEX.md or the entity's index.md.
+   * Returns null content when the index page doesn't exist yet.
+   */
+  @Get('wiki/index')
+  async getWikiIndex(
+    @Query('scope') scope: 'global' | 'deal' | 'company' | 'person' = 'global',
+    @Query('id') id?: string,
+  ) {
+    const content = await this.wiki.readIndex(scope, id)
+    return { scope, id: id ?? null, content }
+  }
+
+  /**
+   * GET /api/internal/wiki/page — Read any wiki page by relative path.
+   *
+   * Query param:
+   *   path = relative path within /share/crm/ (e.g. "deals/abc123/index.md")
+   *
+   * Returns: { path, content: string | null }
+   */
+  @Get('wiki/page')
+  async getWikiPage(@Query('path') relativePath: string) {
+    if (!relativePath) return { path: null, content: null, error: 'path query param required' }
+    const content = await this.wiki.readPage(relativePath)
+    return { path: relativePath, content }
+  }
+
+  /**
+   * POST /api/internal/wiki/page — Write or append to a wiki page.
+   *
+   * Body:
+   *   path    string   Relative path within /share/crm/
+   *   content string   Markdown content to write
+   *   append  boolean  If true, append to existing file instead of overwriting (default: false)
+   *
+   * Returns: { ok: true, path, action: 'written' | 'appended' }
+   */
+  @Post('wiki/page')
+  @HttpCode(HttpStatus.OK)
+  async writeWikiPage(
+    @Body() body: { path: string; content: string; append?: boolean },
+  ) {
+    if (!body.path || body.content === undefined) {
+      return { ok: false, error: 'path and content are required' }
+    }
+    if (body.append) {
+      await this.wiki.appendPage(body.path, body.content)
+      return { ok: true, path: body.path, action: 'appended' }
+    }
+    await this.wiki.writePage(body.path, body.content)
+    return { ok: true, path: body.path, action: 'written' }
+  }
+
+  /**
+   * POST /api/internal/wiki/log — Append a structured entry to the operation log.
+   *
+   * Body:
+   *   entry      string   Human-readable summary of what happened (1–3 lines)
+   *   operation  string   e.g. 'ingest', 'query', 'lint', 'update' (default: 'update')
+   *   actor      string   CRM user name or 'aria' (default: 'aria')
+   *   scope      string   'global' | 'deal' | 'company' | 'person' (default: 'global')
+   *   scopeId    string   Entity UUID (required when scope != 'global')
+   *
+   * Returns: { ok: true }
+   */
+  @Post('wiki/log')
+  @HttpCode(HttpStatus.OK)
+  async appendWikiLog(
+    @Body() body: {
+      entry: string
+      operation?: string
+      actor?: string
+      scope?: 'global' | 'deal' | 'company' | 'person'
+      scopeId?: string
+    },
+  ) {
+    if (!body.entry) return { ok: false, error: 'entry is required' }
+    await this.wiki.appendLog({
+      entry: body.entry,
+      operation: body.operation,
+      actor: body.actor,
+      scope: body.scope,
+      scopeId: body.scopeId,
+    })
+    return { ok: true }
   }
 }

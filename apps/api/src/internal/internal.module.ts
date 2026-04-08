@@ -10,6 +10,7 @@ import { ActivitiesModule } from '../activities/activities.module'
 import { UsersModule } from '../users/users.module'
 import { AuditLogsModule } from '../audit-logs/audit-logs.module'
 import { PipelineModule } from '../pipeline/pipeline.module'
+import { WikiModule } from '../wiki/wiki.module'
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PipelineModule } from '../pipeline/pipeline.module'
     UsersModule,
     AuditLogsModule,
     PipelineModule,
+    WikiModule,
   ],
   controllers: [InternalController],
   providers: [InternalService],
