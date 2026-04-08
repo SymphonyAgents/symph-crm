@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 // Product/Tier inputs removed per Vins — not needed in create flow
 import { Input } from '@/components/ui/input'
 import {
@@ -12,7 +13,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
-import { useCreateDeal, useUploadDocumentFile } from '@/lib/hooks/mutations'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import { useCreateDeal, useUploadDocumentFile, useCreateCompany } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -129,6 +143,131 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
   )
 }
 
+// ─── Brand Combobox ──────────────────────────────────────────────────────────
+
+type BrandComboboxProps = {
+  companies: ApiCompanyDetail[]
+  value: string        // companyId ('' = none)
+  onChange: (id: string, name?: string) => void
+  onCreateStart?: () => void
+  onCreateEnd?: () => void
+}
+
+function BrandCombobox({ companies, value, onChange, onCreateStart, onCreateEnd }: BrandComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [creating, setCreating] = useState(false)
+  const createCompany = useCreateCompany()
+
+  const selectedCompany = companies.find(c => c.id === value)
+
+  const filtered = query.trim()
+    ? companies.filter(c => c.name.toLowerCase().includes(query.toLowerCase()))
+    : companies
+
+  const exactMatch = companies.some(c => c.name.toLowerCase() === query.trim().toLowerCase())
+  const showCreate = query.trim().length > 0 && !exactMatch
+
+  async function handleCreate() {
+    const name = query.trim()
+    if (!name) return
+    setCreating(true)
+    onCreateStart?.()
+    try {
+      const result: any = await createCompany.mutateAsync({ name })
+      const newId = result?.id ?? result?.data?.id
+      onChange(newId ?? '', name)
+      setOpen(false)
+      setQuery('')
+    } finally {
+      setCreating(false)
+      onCreateEnd?.()
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-ssm ring-offset-background',
+            'hover:bg-accent/5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            !selectedCompany && 'text-muted-foreground',
+          )}
+        >
+          <span className="truncate">
+            {selectedCompany ? selectedCompany.name : 'Search or create brand...'}
+          </span>
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search brands..."
+            value={query}
+            onValueChange={setQuery}
+            className="text-ssm h-9"
+          />
+          <CommandList>
+            {/* Clear / No brand option */}
+            <CommandGroup>
+              <CommandItem
+                value="__none__"
+                onSelect={() => { onChange(''); setOpen(false); setQuery('') }}
+                className="text-ssm text-muted-foreground"
+              >
+                <Check className={cn('mr-2 h-3.5 w-3.5', !value ? 'opacity-100' : 'opacity-0')} />
+                No brand
+              </CommandItem>
+            </CommandGroup>
+
+            {/* Existing brands */}
+            {filtered.length > 0 && (
+              <CommandGroup>
+                {filtered.map(c => (
+                  <CommandItem
+                    key={c.id}
+                    value={c.id}
+                    onSelect={() => { onChange(c.id, c.name); setOpen(false); setQuery('') }}
+                    className="text-ssm"
+                  >
+                    <Check className={cn('mr-2 h-3.5 w-3.5', value === c.id ? 'opacity-100' : 'opacity-0')} />
+                    {c.name}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {/* Create new brand */}
+            {showCreate && (
+              <CommandGroup>
+                <CommandItem
+                  value={`__create__${query}`}
+                  onSelect={handleCreate}
+                  disabled={creating}
+                  className="text-ssm text-primary font-medium"
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" />
+                  {creating ? 'Creating...' : `Create "${query.trim()}"`}
+                </CommandItem>
+              </CommandGroup>
+            )}
+
+            {filtered.length === 0 && !showCreate && (
+              <CommandEmpty className="text-ssm py-4">No brands found.</CommandEmpty>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 const CREATE_DEAL_ACCEPT_LIST = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -156,11 +295,13 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   const [outreachCategory, setOutreachCategory] = useState('')
   const [pricingModel, setPricingModel] = useState('')
   const [serviceType, setServiceType] = useState('')
+  const [brandCreating, setBrandCreating] = useState(false)
   const qc = useQueryClient()
   const { userId } = useUser()
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadFiles = useUploadDocumentFile()
+  const createCompany = useCreateCompany()
 
   const createDeal = useCreateDeal({
     onSuccess: (data: any) => {
@@ -184,16 +325,26 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
     },
   })
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
 
-    // Build tags from the selected service type
     const tags = serviceType ? [serviceType] : []
+
+    // If brand left empty → auto-create a company using the deal name
+    let resolvedCompanyId = companyId || null
+    if (!resolvedCompanyId && title.trim()) {
+      try {
+        const result: any = await createCompany.mutateAsync({ name: title.trim() })
+        resolvedCompanyId = result?.id ?? result?.data?.id ?? null
+      } catch {
+        // Non-fatal — proceed without brand
+      }
+    }
 
     createDeal.mutate({
       title: title.trim(),
-      companyId: companyId || null,
+      companyId: resolvedCompanyId,
       productId: null,
       tierId: null,
       stage,
@@ -208,7 +359,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
 
   // Product + tier are now optional — only title is required
   const canSubmit = !!title.trim()
-  const isPending = createDeal.isPending || uploadFiles.isPending
+  const isPending = createDeal.isPending || uploadFiles.isPending || createCompany.isPending || brandCreating
   const error = createDeal.error
 
   return (
@@ -241,19 +392,17 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           {/* Title with system type suggestions */}
           <DealNameInput value={title} onChange={setTitle} />
 
-          {/* Brand / Company — use combobox since companies list can grow large */}
+          {/* Brand / Company — shadcn combobox with inline create */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
-              Brand <span className="text-slate-400">(optional)</span>
+              Brand <span className="text-slate-400">(auto-created from deal name if empty)</span>
             </label>
-            <Combobox
-              options={[
-                { value: '', label: 'No brand' },
-                ...companies.map(c => ({ value: c.id, label: c.name })),
-              ]}
+            <BrandCombobox
+              companies={companies}
               value={companyId}
-              onValueChange={setCompanyId}
-              placeholder="Search brands..."
+              onChange={id => setCompanyId(id)}
+              onCreateStart={() => setBrandCreating(true)}
+              onCreateEnd={() => setBrandCreating(false)}
             />
           </div>
 
