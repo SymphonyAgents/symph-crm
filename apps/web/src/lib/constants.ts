@@ -409,11 +409,17 @@ export const ACCEPTED_FILE_TYPES = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain',
+  'text/markdown',
   'text/csv',
   'image/jpeg',
   'image/png',
   'image/webp',
   'image/gif',
+  'audio/webm',
+  'audio/mp4',
+  'audio/x-m4a',
+  '.md',
+  '.m4a',
 ].join(',')
 
 // ─── Color Palettes ──────────────────────────────────────────────────────────

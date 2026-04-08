@@ -17,6 +17,7 @@ import { useGetChatSessions, useGetChatHistory } from '@/lib/hooks/queries'
 import { useCreateChatSession, useDeleteChatSession } from '@/lib/hooks/mutations'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
+import { useChatTyping } from '@/lib/chat-typing-context'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -487,12 +488,16 @@ function SessionSidebar({
 export function Chat({ dealId }: { dealId?: string }) {
   const { data: session } = useSession()
   const queryClient = useQueryClient()
+  const { typing, typingSessionId, setTyping: setTypingCtx } = useChatTyping()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [sessionId, setSessionId] = useState<string | undefined>()
   const [input, setInput] = useState('')
-  const [typing, setTyping] = useState(false)
   const [focused, setFocused] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+
+  // Derived: typing indicator is relevant only when it belongs to the active session
+  const isTyping = typing && typingSessionId === sessionId
 
   // Sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -557,21 +562,21 @@ export function Chat({ dealId }: { dealId?: string }) {
   const handleSelectSession = useCallback((id: string) => {
     setSessionId(id)
     setMessages([])
-    setTyping(false)
+    setTypingCtx(id, false)
     setApiError(null)
     setSidebarOpen(false)
-  }, [])
+  }, [setTypingCtx])
 
   const handleNewChat = useCallback(() => {
     setSessionId(undefined)
     setMessages([])
-    setTyping(false)
+    setTypingCtx(undefined, false)
     setApiError(null)
     setInput('')
     setPasteChips([])
     setPendingAttachment(null)
     setSidebarOpen(false)
-  }, [])
+  }, [setTypingCtx])
 
   const handleDeleteSession = useCallback((id: string) => {
     deleteSession.mutate(id)
@@ -596,7 +601,7 @@ export function Chat({ dealId }: { dealId?: string }) {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, typing])
+  }, [messages, isTyping])
 
   // ── Image compression ────────────────────────────────────────────────────
 
@@ -635,14 +640,21 @@ export function Chat({ dealId }: { dealId?: string }) {
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
       'text/plain',
+      'text/markdown',
       'text/csv',
       'image/jpeg',
       'image/png',
       'image/webp',
       'image/gif',
+      'audio/webm',
+      'audio/mp4',
+      'audio/x-m4a',
     ])
-    if (!ACCEPTED_MIMES.has(file.type)) {
-      setAttachmentError(`Unsupported file type: ${file.type || file.name.split('.').pop()}. Accepted: PDF, DOCX, XLSX, TXT, CSV, images.`)
+    // Some browsers report empty MIME for .md files — fall back to extension check
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    const ACCEPTED_EXTS = new Set(['md', 'txt', 'csv', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'webm', 'm4a'])
+    if (!ACCEPTED_MIMES.has(file.type) && !ACCEPTED_EXTS.has(ext)) {
+      setAttachmentError(`Unsupported file type: ${file.type || ext}. Accepted: PDF, DOCX, XLSX, TXT, MD, CSV, images, audio (webm, m4a).`)
       return
     }
     const isImage = file.type.startsWith('image/')
@@ -682,6 +694,32 @@ export function Chat({ dealId }: { dealId?: string }) {
       setPasteChips(prev => [...prev, text])
     }
   }, [setImageAttachment])
+
+  // ── Drag-and-drop handlers ──────────────────────────────────────────────
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) {
+      setDragOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+  }, [])
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      await handleFileSelected(file)
+    }
+  }, [handleFileSelected])
 
   // ── Voice recording ──────────────────────────────────────────────────────
 
@@ -802,7 +840,7 @@ export function Chat({ dealId }: { dealId?: string }) {
     setPendingAttachment(null)
     setPasteChips([])
     if (attachment?.previewUrl) URL.revokeObjectURL(attachment.previewUrl)
-    setTyping(true)
+    setTypingCtx(activeSessionId, true)
     setApiError(null)
 
     const assistantMsgId = `a-${Date.now()}`
@@ -942,7 +980,7 @@ export function Chat({ dealId }: { dealId?: string }) {
       // session that initiated this request. If they switched sessions while
       // the response was streaming, the new session's UI should be unaffected.
       if (sessionIdRef.current === activeSessionId) {
-        setTyping(false)
+        setTypingCtx(activeSessionId, false)
       }
     }
   }
@@ -952,7 +990,7 @@ export function Chat({ dealId }: { dealId?: string }) {
     // Join all paste chips + typed text into one message
     const parts = [...(trimmed ? [trimmed] : []), ...pasteChips].filter(Boolean)
     const textToSend = parts.join('\n\n')
-    if ((!textToSend && !pendingAttachment) || typing) return
+    if ((!textToSend && !pendingAttachment) || isTyping) return
     sendMessage(textToSend, pendingAttachment ?? undefined)
   }
 
@@ -963,20 +1001,31 @@ export function Chat({ dealId }: { dealId?: string }) {
     }
   }
 
-  const canSubmit = (input.trim() || pendingAttachment || pasteChips.length > 0) && !typing
+  const canSubmit = (input.trim() || pendingAttachment || pasteChips.length > 0) && !isTyping
 
   // ── Input box ────────────────────────────────────────────────────────────
 
   const inputBox = (
     <div className="max-w-[680px] w-full mx-auto">
       <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
-          'rounded-lg bg-white dark:bg-[#1e1e21] transition-all duration-150',
-          focused
-            ? 'border border-black/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)]'
-            : 'border border-black/[.08] dark:border-white/[.08] shadow-[var(--shadow-card)]'
+          'relative rounded-lg bg-white dark:bg-[#1e1e21] transition-all duration-150',
+          dragOver
+            ? 'border-2 border-dashed border-primary shadow-[0_0_0_3px_rgba(var(--primary-rgb,99,102,241),0.15)]'
+            : focused
+              ? 'border border-black/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)]'
+              : 'border border-black/[.08] dark:border-white/[.08] shadow-[var(--shadow-card)]'
         )}
       >
+        {/* Drag overlay hint */}
+        {dragOver && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-primary/5 pointer-events-none">
+            <span className="text-sm font-medium text-primary">Drop file here</span>
+          </div>
+        )}
         {/* Recording indicator + visualizer */}
         {recording && (
           <RecordingIndicator
@@ -1021,11 +1070,11 @@ export function Chat({ dealId }: { dealId?: string }) {
                 ? 'Recording… press Stop when done'
                 : 'How can I help you today?'
             }
-            disabled={typing}
+            disabled={isTyping}
             rows={1}
             className={cn(
               'w-full bg-transparent border-none outline-none text-sm text-slate-900 dark:text-white leading-[1.6] resize-none overflow-hidden placeholder:text-slate-400',
-              typing && 'opacity-50'
+              isTyping && 'opacity-50'
             )}
             style={{ minHeight: '28px', maxHeight: '160px' }}
           />
@@ -1058,7 +1107,7 @@ export function Chat({ dealId }: { dealId?: string }) {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={typing || recording}
+            disabled={isTyping || recording}
             title="Attach file or image"
             className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           >
@@ -1072,7 +1121,7 @@ export function Chat({ dealId }: { dealId?: string }) {
           <button
             type="button"
             onClick={toggleRecording}
-            disabled={typing || !!pendingAttachment}
+            disabled={isTyping || !!pendingAttachment}
             title={recording ? 'Stop recording' : 'Record voice note'}
             className={cn(
               'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed',
@@ -1121,7 +1170,7 @@ export function Chat({ dealId }: { dealId?: string }) {
   // ── Empty state ──────────────────────────────────────────────────────────
 
   // Only show empty state when there's no active session — if sessionId is set we're loading/showing history
-  const isEmpty = messages.length === 0 && !typing && !sessionId && !loadingHistory
+  const isEmpty = messages.length === 0 && !isTyping && !sessionId && !loadingHistory
 
   if (isEmpty) {
     return (
@@ -1251,7 +1300,7 @@ export function Chat({ dealId }: { dealId?: string }) {
               )}
             </div>
           ))}
-          {typing && <TypingIndicator />}
+          {isTyping && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
       </div>
