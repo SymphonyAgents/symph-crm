@@ -177,11 +177,14 @@ export class DocumentsController {
     const safeName = titleBase.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60)
     const storagePath = `deals/${dealId}/${bucket}/${timestamp}-${safeName}.${isTextNote ? 'md' : ext}`
 
-    // For binary files (images, audio): store the actual file in ATTACHMENTS_BUCKET
-    // so it can be retrieved for preview/playback via the /preview endpoint.
-    if (isBinary) {
-      await this.storage.uploadAttachment(storagePath, buffer, baseMime)
-      this.logger.log(`Binary attachment stored: ${storagePath} (${buffer.length} bytes)`)
+    // Binary files: audio stays in Supabase (needs signed URLs for playback).
+    // Images and everything else goes to NFS via writeFile.
+    if (baseMime.startsWith('audio/')) {
+      await this.storage.uploadVoiceRecording(storagePath, buffer, baseMime)
+      this.logger.log(`Audio attachment stored in Supabase: ${storagePath} (${buffer.length} bytes)`)
+    } else if (isBinary) {
+      await this.storage.writeFile(storagePath, buffer)
+      this.logger.log(`Binary attachment stored on NFS: ${storagePath} (${buffer.length} bytes)`)
     }
 
     const tags = [bucket, baseMime.split('/')[1] ?? ext]
