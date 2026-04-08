@@ -441,16 +441,20 @@ function inlineBold(text: string): React.ReactNode {
 
 // ─── Tab-based Notes section ────────────────────────────────────────────────
 
-type NoteTabId = 'general' | 'meeting' | 'notes' | 'resources'
+type NoteTabId = 'general' | 'meeting' | 'discovery' | 'transcript' | 'proposal' | 'notes' | 'resources' | 'log'
 
 const NOTE_TABS: Array<{ id: NoteTabId; label: string }> = [
   { id: 'general', label: 'General' },
   { id: 'meeting', label: 'Meeting' },
+  { id: 'discovery', label: 'Discovery' },
+  { id: 'transcript', label: 'Transcript' },
+  { id: 'proposal', label: 'Proposal' },
   { id: 'notes', label: 'Notes' },
   { id: 'resources', label: 'Resources' },
+  { id: 'log', label: 'Log' },
 ]
 
-const VALID_NOTE_TABS = new Set<NoteTabId>(['general', 'meeting', 'notes', 'resources'])
+const VALID_NOTE_TABS = new Set<NoteTabId>(['general', 'meeting', 'discovery', 'transcript', 'proposal', 'notes', 'resources', 'log'])
 
 // Badge color per note type/category
 const NOTE_TYPE_COLORS: Record<string, { text: string; bg: string }> = {
@@ -494,8 +498,7 @@ function extractNoteTitle(filename: string, content: string): string {
 }
 
 // Extract a type/category label from the note's filename or content
-function extractNoteType(filename: string, category: string): string {
-  // Use the category the note is filed under
+function extractNoteType(_filename: string, category: string): string {
   return category.toUpperCase()
 }
 
@@ -529,16 +532,31 @@ function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: stri
   const counts: Record<NoteTabId, number> = {
     general: data.categories.general.length,
     meeting: data.categories.meeting.length,
+    discovery: data.categories.discovery.length,
+    transcript: data.categories.transcript.length,
+    proposal: data.categories.proposal.length,
     notes: notesCount,
     resources: data.resources.length,
+    log: data.log ? 1 : 0,
   }
 
-  // Resolve active tab: default to notes
   let resolvedTab: NoteTabId
   if (activeTab && VALID_NOTE_TABS.has(activeTab as NoteTabId)) {
     resolvedTab = activeTab as NoteTabId
+  } else if (counts.general > 0) {
+    resolvedTab = 'general'
   } else {
-    resolvedTab = 'notes'
+    resolvedTab = NOTE_TABS.find(t => counts[t.id] > 0)?.id ?? 'notes'
+  }
+
+  const hasAny = Object.values(counts).some(c => c > 0)
+
+  if (!hasAny) {
+    return (
+      <div className="px-5 pt-4">
+        <p className="text-xxs text-slate-400 text-center py-6">No notes yet</p>
+      </div>
+    )
   }
 
   function handleTabClick(tabId: NoteTabId) {
@@ -547,7 +565,7 @@ function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: stri
 
   return (
     <>
-      <div className="px-5 pt-1">
+      <div className="px-5 pt-1 overflow-x-auto">
         {/* Tab bar */}
         <div className="flex border-b border-black/[.06] dark:border-white/[.06] mb-0">
           {NOTE_TABS.map(tab => {
@@ -585,6 +603,8 @@ function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: stri
         <div className="pt-3">
           {resolvedTab === 'resources' ? (
             <ResourcesTabContent resources={data.resources} />
+          ) : resolvedTab === 'log' ? (
+            <LogTabContent log={data.log} />
           ) : resolvedTab === 'notes' ? (
             <NotesCompactList notes={allNotes} onSelect={(note, cat) => setSelectedNote({ note, category: cat })} />
           ) : resolvedTab === 'general' ? (
@@ -595,6 +615,21 @@ function DealNotesTabs({ dealId, activeTab }: { dealId: string; activeTab?: stri
           ) : resolvedTab === 'meeting' ? (
             <NotesCompactList
               notes={data.categories.meeting.map(n => ({ ...n, category: 'meeting' }))}
+              onSelect={(note, cat) => setSelectedNote({ note, category: cat })}
+            />
+          ) : resolvedTab === 'discovery' ? (
+            <NotesCompactList
+              notes={data.categories.discovery.map(n => ({ ...n, category: 'discovery' }))}
+              onSelect={(note, cat) => setSelectedNote({ note, category: cat })}
+            />
+          ) : resolvedTab === 'transcript' ? (
+            <NotesCompactList
+              notes={data.categories.transcript.map(n => ({ ...n, category: 'transcript' }))}
+              onSelect={(note, cat) => setSelectedNote({ note, category: cat })}
+            />
+          ) : resolvedTab === 'proposal' ? (
+            <NotesCompactList
+              notes={data.categories.proposal.map(n => ({ ...n, category: 'proposal' }))}
               onSelect={(note, cat) => setSelectedNote({ note, category: cat })}
             />
           ) : null}
@@ -670,6 +705,22 @@ function NotesCompactList({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+function LogTabContent({ log }: { log: string | null }) {
+  if (!log) {
+    return <p className="text-xxs text-slate-400 text-center py-6">No log entries yet</p>
+  }
+
+  return (
+    <div className="space-y-1.5 rounded-lg bg-slate-50/60 px-3.5 py-3 dark:bg-white/[.03]">
+      {log.split('\n').filter(Boolean).map((line, i) => (
+        <p key={i} className="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400 font-mono">
+          {line}
+        </p>
+      ))}
     </div>
   )
 }
