@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
 import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal } from '@/lib/hooks/mutations'
-import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany } from '@/lib/hooks/queries'
+import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDealSummaries, useGetDealSummaryLatest, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
@@ -346,6 +346,9 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const { data: activities = [], isLoading: loadingActivities } = useGetActivitiesByDeal(dealId, { enabled: !!deal })
   const { data: nfsNotes = [], isLoading: loadingDocs, refetch: refetchDocs } = useGetDealNotesFlat(dealId, { enabled: !!deal })
   const { data: documents = [], isLoading: loadingResourceDocs, refetch: refetchResourceDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal })
+  const { data: summaries = [] } = useGetDealSummaries(dealId)
+  const latestSummaryFilename = summaries[0]?.filename
+  const { data: latestSummary } = useGetDealSummaryLatest(dealId, latestSummaryFilename)
   const { data: users = [] } = useGetUsers()
   const deleteNfsNote = useDeleteDealNote({
     onSuccess: () => {
@@ -1253,6 +1256,39 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {/* ── Notes tab ─────────────────────────────────────────────────── */}
           {activeTab === 'notes' && (
             <div>
+              {/* Note Summary */}
+              {latestSummary && (
+                <div className="mx-4 mt-4 mb-0">
+                  <div
+                    className="rounded-md bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] overflow-hidden"
+                    style={{ borderTopWidth: '2px', borderImage: 'linear-gradient(90deg, #6c63ff, #a78bfa, #c084fc) 1' }}
+                  >
+                    <div className="px-4 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="text-primary shrink-0">
+                          <path d="M12 2l2.09 6.26L20.18 9l-4.64 3.74L16.72 19 12 15.77 7.28 19l1.18-6.26L3.82 9l6.09-.74L12 2z" fill="currentColor" />
+                          <circle cx="19" cy="5" r="2" fill="currentColor" opacity="0.4" />
+                          <circle cx="5" cy="5" r="1.5" fill="currentColor" opacity="0.3" />
+                        </svg>
+                        <span className="text-xxs font-semibold uppercase tracking-[0.06em] text-primary">
+                          Note Summary
+                        </span>
+                        <span className="text-atom text-slate-400 ml-auto tabular-nums">
+                          {new Date(latestSummary.meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {latestSummary.content
+                          .replace(/^---[\s\S]*?---\s*/, '')
+                          .replace(/^#\s+.+\n+/, '')
+                          .trim()
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Note input — Chat-style unified container */}
               <div className="p-4 border-b border-black/[.05] dark:border-white/[.06]">
                 <div

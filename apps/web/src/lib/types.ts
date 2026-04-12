@@ -307,6 +307,27 @@ export type DealNotesResponse = {
   log: string | null
 }
 
+// ── Deal Summaries (NFS) ────────────────────────────────────────────────────
+
+export type DealSummaryMeta = {
+  filename: string
+  generatedAt: string
+  notesIncluded: number
+  generatedBy: string
+  storagePath: string
+}
+
+export type DealSummaryFull = {
+  meta: DealSummaryMeta
+  content: string
+}
+
+export type DealSummaryCheck = {
+  hasNew: boolean
+  noteCount: number
+  latestSummaryAt: string | null
+}
+
 // ── Contact Notes (NFS) ─────────────────────────────────────────────────────
 
 export type ContactNoteFile = {

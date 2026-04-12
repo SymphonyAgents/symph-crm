@@ -36,6 +36,8 @@ export const queryKeys = {
     detail: (id: string) => ['deals', id] as const,
     notes: (id: string) => ['deals', id, 'notes'] as const,
     notesFlat: (id: string) => ['deals', id, 'notes', 'flat'] as const,
+    summaries: (id: string) => ['deals', id, 'summaries'] as const,
+    summaryCheck: (id: string) => ['deals', id, 'summaries', 'check'] as const,
   },
   pipeline: {
     summary: ['pipeline', 'summary'] as const,

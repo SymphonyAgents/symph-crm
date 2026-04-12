@@ -29,6 +29,8 @@ import type {
   InboxResponse,
   ApiNotification,
   DealNotesResponse,
+  DealSummaryMeta,
+  DealSummaryFull,
   ContactNotesResponse,
   NfsDealNote,
 } from '@/lib/types'
@@ -128,6 +130,31 @@ export function useGetDealNotesFlat(
     queryKey: queryKeys.deals.notesFlat(dealId ?? ''),
     queryFn: () => api.get<NfsDealNote[]>(`/deals/${dealId}/notes/flat`),
     enabled: !!dealId,
+    ...options,
+  })
+}
+
+export function useGetDealSummaries(
+  dealId: string | undefined,
+  options?: Partial<UseQueryOptions<DealSummaryMeta[]>>,
+) {
+  return useQuery<DealSummaryMeta[]>({
+    queryKey: queryKeys.deals.summaries(dealId ?? ''),
+    queryFn: () => api.get<DealSummaryMeta[]>(`/deals/${dealId}/summaries`),
+    enabled: !!dealId,
+    ...options,
+  })
+}
+
+export function useGetDealSummaryLatest(
+  dealId: string | undefined,
+  latestFilename: string | undefined,
+  options?: Partial<UseQueryOptions<DealSummaryFull>>,
+) {
+  return useQuery<DealSummaryFull>({
+    queryKey: ['deals', dealId, 'summaries', latestFilename] as const,
+    queryFn: () => api.get<DealSummaryFull>(`/deals/${dealId}/summaries/${latestFilename}`),
+    enabled: !!dealId && !!latestFilename,
     ...options,
   })
 }
