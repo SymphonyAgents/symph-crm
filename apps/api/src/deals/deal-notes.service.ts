@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common'
 import * as fs from 'fs'
 import * as path from 'path'
+import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 export type DealNoteFile = {
   filename: string
@@ -104,6 +105,16 @@ function extractExcerpt(content: string): string | null {
 /**
  * Build an NfsDealNote from a file on disk.
  */
+// Parse authorId from YAML frontmatter if present
+function extractAuthorId(content: string): string | null {
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+  if (!fmMatch) return null
+  const authorMatch = fmMatch[1].match(/authorId:\s*(.+)/)
+  if (!authorMatch) return null
+  const val = authorMatch[1].trim()
+  return val && val !== 'null' ? val : null
+}
+
 function fileToNfsDealNote(
   filename: string,
   content: string,
@@ -121,7 +132,7 @@ function fileToNfsDealNote(
     createdAt: isoDate,
     updatedAt: isoDate,
     wordCount: content.split(/\s+/).filter(Boolean).length,
-    authorId: null,
+    authorId: extractAuthorId(content),
     storagePath: `deals/${dealId}/${category}/${filename}`,
     tags: [],
     filename,
@@ -133,7 +144,7 @@ function fileToNfsDealNote(
 export class DealNotesService {
   private readonly basePath: string
 
-  constructor() {
+  constructor(private readonly auditLogs: AuditLogsService) {
     this.basePath = process.env.NFS_CRM_PATH || '/share/crm'
   }
 
@@ -223,7 +234,7 @@ export class DealNotesService {
     return allNotes
   }
 
-  async saveNote(dealId: string, type: string, title: string, content: string): Promise<NfsDealNote> {
+  async saveNote(dealId: string, type: string, title: string, content: string, authorId?: string | null): Promise<NfsDealNote> {
     const category = TYPE_TO_CATEGORY[type] || 'notes'
 
     if (!NOTE_CATEGORIES.includes(category as typeof NOTE_CATEGORIES[number])) {
@@ -237,8 +248,26 @@ export class DealNotesService {
     const filename = `${category}-${timestamp}.md`
     const filePath = path.join(catDir, filename)
 
-    const fullContent = `# ${title}\n\n${content}`
+    // Build YAML frontmatter with author and timestamp metadata
+    const frontmatter = [
+      '---',
+      `authorId: ${authorId || 'null'}`,
+      `createdAt: ${new Date(timestamp).toISOString()}`,
+      '---',
+    ].join('\n')
+
+    const fullContent = `${frontmatter}\n\n# ${title}\n\n${content}`
     await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+
+    // Audit log — fire and forget
+    this.auditLogs.log({
+      action: 'create',
+      auditType: 'note',
+      entityType: 'deal',
+      entityId: dealId,
+      performedBy: authorId || undefined,
+      details: { noteTitle: title, category, filename },
+    }).catch(() => {})
 
     return fileToNfsDealNote(filename, fullContent, category, dealId)
   }
@@ -261,6 +290,155 @@ export class DealNotesService {
     }
 
     await fs.promises.unlink(filePath)
+
+    // Audit log — fire and forget
+    this.auditLogs.log({
+      action: 'delete',
+      auditType: 'note',
+      entityType: 'deal',
+      entityId: dealId,
+      details: { category, filename },
+    }).catch(() => {})
+
     return { deleted: true }
+  }
+
+  // ── Deal Summaries (NFS markdown files) ──────────────────────────────────
+
+  /** List all existing summaries for a deal, newest first */
+  async listSummaries(dealId: string): Promise<DealSummaryMeta[]> {
+    const summaryDir = path.join(this.basePath, 'deals', dealId, 'summaries')
+    if (!fs.existsSync(summaryDir)) return []
+
+    const files = fs.readdirSync(summaryDir).filter(f => f.endsWith('.md'))
+    const metas: DealSummaryMeta[] = []
+
+    for (const filename of files) {
+      const filePath = path.join(summaryDir, filename)
+      const content = await fs.promises.readFile(filePath, 'utf-8')
+      const meta = parseSummaryFrontmatter(filename, content)
+      if (meta) metas.push(meta)
+    }
+
+    // Newest first
+    metas.sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime())
+    return metas
+  }
+
+  /** Read a specific summary file */
+  async readSummary(dealId: string, filename: string): Promise<{ meta: DealSummaryMeta; content: string } | null> {
+    if (filename.includes('..') || filename.includes('/')) {
+      throw new BadRequestException('Invalid filename')
+    }
+    const filePath = path.join(this.basePath, 'deals', dealId, 'summaries', filename)
+    if (!fs.existsSync(filePath)) return null
+    const content = await fs.promises.readFile(filePath, 'utf-8')
+    const meta = parseSummaryFrontmatter(filename, content)
+    if (!meta) return null
+    return { meta, content }
+  }
+
+  /** Check if new notes exist since the latest summary */
+  async hasNewNotesSinceLastSummary(dealId: string): Promise<{ hasNew: boolean; noteCount: number; latestSummaryAt: string | null }> {
+    const summaries = await this.listSummaries(dealId)
+    const latestSummary = summaries[0] ?? null
+    const latestSummaryAt = latestSummary?.generatedAt ?? null
+    const latestSummaryTs = latestSummaryAt ? new Date(latestSummaryAt).getTime() : 0
+
+    const allNotes = await this.getNotesFlat(dealId)
+    const newNotes = latestSummaryTs > 0
+      ? allNotes.filter(n => new Date(n.createdAt).getTime() > latestSummaryTs)
+      : allNotes
+
+    return { hasNew: newNotes.length > 0, noteCount: newNotes.length, latestSummaryAt }
+  }
+
+  /** Write a generated summary as a new markdown file */
+  async writeSummary(
+    dealId: string,
+    summary: string,
+    nextSteps: string[],
+    notesIncluded: number,
+    generatedBy?: string | null,
+  ): Promise<DealSummaryMeta> {
+    const summaryDir = path.join(this.basePath, 'deals', dealId, 'summaries')
+    fs.mkdirSync(summaryDir, { recursive: true })
+
+    const timestamp = Date.now()
+    const isoDate = new Date(timestamp).toISOString()
+    const filename = `summary-${timestamp}.md`
+    const filePath = path.join(summaryDir, filename)
+
+    const frontmatter = [
+      '---',
+      `generatedAt: ${isoDate}`,
+      `notesIncluded: ${notesIncluded}`,
+      `generatedBy: ${generatedBy || 'system'}`,
+      '---',
+    ].join('\n')
+
+    const nextStepsMd = nextSteps.length > 0
+      ? `\n\n## Next Steps\n\n${nextSteps.map(s => `- ${s}`).join('\n')}`
+      : ''
+
+    const fullContent = `${frontmatter}\n\n# Deal Summary\n\n${summary}${nextStepsMd}\n`
+    await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+
+    // Audit log
+    this.auditLogs.log({
+      action: 'create',
+      auditType: 'summary',
+      entityType: 'deal',
+      entityId: dealId,
+      performedBy: generatedBy || undefined,
+      details: { filename, notesIncluded },
+    }).catch(() => {})
+
+    return {
+      filename,
+      generatedAt: isoDate,
+      notesIncluded,
+      generatedBy: generatedBy || 'system',
+      storagePath: `deals/${dealId}/summaries/${filename}`,
+    }
+  }
+}
+
+// ─── Summary types & helpers ──────────────────────────────────────────────
+
+export type DealSummaryMeta = {
+  filename: string
+  generatedAt: string
+  notesIncluded: number
+  generatedBy: string
+  storagePath: string
+}
+
+function parseSummaryFrontmatter(filename: string, content: string): DealSummaryMeta | null {
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+  if (!fmMatch) {
+    // Fallback: extract timestamp from filename
+    const ts = extractTimestamp(filename)
+    return {
+      filename,
+      generatedAt: ts ? new Date(ts).toISOString() : new Date(0).toISOString(),
+      notesIncluded: 0,
+      generatedBy: 'system',
+      storagePath: '',
+    }
+  }
+
+  const fm = fmMatch[1]
+  const get = (key: string) => {
+    const m = fm.match(new RegExp(`${key}:\\s*(.+)`))
+    return m ? m[1].trim() : null
+  }
+
+  return {
+    filename,
+    generatedAt: get('generatedAt') || new Date(0).toISOString(),
+    notesIncluded: parseInt(get('notesIncluded') || '0', 10),
+    generatedBy: get('generatedBy') || 'system',
+    storagePath: '',
   }
 }

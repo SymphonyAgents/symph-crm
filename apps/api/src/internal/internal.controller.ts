@@ -19,6 +19,7 @@ import { InternalService } from './internal.service'
 import { InternalGuard } from './internal.guard'
 import { CalendarConnectionsService } from '../calendar/calendar-connections.service'
 import { DealsService } from '../deals/deals.service'
+import { DealNotesService } from '../deals/deal-notes.service'
 import { CompaniesService } from '../companies/companies.service'
 import { ContactsService } from '../contacts/contacts.service'
 import { DocumentsService } from '../documents/documents.service'
@@ -118,6 +119,7 @@ export class InternalController {
     private readonly internalService: InternalService,
     private readonly calendarConnections: CalendarConnectionsService,
     private readonly deals: DealsService,
+    private readonly dealNotes: DealNotesService,
     private readonly companies: CompaniesService,
     private readonly contacts: ContactsService,
     private readonly documents: DocumentsService,
@@ -340,6 +342,69 @@ export class InternalController {
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
     await this.deals.remove(id, performedBy)
     return { ok: true, deleted: id }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Deal Notes & Summaries
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** POST /api/internal/deals/:id/notes — Create a note (with author attribution) */
+  @Post('deals/:id/notes')
+  @HttpCode(HttpStatus.OK)
+  async createDealNote(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+    @Body() body: { type: string; title: string; content: string; authorId?: string },
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
+    const authorId = body.authorId || performedBy || null
+    const note = await this.dealNotes.saveNote(id, body.type, body.title, body.content, authorId)
+    return { ok: true, note, url: this.crmUrl('deal', id) }
+  }
+
+  /** GET /api/internal/deals/:id/notes — Get all notes flat */
+  @Get('deals/:id/notes')
+  async getDealNotes(@Param('id') id: string) {
+    return this.dealNotes.getNotesFlat(id)
+  }
+
+  /** GET /api/internal/deals/:id/summaries — List all summaries */
+  @Get('deals/:id/summaries')
+  async listDealSummaries(@Param('id') id: string) {
+    return this.dealNotes.listSummaries(id)
+  }
+
+  /** GET /api/internal/deals/:id/summaries/check — Check if new notes exist since last summary */
+  @Get('deals/:id/summaries/check')
+  async checkNewNotes(@Param('id') id: string) {
+    return this.dealNotes.hasNewNotesSinceLastSummary(id)
+  }
+
+  /** GET /api/internal/deals/:id/summaries/:filename — Read a specific summary */
+  @Get('deals/:id/summaries/:filename')
+  async readDealSummary(@Param('id') id: string, @Param('filename') filename: string) {
+    const result = await this.dealNotes.readSummary(id, filename)
+    if (!result) throw new NotFoundException(`Summary ${filename} not found for deal ${id}`)
+    return result
+  }
+
+  /** POST /api/internal/deals/:id/summaries — Write a new summary */
+  @Post('deals/:id/summaries')
+  @HttpCode(HttpStatus.OK)
+  async writeDealSummary(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+    @Body() body: { summary: string; nextSteps: string[]; notesIncluded: number },
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
+    const meta = await this.dealNotes.writeSummary(
+      id,
+      body.summary,
+      body.nextSteps,
+      body.notesIncluded,
+      performedBy,
+    )
+    return { ok: true, ...meta, url: this.crmUrl('deal', id) }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

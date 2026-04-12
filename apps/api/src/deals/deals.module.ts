@@ -8,6 +8,6 @@ import { AuditLogsModule } from '../audit-logs/audit-logs.module'
   imports: [AuditLogsModule],
   controllers: [DealsController],
   providers: [DealsService, DealNotesService],
-  exports: [DealsService],
+  exports: [DealsService, DealNotesService],
 })
 export class DealsModule {}

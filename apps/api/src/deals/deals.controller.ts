@@ -49,8 +49,10 @@ export class DealsController {
   saveDealNote(
     @Param('id') id: string,
     @Body() body: SaveDealNoteDto,
+    @Headers('x-user-id') userId?: string,
   ) {
-    return this.dealNotesService.saveNote(id, body.type, body.title, body.content)
+    const authorId = body.authorId || userId || null
+    return this.dealNotesService.saveNote(id, body.type, body.title, body.content, authorId)
   }
 
   @Post()
@@ -83,6 +85,36 @@ export class DealsController {
     @Headers('x-user-id') userId?: string,
   ) {
     return this.dealsService.updateStage(id, body.stage, userId)
+  }
+
+  @Get(':id/summaries')
+  listSummaries(@Param('id') id: string) {
+    return this.dealNotesService.listSummaries(id)
+  }
+
+  @Get(':id/summaries/check')
+  checkNewNotes(@Param('id') id: string) {
+    return this.dealNotesService.hasNewNotesSinceLastSummary(id)
+  }
+
+  @Get(':id/summaries/:filename')
+  readSummary(@Param('id') id: string, @Param('filename') filename: string) {
+    return this.dealNotesService.readSummary(id, filename)
+  }
+
+  @Post(':id/summaries')
+  writeSummary(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId?: string,
+    @Body() body?: { summary: string; nextSteps: string[]; notesIncluded: number },
+  ) {
+    return this.dealNotesService.writeSummary(
+      id,
+      body?.summary ?? '',
+      body?.nextSteps ?? [],
+      body?.notesIncluded ?? 0,
+      userId,
+    )
   }
 
   @Delete(':id/notes/:category/:filename')
