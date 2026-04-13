@@ -149,8 +149,7 @@ function fileToNfsDealNote(
 export class DealNotesService {
   private readonly basePath: string
   private readonly logger = new Logger(DealNotesService.name)
-  private readonly gatewayUrl: string
-  private readonly apiToken: string
+  private readonly anthropicApiKey: string
 
   constructor(
     private readonly auditLogs: AuditLogsService,
@@ -158,10 +157,7 @@ export class DealNotesService {
     private readonly config: ConfigService,
   ) {
     this.basePath = process.env.NFS_CRM_PATH || '/share/crm'
-    this.gatewayUrl = (
-      config.get<string>('ARIA_GATEWAY_URL') ?? 'https://aria-gateway.symph.co'
-    ).replace(/\/+$/, '')
-    this.apiToken = config.get<string>('ARIA_API_TOKEN') ?? ''
+    this.anthropicApiKey = config.get<string>('ANTHROPIC_API_KEY') ?? ''
   }
 
   private async getDealName(dealId: string): Promise<string | null> {
@@ -335,7 +331,7 @@ export class DealNotesService {
     return { deleted: true }
   }
 
-  // ── Summary Generation (via Aria gateway) ───────────────────────────────
+  // ── Summary Generation (direct Anthropic API) ────────────────────────────
 
   async generateSummary(dealId: string, userId?: string): Promise<DealSummaryMeta> {
     const allNotes = await this.getNotesFlat(dealId)
@@ -345,12 +341,12 @@ export class DealNotesService {
 
     const dealName = await this.getDealName(dealId) ?? 'Unknown Deal'
 
-    // Build a concise text block of all notes for summarization
+    // Build note block from NFS files — strip frontmatter for the prompt
     const noteBlock = allNotes
       .map(n => `### ${n.title} (${n.category}, ${n.createdAt})\n${n.content.replace(/^---[\s\S]*?---\s*/, '').trim()}`)
       .join('\n\n---\n\n')
 
-    const prompt = [
+    const userPrompt = [
       `Summarize the following ${allNotes.length} CRM notes for the deal "${dealName}".`,
       'Produce a concise executive summary (3-6 paragraphs) covering:',
       '- Current status and key facts',
@@ -372,35 +368,41 @@ export class DealNotesService {
       noteBlock,
     ].join('\n')
 
-    // Send one-shot to Aria gateway
-    const sessionId = `crm-summary-${dealId}-${Date.now()}`
+    if (!this.anthropicApiKey) {
+      throw new BadRequestException('Summary generation is not configured — ANTHROPIC_API_KEY missing')
+    }
 
-    const sendResp = await fetch(`${this.gatewayUrl}/v1/chat/send`, {
+    // Call Anthropic directly — one-shot, no gateway, no polling
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiToken}`,
+        'x-api-key': this.anthropicApiKey,
+        'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        session_id: sessionId,
-        content: prompt,
-        user_id: userId ?? 'system',
-        user_tier: 3,
-        workspace_path: '/share/agency/products/symph-crm',
-        system_prompt_additions: 'You are a CRM summary assistant. Be concise and actionable. Currency is PHP.',
+        model: 'claude-haiku-4-5',
+        max_tokens: 2048,
+        system: 'You are a CRM summary assistant. Be concise and actionable. Currency is PHP.',
+        messages: [{ role: 'user', content: userPrompt }],
       }),
     })
 
-    if (!sendResp.ok) {
-      const errText = await sendResp.text()
-      this.logger.error(`Aria gateway error for summary generation: ${sendResp.status} ${errText}`)
-      throw new BadRequestException('Summary generation failed — Aria gateway error')
+    if (!resp.ok) {
+      const errText = await resp.text()
+      this.logger.error(`Anthropic API error during summary generation: ${resp.status} ${errText}`)
+      throw new BadRequestException('Summary generation failed — AI API error')
     }
 
-    // Poll for reply (simplified from ChatService pattern)
-    const reply = await this.pollForSummaryReply(sessionId)
+    const data = await resp.json() as {
+      content: Array<{ type: string; text: string }>
+    }
+    const reply = data.content.find(b => b.type === 'text')?.text ?? ''
+    if (!reply) {
+      throw new BadRequestException('Summary generation returned empty response')
+    }
 
-    // Parse the structured response
+    // Parse structured response
     const summaryMatch = reply.match(/SUMMARY:\s*([\s\S]*?)(?=NEXT_STEPS:|$)/)
     const stepsMatch = reply.match(/NEXT_STEPS:\s*([\s\S]*)$/)
 
@@ -411,51 +413,6 @@ export class DealNotesService {
       .filter(Boolean) ?? []
 
     return this.writeSummary(dealId, summaryText, nextSteps, allNotes.length, userId)
-  }
-
-  private async pollForSummaryReply(sessionId: string): Promise<string> {
-    const maxWait = 90_000
-    const interval = 2_000
-    const start = Date.now()
-    let lastSeq = 0
-    const textChunks: string[] = []
-
-    while (Date.now() - start < maxWait) {
-      await new Promise(r => setTimeout(r, interval))
-      try {
-        const resp = await fetch(
-          `${this.gatewayUrl}/v1/chat/history?session_id=${encodeURIComponent(sessionId)}&after_seq=${lastSeq}`,
-          { headers: { Authorization: `Bearer ${this.apiToken}` } },
-        )
-        if (!resp.ok) continue
-
-        // Gateway returns { session_id, entries: [{ seq, type, payload }] }
-        const data = await resp.json() as {
-          entries?: Array<{ seq: number; type: string; payload: Record<string, unknown> }>
-        }
-        const entries = data.entries ?? []
-
-        for (const entry of entries) {
-          if (entry.seq > lastSeq) lastSeq = entry.seq
-
-          if (entry.type === 'text' && typeof entry.payload.text === 'string') {
-            textChunks.push(entry.payload.text)
-          }
-
-          // 'done' signals the agent has finished responding
-          if (entry.type === 'done' && textChunks.length > 0) {
-            return textChunks.join('')
-          }
-        }
-      } catch {
-        // retry
-      }
-    }
-
-    // If we collected some text but never saw 'done', return what we have
-    if (textChunks.length > 0) return textChunks.join('')
-
-    throw new BadRequestException('Summary generation timed out')
   }
 
   // ── Deal Summaries (NFS markdown files) ──────────────────────────────────
