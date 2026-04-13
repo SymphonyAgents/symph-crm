@@ -165,6 +165,8 @@ export function EditDealModal({ deal, onClose }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.deals.all })
       qc.invalidateQueries({ queryKey: queryKeys.deals.detail(deal.id) })
+      qc.invalidateQueries({ queryKey: queryKeys.pipeline.summary })
+      onClose()
     },
   })
 
@@ -211,10 +213,8 @@ export function EditDealModal({ deal, onClose }: Props) {
     } else if (newCompanyId === oldCompanyId) {
       // Nothing changed at all — just close
       onClose()
-    } else {
-      // Only brand changed — close after brand mutation fires
-      onClose()
     }
+    // else: brand-only change — assignBrand is in-flight; its onSuccess handles onClose
   }
 
   const canSubmit = !!title.trim()
