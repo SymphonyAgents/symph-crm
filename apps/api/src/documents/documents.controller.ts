@@ -58,7 +58,11 @@ export class DocumentsController {
    * Returns the actual file content with appropriate Content-Type and Content-Disposition headers.
    */
   @Get(':id/file')
-  async serveFile(@Param('id') id: string, @Res({ passthrough: true }) res: any) {
+  async serveFile(
+    @Param('id') id: string,
+    @Query('inline') inline: string | undefined,
+    @Res({ passthrough: true }) res: any,
+  ) {
     const doc = await this.documentsService.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
 
@@ -73,11 +77,12 @@ export class DocumentsController {
     const buffer = await this.storage.readFile(doc.storagePath)
     if (!buffer) throw new NotFoundException(`File not found on NFS: ${doc.storagePath}`)
 
-    // Set response headers via NestJS
+    // inline=1 → browser renders in-place (PDF preview); default → force download
     const filename = doc.storagePath.split('/').pop() ?? doc.title
     const mimeType = this.guessMimeType(doc.storagePath, doc.tags ?? [])
+    const disposition = inline ? `inline; filename="${filename}"` : `attachment; filename="${filename}"`
     res.setHeader('Content-Type', mimeType)
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+    res.setHeader('Content-Disposition', disposition)
     return new StreamableFile(buffer)
   }
 

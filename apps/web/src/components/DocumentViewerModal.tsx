@@ -47,6 +47,13 @@ function isAudioDoc(doc: ViewableDoc): boolean {
   return ['mp4', 'x-m4a', 'mpeg', 'mp3', 'm4a'].some(t => doc.tags?.includes(t))
 }
 
+/** PDF if storagePath ends in .pdf or tags include 'pdf' */
+function isPdfDoc(doc: ViewableDoc): boolean {
+  if (doc.storagePath?.toLowerCase().endsWith('.pdf')) return true
+  if (doc.tags?.includes('pdf')) return true
+  return false
+}
+
 /** Friendly type label from tags */
 function getFileTypeLabel(doc: ViewableDoc): string {
   if (!doc.tags?.length) return 'Note'
@@ -72,6 +79,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
   const isMarkdown = isMarkdownDoc(doc)
   const isImage = isImageDoc(doc)
   const isAudio = isAudioDoc(doc)
+  const isPdf = isPdfDoc(doc)
   const hasPreloadedContent = initialContent !== undefined
   const canEdit = !isImage && !isAudio && !hasPreloadedContent
   const [viewMode, setViewMode] = useState<ViewMode>('rendered')
@@ -449,6 +457,13 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                   <p className="text-xs">Image not available</p>
                 </div>
               )
+            ) : isPdf ? (
+              /* PDF viewer — rendered inline via the /file?inline=1 endpoint */
+              <iframe
+                src={`/api/documents/${doc.id}/file?inline=1`}
+                title={doc.title}
+                className="w-full flex-1 min-h-[60vh] border-0"
+              />
             ) : !content ? (
               /* No content — storage may not be configured */
               <div className="flex flex-col items-center justify-center h-48 gap-3 text-slate-400 px-6">

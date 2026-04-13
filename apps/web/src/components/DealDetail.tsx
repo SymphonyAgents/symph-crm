@@ -618,10 +618,29 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
   const handleDownloadDoc = useCallback(async (doc: ApiDocument) => {
     try {
-      const data = await api.get<{ url: string; filename: string }>(`/documents/${doc.id}/download`)
-      window.open(data.url, '_blank')
+      const AUDIO_TAGS = ['mp3', 'm4a', 'mpeg', 'mp4', 'x-m4a']
+      const isVoice = doc.tags?.some(t => AUDIO_TAGS.includes(t))
+      if (isVoice) {
+        // Voice recordings are in Supabase Storage — need a signed URL
+        const data = await api.get<{ url: string; filename: string }>(`/documents/${doc.id}/download`)
+        const a = document.createElement('a')
+        a.href = data.url
+        a.download = data.filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      } else {
+        // NFS files: download directly via the /file endpoint (Content-Disposition: attachment)
+        const filename = doc.storagePath?.split('/').pop() ?? doc.title
+        const a = document.createElement('a')
+        a.href = `/api/documents/${doc.id}/file`
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      }
     } catch {
-      toast.error('Download failed — storage may not be configured')
+      toast.error('Download failed')
     }
   }, [])
 

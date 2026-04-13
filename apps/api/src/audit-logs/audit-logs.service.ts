@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { eq, desc, and, sql, gte, lte } from 'drizzle-orm'
-import { auditLogs, users, deals } from '@symph-crm/database'
+import { auditLogs, users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 
@@ -46,11 +46,9 @@ export class AuditLogsService {
         details: auditLogs.details,
         performerName: users.name,
         performerImage: users.image,
-        entityName: deals.title,
       })
       .from(auditLogs)
       .leftJoin(users, eq(auditLogs.performedBy, users.id))
-      .leftJoin(deals, and(eq(auditLogs.entityType, 'deal'), eq(auditLogs.entityId, deals.id)))
       .where(where)
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit)
