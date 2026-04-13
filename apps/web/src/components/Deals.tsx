@@ -442,6 +442,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const updateCompany = useUpdateCompany({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.companies.all })
+      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
       setEditingBrand(null)
     },
   })
