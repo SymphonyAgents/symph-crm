@@ -32,6 +32,7 @@ import { Copy, Check, Plus, Trash2 } from 'lucide-react'
 import { Input } from './ui/input'
 import { DocumentViewerModal } from './DocumentViewerModal'
 import { PasteChip, PastePreviewModal } from './PasteChip'
+import { PartialCollapse } from './PartialCollapse'
 import { BillingSection } from './BillingSection'
 import { EditDealModal } from './EditDealModal'
 import { EditContactModal } from './EditContactModal'
@@ -1287,26 +1288,27 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     style={{ borderTopWidth: '2px', borderImage: 'linear-gradient(90deg, #6c63ff, #a78bfa, #c084fc) 1' }}
                   >
                     <div className="px-4 py-3">
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="text-primary shrink-0">
-                          <path d="M12 2l2.09 6.26L20.18 9l-4.64 3.74L16.72 19 12 15.77 7.28 19l1.18-6.26L3.82 9l6.09-.74L12 2z" fill="currentColor" />
-                          <circle cx="19" cy="5" r="2" fill="currentColor" opacity="0.4" />
-                          <circle cx="5" cy="5" r="1.5" fill="currentColor" opacity="0.3" />
-                        </svg>
-                        <span className="text-xxs font-semibold uppercase tracking-[0.06em] text-primary">
-                          Note Summary
-                        </span>
-                        <span className="text-atom text-slate-400 ml-auto tabular-nums">
-                          {new Date(latestSummary.meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                        {latestSummary.content
-                          .replace(/^---[\s\S]*?---\s*/, '')
-                          .replace(/^#\s+.+\n+/, '')
-                          .trim()
+                      <PartialCollapse
+                        label="Note Summary"
+                        date={new Date(latestSummary.meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        gradientFrom="#ffffff"
+                        gradientFromDark="#1e1e21"
+                        icon={
+                          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="text-primary">
+                            <path d="M12 2l2.09 6.26L20.18 9l-4.64 3.74L16.72 19 12 15.77 7.28 19l1.18-6.26L3.82 9l6.09-.74L12 2z" fill="currentColor" />
+                            <circle cx="19" cy="5" r="2" fill="currentColor" opacity="0.4" />
+                            <circle cx="5" cy="5" r="1.5" fill="currentColor" opacity="0.3" />
+                          </svg>
                         }
-                      </div>
+                      >
+                        <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                          {latestSummary.content
+                            .replace(/^---[\s\S]*?---\s*/, '')
+                            .replace(/^#\s+.+\n+/, '')
+                            .trim()
+                          }
+                        </div>
+                      </PartialCollapse>
                     </div>
                   </div>
                 </div>
