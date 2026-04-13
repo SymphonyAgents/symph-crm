@@ -346,12 +346,30 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const { data: activities = [], isLoading: loadingActivities } = useGetActivitiesByDeal(dealId, { enabled: !!deal })
   const { data: nfsNotes = [], isLoading: loadingDocs, refetch: refetchDocs } = useGetDealNotesFlat(dealId, { enabled: !!deal })
   const { data: documents = [], isLoading: loadingResourceDocs, refetch: refetchResourceDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal })
-  const { data: summaries = [] } = useGetDealSummaries(dealId)
+  const [summaryTriggeredAt, setSummaryTriggeredAt] = useState<string | null>(null)
+  const isSummaryGenerating = summaryTriggeredAt !== null
+  const { data: summaries = [] } = useGetDealSummaries(dealId, {
+    // Poll every 3s while Aria is generating — stop once a new summary appears
+    refetchInterval: isSummaryGenerating ? 3000 : false,
+  })
   const latestSummaryFilename = summaries[0]?.filename
   const { data: latestSummary } = useGetDealSummaryLatest(dealId, latestSummaryFilename)
-  const generateSummary = useGenerateDealSummary({
-    onSuccess: () => {
+
+  // Clear generating state once a new summary appears after the trigger
+  useEffect(() => {
+    if (!summaryTriggeredAt || !summaries[0]?.generatedAt) return
+    if (new Date(summaries[0].generatedAt) > new Date(summaryTriggeredAt)) {
+      setSummaryTriggeredAt(null)
       queryClient.invalidateQueries({ queryKey: queryKeys.deals.summaries(dealId) })
+    }
+  }, [summaries, summaryTriggeredAt, dealId, queryClient])
+
+  const generateSummary = useGenerateDealSummary({
+    onSuccess: (data) => {
+      setSummaryTriggeredAt(data.triggeredAt)
+    },
+    onError: () => {
+      toast.error('Failed to start summary generation')
     },
   })
   const { data: users = [] } = useGetUsers()
@@ -1283,17 +1301,17 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         </span>
                         <button
                           type="button"
-                          disabled={generateSummary.isPending}
+                          disabled={isSummaryGenerating || generateSummary.isPending}
                           onClick={() => generateSummary.mutate(dealId)}
                           className="ml-2 flex items-center gap-1 text-xxs font-medium text-primary hover:text-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          {generateSummary.isPending && (
+                          {isSummaryGenerating || generateSummary.isPending && (
                             <svg className="animate-spin" width={10} height={10} viewBox="0 0 24 24" fill="none">
                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                             </svg>
                           )}
-                          {generateSummary.isPending ? 'Generating...' : 'Regenerate'}
+                          {isSummaryGenerating || generateSummary.isPending ? 'Generating...' : 'Regenerate'}
                         </button>
                       </div>
                       <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
@@ -1313,11 +1331,11 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 <div className="mx-4 mt-4 mb-0">
                   <button
                     type="button"
-                    disabled={generateSummary.isPending}
+                    disabled={isSummaryGenerating || generateSummary.isPending}
                     onClick={() => generateSummary.mutate(dealId)}
                     className="w-full flex items-center justify-center gap-2 rounded-md border border-dashed border-primary/30 bg-primary/[.03] hover:bg-primary/[.06] text-primary text-xs font-medium py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {generateSummary.isPending ? (
+                    {isSummaryGenerating || generateSummary.isPending ? (
                       <svg className="animate-spin shrink-0" width={14} height={14} viewBox="0 0 24 24" fill="none">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -1327,7 +1345,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         <path d="M12 2l2.09 6.26L20.18 9l-4.64 3.74L16.72 19 12 15.77 7.28 19l1.18-6.26L3.82 9l6.09-.74L12 2z" fill="currentColor" />
                       </svg>
                     )}
-                    {generateSummary.isPending ? 'Generating Summary...' : 'Generate Summary'}
+                    {isSummaryGenerating || generateSummary.isPending ? 'Generating Summary...' : 'Generate Summary'}
                   </button>
                 </div>
               )}

@@ -236,12 +236,12 @@ export function useDeleteDealNote(
 // ─── Deal Summary mutations ─────────────────────────────────────────────────
 
 export function useGenerateDealSummary(
-  options?: UseMutationOptions<unknown, Error, string>,
+  options?: UseMutationOptions<{ status: string; triggeredAt: string }, Error, string>,
 ) {
   return useMutation({
     mutationFn: (dealId: string) =>
-      api.post(`/deals/${dealId}/summaries/generate`, {}),
-    ...withToast('Summary generated', options),
+      api.post<{ status: string; triggeredAt: string }>(`/deals/${dealId}/summaries/generate`, {}),
+    ...options,
   })
 }
 

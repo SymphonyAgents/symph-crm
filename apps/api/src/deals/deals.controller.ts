@@ -107,7 +107,7 @@ export class DealsController {
     @Param('id') id: string,
     @Headers('x-user-id') userId?: string,
   ) {
-    return this.dealNotesService.generateSummary(id, userId)
+    return this.dealNotesService.triggerSummaryGeneration(id, userId)
   }
 
   @Post(':id/summaries')

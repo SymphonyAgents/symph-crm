@@ -149,7 +149,8 @@ function fileToNfsDealNote(
 export class DealNotesService {
   private readonly basePath: string
   private readonly logger = new Logger(DealNotesService.name)
-  private readonly anthropicApiKey: string
+  private readonly gatewayUrl: string
+  private readonly apiToken: string
 
   constructor(
     private readonly auditLogs: AuditLogsService,
@@ -157,7 +158,10 @@ export class DealNotesService {
     private readonly config: ConfigService,
   ) {
     this.basePath = process.env.NFS_CRM_PATH || '/share/crm'
-    this.anthropicApiKey = config.get<string>('ANTHROPIC_API_KEY') ?? ''
+    this.gatewayUrl = (
+      config.get<string>('ARIA_GATEWAY_URL') ?? 'https://aria-gateway.symph.co'
+    ).replace(/\/+$/, '')
+    this.apiToken = config.get<string>('ARIA_API_TOKEN') ?? ''
   }
 
   private async getDealName(dealId: string): Promise<string | null> {
@@ -331,88 +335,45 @@ export class DealNotesService {
     return { deleted: true }
   }
 
-  // ── Summary Generation (direct Anthropic API) ────────────────────────────
+  // ── Summary Generation (async via Aria — crm-summarize-deal skill) ────────
 
-  async generateSummary(dealId: string, userId?: string): Promise<DealSummaryMeta> {
+  /**
+   * Fires an async summary generation request to Aria via the gateway.
+   * Aria invokes the crm-summarize-deal skill which reads all NFS notes,
+   * cross-references the company wiki, and writes the result to NFS.
+   * The caller returns immediately — the frontend polls GET /summaries
+   * until the new file appears.
+   */
+  async triggerSummaryGeneration(dealId: string, userId?: string): Promise<{ status: 'generating'; triggeredAt: string }> {
     const allNotes = await this.getNotesFlat(dealId)
     if (allNotes.length === 0) {
       throw new BadRequestException('No notes to summarize')
     }
 
-    const dealName = await this.getDealName(dealId) ?? 'Unknown Deal'
+    const triggeredAt = new Date().toISOString()
+    const sessionId = `crm-summary-${dealId}-${Date.now()}`
+    const triggerMessage = `[CRM_SUMMARY] deal_id=${dealId}${userId ? ` performed_by=${userId}` : ''}`
 
-    // Build note block from NFS files — strip frontmatter for the prompt
-    const noteBlock = allNotes
-      .map(n => `### ${n.title} (${n.category}, ${n.createdAt})\n${n.content.replace(/^---[\s\S]*?---\s*/, '').trim()}`)
-      .join('\n\n---\n\n')
-
-    const userPrompt = [
-      `Summarize the following ${allNotes.length} CRM notes for the deal "${dealName}".`,
-      'Produce a concise executive summary (3-6 paragraphs) covering:',
-      '- Current status and key facts',
-      '- Important decisions and outcomes',
-      '- Open questions or blockers',
-      '',
-      'Then list 3-7 concrete next steps as bullet points.',
-      '',
-      'Format your response EXACTLY as:',
-      'SUMMARY:',
-      '<your summary paragraphs>',
-      '',
-      'NEXT_STEPS:',
-      '- step one',
-      '- step two',
-      '...',
-      '',
-      '--- NOTES ---',
-      noteBlock,
-    ].join('\n')
-
-    if (!this.anthropicApiKey) {
-      throw new BadRequestException('Summary generation is not configured — ANTHROPIC_API_KEY missing')
-    }
-
-    // Call Anthropic directly — one-shot, no gateway, no polling
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    // Fire-and-forget — do not await or poll. Aria writes the file to NFS when done.
+    fetch(`${this.gatewayUrl}/v1/chat/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': this.anthropicApiKey,
-        'anthropic-version': '2023-06-01',
+        Authorization: `Bearer ${this.apiToken}`,
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
-        max_tokens: 2048,
-        system: 'You are a CRM summary assistant. Be concise and actionable. Currency is PHP.',
-        messages: [{ role: 'user', content: userPrompt }],
+        session_id: sessionId,
+        content: triggerMessage,
+        user_id: userId ?? 'system',
+        user_tier: 3,
+        workspace_path: '/share/agency/products/symph-crm',
       }),
+    }).catch(err => {
+      this.logger.error(`Failed to trigger summary generation for deal ${dealId}: ${err}`)
     })
 
-    if (!resp.ok) {
-      const errText = await resp.text()
-      this.logger.error(`Anthropic API error during summary generation: ${resp.status} ${errText}`)
-      throw new BadRequestException('Summary generation failed — AI API error')
-    }
-
-    const data = await resp.json() as {
-      content: Array<{ type: string; text: string }>
-    }
-    const reply = data.content.find(b => b.type === 'text')?.text ?? ''
-    if (!reply) {
-      throw new BadRequestException('Summary generation returned empty response')
-    }
-
-    // Parse structured response
-    const summaryMatch = reply.match(/SUMMARY:\s*([\s\S]*?)(?=NEXT_STEPS:|$)/)
-    const stepsMatch = reply.match(/NEXT_STEPS:\s*([\s\S]*)$/)
-
-    const summaryText = summaryMatch?.[1]?.trim() || reply.trim()
-    const nextSteps = stepsMatch?.[1]
-      ?.split('\n')
-      .map(s => s.replace(/^[-*]\s*/, '').trim())
-      .filter(Boolean) ?? []
-
-    return this.writeSummary(dealId, summaryText, nextSteps, allNotes.length, userId)
+    this.logger.log(`Summary generation triggered for deal ${dealId} (session ${sessionId})`)
+    return { status: 'generating', triggeredAt }
   }
 
   // ── Deal Summaries (NFS markdown files) ──────────────────────────────────
