@@ -1281,7 +1281,18 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {activeTab === 'notes' && (
             <div>
               {/* Note Summary — auto-generated, no button */}
-              {latestSummary ? (
+              {nfsNotes.length === 0 ? (
+                /* Guard rail: no notes → no summary possible */
+                <div className="mx-4 mt-4 mb-0">
+                  <div className="rounded-md border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] px-4 py-3 flex items-center gap-2">
+                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" className="text-slate-300 dark:text-slate-600 shrink-0">
+                      <path d="M9 12h6M9 16h6M6 8h.01M6 12h.01M6 16h.01" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+                      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth={2} />
+                    </svg>
+                    <span className="text-[12px] text-slate-400 dark:text-slate-500">No notes to summarize</span>
+                  </div>
+                </div>
+              ) : latestSummary ? (
                 <div className="mx-4 mt-4 mb-0">
                   <div
                     className="rounded-md bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] overflow-hidden"
@@ -1291,8 +1302,6 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       <PartialCollapse
                         label="Note Summary"
                         date={new Date(latestSummary.meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        gradientFrom="#ffffff"
-                        gradientFromDark="#1e1e21"
                         icon={
                           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="text-primary">
                             <path d="M12 2l2.09 6.26L20.18 9l-4.64 3.74L16.72 19 12 15.77 7.28 19l1.18-6.26L3.82 9l6.09-.74L12 2z" fill="currentColor" />
@@ -1312,7 +1321,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     </div>
                   </div>
                 </div>
-              ) : isSummaryGenerating && nfsNotes.length > 0 ? (
+              ) : isSummaryGenerating ? (
                 <div className="mx-4 mt-4 mb-0">
                   <div className="rounded-md border border-dashed border-primary/20 bg-primary/[.02] px-4 py-3 flex items-center gap-2 text-primary text-xs">
                     <svg className="animate-spin shrink-0" width={12} height={12} viewBox="0 0 24 24" fill="none">

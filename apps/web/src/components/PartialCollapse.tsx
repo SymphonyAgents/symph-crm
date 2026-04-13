@@ -14,13 +14,6 @@ interface PartialCollapseProps {
   date?: string
   /** Optional icon placed before the label */
   icon?: React.ReactNode
-  /**
-   * CSS color for the gradient fade bottom edge — must match the card's background.
-   * Pass a light-mode value here and a dark-mode value in `gradientFromDark`.
-   * Defaults to white / #1e1e21 (standard CRM card bg).
-   */
-  gradientFrom?: string
-  gradientFromDark?: string
   /** Extra classes forwarded to the root wrapper */
   className?: string
 }
@@ -31,8 +24,6 @@ export function PartialCollapse({
   label,
   date,
   icon,
-  gradientFrom = '#ffffff',
-  gradientFromDark = '#1e1e21',
   className,
 }: PartialCollapseProps) {
   const [expanded, setExpanded] = useState(false)
@@ -40,15 +31,21 @@ export function PartialCollapse({
   const [fullHeight, setFullHeight] = useState<number>(collapsedHeight)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  // Measure the real content height after mount / children change
   useLayoutEffect(() => {
     if (!contentRef.current) return
     const h = contentRef.current.scrollHeight
     setFullHeight(h)
-    setNeedsCollapse(h > collapsedHeight + 8) // 8px tolerance
+    setNeedsCollapse(h > collapsedHeight + 8)
   }, [children, collapsedHeight])
 
   const toggle = useCallback(() => setExpanded(prev => !prev), [])
+
+  // Mask-image approach: no background color needed, works in any theme.
+  // When collapsed: fade the bottom 40% of the clip area to transparent.
+  // When expanded: mask covers 100% (effectively no mask).
+  // Both states use the same gradient structure so browsers interpolate the stop.
+  const maskCollapsed = 'linear-gradient(to bottom, black 55%, transparent 100%)'
+  const maskExpanded  = 'linear-gradient(to bottom, black 100%, transparent 101%)'
 
   return (
     <div className={cn('flex flex-col', className)}>
@@ -70,36 +67,16 @@ export function PartialCollapse({
       )}
 
       {/* ── Animated clip wrapper ────────────────────────────────────── */}
-      <div className="relative">
-        <div
-          className="overflow-hidden transition-[max-height] duration-300 ease-in-out"
-          style={{ maxHeight: expanded ? fullHeight : collapsedHeight }}
-        >
-          <div ref={contentRef}>{children}</div>
-        </div>
-
-        {/* Gradient fade overlay */}
-        {needsCollapse && (
-          <div
-            aria-hidden
-            className={cn(
-              'pointer-events-none absolute bottom-0 left-0 right-0 h-12',
-              'transition-opacity duration-300',
-              expanded ? 'opacity-0' : 'opacity-100',
-            )}
-            style={{
-              background: `linear-gradient(to top, ${gradientFrom}, transparent)`,
-            }}
-          >
-            {/* Dark-mode gradient — rendered as a sibling layer via a CSS trick */}
-            <span
-              className="absolute inset-0 hidden dark:block"
-              style={{
-                background: `linear-gradient(to top, ${gradientFromDark}, transparent)`,
-              }}
-            />
-          </div>
-        )}
+      <div
+        className="overflow-hidden"
+        style={{
+          maxHeight: expanded ? fullHeight : collapsedHeight,
+          transition: 'max-height 300ms ease-in-out, mask-image 300ms ease-in-out, -webkit-mask-image 300ms ease-in-out',
+          WebkitMaskImage: needsCollapse ? (expanded ? maskExpanded : maskCollapsed) : undefined,
+          maskImage:       needsCollapse ? (expanded ? maskExpanded : maskCollapsed) : undefined,
+        }}
+      >
+        <div ref={contentRef}>{children}</div>
       </div>
 
       {/* ── Toggle button ────────────────────────────────────────────── */}
