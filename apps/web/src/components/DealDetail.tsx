@@ -351,7 +351,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const [isSummaryGenerating, setIsSummaryGenerating] = useState(false)
   const { data: summaries = [] } = useGetDealSummaries(dealId, {
     // Poll every 5s whenever no summary exists yet — stops once one appears
-    refetchInterval: summaries => (!summaries || summaries.length === 0) ? 5000 : false,
+    refetchInterval: (query) => (!query.state.data || query.state.data.length === 0) ? 5000 : false,
   })
   const latestSummaryFilename = summaries[0]?.filename
   const { data: latestSummary } = useGetDealSummaryLatest(dealId, latestSummaryFilename)
