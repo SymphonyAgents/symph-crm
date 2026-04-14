@@ -5,7 +5,7 @@ export * from './contacts'
 export * from './products'
 export * from './deals'
 export * from './deal-contacts'
-export * from './documents'   // replaces notes — content lives in Supabase Storage
+export * from './documents'   // replaces notes — content lives in NFS (storage_path), metadata only in DB
 export * from './activities'
 export * from './files'
 export * from './pipeline'

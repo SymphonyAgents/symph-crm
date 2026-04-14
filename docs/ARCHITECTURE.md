@@ -91,7 +91,8 @@ Both channels write to the same data layer — same deals, same NFS notes, same 
 | Hosting | Google Cloud Run (asia-southeast1) | API + Web as separate services |
 | CI/CD | GitHub Actions → Cloud Build | Push to main → parallel build & deploy |
 | Doc Storage | NFS (/share/crm/) | Markdown files via Aria's shared Filestore |
-| Binary Storage | Supabase Storage `attachments` bucket | PDFs, images, audio |
+| Binary Storage | Supabase Storage `attachments` bucket | Voice recordings only (audio needs Supabase signed URLs for playback) |
+| Image Storage | NFS /share/crm/ | Images routed to NFS via writeFile() — same layer as markdown |
 
 ---
 
@@ -160,7 +161,8 @@ Layer 2 — NFS /share/crm/ (markdown documents)
   companies/{id}/{type}/{type}-{ts}.md
 
 Layer 3 — Supabase Storage `attachments` (binary)
-  PDFs, images, voice recordings (.m4a), signed contracts
+  Voice recordings (.m4a) only — audio requires Supabase signed URLs for in-browser playback
+  NOTE: Images and PDFs now route to NFS (Layer 2) via writeFile(), not Supabase
 ```
 
 **Rule:** Zero content in PostgreSQL. All markdown on NFS. All binaries in Supabase Storage. No exceptions.
@@ -310,11 +312,11 @@ All core entities are workspace-scoped for multi-tenancy.
 |---|---|
 | companies | id, name, domain, industry, website, linkedinUrl, assignedTo, parent_id (self-ref), workspaceId |
 | contacts | id, name, email, phone, title — linked to both companies AND deals (many-to-many) |
-| deals | id, companyId, productId, tierId, title, stage, value, assignedTo, lastActivityAt, workspaceId |
+| deals | id, companyId, productId, tierId, title, **stageId** (FK → pipelineStages), value, probability, closeDate, assignedTo, **amRosterId** (FK → amRoster), **buildAssignedTo**, outreachCategory, clientBrandColor, servicesTags[], isFlagged, flagReason, lastActivityAt, workspaceId |
 | products | id, name, slug, description, color, icon |
 | tiers | id, name, slug, description, customizationSlots |
 
-**Deal stages:** `lead | discovery | assessment | demo + proposal | follow up | won | lost`
+**Deal stages:** Workspace-configurable via `pipelineStages` table (FK). Default stages: `lead | discovery | assessment | demo + proposal | follow up | won | lost`
 
 ### Documents & Activity
 
@@ -341,6 +343,34 @@ All core entities are workspace-scoped for multi-tenancy.
 |---|---|
 | pitchDecks | id, companyId, productId, tierId, title, content (JSONB), htmlUrl, demoToken |
 | customizationRequests | id, companyId, productId, tierId, title, status, requestedBy |
+
+### Billing
+
+| Table | Key Fields |
+|---|---|
+| dealBilling | id, dealId (unique), billingType (annual\|monthly\|milestone), contractStart, contractEnd, amount, monthlyDerived (auto-calc) |
+| billingMilestones | id, billingId, name, amount, percentage (auto-calc), sortOrder, isPaid, paidAt |
+
+### Notifications
+
+| Table | Key Fields |
+|---|---|
+| notifications | id, userId, type (dormant_deal\|deal_won\|mention), dealId, metadata (JSONB), isRead, workspaceId |
+
+### Audit
+
+| Table | Key Fields |
+|---|---|
+| auditLogs | id (serial), action (create\|update\|delete\|status_change), auditType, entityType, entityId, source, performedBy, orgId, details (JSONB) |
+
+### Calendar
+
+| Table | Key Fields |
+|---|---|
+| userCalendarConnections | id, userId (unique), googleEmail, refreshToken (AES-256-GCM encrypted), syncToken, lastSyncedAt, isActive |
+| calendarEvents | id, workspaceId, googleEventId, userId, title, description, startAt, endAt, location, attendeeEmails[], dealId, eventType (demo\|discovery_call\|followup\|general), rawJson |
+
+> `userCalendarConnections.refreshToken` is AES-256-GCM encrypted at the application layer. Key lives in Secret Manager. `calendarEvents` is a local mirror — Google Calendar is source of truth. Synced on OAuth connect (30-day window) + Cloud Scheduler every 5 min via syncToken.
 
 ### Chat
 
