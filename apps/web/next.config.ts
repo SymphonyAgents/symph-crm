@@ -15,6 +15,26 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['@symph-crm/database'],
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://*.posthog.com",
+              "connect-src 'self' https://us.i.posthog.com https://*.posthog.com",
+              "img-src 'self' data: blob:",
+              "style-src 'self' 'unsafe-inline'",
+              "font-src 'self' data:",
+            ].join('; '),
+          },
+        ],
+      },
+    ]
+  },
   async rewrites() {
     // In production, Next.js server proxies /api/* to the NestJS backend.
     // API_URL must be set as a Docker build-arg (baked into routes-manifest.json at
