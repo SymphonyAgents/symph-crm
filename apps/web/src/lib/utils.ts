@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { extendTailwindMerge } from 'tailwind-merge'
 import { BRAND_PALETTE, AVATAR_COLORS, STAGE_ORDER, KANBAN_STAGES, COLUMN_TO_STAGE, PROGRESS_STAGES, SERVICE_TYPES } from './constants'
+import { formatDealName } from './format-deal-name'
 
 // ─── Tailwind ────────────────────────────────────────────────────────────────
 
@@ -178,11 +179,9 @@ export function toPascalCase(str: string): string {
     .join(' ')
 }
 
-/** Format deal title: UPPERCASE if ≤4 chars (acronyms like TMS, HRIS), else Title Case */
+/** Format deal title: preserves user capitalization while recognizing acronyms */
 export function formatDealTitle(title: string): string {
-  if (!title) return ''
-  if (title.length <= 4) return title.toUpperCase()
-  return toPascalCase(title)
+  return formatDealName(title)
 }
 
 /** Extract display name from email address: "Foo Bar <foo@bar.com>" → "Foo Bar" */
