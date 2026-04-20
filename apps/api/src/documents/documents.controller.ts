@@ -151,30 +151,46 @@ export class DocumentsController {
 
     this.logger.log(`Document upload: ${originalname} (${baseMime}, ${buffer.length} bytes) for deal ${dealId}`)
 
-    let content: string | undefined
     const titleBase = originalname.replace(/\.[^.]+$/, '') // strip extension
 
-    // Extract text content from parseable types; skip for pure binary images
-    if (this.fileParser.canParse(baseMime)) {
+    // Classify MIME type to determine storage path and write strategy.
+    // TEXT_MIMES: parsed and stored as markdown on NFS.
+    // BINARY_DOC_MIMES: binary written verbatim to NFS (PDF, DOCX, XLSX, PPTX) — NOT via writeMarkdown.
+    //   Previously these fell through to fileParser and had their extracted text written to the .pdf
+    //   path via writeMarkdown(), overwriting the binary. The /file endpoint then served text as PDF.
+    const TEXT_MIMES = new Set([
+      'text/markdown', 'text/plain', 'text/csv', 'application/csv',
+    ])
+    const BINARY_DOC_MIMES = new Set([
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    ])
+
+    const isTextNote = TEXT_MIMES.has(baseMime)
+    const isBinaryDoc = BINARY_DOC_MIMES.has(baseMime)
+    const isBinary = baseMime.startsWith('image/') || baseMime.startsWith('audio/') || isBinaryDoc
+
+    let content: string | undefined
+
+    if (isTextNote || (this.fileParser.canParse(baseMime) && !isBinaryDoc)) {
+      // Pure text / parseable-as-text files: extract content for storage and search
       const parsed = await this.fileParser.parse(buffer, baseMime, originalname)
       content = parsed.text
     } else if (baseMime.startsWith('image/')) {
-      // Images: store text stub for content, binary uploaded separately below
       content = `[Image attachment: ${originalname}]`
     } else if (baseMime.startsWith('audio/')) {
-      // Audio: store text stub for content, binary uploaded separately below
       content = `[Audio attachment: ${originalname}]`
+    } else if (isBinaryDoc) {
+      // Binary documents (PDF, DOCX, etc.): binary is written to NFS below.
+      // Do NOT pass content so documentsService.create() skips writeMarkdown()
+      // and does not clobber the binary with extracted text.
+      content = undefined
     } else {
       throw new BadRequestException(`Unsupported file type: ${mimetype}`)
     }
 
-    // Derive a unique storage path for this upload
-    // Classify upload: text files (md/txt/csv) → notes bucket; binary → resources bucket
-    const TEXT_MIMES = new Set([
-      'text/markdown', 'text/plain', 'text/csv', 'application/csv',
-    ])
-    const isTextNote = TEXT_MIMES.has(baseMime)
-    const isBinary = baseMime.startsWith('image/') || baseMime.startsWith('audio/')
     const bucket = isTextNote ? 'notes' : 'resources'
     const ext = originalname.includes('.') ? originalname.split('.').pop()!.toLowerCase() : 'bin'
 
@@ -182,14 +198,13 @@ export class DocumentsController {
     const safeName = titleBase.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60)
     const storagePath = `deals/${dealId}/${bucket}/${timestamp}-${safeName}.${isTextNote ? 'md' : ext}`
 
-    // Binary files: audio stays in Supabase (needs signed URLs for playback).
-    // Images and everything else goes to NFS via writeFile.
+    // Write binary to NFS. Audio stays in Supabase (needs signed URLs for playback).
     if (baseMime.startsWith('audio/')) {
       await this.storage.uploadVoiceRecording(storagePath, buffer, baseMime)
-      this.logger.log(`Audio attachment stored in Supabase: ${storagePath} (${buffer.length} bytes)`)
+      this.logger.log(`Audio stored in Supabase: ${storagePath} (${buffer.length} bytes)`)
     } else if (isBinary) {
       await this.storage.writeFile(storagePath, buffer)
-      this.logger.log(`Binary attachment stored on NFS: ${storagePath} (${buffer.length} bytes)`)
+      this.logger.log(`Binary stored on NFS: ${storagePath} (${buffer.length} bytes)`)
     }
 
     const tags = [bucket, baseMime.split('/')[1] ?? ext]
