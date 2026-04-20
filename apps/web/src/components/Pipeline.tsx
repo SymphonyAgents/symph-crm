@@ -16,6 +16,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useGetDeals, useGetCompanies, useGetUsers } from '@/lib/hooks/queries'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { cn, formatPeso, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
+import { formatDealName } from '@/lib/format-deal-name'
 import type { ApiDeal, ApiCompany, ApiUser } from '@/lib/types'
 import {
   KANBAN_STAGES, COLUMN_TO_STAGE, STAGE_ORDER,
@@ -48,7 +49,7 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: toColor }} />
       {toLabel}
     </span>,
-    { description: `${toPascalCase(dealTitle)} updated` },
+    { description: `${formatDealName(dealTitle)} updated` },
   )
 }
 
@@ -349,7 +350,7 @@ function DealCard({
 
       {/* Deal title */}
       <div className="text-xs font-semibold text-slate-900 dark:text-white leading-snug mb-2.5">
-        {deal.title.length <= 5 ? deal.title.toUpperCase() : toPascalCase(deal.title)}
+        {formatDealName(deal.title)}
       </div>
 
       {/* Services tags */}
@@ -518,7 +519,7 @@ function MobileActionSheet({
         {/* Context label */}
         <div className="px-4 pt-4 pb-3 border-b border-black/[.06] dark:border-white/[.08]">
           <p className="text-xxs font-semibold text-slate-400 uppercase tracking-wide">{brandName}</p>
-          <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">{toPascalCase(deal.title)}</p>
+          <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">{formatDealName(deal.title)}</p>
         </div>
 
         {/* Actions */}
@@ -1341,7 +1342,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
 
                     {/* Deal title */}
                     <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug mb-1.5">
-                      {d.title.length <= 5 ? d.title.toUpperCase() : toPascalCase(d.title)}
+                      {formatDealName(d.title)}
                     </p>
 
                     {/* Service tag */}
