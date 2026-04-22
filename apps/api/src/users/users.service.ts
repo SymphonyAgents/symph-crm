@@ -18,6 +18,7 @@ const SALES_EMAILS = new Set([
   'lyra.gemparo@symph.co',
   'kate.labra@symph.co',
   'vince.tapdasan@symph.co',
+  'xian.baylin@symph.co',
 ])
 
 @Injectable()
