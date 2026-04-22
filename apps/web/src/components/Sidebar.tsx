@@ -329,11 +329,12 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
           'py-2.5 border-t border-black/[.06] dark:border-white/[.08] flex items-center gap-[9px]',
           collapsed ? 'md:justify-center md:px-0 px-[14px]' : 'px-[14px]'
         )}>
-          {user?.image ? (
-            <img src={user.image} alt="" className="w-7 h-7 rounded-full shrink-0" />
-          ) : (
-            <Avatar name={user?.name || '?'} size={28} />
-          )}
+          <Avatar
+            name={user?.name || '?'}
+            email={user?.email ?? undefined}
+            src={user?.image ?? undefined}
+            size={28}
+          />
           <div className={cn('flex-1 min-w-0', collapsed && 'md:hidden')}>
             <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{user?.name || 'User'}</div>
             <div className="text-atom text-slate-400 truncate">{user?.email || ''}</div>
