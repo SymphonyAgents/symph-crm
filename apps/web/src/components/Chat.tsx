@@ -1279,6 +1279,7 @@ export function Chat({ dealId }: { dealId?: string }) {
               {SUGGESTED_PROMPTS.map((p) => (
                 <button
                   key={p.prompt}
+                  type="button"
                   onClick={() => sendMessage(p.prompt)}
                   className="px-3.5 py-2 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
                 >
