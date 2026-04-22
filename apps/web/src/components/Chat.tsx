@@ -305,38 +305,12 @@ function SessionSidebar({
 
   return (
     <>
-      {/* Mobile toggle button */}
-      <button
-        onClick={onToggle}
-        className="lg:hidden fixed top-3 left-3 z-40 w-8 h-8 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-white shadow-sm transition-colors"
-      >
-        <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-          {isOpen ? (
-            <path d="M18 6L6 18M6 6l12 12" />
-          ) : (
-            <>
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </>
-          )}
-        </svg>
-      </button>
-
-      {/* Backdrop for mobile */}
-      {isOpen && (
-        <div
-          className="lg:hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
-          onClick={onToggle}
-        />
-      )}
-
-      {/* Sidebar panel (mobile: slide-in, desktop: always visible) */}
+      {/* Session sidebar — desktop only. On mobile the outer CrmShell sidebar
+          handles navigation via the Topbar hamburger. */}
       <div
         className={cn(
-          'fixed lg:relative z-30 top-0 left-0 h-full bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08] flex flex-col transition-all duration-200 ease-out shrink-0',
-          expanded ? 'w-[260px]' : 'w-[52px]',
-          isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          'hidden lg:flex lg:relative shrink-0 h-full flex-col bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08] transition-all duration-200 ease-out',
+          expanded ? 'lg:w-[260px]' : 'lg:w-[52px]',
         )}
       >
         {/* Header + New Chat + Collapse toggle */}

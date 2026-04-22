@@ -9,22 +9,17 @@ import { CommandPalette } from './CommandPalette'
 export function CrmShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const pathname = usePathname()
-  // Chat has its own SessionSidebar with a Dashboard back-link — the outer
-  // sidebar is redundant there and causes a double-sidebar overlap on mobile.
-  const isChat = pathname === '/chat'
-  const sidebarCollapsed = pathname.startsWith('/wiki')
+  const sidebarCollapsed = pathname === '/chat' || pathname.startsWith('/wiki')
 
   return (
     <div className="flex h-dvh overflow-hidden bg-[#f3f4f6] dark:bg-[#191a1c]">
-      {!isChat && (
-        <Sidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          collapsed={sidebarCollapsed}
-        />
-      )}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+      />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <Topbar onMenuToggle={isChat ? undefined : () => setSidebarOpen(o => !o)} />
+        <Topbar onMenuToggle={() => setSidebarOpen(o => !o)} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">
           {children}
         </main>
