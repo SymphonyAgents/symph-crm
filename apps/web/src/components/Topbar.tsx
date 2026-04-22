@@ -10,13 +10,15 @@ type TopbarProps = {
 export function Topbar({ onMenuToggle }: TopbarProps) {
   return (
     <div className="h-[44px] shrink-0 border-b border-black/[.06] dark:border-white/[.08] flex items-center px-4 gap-3 bg-white dark:bg-[#1e1e21]">
-      {/* Hamburger — mobile only */}
-      <button
-        onClick={onMenuToggle}
-        className="md:hidden w-8 h-8 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors duration-150"
-      >
-        <Menu size={16} strokeWidth={1.4} />
-      </button>
+      {/* Hamburger — mobile only, hidden on pages with their own sidebar toggle */}
+      {onMenuToggle && (
+        <button
+          onClick={onMenuToggle}
+          className="md:hidden w-8 h-8 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors duration-150"
+        >
+          <Menu size={16} strokeWidth={1.4} />
+        </button>
+      )}
 
       <div className="flex-1" />
 
