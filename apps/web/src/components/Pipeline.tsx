@@ -734,8 +734,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
       result = result.filter(d => {
         const amLabel = amOptions.find(o => o.id === d.assignedTo)?.label ?? ''
         return (
-          d.title.toLowerCase().includes(q) ||
-          d.stage.toLowerCase().includes(q) ||
+          (d.title ?? '').toLowerCase().includes(q) ||
+          (d.stage ?? '').toLowerCase().includes(q) ||
           (d.servicesTags ?? []).some(s => s.toLowerCase().includes(q)) ||
           amLabel.toLowerCase().includes(q) ||
           (companyMap.get(d.companyId) || '').toLowerCase().includes(q)
