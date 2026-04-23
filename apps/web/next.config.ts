@@ -9,6 +9,9 @@ const withPWA = withPWAInit({
   disable: process.env.NODE_ENV === 'development',
   workboxOptions: {
     disableDevLogs: true,
+    // Exclude custom sw.js from workbox processing to prevent _async_to_generator
+    // transpile error when workbox injects its runtime into the compiled SW
+    exclude: [/sw\.js$/],
   },
 })
 
