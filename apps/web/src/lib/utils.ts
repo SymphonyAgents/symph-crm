@@ -330,7 +330,8 @@ const SERVICE_LABEL_MAP: Record<string, string> = (() => {
 })()
 
 /** Maps a service slug (e.g. "agency") to its human label (e.g. "The Agency") */
-export function formatServiceType(value: string): string {
+export function formatServiceType(value: string | null | undefined): string {
+  if (!value) return ''
   return SERVICE_LABEL_MAP[value] ?? value.replace(/_/g, ' ').replace(/\w/g, c => c.toUpperCase())
 }
 
