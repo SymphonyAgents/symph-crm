@@ -2204,7 +2204,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <div className="pt-2">
                 <span className="text-atom text-slate-400 block mb-1.5">Services</span>
                 <div className="flex flex-wrap gap-1">
-                  {deal.servicesTags.map(s => (
+                  {(deal.servicesTags ?? []).filter(Boolean).map(s => (
                     <span key={s} className="text-atom font-medium px-1.5 py-0.5 rounded-lg bg-primary/10 text-primary">
                       {formatServiceType(s)}
                     </span>
