@@ -15,6 +15,7 @@ import { ChatModule } from './chat/chat.module'
 import { ProductsModule } from './products/products.module'
 import { PipelineModule } from './pipeline/pipeline.module'
 import { InternalModule } from './internal/internal.module'
+import { OwnerModule } from './owner/owner.module'
 import { CalendarModule } from './calendar/calendar.module'
 import { UsersModule } from './users/users.module'
 import { AuditLogsModule } from './audit-logs/audit-logs.module'
@@ -43,6 +44,7 @@ import { NotificationsModule } from './notifications/notifications.module'
     PipelineModule,
     CalendarModule,
     InternalModule,
+    OwnerModule,
     UsersModule,
     AuditLogsModule,
     GmailModule,
