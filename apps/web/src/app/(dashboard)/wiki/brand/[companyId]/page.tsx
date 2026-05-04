@@ -29,7 +29,7 @@ export default function WikiBrandPage() {
     return { kind: 'none' }
   }, [companyId, companyMap])
 
-  function handleSelectDeal(deal: ApiDeal, company: ApiCompanyDetail | null) {
+  function handleSelectDeal(deal: ApiDeal) {
     router.push(`/wiki/deal/${deal.id}`)
   }
 

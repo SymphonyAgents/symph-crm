@@ -13,7 +13,9 @@ function WikiDealPageInner() {
   const searchParams = useSearchParams()
 
   const dealId = params?.dealId as string | undefined
-  const activeTab = searchParams?.get('tab') ?? undefined
+  const activeCat = searchParams?.get('cat') ?? undefined
+  const activeFile = searchParams?.get('file') ?? undefined
+  const activeDocId = searchParams?.get('docId') ?? undefined
 
   const { data: companies = [] } = useGetCompanies()
   const { data: deals = [] } = useGetDeals()
@@ -41,7 +43,7 @@ function WikiDealPageInner() {
     return { kind: 'none' }
   }, [dealId, dealMap, companyMap])
 
-  function handleSelectDeal(deal: ApiDeal, company: ApiCompanyDetail | null) {
+  function handleSelectDeal(deal: ApiDeal) {
     router.push(`/wiki/deal/${deal.id}`)
   }
 
@@ -51,7 +53,9 @@ function WikiDealPageInner() {
       companies={companies}
       deals={deals}
       onSelectDeal={handleSelectDeal}
-      activeTab={activeTab}
+      activeCat={activeCat}
+      activeFile={activeFile}
+      activeDocId={activeDocId}
     />
   )
 }

@@ -1,47 +1,31 @@
 'use client'
 
 /**
- * DealsGraph — Obsidian-style force-directed graph using D3 force simulation.
+ * DealsGraph — Obsidian-style force-directed graph.
  *
- * Layout tuned to match Obsidian's tight, clustered aesthetic:
- *   - Short link distances (60-40px) keep clusters compact
- *   - Moderate repulsion to avoid overlap without excessive spacing
- *   - Strong center gravity pulls everything toward the middle
- *   - High alpha decay for fast settling
+ * Visual goals:
+ *   - Two node kinds: brand (purple, larger) and deal (teal, smaller)
+ *   - Labels sit to the RIGHT of the node, not below
+ *   - Thin, low-opacity edges
+ *   - Subtle dot grid, dark canvas
+ *   - Compact legend top-right
  */
 
 import { useEffect, useRef, useState, useMemo } from 'react'
 import * as d3 from 'd3'
-import { getBrandColor, getInitials, formatCurrency } from '@/lib/utils'
-import { KANBAN_STAGES } from '@/lib/constants'
+import { formatCurrency } from '@/lib/utils'
 import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
 
-// ─── Graph-specific stage color map ─────────────────────────────────────────
-// Groups DB stages by their kanban column color (e.g. qualified → assessment color)
+const BRAND_COLOR = '#a78bfa'   // purple — "folder"
+const DEAL_COLOR  = '#14b8a6'   // teal   — "note"
 
-const STAGE_COLOR: Record<string, string> = {
-  lead:          '#94a3b8',
-  discovery:     '#2563eb',
-  assessment:    '#7c3aed',
-  qualified:     '#7c3aed',   // grouped with assessment
-  demo:          '#d97706',
-  proposal:      '#d97706',
-  proposal_demo: '#d97706',   // grouped as Demo + Proposal
-  negotiation:   '#f59e0b',
-  followup:      '#f59e0b',   // grouped as Follow-up
-  closed_won:    '#16a34a',
-  closed_lost:   '#dc2626',
-}
-
-/** Sublabel text for tooltips — maps DB stage to kanban column label */
-const STAGE_TOOLTIP_LABEL: Record<string, string> = {
+const STAGE_LABEL: Record<string, string> = {
   lead: 'Lead', discovery: 'Discovery', assessment: 'Assessment',
   qualified: 'Assessment', demo: 'Demo + Proposal', proposal: 'Demo + Proposal',
   proposal_demo: 'Demo + Proposal', negotiation: 'Follow-up',
   followup: 'Follow-up', closed_won: 'Won', closed_lost: 'Lost',
 }
 
-/** Format deal value for graph tooltip — empty string for zero/null */
 function formatGraphValue(v: string | null): string {
   if (!v) return ''
   const n = parseFloat(v)
@@ -49,11 +33,9 @@ function formatGraphValue(v: string | null): string {
   return formatCurrency(n)
 }
 
-// ─── D3 types ─────────────────────────────────────────────────────────────────
-
 type GraphNode = d3.SimulationNodeDatum & {
   id: string
-  kind: 'company' | 'deal'
+  kind: 'brand' | 'deal'
   label: string
   sublabel?: string
   color: string
@@ -62,19 +44,13 @@ type GraphNode = d3.SimulationNodeDatum & {
   companyId?: string
   stage?: string
   value?: string | null
-  /** Total document/resource count — summed from deals for company nodes */
-  documentCount?: number
 }
 
 type GraphLink = d3.SimulationLinkDatum<GraphNode> & {
   id: string
 }
 
-// ─── Tooltip ─────────────────────────────────────────────────────────────────
-
 type Tooltip = { x: number; y: number; node: GraphNode } | null
-
-// ─── Props ────────────────────────────────────────────────────────────────────
 
 type DealsGraphProps = {
   companies: ApiCompanyDetail[]
@@ -84,8 +60,6 @@ type DealsGraphProps = {
   searchQuery?: string
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQuery = '' }: DealsGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -93,9 +67,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
   const viewportRef = useRef<{ W: number; H: number }>({ W: 900, H: 600 })
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
-  // Stable refs — always synced in render body so effects can read latest
-  // values without taking them as reactive dependencies (prevents re-runs on
-  // every parent re-render caused by keystroke in search box).
   const dealsRef = useRef(deals)
   const companiesRef = useRef(companies)
   const onOpenDealRef = useRef(onOpenDeal)
@@ -103,16 +74,12 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
   const [tooltip, setTooltip] = useState<Tooltip>(null)
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery)
 
-  // Content fingerprint — only changes when the actual graph data changes
-  // (nodes added/removed, stage changed, title changed, company link changed).
-  // Typing in the search box does NOT change this, so the graph never rebuilds.
   const graphKey = useMemo(() => {
-    const cs = companies.map(c => `${c.id}:${c.name}:${c.industry ?? ''}:${c.domain ?? ''}`).join('|')
-    const ds = deals.map(d => `${d.id}:${d.title}:${d.stage}:${d.companyId ?? ''}:${d.value ?? ''}:${(d.servicesTags ?? []).join(',')}`).join('|')
+    const cs = companies.map(c => `${c.id}:${c.name}`).join('|')
+    const ds = deals.map(d => `${d.id}:${d.title}:${d.stage}:${d.companyId ?? ''}`).join('|')
     return `${cs}||${ds}`
   }, [companies, deals])
 
-  // Debounce searchQuery → debouncedSearch (300ms) to prevent flicker on keystrokes
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -123,7 +90,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     }
   }, [searchQuery])
 
-  // Compute which node IDs match the search (null = no active search)
   const matchedNodeIds = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()
     if (!q) return null
@@ -131,13 +97,15 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     const matched = new Set<string>()
 
     for (const deal of deals) {
-      const stageLabel = (STAGE_TOOLTIP_LABEL[deal.stage] || deal.stage).toLowerCase()
+      const title = (deal.title ?? '').toLowerCase()
+      const stage = (deal.stage ?? '').toLowerCase()
+      const stageLabel = (STAGE_LABEL[deal.stage] || deal.stage || '').toLowerCase()
       if (
-        deal.title.toLowerCase().includes(q) ||
-        deal.stage.toLowerCase().includes(q) ||
+        title.includes(q) ||
+        stage.includes(q) ||
         stageLabel.includes(q) ||
         (deal.assignedTo ?? '').toLowerCase().includes(q) ||
-        (deal.servicesTags ?? []).some(s => s.toLowerCase().includes(q))
+        (deal.servicesTags ?? []).some(s => (s ?? '').toLowerCase().includes(q))
       ) {
         matched.add(`d-${deal.id}`)
         if (deal.companyId) matched.add(`c-${deal.companyId}`)
@@ -147,9 +115,9 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
 
     for (const c of companies) {
       if (
-        c.name.toLowerCase().includes(q) ||
-        (c.industry || '').toLowerCase().includes(q) ||
-        (c.domain || '').toLowerCase().includes(q)
+        (c.name ?? '').toLowerCase().includes(q) ||
+        (c.industry ?? '').toLowerCase().includes(q) ||
+        (c.domain ?? '').toLowerCase().includes(q)
       ) {
         matched.add(`c-${c.id}`)
         for (const deal of deals) {
@@ -162,15 +130,11 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
   }, [debouncedSearch, deals, companies])
 
   const matchCount = matchedNodeIds?.size ?? 0
-  // Sync all stable refs every render — effects read from these, not from props
   dealsRef.current = deals
   companiesRef.current = companies
   onOpenDealRef.current = onOpenDeal
   onOpenBrandRef.current = onOpenBrand
 
-  // Main graph build — depends only on `graphKey` (the content fingerprint).
-  // Keystrokes / search state changes in the parent do NOT change graphKey, so
-  // they never trigger a rebuild → nodes stay put while you type.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const svg = d3.select(svgRef.current!)
@@ -181,8 +145,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     viewportRef.current = { W, H }
 
     svg.selectAll('*').remove()
-
-    // ── Build graph data (read from stable refs) ──────────────────────────────
 
     const companies = companiesRef.current
     const deals = dealsRef.current
@@ -197,30 +159,25 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     const dealsWithoutCompany = deals.filter(d => !d.companyId || !companyMap.has(d.companyId))
 
     for (const c of companies) {
-      const companyDocCount = deals
-        .filter(d => d.companyId === c.id)
-        .reduce((sum, d) => sum + (d.documentCount ?? 0), 0)
-
       nodes.push({
         id: `c-${c.id}`,
-        kind: 'company',
-        label: c.name,
+        kind: 'brand',
+        label: c.name ?? 'Unnamed',
         sublabel: c.industry || c.domain || undefined,
-        color: getBrandColor(c.name),
-        r: 11,
+        color: BRAND_COLOR,
+        r: 7,
         companyId: c.id,
-        documentCount: companyDocCount > 0 ? companyDocCount : undefined,
       })
     }
 
     if (dealsWithoutCompany.length > 0) {
       nodes.push({
         id: 'c-unassigned',
-        kind: 'company',
+        kind: 'brand',
         label: 'No Brand',
         sublabel: `${dealsWithoutCompany.length} deal${dealsWithoutCompany.length !== 1 ? 's' : ''}`,
-        color: '#64748b',
-        r: 9,
+        color: '#475569',
+        r: 6,
       })
     }
 
@@ -228,10 +185,10 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
       nodes.push({
         id: `d-${deal.id}`,
         kind: 'deal',
-        label: deal.title,
-        sublabel: STAGE_TOOLTIP_LABEL[deal.stage] || deal.stage,
-        color: STAGE_COLOR[deal.stage] || '#94a3b8',
-        r: 8,
+        label: deal.title ?? '(untitled)',
+        sublabel: STAGE_LABEL[deal.stage] || deal.stage,
+        color: DEAL_COLOR,
+        r: 4,
         dealId: deal.id,
         stage: deal.stage,
         value: deal.value,
@@ -247,10 +204,10 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
       nodes.push({
         id: `d-${deal.id}`,
         kind: 'deal',
-        label: deal.title,
-        sublabel: STAGE_TOOLTIP_LABEL[deal.stage] || deal.stage,
-        color: STAGE_COLOR[deal.stage] || '#94a3b8',
-        r: 8,
+        label: deal.title ?? '(untitled)',
+        sublabel: STAGE_LABEL[deal.stage] || deal.stage,
+        color: DEAL_COLOR,
+        r: 4,
         dealId: deal.id,
         stage: deal.stage,
         value: deal.value,
@@ -264,19 +221,14 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
 
     if (nodes.length === 0) return
 
-    // ── SVG setup ─────────────────────────────────────────────────────────────
-
     svg.attr('width', W).attr('height', H)
 
     const root = svg.append('g').attr('class', 'root')
 
-    // Zoom — two-finger trackpad pans, pinch/Ctrl+scroll zooms
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 6])
       .filter((event) => {
-        // Allow all non-wheel events (drag, pinch, dblclick)
         if (event.type !== 'wheel') return true
-        // Wheel events: only zoom when Ctrl is held (pinch gesture or Ctrl+scroll)
         return event.ctrlKey
       })
       .on('zoom', (event) => {
@@ -286,9 +238,8 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     svg.call(zoom)
     svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(1))
 
-    // Two-finger trackpad pan (non-Ctrl wheel events → translate)
     svg.on('wheel.pan', (event: WheelEvent) => {
-      if (event.ctrlKey) return // pinch zoom handled by d3.zoom
+      if (event.ctrlKey) return
       event.preventDefault()
       const current = d3.zoomTransform(svg.node()!)
       const newTransform = current.translate(-event.deltaX / current.k, -event.deltaY / current.k)
@@ -297,99 +248,60 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
 
     zoomRef.current = zoom
 
-    // ── Simulation — Obsidian-tight layout ──────────────────────────────────
-
     const sim = d3.forceSimulation<GraphNode>(nodes)
       .force('link', d3.forceLink<GraphNode, GraphLink>(links)
         .id(d => d.id)
-        .distance(55)
-        .strength(0.9)
+        .distance(70)
+        .strength(0.85)
       )
       .force('charge', d3.forceManyBody<GraphNode>()
-        .strength(d => d.kind === 'company' ? -150 : -80)
-        .distanceMax(250)
+        .strength(d => d.kind === 'brand' ? -180 : -90)
+        .distanceMax(280)
       )
-      .force('center', d3.forceCenter(0, 0).strength(0.1))
-      .force('collide', d3.forceCollide<GraphNode>().radius(d => d.r + 6).strength(0.7))
-      .alphaDecay(0.028)
+      .force('center', d3.forceCenter(0, 0).strength(0.08))
+      .force('collide', d3.forceCollide<GraphNode>().radius(d => d.r + 8).strength(0.7))
+      .alphaDecay(0.025)
 
     simRef.current = sim
 
-    // ── Draw edges ────────────────────────────────────────────────────────────
-
+    // Edges — thin, low-opacity, plain stroke
     const linkSel = root.append('g').attr('class', 'links')
       .selectAll('line')
       .data(links)
       .join('line')
-      .attr('stroke', d => (d.target as GraphNode).color)
-      .attr('stroke-opacity', 0.4)
-      .attr('stroke-width', 0.6)
+      .attr('stroke', 'rgba(255,255,255,0.12)')
+      .attr('stroke-width', 0.5)
 
-    // ── Draw nodes ────────────────────────────────────────────────────────────
-
+    // Nodes — single circle, no rings/glows
     const nodeSel = root.append('g').attr('class', 'nodes')
       .selectAll<SVGGElement, GraphNode>('g')
       .data(nodes)
       .join('g')
       .attr('cursor', 'pointer')
 
-    // Company: glow ring
-    nodeSel.filter(d => d.kind === 'company')
-      .append('circle')
-      .attr('r', d => d.r + 4)
-      .attr('fill', d => d.color)
-      .attr('opacity', 0.06)
-
-    // Outer ring
-    nodeSel.append('circle')
-      .attr('r', d => d.r + 1.5)
-      .attr('fill', 'none')
-      .attr('stroke', d => d.color)
-      .attr('stroke-width', d => d.kind === 'company' ? 1.2 : 0.8)
-      .attr('stroke-opacity', d => d.kind === 'company' ? 0.5 : 0.3)
-
-    // Fill
     nodeSel.append('circle')
       .attr('r', d => d.r)
-      .attr('fill', d => d.kind === 'company' ? d.color + '22' : d.color)
-      .attr('fill-opacity', d => d.kind === 'company' ? 1 : 0.85)
-
-    // Company: initials
-    nodeSel.filter(d => d.kind === 'company')
-      .append('text')
-      .text(d => getInitials(d.label))
-      .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .attr('font-size', 6)
-      .attr('font-weight', 700)
       .attr('fill', d => d.color)
+      .attr('fill-opacity', d => d.kind === 'brand' ? 0.95 : 0.85)
+      .attr('stroke', d => d.color)
+      .attr('stroke-opacity', 0.25)
+      .attr('stroke-width', d => d.kind === 'brand' ? 6 : 3)
+
+    // Right-side label
+    nodeSel.append('text')
+      .text(d => {
+        const max = d.kind === 'brand' ? 26 : 22
+        return d.label.length > max ? d.label.slice(0, max - 1) + '…' : d.label
+      })
+      .attr('x', d => d.r + 5)
+      .attr('y', 0)
+      .attr('dy', '0.32em')
+      .attr('text-anchor', 'start')
+      .attr('font-size', d => d.kind === 'brand' ? 10.5 : 9.5)
+      .attr('font-weight', d => d.kind === 'brand' ? 500 : 400)
+      .attr('fill', d => d.kind === 'brand' ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.55)')
       .attr('font-family', 'system-ui, sans-serif')
       .style('pointer-events', 'none')
-
-    // Company: name label below
-    nodeSel.filter(d => d.kind === 'company')
-      .append('text')
-      .text(d => d.label.length > 18 ? d.label.slice(0, 17) + '…' : d.label)
-      .attr('text-anchor', 'middle')
-      .attr('dy', d => d.r + 13)
-      .attr('font-size', 10)
-      .attr('font-weight', 600)
-      .attr('fill', 'rgba(255,255,255,0.75)')
-      .attr('font-family', 'system-ui, sans-serif')
-      .style('pointer-events', 'none')
-
-    // Deal: name label below
-    nodeSel.filter(d => d.kind === 'deal')
-      .append('text')
-      .text(d => d.label.length > 14 ? d.label.slice(0, 13) + '…' : d.label)
-      .attr('text-anchor', 'middle')
-      .attr('dy', d => d.r + 11)
-      .attr('font-size', 7.5)
-      .attr('fill', 'rgba(255,255,255,0.45)')
-      .attr('font-family', 'system-ui, sans-serif')
-      .style('pointer-events', 'none')
-
-    // ── Hover tooltip ─────────────────────────────────────────────────────────
 
     nodeSel
       .on('mouseenter', (event: MouseEvent, d) => {
@@ -400,17 +312,13 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
       })
       .on('mouseleave', () => setTooltip(null))
 
-    // ── Click — use stable refs so we don't close over stale callbacks ───────
-
     nodeSel.on('click', (_event, d) => {
       if (d.kind === 'deal' && d.dealId) {
         onOpenDealRef.current(d.dealId)
-      } else if (d.kind === 'company' && d.companyId && onOpenBrandRef.current) {
+      } else if (d.kind === 'brand' && d.companyId && onOpenBrandRef.current) {
         onOpenBrandRef.current(d.companyId)
       }
     })
-
-    // ── Drag ─────────────────────────────────────────────────────────────────
 
     const drag = d3.drag<SVGGElement, GraphNode>()
       .on('start', (event, d) => {
@@ -428,8 +336,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
 
     nodeSel.call(drag)
 
-    // ── Tick ─────────────────────────────────────────────────────────────────
-
     sim.on('tick', () => {
       linkSel
         .attr('x1', d => (d.source as GraphNode).x!)
@@ -443,17 +349,10 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     return () => {
       sim.stop()
     }
-  // graphKey is the content fingerprint — only changes when real data changes.
-  // dealsRef/companiesRef/onOpenDealRef/onOpenBrandRef are stable refs that
-  // are always up-to-date; they don't need to be deps.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [graphKey])
 
-  // ── Search highlight + center (no zoom change) ────────────────────────────
-  //
-  // Depends only on debouncedSearch (a stable string primitive).
-  // deals/companies are accessed via stable refs so their reference churn on
-  // every parent re-render does NOT trigger this effect — eliminating flicker.
+  // Search highlight + center
   useEffect(() => {
     const svg = d3.select(svgRef.current!)
     const nodesGroup = svg.select<SVGGElement>('g.root g.nodes')
@@ -463,29 +362,29 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
     const q = debouncedSearch.trim().toLowerCase()
 
     if (!q) {
-      // No active search — restore full visibility
       nodesGroup.selectAll<SVGGElement, GraphNode>('g')
         .attr('visibility', 'visible')
         .attr('opacity', 1)
       linksGroup.selectAll<SVGLineElement, GraphLink>('line')
         .attr('visibility', 'visible')
-        .attr('stroke-opacity', 0.15)
+        .attr('stroke-opacity', 1)
       return
     }
 
-    // Compute matching node IDs using stable refs (avoids dependency on deals/companies)
     const ids = new Set<string>()
     const dealsSnap = dealsRef.current
     const companiesSnap = companiesRef.current
 
     for (const deal of dealsSnap) {
-      const stageLabel = (STAGE_TOOLTIP_LABEL[deal.stage] || deal.stage).toLowerCase()
+      const title = (deal.title ?? '').toLowerCase()
+      const stage = (deal.stage ?? '').toLowerCase()
+      const stageLabel = (STAGE_LABEL[deal.stage] || deal.stage || '').toLowerCase()
       if (
-        deal.title.toLowerCase().includes(q) ||
-        deal.stage.toLowerCase().includes(q) ||
+        title.includes(q) ||
+        stage.includes(q) ||
         stageLabel.includes(q) ||
         (deal.assignedTo ?? '').toLowerCase().includes(q) ||
-        (deal.servicesTags ?? []).some(s => s.toLowerCase().includes(q))
+        (deal.servicesTags ?? []).some(s => (s ?? '').toLowerCase().includes(q))
       ) {
         ids.add(`d-${deal.id}`)
         if (deal.companyId) ids.add(`c-${deal.companyId}`)
@@ -495,9 +394,9 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
 
     for (const c of companiesSnap) {
       if (
-        c.name.toLowerCase().includes(q) ||
-        (c.industry || '').toLowerCase().includes(q) ||
-        (c.domain || '').toLowerCase().includes(q)
+        (c.name ?? '').toLowerCase().includes(q) ||
+        (c.industry ?? '').toLowerCase().includes(q) ||
+        (c.domain ?? '').toLowerCase().includes(q)
       ) {
         ids.add(`c-${c.id}`)
         for (const deal of dealsSnap) {
@@ -506,7 +405,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
       }
     }
 
-    // Hide non-matching nodes entirely, show only matches
     nodesGroup.selectAll<SVGGElement, GraphNode>('g')
       .attr('visibility', d => ids.has(d.id) ? 'visible' : 'hidden')
       .attr('opacity', 1)
@@ -517,9 +415,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
         const tgt = (d.target as GraphNode).id
         return ids.has(src) && ids.has(tgt) ? 'visible' : 'hidden'
       })
-      .attr('stroke-opacity', 0.35)
 
-    // ── Center on matched nodes (keep current zoom scale) ─────────────────
     if (ids.size === 0 || !zoomRef.current) return
 
     const matchedNodes: GraphNode[] = []
@@ -550,16 +446,16 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
       .ease(d3.easeCubicInOut)
       .call(zoomRef.current.transform, targetTransform)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch])  // stable string primitive — only fires after 300ms debounce, never on deals/companies ref churn
+  }, [debouncedSearch])
 
   return (
-    <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#0f1117] select-none">
-      {/* Dot grid background */}
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#0d0e13] select-none">
+      {/* Subtle dot grid */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px)',
-          backgroundSize: '28px 28px',
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
         }}
       />
 
@@ -591,7 +487,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
           style={{ left: tooltip.x + 14, top: tooltip.y - 10 }}
         >
           <div className="bg-[#1a1d27] border border-white/10 rounded-lg px-3 py-2 shadow-2xl min-w-[140px]">
-            <p className="text-xs font-semibold text-white/90 leading-snug max-w-[200px] break-words">
+            <p className="text-xs font-semibold text-white/90 leading-snug max-w-[220px] break-words">
               {tooltip.node.label}
             </p>
             {tooltip.node.sublabel && (
@@ -604,11 +500,6 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
                 {formatGraphValue(tooltip.node.value)}
               </p>
             )}
-            {tooltip.node.kind === 'company' && (tooltip.node.documentCount ?? 0) > 0 && (
-              <p className="text-atom text-white/40 mt-0.5">
-                📎 {tooltip.node.documentCount} resource{tooltip.node.documentCount !== 1 ? 's' : ''}
-              </p>
-            )}
             <p className="text-atom text-white/25 mt-1.5 border-t border-white/[0.06] pt-1.5">
               {tooltip.node.kind === 'deal' ? 'Click to open deal →' : 'Click to view brand →'}
             </p>
@@ -616,21 +507,20 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
         </div>
       )}
 
-      {/* Stage legend — 7 kanban stages */}
-      <div className="absolute top-3 left-3 bg-[#1a1d27]/90 backdrop-blur-sm border border-white/[0.08] rounded-lg px-3 py-2.5 pointer-events-none">
-        <p className="text-atom font-semibold text-white/30 uppercase tracking-wider mb-2">Stages</p>
-        <div className="flex flex-col gap-1">
-          {KANBAN_STAGES.map(s => (
-            <div key={s.id} className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: s.color }} />
-              <span className="text-atom text-white/40">{s.label}</span>
-            </div>
-          ))}
+      {/* Obsidian-style legend — top-right */}
+      <div className="absolute top-3 left-3 flex items-center gap-3 px-3 py-1.5 rounded-md bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm pointer-events-none">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ background: BRAND_COLOR }} />
+          <span className="text-atom text-white/50">brand</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full" style={{ background: DEAL_COLOR }} />
+          <span className="text-atom text-white/50">deal</span>
         </div>
       </div>
 
       {/* Controls hint */}
-      <div className="absolute bottom-3 right-3 bg-[#1a1d27]/80 backdrop-blur-sm border border-white/[0.08] rounded-lg px-2.5 py-1.5 pointer-events-none">
+      <div className="absolute bottom-3 right-3 px-2.5 py-1.5 rounded-md bg-white/[0.02] border border-white/[0.06] backdrop-blur-sm pointer-events-none">
         <span className="text-atom text-white/30">Two-finger pan · Pinch to zoom · Ctrl+F to search</span>
       </div>
     </div>
