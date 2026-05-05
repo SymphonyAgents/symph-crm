@@ -10,6 +10,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
 import { INDUSTRY_OPTIONS } from '@/lib/constants'
 import { DataTable, SortableHeader } from '@/components/ui/data-table'
+import { Table, TableBody, TableHead, TableHeader, TableRow, TableCell } from '@/components/ui/table'
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -172,31 +173,39 @@ export default function ProductsPage() {
   )
 }
 
-// ─── Skeleton loader ──────────────────────────────────────────────────────────
+// ─── Skeleton loader — uses the same Table primitives as DataTable so there's
+//   no layout shift when the real rows hydrate in. ───────────────────────────
 
 function ProductsTableSkeleton() {
   return (
-    <div>
-      <div className="grid grid-cols-[1fr_1fr_120px_120px_120px] px-4 py-2.5 border-b border-black/[.06] dark:border-white/[.06]">
-        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-3 w-16" />)}
-      </div>
-      {[1, 2, 3, 4, 5].map(i => (
-        <div
-          key={i}
-          className="grid grid-cols-[1fr_1fr_120px_120px_120px] gap-3 px-4 py-3 border-b border-black/[.04] dark:border-white/[.04] last:border-0 items-center"
-        >
-          <Skeleton className="h-3.5 w-3/4" />
-          <Skeleton className="h-3.5 w-1/2" />
-          <Skeleton className="h-5 w-16 rounded-full" />
-          <Skeleton className="h-3.5 w-20" />
-          <div className="flex items-center gap-1 justify-end">
-            <Skeleton className="h-6 w-6 rounded-md" />
-            <Skeleton className="h-6 w-6 rounded-md" />
-            <Skeleton className="h-6 w-6 rounded-md" />
-          </div>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead><Skeleton className="h-3 w-12" /></TableHead>
+          <TableHead><Skeleton className="h-3 w-16" /></TableHead>
+          <TableHead><Skeleton className="h-3 w-12" /></TableHead>
+          <TableHead><Skeleton className="h-3 w-14" /></TableHead>
+          <TableHead></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {[0, 1, 2, 3, 4].map(i => (
+          <TableRow key={i} className="hover:bg-transparent">
+            <TableCell><Skeleton className="h-3.5 w-3/4" /></TableCell>
+            <TableCell><Skeleton className="h-3.5 w-1/2" /></TableCell>
+            <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+            <TableCell><Skeleton className="h-3.5 w-20" /></TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1 justify-end">
+                <Skeleton className="h-6 w-6 rounded-md" />
+                <Skeleton className="h-6 w-6 rounded-md" />
+                <Skeleton className="h-6 w-6 rounded-md" />
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   )
 }
 
