@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
 import { useUpdateDeal, useAssignDealBrand, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetCompanies } from '@/lib/hooks/queries'
+import { useGetCompanies, useGetUsers, useGetInternalProducts } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
@@ -139,6 +139,9 @@ export function EditDealModal({ deal, onClose }: Props) {
   useEscapeKey(useCallback(onClose, [onClose]))
 
   const { data: companies = [] } = useGetCompanies()
+  const { data: allUsers = [] } = useGetUsers()
+  const { data: internalProducts = [] } = useGetInternalProducts(true)
+  const salesUsers = useMemo(() => allUsers.filter(u => u.role === 'SALES'), [allUsers])
   const qc = useQueryClient()
 
   // ── Form state, pre-populated from deal ──────────────────────────────────
@@ -154,6 +157,9 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [probability, setProbability] = useState(
     deal.probability != null ? String(deal.probability) : ''
   )
+  const [subAccountManagerId, setSubAccountManagerId] = useState(deal.subAccountManagerId ?? '')
+  const [builders, setBuilders] = useState<string[]>(deal.builders ?? [])
+  const [internalProductId, setInternalProductId] = useState(deal.internalProductId ?? '')
 
   const updateDeal = useUpdateDeal({
     onSuccess: () => {
@@ -204,6 +210,19 @@ export function EditDealModal({ deal, onClose }: Props) {
 
     const newProb = probability ? Number(probability) : null
     if (newProb !== deal.probability) changes.probability = newProb
+
+    const newSubAm = subAccountManagerId || null
+    if (newSubAm !== (deal.subAccountManagerId ?? null)) changes.subAccountManagerId = newSubAm
+
+    const oldBuilders = deal.builders ?? []
+    if (JSON.stringify(builders) !== JSON.stringify(oldBuilders)) {
+      changes.builders = builders
+    }
+
+    const newInternalProductId = serviceType === 'internal_products' ? (internalProductId || null) : null
+    if (newInternalProductId !== (deal.internalProductId ?? null)) {
+      changes.internalProductId = newInternalProductId
+    }
 
     // companyId is handled separately via useAssignDealBrand.
     // If user typed a free-text name (not a UUID), create the company first.
@@ -293,6 +312,27 @@ export function EditDealModal({ deal, onClose }: Props) {
             <ServiceSelect value={serviceType} onValueChange={setServiceType} />
           </div>
 
+          {/* Internal Product — only when service is "internal_products" */}
+          {serviceType === 'internal_products' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
+              <Select
+                value={internalProductId || '__none__'}
+                onValueChange={v => setInternalProductId(v === '__none__' ? '' : v)}
+              >
+                <SelectTrigger className="h-9 text-ssm">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  <SelectItem value="__none__" className="text-ssm text-slate-400">—</SelectItem>
+                  {internalProducts.map(p => (
+                    <SelectItem key={p.id} value={p.id} className="text-ssm">{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Stage + Outreach */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
@@ -356,6 +396,64 @@ export function EditDealModal({ deal, onClose }: Props) {
               onChange={e => setCloseDate(e.target.value)}
               className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
             />
+          </div>
+
+          {/* Sub Account Manager */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              Sub Account Manager <span className="text-slate-400">(optional)</span>
+            </label>
+            <Select value={subAccountManagerId || '__none__'} onValueChange={v => setSubAccountManagerId(v === '__none__' ? '' : v)}>
+              <SelectTrigger className="h-9 text-ssm">
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[280px]">
+                <SelectItem value="__none__" className="text-ssm text-slate-400">Unassigned</SelectItem>
+                {salesUsers.map(u => (
+                  <SelectItem key={u.id} value={u.id} className="text-ssm">{u.name || u.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Builders */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              Builders <span className="text-slate-400">(optional)</span>
+            </label>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {builders.length === 0 ? (
+                <span className="text-xxs text-slate-400 px-1">No builders assigned</span>
+              ) : (
+                builders.map(uid => {
+                  const u = allUsers.find(x => x.id === uid)
+                  return (
+                    <span key={uid} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-700 dark:text-slate-200">
+                      {u?.name || u?.email || uid}
+                      <button
+                        type="button"
+                        onClick={() => setBuilders(builders.filter(b => b !== uid))}
+                        className="ml-0.5 rounded hover:bg-slate-200 dark:hover:bg-white/[.08] p-0.5"
+                      >
+                        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                      </button>
+                    </span>
+                  )
+                })
+              )}
+            </div>
+            <Select value="" onValueChange={(uid) => { if (uid && !builders.includes(uid)) setBuilders([...builders, uid]) }}>
+              <SelectTrigger className="h-9 text-ssm">
+                <SelectValue placeholder="Add builder..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-[280px]">
+                {allUsers.filter(u => !builders.includes(u.id)).map(u => (
+                  <SelectItem key={u.id} value={u.id} className="text-ssm">{u.name || u.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {error && (

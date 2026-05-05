@@ -2,6 +2,7 @@ import { pgTable, uuid, text, numeric, integer, date, boolean, timestamp } from 
 import { companies } from './companies'
 import { products } from './products'
 import { tiers } from './products'
+import { internalProducts } from './internal-products'
 import { users } from './users'
 import { workspaces } from './workspaces'
 import { pipelineStages, amRoster } from './pipeline'
@@ -22,15 +23,22 @@ export const deals = pgTable('deals', {
   lossReason: text('loss_reason'),
   competitiveNotes: text('competitive_notes'),
 
-  // Deal ownership
+  // Deal ownership — primary AM
   assignedTo: text('assigned_to').references(() => users.id),
+  // Optional secondary AM
+  subAccountManagerId: text('sub_account_manager_id').references(() => users.id),
+  // Builders / engineers assigned to the deal (user.id array)
+  builders: text('builders').array().default([]),
   createdBy: text('created_by').references(() => users.id),
 
   // Account manager — FK to am_roster (replaces freetext accountsManagerName)
   amRosterId: uuid('am_roster_id').references(() => amRoster.id),
 
-  // Build assignment — FK to users
+  // Build assignment — FK to users (legacy single-builder field)
   buildAssignedTo: text('build_assigned_to').references(() => users.id),
+
+  // Internal product reference — populated when servicesTags includes 'internal_products'
+  internalProductId: uuid('internal_product_id').references(() => internalProducts.id),
 
   outreachCategory: text('outreach_category', { enum: ['inbound', 'outbound'] }),
   dateCaptured: timestamp('date_captured', { withTimezone: true }).defaultNow(),

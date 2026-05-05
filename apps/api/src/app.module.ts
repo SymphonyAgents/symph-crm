@@ -13,6 +13,7 @@ import { FileParserModule } from './file-parser/file-parser.module'
 import { VoiceModule } from './voice/voice.module'
 import { ChatModule } from './chat/chat.module'
 import { ProductsModule } from './products/products.module'
+import { InternalProductsModule } from './internal-products/internal-products.module'
 import { PipelineModule } from './pipeline/pipeline.module'
 import { InternalModule } from './internal/internal.module'
 import { OwnerModule } from './owner/owner.module'
@@ -41,6 +42,7 @@ import { NotificationsModule } from './notifications/notifications.module'
     VoiceModule,
     ChatModule,
     ProductsModule,
+    InternalProductsModule,
     PipelineModule,
     CalendarModule,
     InternalModule,

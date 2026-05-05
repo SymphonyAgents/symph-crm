@@ -20,6 +20,7 @@ import {
   FileText,
   ClipboardList,
   Receipt,
+  Package,
   Settings,
   Sun,
   Moon,
@@ -77,7 +78,13 @@ function getNavSections(dormantCount: number): NavSection[] {
         { path: '/reports', label: 'Reports', icon: BarChart3 },
         { path: '/proposals', label: 'Proposals', icon: FileText },
         { path: '/bills', label: 'Bills', icon: Receipt },
-        { path: '/audit-logs', label: 'Audit Log', icon: ClipboardList },
+        { path: '/products', label: 'Products', icon: Package },
+      ],
+    },
+    {
+      title: 'System',
+      items: [
+        { path: '/audit-logs', label: 'Logs', icon: ClipboardList },
       ],
     },
   ]

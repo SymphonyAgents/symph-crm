@@ -17,6 +17,12 @@ export type ApiDeal = {
   monthlyRecurring: string | null
   contractLength: string | null
   assignedTo: string | null
+  /** Optional secondary AM (single user) */
+  subAccountManagerId: string | null
+  /** User IDs of builders/engineers assigned (any role) */
+  builders: string[] | null
+  /** Internal product reference (set when servicesTags includes 'internal_products') */
+  internalProductId: string | null
   lastActivityAt: string | null
   productId: string | null
   tierId: string | null
@@ -68,10 +74,22 @@ export type ApiUser = {
   name: string
   email: string
   image?: string | null
+  role?: 'SALES' | 'BUILD'
   firstName?: string | null
   lastName?: string | null
   nickname?: string | null
   discordId: string | null
+}
+
+// ── Internal Products ────────────────────────────────────────────────────────
+
+export type ApiInternalProduct = {
+  id: string
+  name: string
+  industry: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 // ── Activities ───────────────────────────────────────────────────────────────

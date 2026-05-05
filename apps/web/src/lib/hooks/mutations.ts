@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiInternalProduct } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -89,11 +89,16 @@ export type CreateDealInput = {
   pricingModel?: string | null
   servicesTags?: string[]
   assignedTo?: string | null
+  subAccountManagerId?: string | null
+  builders?: string[]
+  internalProductId?: string | null
   createdBy?: string | null
   closeDate?: string | null
 }
 
-export type UpdateDealInput = Partial<Omit<CreateDealInput, 'companyId' | 'productId' | 'tierId'>>
+export type UpdateDealInput = Partial<Omit<CreateDealInput, 'companyId' | 'productId' | 'tierId'>> & {
+  companyId?: string | null
+}
 
 export function useCreateDeal(
   options?: UseMutationOptions<unknown, Error, CreateDealInput>,
@@ -514,5 +519,42 @@ export function useDeleteChatSession(
   return useMutation<void, Error, string>({
     mutationFn: (sessionId) => api.delete(`/chat/sessions/${sessionId}`),
     ...withToast('Chat deleted', options),
+  })
+}
+
+// ─── Internal Product mutations ───────────────────────────────────────────────
+
+export type CreateInternalProductInput = {
+  name: string
+  industry?: string | null
+  isActive?: boolean
+}
+
+export type UpdateInternalProductInput = Partial<CreateInternalProductInput>
+
+export function useCreateInternalProduct(
+  options?: UseMutationOptions<ApiInternalProduct, Error, CreateInternalProductInput>,
+) {
+  return useMutation<ApiInternalProduct, Error, CreateInternalProductInput>({
+    mutationFn: (input) => api.post<ApiInternalProduct>('/internal-products', input),
+    ...withToast('Product created', options),
+  })
+}
+
+export function useUpdateInternalProduct(
+  options?: UseMutationOptions<ApiInternalProduct, Error, { id: string; data: UpdateInternalProductInput }>,
+) {
+  return useMutation<ApiInternalProduct, Error, { id: string; data: UpdateInternalProductInput }>({
+    mutationFn: ({ id, data }) => api.patch<ApiInternalProduct>(`/internal-products/${id}`, data),
+    ...withToast('Product updated', options),
+  })
+}
+
+export function useDeleteInternalProduct(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => api.delete(`/internal-products/${id}`),
+    ...withToast('Product deleted', options),
   })
 }

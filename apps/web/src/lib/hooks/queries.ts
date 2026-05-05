@@ -34,6 +34,7 @@ import type {
   DealSummaryFull,
   ContactNotesResponse,
   NfsDealNote,
+  ApiInternalProduct,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -274,6 +275,19 @@ export function useGetProposals(
   return useQuery<ApiDocument[]>({
     queryKey: queryKeys.documents.proposals,
     queryFn: () => api.get<ApiDocument[]>('/documents', { type: 'proposal' }),
+    ...options,
+  })
+}
+
+// ─── Internal Products ────────────────────────────────────────────────────────
+
+export function useGetInternalProducts(
+  activeOnly = false,
+  options?: Partial<UseQueryOptions<ApiInternalProduct[]>>,
+) {
+  return useQuery<ApiInternalProduct[]>({
+    queryKey: activeOnly ? queryKeys.internalProducts.activeOnly : queryKeys.internalProducts.all,
+    queryFn: () => api.get<ApiInternalProduct[]>('/internal-products', activeOnly ? { active: true } : undefined),
     ...options,
   })
 }

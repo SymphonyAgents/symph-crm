@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
 import { useCreateDeal, useUploadDocumentFile, useCreateCompany } from '@/lib/hooks/mutations'
+import { useGetUsers, useGetInternalProducts } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -21,7 +22,7 @@ import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SERVICE_TYPES, SYSTEM_TYPES,
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import type { ApiCompanyDetail } from '@/lib/types'
+import type { ApiCompanyDetail, ApiUser } from '@/lib/types'
 
 type Props = {
   companies: ApiCompanyDetail[]
@@ -229,6 +230,108 @@ const CREATE_DEAL_ACCEPT_LIST = [
 ]
 const CREATE_DEAL_ACCEPT = CREATE_DEAL_ACCEPT_LIST.join(',')
 
+// ─── Builder multi-select (chips + dropdown) ─────────────────────────────────
+
+function BuilderMultiSelect({
+  users,
+  selected,
+  onChange,
+}: {
+  users: ApiUser[]
+  selected: string[]
+  onChange: (ids: string[]) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  const filtered = useMemo(() => {
+    const sorted = [...users].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+    const q = query.trim().toLowerCase()
+    if (!q) return sorted
+    return sorted.filter(u => (u.name ?? '').toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q))
+  }, [users, query])
+
+  function toggle(id: string) {
+    if (selected.includes(id)) onChange(selected.filter(x => x !== id))
+    else onChange([...selected, id])
+  }
+
+  const selectedUsers = selected
+    .map(id => users.find(u => u.id === id))
+    .filter((u): u is ApiUser => !!u)
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 flex-wrap min-h-9 w-full px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left"
+      >
+        {selectedUsers.length === 0 ? (
+          <span className="text-ssm text-slate-400 px-1">—</span>
+        ) : (
+          selectedUsers.map(u => (
+            <span
+              key={u.id}
+              className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-700 dark:text-slate-200"
+            >
+              {u.name}
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); toggle(u.id) }}
+                className="ml-0.5 rounded hover:bg-slate-200 dark:hover:bg-white/[.08] p-0.5"
+              >
+                <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </span>
+            </span>
+          ))
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg overflow-hidden">
+          <div className="px-2 py-1.5 border-b border-black/[.06] dark:border-white/[.06]">
+            <input
+              autoFocus
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search builder..."
+              className="w-full h-7 px-2 text-ssm bg-transparent outline-none placeholder:text-slate-400"
+            />
+          </div>
+          <div className="max-h-[240px] overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <p className="px-3 py-2 text-xxs text-slate-400">No matches</p>
+            ) : (
+              filtered.map(u => {
+                const isSelected = selected.includes(u.id)
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => toggle(u.id)}
+                    className={cn(
+                      'w-full text-left px-3 py-1.5 text-ssm transition-colors flex items-center gap-2',
+                      'hover:bg-slate-50 dark:hover:bg-white/[.06]',
+                      isSelected && 'text-primary',
+                    )}
+                  >
+                    {isSelected ? <Check className="w-3 h-3 shrink-0" /> : <span className="w-3 h-3 shrink-0" />}
+                    <span className="truncate">{u.name}</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   useEscapeKey(useCallback(onClose, [onClose]))
 
@@ -240,8 +343,14 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
   const [outreachCategory, setOutreachCategory] = useState('')
   const [pricingModel, setPricingModel] = useState('')
   const [serviceType, setServiceType] = useState('')
+  const [subAccountManagerId, setSubAccountManagerId] = useState('')
+  const [builders, setBuilders] = useState<string[]>([])
+  const [internalProductId, setInternalProductId] = useState('')
   const qc = useQueryClient()
   const { userId } = useUser()
+  const { data: allUsers = [] } = useGetUsers()
+  const { data: internalProducts = [] } = useGetInternalProducts(true)
+  const salesUsers = useMemo(() => allUsers.filter((u: ApiUser) => u.role === 'SALES'), [allUsers])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadFiles = useUploadDocumentFile()
@@ -302,6 +411,9 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
       servicesTags: tags,
       createdBy: userId,
       assignedTo: userId,
+      subAccountManagerId: subAccountManagerId || null,
+      builders: builders.length > 0 ? builders : undefined,
+      internalProductId: serviceType === 'internal_products' ? (internalProductId || null) : null,
     })
   }
 
@@ -358,6 +470,50 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           <div className="flex flex-col gap-1.5">
             <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Service</label>
             <ServiceSelect value={serviceType} onValueChange={setServiceType} />
+          </div>
+
+          {/* Internal Product — only when service is "internal_products" */}
+          {serviceType === 'internal_products' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
+              <Select value={internalProductId} onValueChange={setInternalProductId}>
+                <SelectTrigger className="h-9 text-ssm">
+                  <SelectValue placeholder={internalProducts.length === 0 ? 'No products yet — add via /products' : 'Select product...'} />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  {internalProducts.map(p => (
+                    <SelectItem key={p.id} value={p.id} className="text-ssm">
+                      {p.name}{p.industry ? <span className="text-slate-400 ml-1.5">· {p.industry}</span> : null}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Sub Account Manager + Builders */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Sub AM <span className="text-slate-400">(optional)</span></label>
+              <Select value={subAccountManagerId} onValueChange={setSubAccountManagerId}>
+                <SelectTrigger className="h-9 text-ssm">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  {salesUsers.map(u => (
+                    <SelectItem key={u.id} value={u.id} className="text-ssm">{u.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Builders <span className="text-slate-400">(optional)</span></label>
+              <BuilderMultiSelect
+                users={allUsers}
+                selected={builders}
+                onChange={setBuilders}
+              />
+            </div>
           </div>
 
           {/* Stage + Outreach */}

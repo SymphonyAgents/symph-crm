@@ -48,6 +48,11 @@ export const queryKeys = {
   products: {
     all: ['products'] as const,
   },
+  internalProducts: {
+    all: ['internal-products'] as const,
+    activeOnly: ['internal-products', 'active'] as const,
+    detail: (id: string) => ['internal-products', id] as const,
+  },
   tiers: {
     all: ['tiers'] as const,
   },

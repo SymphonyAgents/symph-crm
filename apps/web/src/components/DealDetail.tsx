@@ -2217,8 +2217,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {/* Account Manager */}
           <SidebarSection title="Account Manager">
             <div ref={assignRef} className="relative">
-              {isTerminal ? (
-                /* Locked: won/lost deals cannot have AM reassigned */
+              {deal.stage === 'closed_lost' ? (
+                /* Locked: lost deals cannot have AM reassigned (won deals can) */
                 <div className="flex items-center gap-2.5 px-1 py-1 -mx-1 rounded-lg">
                   {amDisplayName ? (
                     <>
@@ -2244,7 +2244,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     </>
                   )}
                   {/* Lock indicator */}
-                  <div className="ml-auto shrink-0" title={`Cannot reassign AM — deal is ${deal.stage === 'closed_won' ? 'won' : 'lost'}`}>
+                  <div className="ml-auto shrink-0" title="Cannot reassign AM — deal is lost">
                     <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -2304,7 +2304,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                               Unassign
                             </button>
                           )}
-                          {users.map(u => (
+                          {users.filter(u => u.role === 'SALES').map(u => (
                             <button
                               key={u.id}
                               onClick={() => handleAssignAM(u.id)}
@@ -2328,6 +2328,96 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   )}
                 </>
               )}
+            </div>
+          </SidebarSection>
+
+          {/* Sub Account Manager */}
+          <SidebarSection title="Sub Account Manager">
+            <Select
+              value={deal.subAccountManagerId ?? '__none__'}
+              onValueChange={(v) => {
+                const newValue = v === '__none__' ? null : v
+                updateDeal.mutate({ id: dealId, data: { subAccountManagerId: newValue } }, {
+                  onSettled: () => {
+                    queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
+                    queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+                  },
+                })
+              }}
+            >
+              <SelectTrigger className="h-8 text-ssm">
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[280px]">
+                <SelectItem value="__none__" className="text-ssm text-slate-400">Unassigned</SelectItem>
+                {users.filter(u => u.role === 'SALES').map(u => (
+                  <SelectItem key={u.id} value={u.id} className="text-ssm">{u.name || u.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SidebarSection>
+
+          {/* Builders */}
+          <SidebarSection title="Builders">
+            <div className="space-y-1.5">
+              {(deal.builders ?? []).length === 0 ? (
+                <p className="text-xxs text-slate-400">No builders assigned</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {(deal.builders ?? []).map(uid => {
+                    const u = users.find(x => x.id === uid)
+                    return (
+                      <span
+                        key={uid}
+                        className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-700 dark:text-slate-200"
+                      >
+                        {u?.name || u?.email || uid}
+                        <button
+                          onClick={() => {
+                            const next = (deal.builders ?? []).filter(b => b !== uid)
+                            updateDeal.mutate({ id: dealId, data: { builders: next } }, {
+                              onSettled: () => {
+                                queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
+                                queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+                              },
+                            })
+                          }}
+                          className="ml-0.5 rounded hover:bg-slate-200 dark:hover:bg-white/[.08] p-0.5"
+                          title="Remove"
+                        >
+                          <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      </span>
+                    )
+                  })}
+                </div>
+              )}
+              <Select
+                value=""
+                onValueChange={(uid) => {
+                  if (!uid || (deal.builders ?? []).includes(uid)) return
+                  const next = [...(deal.builders ?? []), uid]
+                  updateDeal.mutate({ id: dealId, data: { builders: next } }, {
+                    onSettled: () => {
+                      queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
+                      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+                    },
+                  })
+                }}
+              >
+                <SelectTrigger className="h-8 text-ssm">
+                  <SelectValue placeholder="Add builder..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[280px]">
+                  {users
+                    .filter(u => !(deal.builders ?? []).includes(u.id))
+                    .map(u => (
+                      <SelectItem key={u.id} value={u.id} className="text-ssm">{u.name || u.email}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             </div>
           </SidebarSection>
 
