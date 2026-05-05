@@ -101,7 +101,7 @@ function DealNotesFlat({
 
   if (isLoading) {
     return (
-      <div className="ml-[22px] border-l border-black/[.05] dark:border-white/[.05] py-1">
+      <div className="ml-[22px] border-l border-black/[.12] dark:border-white/[.15] py-1">
         <div className="flex items-center gap-2 px-2 py-1 pl-8">
           <div className="w-3 h-3 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
           <span className="text-[10px] text-slate-400">Loading...</span>
@@ -112,14 +112,14 @@ function DealNotesFlat({
 
   if (noteRows.length === 0 && resourceDocs.length === 0) {
     return (
-      <div className="ml-[22px] border-l border-black/[.05] dark:border-white/[.05] py-1">
+      <div className="ml-[22px] border-l border-black/[.12] dark:border-white/[.15] py-1">
         <div className="pl-8 pr-2 py-1 text-[10px] text-slate-400 italic">No notes yet</div>
       </div>
     )
   }
 
   return (
-    <div className="ml-[22px] border-l border-black/[.05] dark:border-white/[.05]">
+    <div className="ml-[22px] border-l border-black/[.12] dark:border-white/[.15]">
       {noteRows.map((row) => {
         if (row.kind === 'log') {
           const isActive = isSelectedDeal && activeCat === 'log'
@@ -139,7 +139,7 @@ function DealNotesFlat({
             >
               <span className="w-1 h-1 rounded-full shrink-0 bg-slate-400" />
               <span className={cn(
-                'flex-1 text-[11px] min-w-0 truncate',
+                'flex-1 text-xs min-w-0 truncate',
                 isActive ? 'text-primary font-medium' : 'text-slate-500 dark:text-slate-400'
               )}>
                 Log
@@ -170,7 +170,7 @@ function DealNotesFlat({
               style={{ background: isActive ? 'var(--primary)' : dotColor, opacity: isActive ? 1 : 0.55 }}
             />
             <span className={cn(
-              'flex-1 text-[11px] min-w-0 truncate',
+              'flex-1 text-xs min-w-0 truncate',
               isActive ? 'text-primary font-medium' : 'text-slate-600 dark:text-slate-300'
             )}>
               {row.title}
@@ -199,7 +199,7 @@ function DealNotesFlat({
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
             </svg>
             <span className={cn(
-              'flex-1 text-[11px] min-w-0 truncate',
+              'flex-1 text-xs min-w-0 truncate',
               isActive ? 'text-primary font-medium' : 'text-slate-500 dark:text-slate-400'
             )}>
               {doc.title || doc.storagePath?.split('/').pop()}
@@ -450,7 +450,7 @@ export function WikiSidebar({
                       </div>
 
                       <span className={cn(
-                        'flex-1 text-sm truncate min-w-0',
+                        'flex-1 text-xs truncate min-w-0',
                         isSelectedBrand && !selectedDealId
                           ? 'text-primary font-semibold'
                           : 'text-slate-700 dark:text-slate-200 font-medium'
@@ -465,7 +465,7 @@ export function WikiSidebar({
 
                     {/* Deals — click toggles tree, no nav */}
                     {isBrandOpen && groupDeals.length > 0 && (
-                      <div className="ml-[22px] border-l border-black/[.05] dark:border-white/[.05]">
+                      <div className="ml-[22px] border-l border-black/[.12] dark:border-white/[.15]">
                         {groupDeals
                           .slice()
                           .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
@@ -503,7 +503,7 @@ export function WikiSidebar({
                                     style={{ background: stageColor }}
                                   />
                                   <span className={cn(
-                                    'flex-1 text-sm truncate min-w-0',
+                                    'flex-1 text-xs truncate min-w-0',
                                     isThisDealSelected
                                       ? 'text-primary font-medium'
                                       : 'text-slate-600 dark:text-slate-300'

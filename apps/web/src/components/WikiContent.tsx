@@ -518,9 +518,9 @@ function NoteContent({ note, category }: { note: DealNoteFile; category: string 
   const typeColor = getNoteTypeColor(category)
 
   return (
-    <div className="px-6 py-5 max-w-[820px] mx-auto">
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-2">
+    <div className="px-8 py-6 max-w-[820px] mx-auto">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
           <span
             className="px-2 py-0.5 rounded text-atom font-semibold uppercase tracking-wide"
             style={{ background: typeColor.bg, color: typeColor.text }}
@@ -529,11 +529,11 @@ function NoteContent({ note, category }: { note: DealNoteFile; category: string 
           </span>
           <span className="text-xxs text-slate-400 tabular-nums">{formatNoteDate(note.createdAt)}</span>
         </div>
-        <h1 className="text-base font-semibold text-slate-900 dark:text-white leading-snug">
+        <h1 className="text-[26px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
           {title}
         </h1>
       </div>
-      <div className="prose-wiki space-y-1">
+      <div className="space-y-1">
         {renderSimpleMarkdown(note.content)}
       </div>
     </div>
@@ -566,77 +566,155 @@ function LogView({ log }: { log: string | null }) {
   )
 }
 
-// ─── Simple markdown renderer ────────────────────────────────────────────────
+// ─── Markdown renderer (Obsidian-style typography) ───────────────────────────
+
+const NUMBERED_RE = /^(\d+)\.\s+(.*)$/
 
 function renderSimpleMarkdown(content: string): React.ReactNode[] {
   const lines = content.split('\n')
   const nodes: React.ReactNode[] = []
 
-  for (let i = 0; i < lines.length; i++) {
+  let i = 0
+  while (i < lines.length) {
     const line = lines[i]
+
+    // Fenced code block ```
+    if (line.trimStart().startsWith('```')) {
+      const codeLines: string[] = []
+      i++
+      while (i < lines.length && !lines[i].trimStart().startsWith('```')) {
+        codeLines.push(lines[i])
+        i++
+      }
+      i++ // skip closing fence
+      nodes.push(
+        <pre key={`code-${i}`} className="my-3 px-4 py-3 rounded-md bg-slate-100 dark:bg-white/[.04] border-l-2 border-slate-300 dark:border-white/[.15] overflow-x-auto">
+          <code className="text-[13px] font-mono text-slate-700 dark:text-slate-300 leading-6 whitespace-pre">
+            {codeLines.join('\n')}
+          </code>
+        </pre>,
+      )
+      continue
+    }
 
     if (line.startsWith('### ')) {
       nodes.push(
-        <p key={i} className="text-sbase font-semibold text-slate-700 dark:text-slate-300 mt-3 mb-1">
-          {line.slice(4)}
-        </p>,
+        <h3 key={i} className="text-[17px] font-semibold text-slate-800 dark:text-slate-200 mt-5 mb-2">
+          {inlineFormat(line.slice(4))}
+        </h3>,
       )
-      continue
+      i++; continue
     }
 
     if (line.startsWith('## ')) {
       nodes.push(
-        <p key={i} className="text-sbase font-semibold text-slate-800 dark:text-slate-200 mt-4 mb-1.5">
-          {line.slice(3)}
-        </p>,
+        <h2 key={i} className="text-[20px] font-semibold text-slate-900 dark:text-white mt-6 mb-2.5">
+          {inlineFormat(line.slice(3))}
+        </h2>,
       )
-      continue
+      i++; continue
     }
 
     if (line.startsWith('# ')) {
       nodes.push(
-        <p key={i} className="text-sbase font-bold text-slate-900 dark:text-white mt-4 mb-1.5">
-          {line.slice(2)}
-        </p>,
+        <h1 key={i} className="text-[24px] font-bold text-slate-900 dark:text-white mt-6 mb-3 tracking-tight">
+          {inlineFormat(line.slice(2))}
+        </h1>,
+      )
+      i++; continue
+    }
+
+    // Bullet list — group consecutive bullets
+    if (line.startsWith('- ') || line.startsWith('* ')) {
+      const items: string[] = []
+      while (i < lines.length && (lines[i].startsWith('- ') || lines[i].startsWith('* '))) {
+        items.push(lines[i].slice(2))
+        i++
+      }
+      nodes.push(
+        <ul key={`ul-${i}`} className="my-2 space-y-1.5 pl-1">
+          {items.map((it, j) => (
+            <li key={j} className="flex gap-2 text-[15px] text-slate-700 dark:text-slate-300 leading-7">
+              <span className="shrink-0 mt-[10px] w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
+              <span>{inlineFormat(it)}</span>
+            </li>
+          ))}
+        </ul>,
       )
       continue
     }
 
-    if (line.startsWith('- ') || line.startsWith('* ')) {
+    // Numbered list
+    if (NUMBERED_RE.test(line)) {
+      const items: string[] = []
+      let startNum = 1
+      while (i < lines.length) {
+        const m = lines[i].match(NUMBERED_RE)
+        if (!m) break
+        if (items.length === 0) startNum = parseInt(m[1], 10)
+        items.push(m[2])
+        i++
+      }
       nodes.push(
-        <div key={i} className="flex gap-2 text-sm text-slate-600 dark:text-slate-400 leading-7">
-          <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
-          <span>{inlineBold(line.slice(2))}</span>
-        </div>,
+        <ol key={`ol-${i}`} start={startNum} className="my-2 space-y-1.5 pl-7 list-decimal marker:text-slate-400 dark:marker:text-slate-500 marker:tabular-nums">
+          {items.map((it, j) => (
+            <li key={j} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7 pl-1">
+              {inlineFormat(it)}
+            </li>
+          ))}
+        </ol>,
       )
       continue
     }
 
     if (line.trim() === '') {
-      nodes.push(<div key={i} className="h-1.5" />)
-      continue
+      nodes.push(<div key={i} className="h-3" />)
+      i++; continue
     }
 
     nodes.push(
-      <p key={i} className="text-sm text-slate-600 dark:text-slate-400 leading-7">
-        {inlineBold(line)}
+      <p key={i} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7">
+        {inlineFormat(line)}
       </p>,
     )
+    i++
   }
 
   return nodes
 }
 
-function inlineBold(text: string): React.ReactNode {
+// Inline formatting: **bold** and `code`
+function inlineFormat(text: string): React.ReactNode {
+  // Split on `code` segments first, then on **bold**
+  const parts: React.ReactNode[] = []
+  const codeRe = /`([^`]+)`/g
+  let lastIndex = 0
+  let key = 0
+  let match: RegExpExecArray | null
+
+  while ((match = codeRe.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(<span key={key++}>{boldFormat(text.slice(lastIndex, match.index), key)}</span>)
+    }
+    parts.push(
+      <code key={key++} className="px-1.5 py-0.5 rounded text-[0.9em] font-mono bg-slate-100 dark:bg-white/[.06] text-slate-800 dark:text-slate-200">
+        {match[1]}
+      </code>,
+    )
+    lastIndex = match.index + match[0].length
+  }
+  if (lastIndex < text.length) {
+    parts.push(<span key={key++}>{boldFormat(text.slice(lastIndex), key)}</span>)
+  }
+  return <>{parts}</>
+}
+
+function boldFormat(text: string, baseKey: number): React.ReactNode {
   const parts = text.split(/\*\*(.+?)\*\*/g)
   if (parts.length === 1) return text
-  return (
-    <>
-      {parts.map((part, i) =>
-        i % 2 === 1
-          ? <span key={i} className="font-semibold text-slate-800 dark:text-slate-200">{part}</span>
-          : <span key={i}>{part}</span>,
-      )}
-    </>
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={`${baseKey}-${i}`} className="font-semibold text-slate-900 dark:text-white">{part}</strong>
+      : <span key={`${baseKey}-${i}`}>{part}</span>,
   )
 }

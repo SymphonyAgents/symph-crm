@@ -111,6 +111,15 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
 
   const isLoading = loadingCompanies || loadingDeals
 
+  // When the URL navigates to a specific deal/brand page (e.g. via graph click),
+  // force list view so the content is visible. Toggling back to graph from the
+  // list view is unaffected because pathname doesn't change.
+  useEffect(() => {
+    if (/\/wiki\/(deal|brand)\//.test(pathname ?? '')) {
+      setView('list')
+    }
+  }, [pathname])
+
   const companyMap = useMemo(() => {
     const m = new Map<string, ApiCompanyDetail>()
     for (const c of companies) m.set(c.id, c)
