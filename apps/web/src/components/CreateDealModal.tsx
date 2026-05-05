@@ -131,88 +131,6 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
   )
 }
 
-// ─── Brand Input ─────────────────────────────────────────────────────────────
-// Free-text input with existing-brand suggestions. No explicit "create" action.
-// On submit, if typed name doesn't match an existing brand, backend auto-creates it.
-
-type BrandInputProps = {
-  companies: ApiCompanyDetail[]
-  inputValue: string            // display text
-  selectedId: string            // companyId when picked from list, '' when free-typed
-  onInputChange: (text: string) => void
-  onSelect: (id: string, name: string) => void
-}
-
-function BrandInput({ companies, inputValue, selectedId, onInputChange, onSelect }: BrandInputProps) {
-  const [open, setOpen] = useState(false)
-
-  const suggestions = useMemo(() => {
-    const sorted = [...companies].sort((a, b) =>
-      (a.name ?? '').localeCompare(b.name ?? ''),
-    )
-    const q = inputValue.trim().toLowerCase()
-    if (!q) return sorted
-    return sorted.filter(c => c.name.toLowerCase().includes(q))
-  }, [inputValue, companies])
-
-  function handleSelect(c: ApiCompanyDetail) {
-    onSelect(c.id, c.name)
-    onInputChange(c.name)
-    setOpen(false)
-  }
-
-  function handleClear() {
-    onInputChange('')
-    onSelect('', '')
-  }
-
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Input
-          value={inputValue}
-          onChange={e => { onInputChange(e.target.value); onSelect('', '') }}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
-          placeholder="Type brand name or leave blank to use deal name"
-          className="h-9 text-ssm pr-7"
-        />
-        {inputValue && (
-          <button
-            type="button"
-            onMouseDown={e => { e.preventDefault(); handleClear() }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-          >
-            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {open && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-1 max-h-[280px] overflow-y-auto">
-          {suggestions.map(c => (
-            <button
-              key={c.id}
-              type="button"
-              onMouseDown={e => { e.preventDefault(); handleSelect(c) }}
-              className={cn(
-                'w-full text-left px-3 py-1.5 text-ssm transition-colors flex items-center gap-2',
-                'hover:bg-slate-50 dark:hover:bg-white/[.06]',
-                selectedId === c.id && 'text-[#6c63ff]',
-              )}
-            >
-              {selectedId === c.id && <Check className="w-3 h-3 shrink-0" />}
-              <span className={cn('truncate', selectedId !== c.id && 'pl-5')}>{c.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 const CREATE_DEAL_ACCEPT_LIST = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -452,17 +370,29 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
           {/* Title with system type suggestions */}
           <DealNameInput value={title} onChange={setTitle} />
 
-          {/* Brand — free-text input with suggestions. New brands are auto-created on submit. */}
+          {/* Brand — combobox over existing brands; allowCustom lets the user
+              type a new name which gets auto-created on submit. */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
               Brand <span className="text-slate-400">(optional)</span>
             </label>
-            <BrandInput
-              companies={companies}
-              inputValue={brandInput}
-              selectedId={brandId}
-              onInputChange={setBrandInput}
-              onSelect={(id, name) => { setBrandId(id); if (name) setBrandInput(name) }}
+            <Combobox
+              options={[...companies]
+                .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+                .map(c => ({ value: c.id, label: c.name }))}
+              value={brandId || brandInput}
+              onValueChange={(v) => {
+                const company = companies.find(c => c.id === v)
+                if (company) {
+                  setBrandId(company.id)
+                  setBrandInput(company.name)
+                } else {
+                  setBrandId('')
+                  setBrandInput(v)
+                }
+              }}
+              placeholder="Search or type a new brand name..."
+              allowCustom
             />
           </div>
 

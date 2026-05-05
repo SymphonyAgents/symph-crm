@@ -1,7 +1,17 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
 
 type Option = { value: string; label: string }
 
@@ -11,13 +21,15 @@ type ComboboxProps = {
   onValueChange: (value: string) => void
   placeholder?: string
   className?: string
-  /** Allow free-text that isn't in the options list */
+  /** Allow free-text that isn't in the options list (Enter accepts the typed query) */
   allowCustom?: boolean
 }
 
 /**
- * Lightweight combobox — text input with filtered dropdown.
- * Use for any select with >6 options (per UX convention).
+ * Combobox built on shadcn Popover + Command. Radix portals the dropdown into
+ * document.body so it floats above any clipping ancestor (modal overflow, etc).
+ *
+ * Drop-in replacement for the previous hand-rolled combobox — same prop API.
  */
 export function Combobox({
   options,
@@ -27,140 +39,86 @@ export function Combobox({
   className,
   allowCustom = false,
 }: ComboboxProps) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
   const normalized: Option[] = options.map(o =>
     typeof o === 'string' ? { value: o, label: o } : o,
   )
-
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const [highlightIdx, setHighlightIdx] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  // Display label for current value
   const selectedLabel = normalized.find(o => o.value === value)?.label ?? value
 
-  // Filtered options
-  const filtered = query
-    ? normalized.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
-    : normalized
-
-  // Reset highlight when filtered list changes
-  useEffect(() => { setHighlightIdx(0) }, [query])
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      const el = inputRef.current?.parentElement
-      if (el && !el.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  // Scroll highlighted item into view
-  useEffect(() => {
-    if (!open || !listRef.current) return
-    const el = listRef.current.children[highlightIdx] as HTMLElement | undefined
-    el?.scrollIntoView({ block: 'nearest' })
-  }, [highlightIdx, open])
-
-  const select = useCallback((val: string) => {
+  function select(val: string) {
     onValueChange(val)
-    setQuery('')
     setOpen(false)
-  }, [onValueChange])
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (!open) {
-      if (e.key === 'ArrowDown' || e.key === 'Enter') { setOpen(true); e.preventDefault() }
-      return
-    }
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault()
-        setHighlightIdx(i => Math.min(i + 1, filtered.length - 1))
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        setHighlightIdx(i => Math.max(i - 1, 0))
-        break
-      case 'Enter':
-        e.preventDefault()
-        if (filtered[highlightIdx]) select(filtered[highlightIdx].value)
-        else if (allowCustom && query.trim()) select(query.trim())
-        break
-      case 'Escape':
-        setOpen(false)
-        setQuery('')
-        break
-    }
+    setQuery('')
   }
 
   return (
-    <div className="relative">
-      <input
-        ref={inputRef}
-        type="text"
-        value={open ? query : (value ? selectedLabel : '')}
-        onChange={e => {
-          setQuery(e.target.value)
-          if (!open) setOpen(true)
-        }}
-        onFocus={() => { setOpen(true); setQuery('') }}
-        onKeyDown={handleKeyDown}
-        placeholder={value ? selectedLabel : placeholder}
-        className={cn(
-          'flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-ssm shadow-sm transition-colors',
-          'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-          'dark:bg-transparent dark:border-white/10',
-          className,
-        )}
-        autoComplete="off"
-      />
-      {/* Chevron */}
-      <svg
-        width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"
-        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
-      >
-        <polyline points="6 9 12 15 18 9" />
-      </svg>
-
-      {open && filtered.length > 0 && (
-        <div
-          ref={listRef}
-          className="absolute z-50 mt-1 w-full max-h-[200px] overflow-y-auto rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-1"
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            'flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-ssm shadow-sm transition-colors',
+            'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+            'dark:bg-transparent dark:border-white/10',
+            !value && 'text-muted-foreground',
+            className,
+          )}
         >
-          {filtered.map((o, i) => (
-            <button
-              key={o.value}
-              type="button"
-              onMouseDown={e => { e.preventDefault(); select(o.value) }}
-              onMouseEnter={() => setHighlightIdx(i)}
-              className={cn(
-                'flex w-full items-center px-3 py-1.5 text-ssm text-left transition-colors',
-                i === highlightIdx
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
-                o.value === value && 'font-semibold',
+          <span className="truncate">{value ? selectedLabel : placeholder}</span>
+          <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command shouldFilter={!allowCustom}>
+          <CommandInput
+            placeholder={placeholder}
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            <CommandEmpty>
+              {allowCustom && query.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => select(query.trim())}
+                  className="w-full text-left px-2 py-1.5 text-ssm text-primary hover:bg-primary/10 rounded transition-colors"
+                >
+                  Use “{query.trim()}”
+                </button>
+              ) : (
+                <span className="text-xs text-slate-400">No results</span>
               )}
-            >
-              {o.label}
-              {o.value === value && (
-                <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" className="ml-auto shrink-0">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-            </button>
-          ))}
-        </div>
-      )}
-      {open && filtered.length === 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-3 px-3 text-xs text-slate-400 text-center">
-          {allowCustom ? `Press Enter to use "${query}"` : 'No results'}
-        </div>
-      )}
-    </div>
+            </CommandEmpty>
+            <CommandGroup>
+              {normalized
+                .filter(o =>
+                  allowCustom
+                    ? !query || o.label.toLowerCase().includes(query.toLowerCase())
+                    : true,
+                )
+                .map(o => (
+                  <CommandItem
+                    key={o.value}
+                    value={o.label}
+                    onSelect={() => select(o.value)}
+                  >
+                    <span className="flex-1 truncate">{o.label}</span>
+                    <Check
+                      className={cn(
+                        'ml-2 h-3.5 w-3.5 shrink-0',
+                        value === o.value ? 'opacity-100' : 'opacity-0',
+                      )}
+                    />
+                  </CommandItem>
+                ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
