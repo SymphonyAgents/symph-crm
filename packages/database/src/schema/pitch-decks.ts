@@ -1,13 +1,14 @@
 import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core'
 import { companies } from './companies'
-import { products, tiers } from './products'
+import { tiers } from './products'
+import { internalProducts } from './internal-products'
 import { users } from './users'
 import { deals } from './deals'
 
 export const pitchDecks = pgTable('pitch_decks', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id).notNull(),
-  productId: uuid('product_id').references(() => products.id).notNull(),
+  internalProductId: uuid('product_id').references(() => internalProducts.id).notNull(),
   tierId: uuid('tier_id').references(() => tiers.id),
 
   // Deal this pitch deck was created for (optional — can be company-level)

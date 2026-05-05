@@ -2,7 +2,8 @@ export * from './workspaces'
 export * from './users'
 export * from './companies'
 export * from './contacts'
-export * from './products'
+export * from './products'       // tiers
+export * from './internal-products'
 export * from './deals'
 export * from './deal-contacts'
 export * from './documents'   // replaces notes — content lives in NFS (storage_path), metadata only in DB

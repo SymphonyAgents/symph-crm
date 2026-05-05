@@ -81,7 +81,7 @@ export function useDeleteCompany(
 export type CreateDealInput = {
   title: string
   companyId: string | null
-  productId?: string | null
+  internalProductId?: string | null
   tierId?: string | null
   stage?: string
   value?: string | null
@@ -93,7 +93,7 @@ export type CreateDealInput = {
   closeDate?: string | null
 }
 
-export type UpdateDealInput = Partial<Omit<CreateDealInput, 'companyId' | 'productId' | 'tierId'>>
+export type UpdateDealInput = Partial<Omit<CreateDealInput, 'companyId' | 'internalProductId' | 'tierId'>>
 
 export function useCreateDeal(
   options?: UseMutationOptions<unknown, Error, CreateDealInput>,

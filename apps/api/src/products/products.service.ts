@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common'
-import { eq } from 'drizzle-orm'
-import { products, tiers } from '@symph-crm/database'
+import { eq, asc } from 'drizzle-orm'
+import { internalProducts, tiers } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 
@@ -9,11 +9,13 @@ export class ProductsService {
   constructor(@Inject(DB) private db: Database) {}
 
   async findAllProducts() {
-    return this.db.select().from(products).orderBy(products.sortOrder)
+    return this.db.select().from(internalProducts)
+      .where(eq(internalProducts.isActive, true))
+      .orderBy(asc(internalProducts.name))
   }
 
   async findProduct(id: string) {
-    const [product] = await this.db.select().from(products).where(eq(products.id, id))
+    const [product] = await this.db.select().from(internalProducts).where(eq(internalProducts.id, id))
     return product
   }
 

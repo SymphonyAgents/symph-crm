@@ -18,7 +18,7 @@ export type ApiDeal = {
   contractLength: string | null
   assignedTo: string | null
   lastActivityAt: string | null
-  productId: string | null
+  internalProductId: string | null
   tierId: string | null
   closedAt: string | null
   closedReason: string | null

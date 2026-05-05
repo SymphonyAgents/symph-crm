@@ -309,7 +309,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
     createDeal.mutate({
       title: title.trim(),
       companyId: resolvedCompanyId,
-      productId: null,
+      internalProductId: null,
       tierId: null,
       stage,
       value: value.replace(/,/g, '').trim() || null,

@@ -167,13 +167,12 @@ export class DealsService {
       stage?: string | null
       stageId?: string | null
       pricingModel?: unknown
-      productId?: unknown
       tierId?: unknown
     },
     performedBy?: string,
   ) {
     // Strip fields that no longer exist in the schema
-    const { stage, pricingModel, productId, tierId, ...cleanData } = data as any
+    const { stage, pricingModel, tierId, ...cleanData } = data as any
 
     // Resolve stage slug → stageId UUID if a slug was passed
     let stageId: string | null = cleanData.stageId ?? null
