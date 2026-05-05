@@ -222,9 +222,10 @@ function BuilderMultiSelect({
                     key={u.id}
                     value={`${u.name ?? ''} ${u.email ?? ''}`}
                     onSelect={() => toggle(u.id)}
+                    className="justify-between"
                   >
-                    <Check className={cn('mr-2 h-3.5 w-3.5 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')} />
                     <UserOption user={u} />
+                    {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
                   </CommandItem>
                 )
               })}
