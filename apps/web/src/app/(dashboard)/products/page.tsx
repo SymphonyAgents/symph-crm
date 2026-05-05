@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
@@ -12,7 +12,8 @@ import { INDUSTRY_OPTIONS } from '@/lib/constants'
 import { DataTable, SortableHeader } from '@/components/ui/data-table'
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import type { ApiInternalProduct } from '@/lib/types'
 
 function formatDate(d: string): string {
@@ -128,7 +129,8 @@ export default function ProductsPage() {
         </div>
         <button
           onClick={() => setCreating(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-ssm font-medium text-white transition-colors active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
         >
           <Plus size={14} />
           Add Product
@@ -137,7 +139,7 @@ export default function ProductsPage() {
 
       <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md shadow-[var(--shadow-card)]">
         {isLoading ? (
-          <div className="p-12 text-center text-xxs text-slate-400">Loading...</div>
+          <ProductsTableSkeleton />
         ) : (
           <DataTable
             columns={columns}
@@ -149,7 +151,7 @@ export default function ProductsPage() {
       </div>
 
       {(creating || editing) && (
-        <ProductFormDialog
+        <ProductFormModal
           product={editing}
           onClose={() => {
             setCreating(false)
@@ -159,7 +161,7 @@ export default function ProductsPage() {
       )}
 
       {deleting && (
-        <ConfirmDeleteDialog
+        <ConfirmDeleteModal
           product={deleting}
           isPending={deleteProduct.isPending}
           onCancel={() => setDeleting(null)}
@@ -170,13 +172,45 @@ export default function ProductsPage() {
   )
 }
 
-function ProductFormDialog({
+// ─── Skeleton loader ──────────────────────────────────────────────────────────
+
+function ProductsTableSkeleton() {
+  return (
+    <div>
+      <div className="grid grid-cols-[1fr_1fr_120px_120px_120px] px-4 py-2.5 border-b border-black/[.06] dark:border-white/[.06]">
+        {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-3 w-16" />)}
+      </div>
+      {[1, 2, 3, 4, 5].map(i => (
+        <div
+          key={i}
+          className="grid grid-cols-[1fr_1fr_120px_120px_120px] gap-3 px-4 py-3 border-b border-black/[.04] dark:border-white/[.04] last:border-0 items-center"
+        >
+          <Skeleton className="h-3.5 w-3/4" />
+          <Skeleton className="h-3.5 w-1/2" />
+          <Skeleton className="h-5 w-16 rounded-full" />
+          <Skeleton className="h-3.5 w-20" />
+          <div className="flex items-center gap-1 justify-end">
+            <Skeleton className="h-6 w-6 rounded-md" />
+            <Skeleton className="h-6 w-6 rounded-md" />
+            <Skeleton className="h-6 w-6 rounded-md" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Product form modal — matches CreateDealModal style ──────────────────────
+
+function ProductFormModal({
   product,
   onClose,
 }: {
   product: ApiInternalProduct | null
   onClose: () => void
 }) {
+  useEscapeKey(useCallback(onClose, [onClose]))
+
   const qc = useQueryClient()
   const [name, setName] = useState(product?.name ?? '')
   const [industry, setIndustry] = useState(product?.industry ?? '')
@@ -194,6 +228,8 @@ function ProductFormDialog({
     },
   })
   const isPending = create.isPending || update.isPending
+  const error = create.error || update.error
+  const canSubmit = !!name.trim()
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -207,24 +243,46 @@ function ProductFormDialog({
   }
 
   return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[420px]">
-        <DialogHeader>
-          <DialogTitle className="text-sm">{product ? 'Edit Product' : 'Add Product'}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in-0 duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
           <div>
-            <label className="block text-atom font-semibold uppercase tracking-[0.06em] text-slate-400 mb-1.5">Name</label>
+            <div className="text-sm font-semibold text-slate-900 dark:text-white">{product ? 'Edit Product' : 'New Product'}</div>
+            <div className="text-xs text-slate-400 mt-0.5">{product ? 'Update name or industry' : 'Add an internal product to your catalog'}</div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Name</label>
             <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Product name"
-              className="text-ssm"
+              className="h-9 text-ssm"
             />
           </div>
-          <div>
-            <label className="block text-atom font-semibold uppercase tracking-[0.06em] text-slate-400 mb-1.5">Industry</label>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              Industry <span className="text-slate-400">(optional)</span>
+            </label>
             <Combobox
               options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
               value={industry}
@@ -232,30 +290,40 @@ function ProductFormDialog({
               placeholder="Search industry..."
             />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+
+          {error && (
+            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-500/[.08] border border-red-100 dark:border-red-500/20 rounded-lg px-3 py-2">
+              {error.message}
+            </p>
+          )}
+
+          <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!name.trim() || isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isPending || !canSubmit}
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               {isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              {product ? 'Save changes' : 'Create product'}
+              {product ? 'Save Changes' : 'Create Product'}
             </button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }
 
-function ConfirmDeleteDialog({
+// ─── Confirm delete modal — matches CreateDealModal style ────────────────────
+
+function ConfirmDeleteModal({
   product,
   isPending,
   onCancel,
@@ -266,32 +334,44 @@ function ConfirmDeleteDialog({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  useEscapeKey(useCallback(onCancel, [onCancel]))
+
   return (
-    <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Delete product</DialogTitle>
-        </DialogHeader>
-        <p className="text-xs text-slate-600 dark:text-slate-400">
-          Delete <span className="font-medium text-slate-900 dark:text-white">{product.name}</span>? This cannot be undone.
-        </p>
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            onClick={onCancel}
-            className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#dc2626] text-white hover:bg-[#b91c1c] transition-colors active:scale-[0.98] disabled:opacity-50"
-          >
-            {isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            Delete
-          </button>
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px] animate-in fade-in-0 duration-200"
+      onClick={onCancel}
+    >
+      <div
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">Delete Product</div>
         </div>
-      </DialogContent>
-    </Dialog>
+        <div className="p-4 flex flex-col gap-4">
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            Delete <span className="font-medium text-slate-900 dark:text-white">{product.name}</span>? This cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={isPending}
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white bg-[#dc2626] hover:bg-[#b91c1c] transition-colors active:scale-[0.98] disabled:opacity-50"
+            >
+              {isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
