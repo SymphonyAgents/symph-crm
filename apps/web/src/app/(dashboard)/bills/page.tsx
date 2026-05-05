@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
-import { useGetDeals, useGetBillingByDeal, useGetCompanies } from '@/lib/hooks/queries'
+import { useQueryClient, useQueries } from '@tanstack/react-query'
+import { useGetDeals, useGetCompanies } from '@/lib/hooks/queries'
 import { useDeleteBilling } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { cn, formatDealTitle, getInitials, getBrandColor, toPascalCase } from '@/lib/utils'
@@ -11,6 +11,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import type { ApiDeal, ApiBilling } from '@/lib/types'
 import { BillingSection } from '@/components/BillingSection'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { api } from '@/lib/api'
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
   annual: 'Annual',
@@ -30,32 +31,22 @@ function formatDate(d: string | null): string {
   return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// Individual row that fetches its own billing data
+// Row receives pre-fetched billing data — parent owns the loading state
 function BillRow({
   deal,
+  billing,
   companyMap,
   onClick,
   onEdit,
   onDelete,
 }: {
   deal: ApiDeal
+  billing: ApiBilling | null | undefined
   companyMap: Map<string, string>
   onClick: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
-  const { data: billing, isLoading } = useGetBillingByDeal(deal.id)
-
-  if (isLoading) {
-    return (
-      <tr className="border-b border-black/[.04] dark:border-white/[.05]">
-        <td colSpan={8} className="px-4 py-3">
-          <div className="h-4 w-32 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-        </td>
-      </tr>
-    )
-  }
-
   // Skip deals with no billing set up
   if (!billing) return null
 
@@ -166,19 +157,39 @@ export default function BillsPage() {
     [deals],
   )
 
+  // Fetch billing for every won deal in one place. Parent owns the combined
+  // loading state so the table doesn't render half-skeleton rows progressively.
+  const billingQueries = useQueries({
+    queries: wonDeals.map(d => ({
+      queryKey: queryKeys.billing.byDeal(d.id),
+      queryFn: async () => {
+        const res = await api.get<ApiBilling | { billing: null }>(`/deals/${d.id}/billing`)
+        if ('billing' in res && (res as { billing: null }).billing === null) return null
+        return res as ApiBilling
+      },
+    })),
+  })
+  const billingByDealId = useMemo(() => {
+    const m = new Map<string, ApiBilling | null | undefined>()
+    wonDeals.forEach((d, i) => m.set(d.id, billingQueries[i]?.data))
+    return m
+  }, [wonDeals, billingQueries])
+  const isAnyBillingLoading = billingQueries.some(q => q.isLoading)
+  const isInitialLoading = isLoading || (wonDeals.length > 0 && isAnyBillingLoading)
+
   return (
     <div className="p-4 md:px-6 pb-6">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
         <div>
           <div className="text-ssm font-semibold text-slate-900 dark:text-white">Bills</div>
           <div className="text-xxs text-slate-400 mt-0.5">
-            {isLoading ? 'Loading\u2026' : `${wonDeals.length} won deal${wonDeals.length !== 1 ? 's' : ''}`}
+            {isInitialLoading ? 'Loading\u2026' : `${wonDeals.length} won deal${wonDeals.length !== 1 ? 's' : ''}`}
           </div>
         </div>
       </div>
 
       <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
-        {isLoading ? (
+        {isInitialLoading ? (
           <DataTableSkeleton />
         ) : wonDeals.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
@@ -212,6 +223,7 @@ export default function BillsPage() {
                   <BillRow
                     key={deal.id}
                     deal={deal}
+                    billing={billingByDealId.get(deal.id)}
                     companyMap={companyMap}
                     onClick={() => router.push(`/deals/${deal.id}?from=bills`)}
                     onEdit={() => setEditTarget({ dealId: deal.id, dealTitle: deal.title })}
