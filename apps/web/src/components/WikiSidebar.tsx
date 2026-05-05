@@ -450,7 +450,7 @@ export function WikiSidebar({
                       </div>
 
                       <span className={cn(
-                        'flex-1 text-base truncate min-w-0',
+                        'flex-1 text-ssm truncate min-w-0',
                         isSelectedBrand && !selectedDealId
                           ? 'text-primary font-semibold'
                           : 'text-slate-700 dark:text-slate-200 font-medium'
@@ -503,7 +503,7 @@ export function WikiSidebar({
                                     style={{ background: stageColor }}
                                   />
                                   <span className={cn(
-                                    'flex-1 text-sm truncate min-w-0',
+                                    'flex-1 text-ssm truncate min-w-0',
                                     isThisDealSelected
                                       ? 'text-primary font-medium'
                                       : 'text-slate-600 dark:text-slate-300'
