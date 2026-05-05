@@ -529,7 +529,7 @@ function NoteContent({ note, category }: { note: DealNoteFile; category: string 
           </span>
           <span className="text-xxs text-slate-400 tabular-nums">{formatNoteDate(note.createdAt)}</span>
         </div>
-        <h1 className="text-[26px] font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight tracking-tight">
           {title}
         </h1>
       </div>
@@ -557,7 +557,7 @@ function LogView({ log }: { log: string | null }) {
       </div>
       <div className="space-y-2 rounded-lg bg-slate-50/60 px-4 py-3 dark:bg-white/[.03]">
         {log.split('\n').filter(Boolean).map((line, i) => (
-          <p key={i} className="text-xs leading-7 text-slate-500 dark:text-slate-400 font-mono">
+          <p key={i} className="text-ssm leading-7 text-slate-500 dark:text-slate-400 font-mono">
             {line}
           </p>
         ))}
@@ -589,7 +589,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
       i++ // skip closing fence
       nodes.push(
         <pre key={`code-${i}`} className="my-3 px-4 py-3 rounded-md bg-slate-100 dark:bg-white/[.04] border-l-2 border-slate-300 dark:border-white/[.15] overflow-x-auto">
-          <code className="text-[13px] font-mono text-slate-700 dark:text-slate-300 leading-6 whitespace-pre">
+          <code className="text-ssm font-mono text-slate-700 dark:text-slate-300 leading-6 whitespace-pre">
             {codeLines.join('\n')}
           </code>
         </pre>,
@@ -599,7 +599,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
 
     if (line.startsWith('### ')) {
       nodes.push(
-        <h3 key={i} className="text-[17px] font-semibold text-slate-800 dark:text-slate-200 mt-5 mb-2">
+        <h3 key={i} className="text-lg font-semibold text-slate-800 dark:text-slate-200 mt-5 mb-2">
           {inlineFormat(line.slice(4))}
         </h3>,
       )
@@ -608,7 +608,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
 
     if (line.startsWith('## ')) {
       nodes.push(
-        <h2 key={i} className="text-[20px] font-semibold text-slate-900 dark:text-white mt-6 mb-2.5">
+        <h2 key={i} className="text-xl font-semibold text-slate-900 dark:text-white mt-6 mb-2.5">
           {inlineFormat(line.slice(3))}
         </h2>,
       )
@@ -617,7 +617,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
 
     if (line.startsWith('# ')) {
       nodes.push(
-        <h1 key={i} className="text-[24px] font-bold text-slate-900 dark:text-white mt-6 mb-3 tracking-tight">
+        <h1 key={i} className="text-2xl font-bold text-slate-900 dark:text-white mt-6 mb-3 tracking-tight">
           {inlineFormat(line.slice(2))}
         </h1>,
       )
@@ -634,7 +634,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
       nodes.push(
         <ul key={`ul-${i}`} className="my-2 space-y-1.5 pl-1">
           {items.map((it, j) => (
-            <li key={j} className="flex gap-2 text-[15px] text-slate-700 dark:text-slate-300 leading-7">
+            <li key={j} className="flex gap-2 text-base text-slate-700 dark:text-slate-300 leading-7">
               <span className="shrink-0 mt-[10px] w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-slate-500" />
               <span>{inlineFormat(it)}</span>
             </li>
@@ -658,7 +658,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
       nodes.push(
         <ol key={`ol-${i}`} start={startNum} className="my-2 space-y-1.5 pl-7 list-decimal marker:text-slate-400 dark:marker:text-slate-500 marker:tabular-nums">
           {items.map((it, j) => (
-            <li key={j} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7 pl-1">
+            <li key={j} className="text-base text-slate-700 dark:text-slate-300 leading-7 pl-1">
               {inlineFormat(it)}
             </li>
           ))}
@@ -673,7 +673,7 @@ function renderSimpleMarkdown(content: string): React.ReactNode[] {
     }
 
     nodes.push(
-      <p key={i} className="text-[15px] text-slate-700 dark:text-slate-300 leading-7">
+      <p key={i} className="text-base text-slate-700 dark:text-slate-300 leading-7">
         {inlineFormat(line)}
       </p>,
     )

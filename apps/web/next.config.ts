@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   transpilePackages: ['@symph-crm/database'],
   async headers() {
+    // In dev, the browser hits http://localhost:4000 directly (apps/web/src/lib/api.ts
+    // hardcodes that base). It must be allowed in connect-src or the browser blocks
+    // the request before it leaves. Prod uses /api/* via Next.js rewrites — same-origin.
+    const devConnect = process.env.NODE_ENV === 'production'
+      ? ''
+      : ' http://localhost:4000 ws://localhost:3000'
     return [
       {
         source: '/(.*)',
@@ -22,7 +28,7 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://*.posthog.com",
-              "connect-src 'self' https://us.i.posthog.com https://*.posthog.com https://lh3.googleusercontent.com https://*.googleusercontent.com",
+              `connect-src 'self' https://us.i.posthog.com https://*.posthog.com https://lh3.googleusercontent.com https://*.googleusercontent.com${devConnect}`,
               "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",

@@ -139,7 +139,7 @@ function DealNotesFlat({
             >
               <span className="w-1 h-1 rounded-full shrink-0 bg-slate-400" />
               <span className={cn(
-                'flex-1 text-xs min-w-0 truncate',
+                'flex-1 text-ssm min-w-0 truncate',
                 isActive ? 'text-primary font-medium' : 'text-slate-500 dark:text-slate-400'
               )}>
                 Log
@@ -170,7 +170,7 @@ function DealNotesFlat({
               style={{ background: isActive ? 'var(--primary)' : dotColor, opacity: isActive ? 1 : 0.55 }}
             />
             <span className={cn(
-              'flex-1 text-xs min-w-0 truncate',
+              'flex-1 text-ssm min-w-0 truncate',
               isActive ? 'text-primary font-medium' : 'text-slate-600 dark:text-slate-300'
             )}>
               {row.title}
@@ -199,7 +199,7 @@ function DealNotesFlat({
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
             </svg>
             <span className={cn(
-              'flex-1 text-xs min-w-0 truncate',
+              'flex-1 text-ssm min-w-0 truncate',
               isActive ? 'text-primary font-medium' : 'text-slate-500 dark:text-slate-400'
             )}>
               {doc.title || doc.storagePath?.split('/').pop()}
@@ -450,7 +450,7 @@ export function WikiSidebar({
                       </div>
 
                       <span className={cn(
-                        'flex-1 text-xs truncate min-w-0',
+                        'flex-1 text-base truncate min-w-0',
                         isSelectedBrand && !selectedDealId
                           ? 'text-primary font-semibold'
                           : 'text-slate-700 dark:text-slate-200 font-medium'
@@ -503,7 +503,7 @@ export function WikiSidebar({
                                     style={{ background: stageColor }}
                                   />
                                   <span className={cn(
-                                    'flex-1 text-xs truncate min-w-0',
+                                    'flex-1 text-sm truncate min-w-0',
                                     isThisDealSelected
                                       ? 'text-primary font-medium'
                                       : 'text-slate-600 dark:text-slate-300'
