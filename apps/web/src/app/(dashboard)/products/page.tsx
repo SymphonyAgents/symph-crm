@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Pencil, Trash2, ToggleLeft, ToggleRight } from 'lucide-react'
 import { useGetInternalProducts } from '@/lib/hooks/queries'
 import { useCreateInternalProduct, useUpdateInternalProduct, useDeleteInternalProduct } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
@@ -128,11 +128,10 @@ export default function ProductsPage() {
         </div>
         <button
           onClick={() => setCreating(true)}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-ssm font-medium text-white transition-colors active:scale-[0.98]"
+          className="rounded-lg px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
           style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
         >
-          <Plus size={14} />
-          Add Product
+          + New Product
         </button>
       </div>
 
@@ -219,11 +218,11 @@ function ProductFormModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-200"
+        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between bg-white dark:bg-[#1e1e21] rounded-t-lg">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-white">{product ? 'Edit Product' : 'New Product'}</div>
             <div className="text-xs text-slate-400 mt-0.5">{product ? 'Update name or industry' : 'Add an internal product to your catalog'}</div>

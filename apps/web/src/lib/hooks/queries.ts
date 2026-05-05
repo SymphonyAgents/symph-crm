@@ -288,6 +288,7 @@ export function useGetInternalProducts(
   return useQuery<ApiInternalProduct[]>({
     queryKey: activeOnly ? queryKeys.internalProducts.activeOnly : queryKeys.internalProducts.all,
     queryFn: () => api.get<ApiInternalProduct[]>('/internal-products', activeOnly ? { active: true } : undefined),
+    retry: false,
     ...options,
   })
 }

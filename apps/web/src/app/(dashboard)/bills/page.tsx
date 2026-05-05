@@ -10,6 +10,7 @@ import { cn, formatDealTitle, getInitials, getBrandColor, toPascalCase } from '@
 import { Pencil, Trash2 } from 'lucide-react'
 import type { ApiDeal, ApiBilling } from '@/lib/types'
 import { BillingSection } from '@/components/BillingSection'
+import { DataTableSkeleton } from '@/components/ui/data-table'
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
   annual: 'Annual',
@@ -178,30 +179,7 @@ export default function BillsPage() {
 
       <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
         {isLoading ? (
-          <div className="overflow-hidden">
-            {/* Header skeleton */}
-            <div className="border-b border-black/[.06] dark:border-white/[.08] px-4 py-2.5 flex gap-8">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="h-3 w-16 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-              ))}
-            </div>
-            {/* Row skeletons */}
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 px-4 py-3 border-b border-black/[.04] dark:border-white/[.05]">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-white/[.06] animate-pulse" />
-                  <div className="h-3.5 w-24 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-                </div>
-                <div className="h-3.5 w-20 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-                <div className="h-5 w-16 rounded-full bg-slate-100 dark:bg-white/[.06] animate-pulse" />
-                <div className="h-3.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse ml-auto" />
-                <div className="h-3.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-                <div className="h-3.5 w-28 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-                <div className="h-3.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-                <div className="h-3.5 w-10 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
+          <DataTableSkeleton />
         ) : wonDeals.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} className="text-slate-300 dark:text-slate-600 mb-3">

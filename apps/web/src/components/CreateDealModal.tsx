@@ -478,7 +478,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
               <Select value={internalProductId} onValueChange={setInternalProductId}>
                 <SelectTrigger className="h-9 text-ssm">
-                  <SelectValue placeholder={internalProducts.length === 0 ? 'No products yet — add via /products' : 'Select product...'} />
+                  <SelectValue placeholder={internalProducts.length === 0 ? 'No products yet, add via /products' : 'Select product...'} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   {internalProducts.map(p => (
