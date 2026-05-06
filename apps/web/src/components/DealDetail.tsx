@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { toast } from 'sonner'
 import {
   cn, formatCurrencyFull, timeAgo, formatDate,
@@ -159,6 +161,124 @@ function SidebarSection({ title, children }: { title: string; children: React.Re
       <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">{title}</p>
       {children}
     </div>
+  )
+}
+
+// ─── Sub-AM picker — shadcn Popover + Command, single-select, searchable ─────
+
+function SubAmPicker({
+  value,
+  users,
+  onChange,
+}: {
+  value: string | null
+  users: import('@/lib/types').ApiUser[]
+  onChange: (uid: string | null) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const sorted = React.useMemo(
+    () => [...users].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
+    [users],
+  )
+  const selectedUser = value ? users.find(u => u.id === value) : null
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center gap-2 w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left text-ssm"
+        >
+          {selectedUser ? (
+            <UserOption user={selectedUser} />
+          ) : (
+            <span className="text-slate-400">Unassigned</span>
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search…" />
+          <CommandList>
+            <CommandEmpty>No matches</CommandEmpty>
+            <CommandGroup>
+              <CommandItem
+                value="__unassigned"
+                onSelect={() => { onChange(null); setOpen(false) }}
+                className="justify-between"
+              >
+                <span className="text-slate-400">Unassigned</span>
+                {!value && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+              </CommandItem>
+              {sorted.map(u => (
+                <CommandItem
+                  key={u.id}
+                  value={`${u.name ?? ''} ${u.email ?? ''}`}
+                  onSelect={() => { onChange(u.id); setOpen(false) }}
+                  className="justify-between"
+                >
+                  <UserOption user={u} />
+                  {value === u.id && <Check className="h-3.5 w-3.5 shrink-0 text-primary" />}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+// ─── Builder picker — Popover + Command, "add one" trigger, searchable ──────
+
+function BuilderPicker({
+  users,
+  selected,
+  onAdd,
+}: {
+  users: import('@/lib/types').ApiUser[]
+  selected: string[]
+  onAdd: (uid: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const available = React.useMemo(
+    () => users
+      .filter(u => !selected.includes(u.id))
+      .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? '')),
+    [users, selected],
+  )
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex items-center justify-between w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left text-ssm text-slate-400"
+        >
+          Add builder…
+          <Plus size={13} className="text-slate-400 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search builder…" />
+          <CommandList>
+            <CommandEmpty>No matches</CommandEmpty>
+            <CommandGroup>
+              {available.map(u => (
+                <CommandItem
+                  key={u.id}
+                  value={`${u.name ?? ''} ${u.email ?? ''}`}
+                  onSelect={() => { onAdd(u.id); setOpen(false) }}
+                >
+                  <UserOption user={u} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -2340,30 +2460,18 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
           {/* Sub Account Manager */}
           <SidebarSection title="Sub Account Manager">
-            <Select
-              value={deal.subAccountManagerId ?? '__none__'}
-              onValueChange={(v) => {
-                const newValue = v === '__none__' ? null : v
-                updateDeal.mutate({ id: dealId, data: { subAccountManagerId: newValue } }, {
+            <SubAmPicker
+              value={deal.subAccountManagerId ?? null}
+              users={users.filter(u => u.role === 'SALES')}
+              onChange={(uid) => {
+                updateDeal.mutate({ id: dealId, data: { subAccountManagerId: uid } }, {
                   onSettled: () => {
                     queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
                     queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
                   },
                 })
               }}
-            >
-              <SelectTrigger className="h-8 text-ssm">
-                <SelectValue placeholder="Unassigned" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[280px]">
-                <SelectItem value="__none__" className="text-ssm text-slate-400">Unassigned</SelectItem>
-                {users.filter(u => u.role === 'SALES').map(u => (
-                  <SelectItem key={u.id} value={u.id} className="text-ssm">
-                    <UserOption user={u} />
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </SidebarSection>
 
           {/* Builders */}
@@ -2403,10 +2511,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   })}
                 </div>
               )}
-              <Select
-                value=""
-                onValueChange={(uid) => {
-                  if (!uid || (deal.builders ?? []).includes(uid)) return
+              <BuilderPicker
+                users={users}
+                selected={deal.builders ?? []}
+                onAdd={(uid) => {
                   const next = [...(deal.builders ?? []), uid]
                   updateDeal.mutate({ id: dealId, data: { builders: next } }, {
                     onSettled: () => {
@@ -2415,20 +2523,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     },
                   })
                 }}
-              >
-                <SelectTrigger className="h-8 text-ssm">
-                  <SelectValue placeholder="Add builder..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[280px]">
-                  {users
-                    .filter(u => !(deal.builders ?? []).includes(u.id))
-                    .map(u => (
-                      <SelectItem key={u.id} value={u.id} className="text-ssm">
-                        <UserOption user={u} />
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              />
             </div>
           </SidebarSection>
 
