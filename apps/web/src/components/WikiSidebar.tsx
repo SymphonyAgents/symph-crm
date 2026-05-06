@@ -315,6 +315,31 @@ export function WikiSidebar({
     })
   }
 
+  /**
+   * Click on a brand row — expand the brand AND every deal under it so all
+   * notes/resources are visible in one click. Clicking again collapses the
+   * brand (deals stay expanded individually so reopening preserves state).
+   */
+  function handleBrandClick(group: { id: string; deals: ApiDeal[] }) {
+    const isOpen = expandedBrands.has(group.id)
+    if (isOpen) {
+      // Collapse just the brand level
+      setExpandedBrands(prev => {
+        const next = new Set(prev)
+        next.delete(group.id)
+        return next
+      })
+    } else {
+      // Expand brand + every deal under it
+      setExpandedBrands(prev => new Set(prev).add(group.id))
+      setExpandedDeals(prev => {
+        const next = new Set(prev)
+        for (const d of group.deals) next.add(d.id)
+        return next
+      })
+    }
+  }
+
   function toggleExpandDeal(id: string) {
     setExpandedDeals(prev => {
       const next = new Set(prev)
@@ -419,7 +444,8 @@ export function WikiSidebar({
 
                 return (
                   <div key={id}>
-                    {/* Brand row — Obsidian semantics: click toggles tree, no nav */}
+                    {/* Brand row — click expands brand + all deals beneath it.
+                         Use the chevron alone if you only want to toggle the brand level. */}
                     <div
                       className={cn(
                         'flex items-center gap-1.5 px-2 py-[5px] cursor-pointer select-none group transition-colors',
@@ -427,7 +453,7 @@ export function WikiSidebar({
                           ? 'bg-primary/[.07] dark:bg-primary/[.1]'
                           : 'hover:bg-slate-50 dark:hover:bg-white/[.04]'
                       )}
-                      onClick={() => toggleExpandBrand(id)}
+                      onClick={() => handleBrandClick(group)}
                     >
                       <button
                         onClick={e => { e.stopPropagation(); toggleExpandBrand(id) }}
