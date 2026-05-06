@@ -268,10 +268,21 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
                 }}
                 onOpenBrand={(companyId) => {
                   const company = companyMap.get(companyId)
-                  if (company) {
+                  if (!company) return
+                  // Land on the first deal under this brand so the user sees
+                  // actual content (notes/resources) instead of the empty
+                  // brand-fallback page. Sidebar will auto-expand the brand
+                  // because the URL points at one of its deals.
+                  const brandDeals = deals
+                    .filter(d => d.companyId === company.id)
+                    .slice()
+                    .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
+                  if (brandDeals.length > 0) {
+                    router.push(`/wiki/deal/${brandDeals[0].id}`)
+                  } else {
                     router.push(`/wiki/brand/${company.id}`)
-                    handleViewChange('list')
                   }
+                  handleViewChange('list')
                 }}
               />
             </div>
