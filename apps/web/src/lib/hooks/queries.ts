@@ -35,6 +35,7 @@ import type {
   ContactNotesResponse,
   NfsDealNote,
   ApiInternalProduct,
+  ApiRecording,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -500,5 +501,15 @@ export function useGetChatHistory(
     queryFn: () => api.get<ApiChatMessage[]>(`/chat/sessions/${sessionId}/history`),
     enabled: !!sessionId,
     ...options,
+  })
+}
+
+// ─── Recordings ───────────────────────────────────────────────────────────────
+
+export function useGetRecordings() {
+  return useQuery<ApiRecording[]>({
+    queryKey: queryKeys.recordings.all,
+    queryFn: () => api.get<ApiRecording[]>('/recordings'),
+    staleTime: 30_000,
   })
 }

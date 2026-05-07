@@ -424,3 +424,19 @@ export type ChatMessage = {
   actionsTaken?: ActionRecord[]
   attachment?: PendingAttachment
 }
+
+// ── Recordings ───────────────────────────────────────────────────────────────
+
+export type ApiRecording = {
+  id: string
+  userId: string
+  dealId: string | null
+  workspaceId: string | null
+  title: string
+  duration: number | null   // seconds
+  storageKey: string
+  mimeType: string
+  sizeBytes: number | null
+  playbackUrl: string
+  createdAt: string
+}

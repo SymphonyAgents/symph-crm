@@ -173,6 +173,19 @@ export class StorageService implements OnModuleInit {
     return data.signedUrl
   }
 
+  /**
+   * Create a signed upload URL for direct browser-to-Supabase uploads.
+   * Returns both the signed URL and the upload token. The browser PUTs the file
+   * bytes directly to signedUrl, bypassing the API server.
+   */
+  async createSignedUploadUrl(storagePath: string): Promise<{ signedUrl: string; token: string }> {
+    const { data, error } = await this.supabaseClient.storage
+      .from(ATTACHMENTS_BUCKET)
+      .createSignedUploadUrl(storagePath)
+    if (error) throw new Error(`Signed upload URL failed [${storagePath}]: ${error.message}`)
+    return { signedUrl: data.signedUrl, token: data.token }
+  }
+
   /** Read a voice recording from Supabase Storage as a buffer. */
   async readVoiceRecording(storagePath: string): Promise<Buffer> {
     const { data, error } = await this.supabaseClient.storage.from(ATTACHMENTS_BUCKET).download(storagePath)

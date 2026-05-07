@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiInternalProduct } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiInternalProduct, ApiRecording } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -573,5 +573,51 @@ export function useUploadInternalProductIcon(
       return api.upload<ApiInternalProduct>(`/internal-products/${id}/icon`, fd)
     },
     ...withToast('Icon uploaded', options),
+  })
+}
+
+// ─── Recordings ───────────────────────────────────────────────────────────────
+
+export type CreateRecordingInput = {
+  title: string
+  duration: number | null
+  storageKey: string
+  mimeType: string
+  sizeBytes: number | null
+  workspaceId: string
+}
+
+export function usePresignRecording() {
+  return useMutation({
+    mutationFn: (body: { filename: string; mimeType: string }) =>
+      api.post<{ uploadUrl: string; storageKey: string }>('/recordings/presign', body),
+  })
+}
+
+export function useCreateRecording(
+  options?: UseMutationOptions<ApiRecording, Error, CreateRecordingInput>,
+) {
+  const qc = useQueryClient()
+  return useMutation<ApiRecording, Error, CreateRecordingInput>({
+    mutationFn: (body) => api.post<ApiRecording>('/recordings', body),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: queryKeys.recordings.all })
+      ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
+    },
+    ...options,
+  })
+}
+
+export function useDeleteRecording(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  const qc = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => api.delete(`/recordings/${id}`),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: queryKeys.recordings.all })
+      ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
+    },
+    ...options,
   })
 }

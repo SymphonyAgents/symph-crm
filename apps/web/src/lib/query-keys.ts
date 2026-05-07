@@ -103,4 +103,7 @@ export const queryKeys = {
     byUser: (userId: string) => ['chat-sessions', userId] as const,
     history: (sessionId: string) => ['chat-sessions', 'history', sessionId] as const,
   },
+  recordings: {
+    all: ['recordings'] as const,
+  },
 } as const
