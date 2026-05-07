@@ -1,11 +1,10 @@
 'use client'
 
-import { use } from 'react'
+import { use, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { DealDetail } from '@/components/DealDetail'
 
-export default function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+function DealDetailInner({ id }: { id: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const from = searchParams.get('from')
@@ -26,5 +25,14 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
       onBack={() => router.back()}
       onOpenDeal={(dealId) => router.push(`/deals/${dealId}`)}
     />
+  )
+}
+
+export default function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  return (
+    <Suspense>
+      <DealDetailInner id={id} />
+    </Suspense>
   )
 }
