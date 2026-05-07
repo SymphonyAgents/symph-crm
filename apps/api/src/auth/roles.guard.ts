@@ -44,8 +44,9 @@ export class RolesGuard implements CanActivate {
     if (url.includes('/users/sync') || url.includes('/users/onboarding')) return true
 
     // Internal routes (/api/internal/*) have their own InternalGuard (X-Internal-Secret).
-    // Skip RolesGuard for these — they are not user-session-scoped.
-    if (url.includes('/internal/')) return true
+    // Owner routes (/api/owner/*) have their own OwnerGuard (x-api-key).
+    // Skip RolesGuard for both, they are not user-session-scoped.
+    if (url.includes('/internal/') || url.includes('/owner/')) return true
 
     // Check for explicit @Roles() decorator
     const requiredRoles = this.reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, [
