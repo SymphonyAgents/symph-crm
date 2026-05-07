@@ -1,13 +1,13 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, Suspense } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useGetCompanies, useGetDeals } from '@/lib/hooks/queries'
 import { WikiContent } from '@/components/WikiContent'
 import type { WikiSelection } from '@/components/WikiSidebar'
 import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
 
-export default function WikiBrandPage() {
+function WikiBrandPageInner() {
   const router = useRouter()
   const params = useParams()
   const companyId = params?.companyId as string | undefined
@@ -40,5 +40,13 @@ export default function WikiBrandPage() {
       deals={deals}
       onSelectDeal={handleSelectDeal}
     />
+  )
+}
+
+export default function WikiBrandPage() {
+  return (
+    <Suspense>
+      <WikiBrandPageInner />
+    </Suspense>
   )
 }

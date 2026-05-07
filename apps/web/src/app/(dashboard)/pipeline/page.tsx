@@ -1,9 +1,18 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Pipeline } from '@/components/Pipeline'
 
-export default function PipelinePage() {
+function PipelineInner() {
   const router = useRouter()
   return <Pipeline onOpenDeal={(id) => router.push(`/deals/${id}?from=pipeline`)} />
+}
+
+export default function PipelinePage() {
+  return (
+    <Suspense>
+      <PipelineInner />
+    </Suspense>
+  )
 }
