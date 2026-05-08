@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
 import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useGenerateDealSummary } from '@/lib/hooks/mutations'
-import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDealSummaries, useGetDealSummaryLatest, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany } from '@/lib/hooks/queries'
+import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDealSummaries, useGetDealSummaryLatest, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
@@ -397,8 +397,8 @@ type DealDetailProps = {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-type TabId = 'notes' | 'resources' | 'timeline' | 'people' | 'billing'
-const VALID_TABS = new Set<TabId>(['notes', 'resources', 'timeline', 'people', 'billing'])
+type TabId = 'notes' | 'resources' | 'proposals' | 'timeline' | 'people' | 'billing'
+const VALID_TABS = new Set<TabId>(['notes', 'resources', 'proposals', 'timeline', 'people', 'billing'])
 
 export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: DealDetailProps) {
   const router = useRouter()
@@ -468,6 +468,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const { data: activities = [], isLoading: loadingActivities } = useGetActivitiesByDeal(dealId, { enabled: !!deal })
   const { data: nfsNotes = [], isLoading: loadingDocs, refetch: refetchDocs } = useGetDealNotesFlat(dealId, { enabled: !!deal })
   const { data: documents = [], isLoading: loadingResourceDocs, refetch: refetchResourceDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal })
+  const { data: dealProposals = [], isLoading: loadingProposals } = useGetProposalsByDeal(dealId, { enabled: !!deal })
   // ── Summary: auto-generate + poll, no manual button ───────────────────
   const summaryAutoTriggeredRef = useRef(false)
   const [isSummaryGenerating, setIsSummaryGenerating] = useState(false)
@@ -1332,6 +1333,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               {([
                 { id: 'notes', label: 'Notes', count: noteDocs.length },
                 { id: 'resources', label: 'Resources', count: resourceDocs.length },
+                { id: 'proposals' as const, label: 'Proposals', count: dealProposals.length },
                 { id: 'timeline', label: 'Timeline', count: activities.length },
                 { id: 'people' as const, label: 'People', count: contactCount },
                 { id: 'billing' as const, label: 'Billing', count: null },
@@ -1362,7 +1364,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             </div>
 
             {/* Right controls — search + filter + view toggle (hidden for timeline) */}
-            {activeTab !== 'timeline' && activeTab !== 'billing' && activeTab !== 'people' && (
+            {activeTab !== 'timeline' && activeTab !== 'billing' && activeTab !== 'people' && activeTab !== 'proposals' && (
               <div className="hidden sm:flex items-center gap-1 shrink-0">
 
                 {/* Search input */}
@@ -2075,6 +2077,50 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── Proposals tab ─────────────────────────────────────────────── */}
+          {activeTab === 'proposals' && (
+            <div className="p-4">
+              {loadingProposals ? (
+                <div className="py-12 text-center">
+                  <p className="text-ssm text-slate-400">Loading proposals…</p>
+                </div>
+              ) : dealProposals.length === 0 ? (
+                <div className="py-12 text-center">
+                  <p className="text-ssm font-medium text-slate-400">No proposals yet</p>
+                  <p className="text-xxs text-slate-300 dark:text-slate-600 mt-1">New proposals are created via Aria chat.</p>
+                </div>
+              ) : (
+                <div className="bg-slate-50 dark:bg-white/[.02] border border-black/[.06] dark:border-white/[.06] rounded-lg divide-y divide-black/[.06] dark:divide-white/[.06] overflow-hidden">
+                  {dealProposals.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => router.push(`/proposals/${p.id}`)}
+                      className="w-full flex items-center gap-3 text-left px-3 py-2.5 hover:bg-white dark:hover:bg-white/[.04] transition-colors duration-150"
+                    >
+                      <div className="w-8 h-8 rounded-md bg-white dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] flex items-center justify-center shrink-0">
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <path d="M14 2v6h6" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{p.title}</div>
+                        {p.changeNote && (
+                          <div className="text-xxs text-slate-500 mt-0.5 truncate">{p.changeNote}</div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xxs text-slate-500 shrink-0 font-mono">
+                        <span>v{p.currentVersion}</span>
+                        <span className="text-slate-300">·</span>
+                        <span>{new Date(p.updatedAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

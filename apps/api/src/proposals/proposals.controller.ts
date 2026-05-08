@@ -12,6 +12,12 @@ import { CreateShareLinkDto } from './dto/create-share-link.dto'
 export class ProposalsController {
   constructor(private readonly proposals: ProposalsService) {}
 
+  // Workspace-wide list — joins deal + brand for the index page.
+  @Get('proposals')
+  listAll(@Headers('x-workspace-id') workspaceId?: string) {
+    return this.proposals.listAll(workspaceId)
+  }
+
   // List proposals for a deal (metadata only, one entry per chain).
   @Get('deals/:dealId/proposals')
   list(@Param('dealId') dealId: string) {

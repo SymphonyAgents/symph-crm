@@ -147,6 +147,13 @@ export type ApiProposalListItem = {
   updatedAt: string
 }
 
+/** Workspace-wide list row — adds deal + brand context joined server-side. */
+export type ApiProposalSummary = ApiProposalListItem & {
+  dealTitle: string | null
+  brandId: string | null
+  brandName: string | null
+}
+
 export type ApiProposalVersion = {
   id: string
   version: number

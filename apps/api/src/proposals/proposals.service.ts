@@ -123,6 +123,43 @@ export class ProposalsService implements OnModuleInit {
    * Proposals for a deal — one entry per chain. Metadata only; no html.
    * Latest version's metadata (changeNote, authorId, createdAt) is joined in.
    */
+  /**
+   * Workspace-wide list — used by the /proposals index page. Joins to deals
+   * + companies so the index can render brand/deal context without a second
+   * round-trip per row. Never selects html (column-narrow projection).
+   */
+  async listAll(workspaceId?: string) {
+    const rows = await this.db.execute<any>(sql`
+      SELECT
+        p.id, p.title, p.deal_id, p.is_pinned, p.current_version,
+        p.created_by, p.created_at, p.updated_at,
+        d.title       AS deal_title,
+        c.id          AS brand_id,
+        c.name        AS brand_name,
+        v.id          AS current_version_id,
+        v.change_note AS current_change_note,
+        v.excerpt     AS current_excerpt,
+        v.word_count  AS current_word_count,
+        v.author_id   AS current_author_id,
+        v.created_at  AS current_version_created_at
+      FROM proposals p
+      LEFT JOIN deals d ON d.id = p.deal_id
+      LEFT JOIN companies c ON c.id = d.company_id
+      LEFT JOIN proposal_versions v
+        ON v.proposal_id = p.id AND v.version = p.current_version
+      WHERE p.deleted_at IS NULL
+        ${workspaceId ? sql`AND p.workspace_id = ${workspaceId}` : sql``}
+      ORDER BY p.updated_at DESC
+    `)
+    const list = (rows as any).rows ?? rows
+    return (list as any[]).map(r => ({
+      ...this.toListItem(r),
+      dealTitle: r.deal_title ?? null,
+      brandId: r.brand_id ?? null,
+      brandName: r.brand_name ?? null,
+    }))
+  }
+
   async listByDeal(dealId: string) {
     const rows = await this.db.execute<any>(sql`
       SELECT
