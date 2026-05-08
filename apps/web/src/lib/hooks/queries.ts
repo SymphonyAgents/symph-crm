@@ -36,6 +36,7 @@ import type {
   NfsDealNote,
   ApiInternalProduct,
   ApiProposalListItem,
+  ApiProposalSummary,
   ApiProposalHead,
   ApiProposalVersion,
   ApiProposalShareLink,
@@ -509,6 +510,17 @@ export function useGetChatHistory(
 }
 
 // ─── Proposals ───────────────────────────────────────────────────────────────
+
+/** Workspace-wide proposal list — for the /proposals index page. */
+export function useGetAllProposals(
+  options?: Partial<UseQueryOptions<ApiProposalSummary[]>>,
+) {
+  return useQuery<ApiProposalSummary[]>({
+    queryKey: queryKeys.proposals.all,
+    queryFn: () => api.get<ApiProposalSummary[]>('/proposals'),
+    ...options,
+  })
+}
 
 export function useGetProposalsByDeal(
   dealId: string | undefined,
