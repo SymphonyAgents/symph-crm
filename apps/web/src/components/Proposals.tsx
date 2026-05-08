@@ -201,7 +201,7 @@ function ProposalPreview({ proposalId }: { proposalId: string }) {
           title={data.title}
           // No allow-same-origin: iframe can't read cookies / parent DOM.
           // allow-scripts: author-trusted content; public render path strips scripts separately.
-          sandbox="allow-scripts allow-forms allow-popups"
+          sandbox="allow-scripts allow-forms allow-popups allow-modals"
           className="w-full h-full border-0 bg-white"
         />
       </div>
