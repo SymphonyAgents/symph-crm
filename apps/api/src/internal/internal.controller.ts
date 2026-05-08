@@ -28,6 +28,7 @@ import { UsersService } from '../users/users.service'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
+import { ProposalsService } from '../proposals/proposals.service'
 
 /**
  * InternalController — endpoints called by Cloud Scheduler, GCP infrastructure,
@@ -108,6 +109,12 @@ import { WikiService } from '../wiki/wiki.service'
  *
  *   Audit Logs:
  *     GET    /api/internal/audit-logs          List audit logs (entityType, entityId, action, performedBy, from, to, limit, offset)
+ *
+ *   Proposals:
+ *     GET    /api/internal/deals/:dealId/proposals        List proposals for a deal
+ *     POST   /api/internal/deals/:dealId/proposals        Create proposal (html inline, v1)
+ *     GET    /api/internal/proposals/:id                  Get proposal head + current html
+ *     POST   /api/internal/proposals/:id/versions         Save a new version
  */
 @Controller('internal')
 @UseGuards(InternalGuard)
@@ -128,6 +135,7 @@ export class InternalController {
     private readonly auditLogs: AuditLogsService,
     private readonly pipeline: PipelineService,
     private readonly wiki: WikiService,
+    private readonly proposals: ProposalsService,
   ) {
     this.baseUrl = (
       config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
@@ -873,5 +881,82 @@ export class InternalController {
       scopeId: body.scopeId,
     })
     return { ok: true }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Proposals (versioned HTML proposal documents)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * GET /api/internal/deals/:dealId/proposals
+   * List all proposals for a deal (metadata only, no html).
+   */
+  @Get('deals/:dealId/proposals')
+  async listProposals(@Param('dealId') dealId: string) {
+    return this.proposals.listByDeal(dealId)
+  }
+
+  /**
+   * POST /api/internal/deals/:dealId/proposals
+   * Create a new proposal chain and write v1.
+   *
+   * Body: { title: string, html: string, changeNote?: string }
+   * Headers: X-Performed-By (CRM user ID used as authorId)
+   *
+   * Returns: { ok: true, proposal, version, url }
+   */
+  @Post('deals/:dealId/proposals')
+  async createProposal(
+    @Param('dealId') dealId: string,
+    @Body() body: { title: string; html: string; changeNote?: string },
+    @Headers('x-performed-by') performedBy?: string,
+    @Headers('x-workspace-id') workspaceId?: string,
+  ) {
+    if (!body.title) return { ok: false, error: 'title is required' }
+    if (!body.html) return { ok: false, error: 'html is required' }
+    if (!performedBy) return { ok: false, error: 'X-Performed-By header (CRM user ID) is required' }
+
+    const result = await this.proposals.create(
+      dealId,
+      { title: body.title, html: body.html, changeNote: body.changeNote },
+      performedBy,
+      workspaceId,
+    )
+    return {
+      ok: true,
+      ...result,
+      url: `${this.baseUrl}/deals/${dealId}?tab=proposals`,
+    }
+  }
+
+  /**
+   * GET /api/internal/proposals/:id
+   * Get proposal head + current version html.
+   */
+  @Get('proposals/:id')
+  async getProposal(@Param('id') id: string) {
+    const head = await this.proposals.getHead(id)
+    if (!head) throw new NotFoundException(`Proposal ${id} not found`)
+    return head
+  }
+
+  /**
+   * POST /api/internal/proposals/:id/versions
+   * Save a new version of a proposal.
+   *
+   * Body: { html: string, changeNote?: string }
+   * Headers: X-Performed-By (CRM user ID)
+   */
+  @Post('proposals/:id/versions')
+  async saveProposalVersion(
+    @Param('id') id: string,
+    @Body() body: { html: string; changeNote?: string },
+    @Headers('x-performed-by') performedBy?: string,
+  ) {
+    if (!body.html) return { ok: false, error: 'html is required' }
+    if (!performedBy) return { ok: false, error: 'X-Performed-By header (CRM user ID) is required' }
+
+    const version = await this.proposals.saveVersion(id, { html: body.html, changeNote: body.changeNote }, performedBy)
+    return { ok: true, version }
   }
 }

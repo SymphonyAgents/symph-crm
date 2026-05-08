@@ -11,6 +11,7 @@ import { UsersModule } from '../users/users.module'
 import { AuditLogsModule } from '../audit-logs/audit-logs.module'
 import { PipelineModule } from '../pipeline/pipeline.module'
 import { WikiModule } from '../wiki/wiki.module'
+import { ProposalsModule } from '../proposals/proposals.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { WikiModule } from '../wiki/wiki.module'
     AuditLogsModule,
     PipelineModule,
     WikiModule,
+    ProposalsModule,
   ],
   controllers: [InternalController],
   providers: [InternalService],
