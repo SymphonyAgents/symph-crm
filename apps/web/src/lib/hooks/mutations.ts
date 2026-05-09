@@ -566,13 +566,22 @@ export function useDeleteInternalProduct(
 export function useUploadInternalProductIcon(
   options?: UseMutationOptions<ApiInternalProduct, Error, { id: string; file: File }>,
 ) {
+  const qc = useQueryClient()
   return useMutation<ApiInternalProduct, Error, { id: string; file: File }>({
     mutationFn: async ({ id, file }) => {
       const fd = new FormData()
       fd.append('icon', file)
       return api.upload<ApiInternalProduct>(`/internal-products/${id}/icon`, fd)
     },
-    ...withToast('Icon uploaded', options),
+    ...withToast('Icon uploaded', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        // Refresh both the list (catalog page) and any single-row caches so
+        // the new public icon URL renders immediately.
+        qc.invalidateQueries({ queryKey: queryKeys.internalProducts.all })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
   })
 }
 
