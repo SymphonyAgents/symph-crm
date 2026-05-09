@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://us-assets.i.posthog.com https://*.posthog.com",
               `connect-src 'self' https://us.i.posthog.com https://*.posthog.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://*.supabase.co${devConnect}`,
-              "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com",
+              "img-src 'self' data: blob: https://lh3.googleusercontent.com https://*.googleusercontent.com https://*.supabase.co",
               "media-src 'self' blob: https://*.supabase.co",
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",

@@ -266,6 +266,8 @@ function DealCard({
   deal,
   colColor,
   brandName,
+  productIconUrl,
+  productLoading,
   onClick,
   onDelete,
   onAdvance,
@@ -280,6 +282,8 @@ function DealCard({
   deal: ApiDeal
   colColor: string
   brandName: string
+  productIconUrl?: string | null
+  productLoading?: boolean
   onClick: () => void
   onDelete?: () => void
   onAdvance?: () => void
@@ -294,7 +298,11 @@ function DealCard({
   const isWon = deal.stage === 'closed_won'
   const isLost = deal.stage === 'closed_lost'
   const outreach = deal.outreachCategory || 'outbound'
-  const services = deal.servicesTags || []
+  const allServices = deal.servicesTags || []
+  // Internal-products is rendered separately (icon or name fallback) so it doesn't
+  // double up as a generic service pill alongside the product reference.
+  const hasInternalProduct = allServices.includes('internal_products') && !!deal.internalProductName
+  const services = allServices.filter(s => s !== 'internal_products')
   // Resolve UUID to display name — deal.assignedTo stores a user ID from the API
   const resolvedAm = users?.find(u => u.id === deal.assignedTo)
   // Kanban card: prefer nickname → firstName → first word of name → email prefix
@@ -354,9 +362,33 @@ function DealCard({
         {formatDealName(deal.title)}
       </div>
 
-      {/* Services tags */}
-      {services.length > 0 && (
+      {/* Services tags + internal-product reference (icon, skeleton while loading, name fallback) */}
+      {(services.length > 0 || hasInternalProduct) && (
         <div className="flex flex-wrap gap-1.5 mb-2.5 items-center">
+          {hasInternalProduct && (
+            productLoading ? (
+              <span
+                className="rounded-sm bg-slate-200/70 dark:bg-white/[.08] animate-pulse shrink-0"
+                style={{ width: 18, height: 18 }}
+                aria-label="Loading product icon"
+              />
+            ) : productIconUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={productIconUrl}
+                alt={deal.internalProductName ?? ''}
+                title={deal.internalProductName ?? ''}
+                width={18}
+                height={18}
+                className="rounded-sm object-contain shrink-0"
+                style={{ width: 18, height: 18 }}
+              />
+            ) : (
+              <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
+                {deal.internalProductName}
+              </span>
+            )
+          )}
           {services.slice(0, 3).map(s => (
             <span
               key={s}
@@ -366,11 +398,6 @@ function DealCard({
               {formatServiceType(s)}
             </span>
           ))}
-          {services.includes('internal_products') && deal.internalProductName && (
-            <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
-              {deal.internalProductName}
-            </span>
-          )}
           {services.length > 3 && (
             <span className="text-atom text-slate-400">+{services.length - 3}</span>
           )}
@@ -406,11 +433,13 @@ function DealCard({
 
 // --- DraggableDealCard —wraps DealCard without touching it ---
 function DraggableDealCard({
-  deal, colColor, brandName, onClick, onDelete, onAdvance, onAdvanceTo, onMoveTo, onAssign, onEdit, isSales, users, isAdvancing,
+  deal, colColor, brandName, productIconUrl, productLoading, onClick, onDelete, onAdvance, onAdvanceTo, onMoveTo, onAssign, onEdit, isSales, users, isAdvancing,
 }: {
   deal: ApiDeal
   colColor: string
   brandName: string
+  productIconUrl?: string | null
+  productLoading?: boolean
   onClick: () => void
   onDelete?: () => void
   onAdvance?: () => void
@@ -439,6 +468,8 @@ function DraggableDealCard({
         deal={deal}
         colColor={colColor}
         brandName={brandName}
+        productIconUrl={productIconUrl}
+        productLoading={productLoading}
         onClick={onClick}
         onDelete={onDelete}
         onAdvance={onAdvance}
@@ -680,7 +711,9 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const { data: deals = [], isLoading: dealsLoading } = useGetDeals()
   const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
   const { data: users = [], isLoading: usersLoading } = useGetUsers()
-  const { data: catalog = [] } = useGetInternalProducts()
+  const { data: catalog = [], isLoading: catalogLoading } = useGetInternalProducts()
+  // Pipeline renders as soon as deals/companies/users land. Catalog (the
+  // product icon source) lazy-fills via a skeleton placeholder per card.
   const isLoading = dealsLoading || companiesLoading || usersLoading
 
   // slug -> display name map for matching service tags by their friendly label
@@ -692,6 +725,11 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const catalogNameById = useMemo(() => {
     const m = new Map<string, string>()
     for (const c of catalog) m.set(c.id, c.name)
+    return m
+  }, [catalog])
+  const catalogIconById = useMemo(() => {
+    const m = new Map<string, string | null>()
+    for (const c of catalog) m.set(c.id, c.iconUrl ?? null)
     return m
   }, [catalog])
 
@@ -1161,6 +1199,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                           deal={d}
                           colColor={col.color}
                           brandName={companyMap.get(d.companyId) ?? 'No Brand'}
+                          productIconUrl={d.internalProductId ? catalogIconById.get(d.internalProductId) ?? null : null}
+                          productLoading={catalogLoading}
                           users={users}
                           onClick={() => onOpenDeal(d.id)}
                           onDelete={() => handleDeleteDeal(d.id)}
@@ -1187,6 +1227,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                     deal={activeDeal}
                     colColor={activeDealColColor}
                     brandName={companyMap.get(activeDeal.companyId) ?? 'No Brand'}
+                    productIconUrl={activeDeal.internalProductId ? catalogIconById.get(activeDeal.internalProductId) ?? null : null}
+                    productLoading={catalogLoading}
                     onClick={() => {}}
                   />
                 </div>
@@ -1316,7 +1358,10 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                 const stageColor = stageCol?.color ?? '#94a3b8'
                 const stageLabel = STAGE_LABELS[d.stage] ?? d.stage
                 const outreach = d.outreachCategory || 'outbound'
-                const services = d.servicesTags || []
+                const allServices = d.servicesTags || []
+                const hasInternalProduct = allServices.includes('internal_products') && !!d.internalProductName
+                const services = allServices.filter(s => s !== 'internal_products')
+                const productIconUrl = d.internalProductId ? catalogIconById.get(d.internalProductId) ?? null : null
                 const resolvedAm = users.find(u => u.id === d.assignedTo)
                 const amShortName = resolvedAm
                   ? (resolvedAm.nickname ?? resolvedAm.firstName ?? resolvedAm.name?.split(' ')[0] ?? resolvedAm.email?.split('@')[0] ?? '?')
@@ -1361,9 +1406,33 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                       {formatDealName(d.title)}
                     </p>
 
-                    {/* Service tag */}
-                    {services.length > 0 && (
+                    {/* Service tag + internal-product reference (icon, skeleton while loading, name fallback) */}
+                    {(services.length > 0 || hasInternalProduct) && (
                       <div className="flex flex-wrap gap-1.5 mb-2.5 items-center">
+                        {hasInternalProduct && (
+                          catalogLoading ? (
+                            <span
+                              className="rounded-sm bg-slate-200/70 dark:bg-white/[.08] animate-pulse shrink-0"
+                              style={{ width: 18, height: 18 }}
+                              aria-label="Loading product icon"
+                            />
+                          ) : productIconUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={productIconUrl}
+                              alt={d.internalProductName ?? ''}
+                              title={d.internalProductName ?? ''}
+                              width={18}
+                              height={18}
+                              className="rounded-sm object-contain shrink-0"
+                              style={{ width: 18, height: 18 }}
+                            />
+                          ) : (
+                            <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
+                              {d.internalProductName}
+                            </span>
+                          )
+                        )}
                         {services.slice(0, 2).map(s => (
                           <span
                             key={s}
@@ -1373,11 +1442,6 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                             {formatServiceType(s)}
                           </span>
                         ))}
-                        {services.includes('internal_products') && d.internalProductName && (
-                          <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
-                            {d.internalProductName}
-                          </span>
-                        )}
                         {services.length > 2 && (
                           <span className="text-atom text-slate-400">+{services.length - 2}</span>
                         )}
