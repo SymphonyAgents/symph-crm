@@ -17,6 +17,7 @@ import {
   Mail,
   Calendar,
   BarChart3,
+  TrendingUp,
   FileText,
   ClipboardList,
   Receipt,
@@ -77,6 +78,7 @@ function getNavSections(dormantCount: number): NavSection[] {
       title: 'Tools',
       items: [
         { path: '/calendar', label: 'Calendar', icon: Calendar },
+        { path: '/revenue', label: 'Revenue', icon: TrendingUp },
         { path: '/reports', label: 'Reports', icon: BarChart3 },
         { path: '/proposals', label: 'Proposals', icon: FileText },
         { path: '/bills', label: 'Bills', icon: Receipt },

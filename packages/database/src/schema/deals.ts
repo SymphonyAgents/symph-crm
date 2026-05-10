@@ -17,6 +17,10 @@ export const deals = pgTable('deals', {
   stageId: uuid('stage_id').references(() => pipelineStages.id),
 
   value: numeric('value'),
+  // Revenue fields, project deals use value (one-time deal size)
+  // Startup/HireAI deals use oneTimeFee + mrr (monthly recurring revenue)
+  oneTimeFee: numeric('one_time_fee'),
+  mrr: numeric('mrr'),
   probability: integer('probability').default(10),
   closeDate: date('close_date'),
   lossReason: text('loss_reason'),

@@ -179,6 +179,8 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [companyId, setCompanyId] = useState(deal.companyId ?? '')
   const [stage, setStage] = useState(deal.stage)
   const [value, setValue] = useState(deal.value ? formatValueDisplay(deal.value) : '')
+  const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatValueDisplay(deal.oneTimeFee) : '')
+  const [mrr, setMrr] = useState(deal.mrr ? formatValueDisplay(deal.mrr) : '')
   const [outreachCategory, setOutreachCategory] = useState(deal.outreachCategory ?? '')
   const [serviceType, setServiceType] = useState(
     (deal.servicesTags && deal.servicesTags.length > 0) ? deal.servicesTags[0] : ''
@@ -223,6 +225,12 @@ export function EditDealModal({ deal, onClose }: Props) {
 
     const cleanValue = value.replace(/,/g, '').trim() || null
     if (cleanValue !== deal.value) changes.value = cleanValue
+
+    const cleanOneTimeFee = oneTimeFee.replace(/,/g, '').trim() || null
+    if (cleanOneTimeFee !== (deal.oneTimeFee ?? null)) changes.oneTimeFee = cleanOneTimeFee
+
+    const cleanMrr = mrr.replace(/,/g, '').trim() || null
+    if (cleanMrr !== (deal.mrr ?? null)) changes.mrr = cleanMrr
 
     if ((outreachCategory || null) !== (deal.outreachCategory || null)) {
       changes.outreachCategory = outreachCategory || null
@@ -390,10 +398,42 @@ export function EditDealModal({ deal, onClose }: Props) {
             </div>
           </div>
 
-          {/* Value + Probability */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Revenue fields, conditional on deal type */}
+          {serviceType === 'internal_products' ? (
+            // HireAI / startup deals: One-Time Fee + MRR
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50">
+                <span className="text-atom font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Startup Revenue</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                    One-Time Fee (PHP) <span className="text-slate-400 normal-case">setup / onboarding</span>
+                  </label>
+                  <Input
+                    value={oneTimeFee}
+                    onChange={e => setOneTimeFee(formatValueDisplay(e.target.value))}
+                    placeholder="e.g. 50,000"
+                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                    MRR (PHP) <span className="text-slate-400 normal-case">monthly recurring</span>
+                  </label>
+                  <Input
+                    value={mrr}
+                    onChange={e => setMrr(formatValueDisplay(e.target.value))}
+                    placeholder="e.g. 10,999"
+                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Project-based deals: deal value only
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Value (PHP)</label>
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Deal Value (PHP)</label>
               <Input
                 value={value}
                 onChange={e => setValue(formatValueDisplay(e.target.value))}
@@ -401,6 +441,10 @@ export function EditDealModal({ deal, onClose }: Props) {
                 className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
               />
             </div>
+          )}
+
+          {/* Probability */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Probability (%)</label>
               <Input

@@ -11,6 +11,10 @@ export type ApiDeal = {
   title: string
   stage: string
   value: string | null
+  /** One-time setup/onboarding fee, used for HireAI / startup deals */
+  oneTimeFee: string | null
+  /** Monthly recurring revenue, used for HireAI / startup deals */
+  mrr: string | null
   servicesTags: string[] | null
   outreachCategory: string | null
   pricingModel: string | null
