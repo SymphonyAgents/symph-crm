@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useGetDeals, useGetUsers } from '@/lib/hooks/queries'
 import { formatCurrency } from '@/lib/utils'
-import { TrendingUp, Building2, Rocket, ChevronRight } from 'lucide-react'
+import { TrendingUp, Building2, Rocket, Archive, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import type { ApiDeal } from '@/lib/types'
 
@@ -11,10 +11,11 @@ import type { ApiDeal } from '@/lib/types'
 
 const MONTHS = ['May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTH_KEYS = ['05', '06', '07', '08', '09', '10', '11', '12']
-const TARGET_MONTHLY = 25_000_000
+const TARGET_MONTHLY = 22_000_000
 
-// Startup product tag
+// Service tags
 const STARTUP_TAG = 'internal_products'
+const EXISTING_TAG = 'existing_client'
 
 // The Agency vs HireAI, determined by internalProductName
 function dealStartupCategory(deal: ApiDeal): 'hireai' | 'agency' | null {
@@ -300,6 +301,89 @@ function StartupRevenueSection({ deals, userMap }: { deals: ApiDeal[]; userMap: 
   )
 }
 
+// ─── Section C: Existing Clients ─────────────────────────────────────────────
+
+function ExistingClientsSection({ deals, userMap }: { deals: ApiDeal[]; userMap: Map<string, string> }) {
+  const existingDeals = deals.filter(d => d.servicesTags?.includes(EXISTING_TAG))
+  const monthlyTotal = existingDeals.reduce((s, d) => s + numVal(d.mrr), 0)
+
+  return (
+    <div>
+      <SectionHeader
+        icon={<Archive size={16} className="text-amber-600 dark:text-amber-400" />}
+        title="Section C, Existing Clients (Retainers)"
+        color="bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200"
+      />
+      <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
+              <th className="px-4 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[280px]">Client</th>
+              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right w-[130px]">Monthly Revenue</th>
+              {MONTHS.map(m => (
+                <th key={m} className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right">{m}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-black/[.04] dark:divide-white/[.04]">
+            {existingDeals.length === 0 ? (
+              <tr>
+                <td colSpan={2 + MONTHS.length} className="px-4 py-8 text-center text-ssm text-slate-400">
+                  No existing clients
+                </td>
+              </tr>
+            ) : (
+              existingDeals.map((deal, i) => {
+                const mrr = numVal(deal.mrr)
+                // Strip " - Existing Client" suffix for display
+                const displayName = deal.title.replace(' - Existing Client', '')
+                return (
+                  <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/deals/${deal.id}?from=revenue`}
+                        className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
+                      >
+                        {displayName}
+                        <ChevronRight size={11} className="opacity-0 group-hover:opacity-60 transition-opacity" />
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
+                      {mrr > 0 ? phpFmt(mrr) : (
+                        <Link href={`/deals/${deal.id}?from=revenue`} className="text-amber-500 hover:text-amber-600 text-atom">
+                          + Add
+                        </Link>
+                      )}
+                    </td>
+                    {MONTHS.map(m => (
+                      <MonthCell key={m} value={mrr} />
+                    ))}
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-amber-200 dark:border-amber-800/50 bg-amber-50/60 dark:bg-amber-950/20">
+              <td className="px-4 py-2.5 text-ssm font-semibold text-amber-700 dark:text-amber-300">
+                Existing Clients Subtotal
+              </td>
+              <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-amber-700 dark:text-amber-300">
+                {monthlyTotal > 0 ? phpFmt(monthlyTotal) : ', '}
+              </td>
+              {MONTHS.map((_, i) => (
+                <td key={i} className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-amber-700 dark:text-amber-300">
+                  {monthlyTotal > 0 ? phpFmt(monthlyTotal) : ', '}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function RevenueGeneration() {
@@ -319,7 +403,7 @@ export function RevenueGeneration() {
   // Totals for summary bar
   const projectSubtotal = useMemo(() => {
     return activeDeals
-      .filter(d => !d.servicesTags?.includes(STARTUP_TAG))
+      .filter(d => !d.servicesTags?.includes(STARTUP_TAG) && !d.servicesTags?.includes(EXISTING_TAG))
       .reduce((s, d) => s + (numVal(d.value) > 0 ? Math.round(numVal(d.value) / 12) : 0), 0)
   }, [activeDeals])
 
@@ -329,7 +413,13 @@ export function RevenueGeneration() {
       .reduce((s, d) => s + numVal(d.mrr), 0)
   }, [activeDeals])
 
-  const totalRevenue = projectSubtotal + startupSubtotal
+  const existingSubtotal = useMemo(() => {
+    return activeDeals
+      .filter(d => d.servicesTags?.includes(EXISTING_TAG))
+      .reduce((s, d) => s + numVal(d.mrr), 0)
+  }, [activeDeals])
+
+  const totalRevenue = projectSubtotal + startupSubtotal + existingSubtotal
   const gap = totalRevenue - TARGET_MONTHLY
   const pct = Math.min(100, Math.round((totalRevenue / TARGET_MONTHLY) * 100))
 
@@ -357,10 +447,10 @@ export function RevenueGeneration() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
           <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider mb-1">Target / Month</div>
-          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">₱25,000,000</div>
+          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">₱22,000,000</div>
         </div>
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
           <div className="text-xxs font-semibold text-teal-500 uppercase tracking-wider mb-1">Project Revenue / Mo</div>
@@ -369,6 +459,10 @@ export function RevenueGeneration() {
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
           <div className="text-xxs font-semibold text-violet-500 uppercase tracking-wider mb-1">Startup MRR</div>
           <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(startupSubtotal)}</div>
+        </div>
+        <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
+          <div className="text-xxs font-semibold text-amber-500 uppercase tracking-wider mb-1">Existing Clients</div>
+          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(existingSubtotal)}</div>
         </div>
         <div className={`rounded-xl border p-4 ${gap < 0 ? 'border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20' : 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/20'}`}>
           <div className={`text-xxs font-semibold uppercase tracking-wider mb-1 ${gap < 0 ? 'text-red-400' : 'text-emerald-500'}`}>
@@ -383,7 +477,7 @@ export function RevenueGeneration() {
       {/* Progress bar */}
       <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-ssm font-semibold text-slate-700 dark:text-slate-300">Revenue vs. Target</span>
+          <span className="text-ssm font-semibold text-slate-700 dark:text-slate-300">Revenue vs. Target (₱22M)</span>
           <span className="text-ssm font-bold tabular-nums text-slate-700 dark:text-slate-300">{pct}%</span>
         </div>
         <div className="h-2.5 rounded-full bg-slate-100 dark:bg-white/[.06] overflow-hidden">
@@ -408,6 +502,10 @@ export function RevenueGeneration() {
             <div className="w-2.5 h-2.5 rounded-sm bg-violet-400" />
             <span className="text-atom text-slate-400">Startup MRR ({phpFmt(startupSubtotal)})</span>
           </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm bg-amber-400" />
+            <span className="text-atom text-slate-400">Existing ({phpFmt(existingSubtotal)})</span>
+          </div>
         </div>
       </div>
 
@@ -417,9 +515,12 @@ export function RevenueGeneration() {
       {/* Section B */}
       <StartupRevenueSection deals={activeDeals} userMap={userMap} />
 
+      {/* Section C */}
+      <ExistingClientsSection deals={activeDeals} userMap={userMap} />
+
       {/* Note */}
       <p className="text-atom text-slate-400 dark:text-slate-500 text-center">
-        Project monthly revenue = deal value / 12. Startup revenue = MRR entered on each deal.
+        Project monthly revenue = deal value / 12. Startup and existing client revenue = MRR entered on each deal.
         Click any deal to edit its values. Parked and lost deals are excluded.
       </p>
     </div>
