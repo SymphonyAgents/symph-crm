@@ -297,7 +297,13 @@ export class InternalController {
       await this.deals.updateStage(id, stage, performedBy)
     }
 
-    const updatableFields = ['value', 'title', 'notes', 'assignedTo', 'companyId', 'internalProductId', 'tierId'] as const
+    const updatableFields = [
+      'value', 'title', 'notes', 'assignedTo', 'companyId', 'internalProductId', 'tierId',
+      'mrr', 'oneTimeFee',
+      'servicesTags', 'outreachCategory', 'demoLink', 'proposalLink', 'clientBrandColor',
+      'closeDate', 'probability', 'lossReason', 'isFlagged', 'flagReason',
+      'buildAssignedTo', 'subAccountManagerId',
+    ] as const
     const otherFields = Object.fromEntries(
       Object.entries(rest).filter(([k]) => (updatableFields as readonly string[]).includes(k)),
     )
