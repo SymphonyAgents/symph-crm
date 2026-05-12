@@ -18,8 +18,10 @@
  * sandbox includes allow-modals so the browser's print dialog can open.
  */
 
+import { useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useGetProposalHead } from '@/lib/hooks/queries'
+import { useSaveProposalVersion } from '@/lib/hooks/mutations'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 
 function ChevronLeftIcon({ size = 14 }: { size?: number }) {
@@ -51,6 +53,50 @@ interface ProposalDetailProps {
 
 export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetailProps) {
   const { data, isLoading, error } = useGetProposalHead(proposalId)
+  const [isEditing, setIsEditing] = useState(false)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const saveVersion = useSaveProposalVersion()
+
+  function handleEnterEdit() {
+    setIsEditing(true)
+  }
+
+  function handleCancelEdit() {
+    setIsEditing(false)
+  }
+
+  function handleSave() {
+    const iframeDoc = iframeRef.current?.contentDocument
+    if (!iframeDoc) return
+    // Strip edit markers before serializing
+    iframeDoc.querySelectorAll<HTMLElement>('[contenteditable]').forEach(el => {
+      el.removeAttribute('contenteditable')
+      el.style.removeProperty('outline')
+      el.style.removeProperty('border-radius')
+      el.style.removeProperty('cursor')
+    })
+    const html = iframeDoc.documentElement.outerHTML
+    saveVersion.mutate(
+      { proposalId, html, changeNote: 'Inline edit' },
+      { onSuccess: () => setIsEditing(false) },
+    )
+  }
+
+  function injectContentEditable() {
+    const iframeDoc = iframeRef.current?.contentDocument
+    if (!iframeDoc || !isEditing) return
+    iframeDoc.querySelectorAll<HTMLElement>('p, h1, h2, h3, h4, h5, h6, li, td, th, blockquote').forEach(el => {
+      // Skip elements that have block-level children (they're containers, not text nodes)
+      const hasBlockKids = Array.from(el.children).some(c =>
+        ['P','DIV','H1','H2','H3','H4','H5','H6','UL','OL','LI','TABLE','TR','BLOCKQUOTE'].includes(c.tagName),
+      )
+      if (hasBlockKids) return
+      el.contentEditable = 'true'
+      el.style.outline = '2px dashed rgba(108, 99, 255, 0.35)'
+      el.style.borderRadius = '3px'
+      el.style.cursor = 'text'
+    })
+  }
 
   if (isLoading) {
     return (
@@ -123,7 +169,7 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
             {fmtDate(data.updatedAt)}
           </div>
 
-          {data.dealId && (
+          {data.dealId && !isEditing && (
             <button
               onClick={() => data.dealId && onOpenDeal(data.dealId)}
               className={cn(
@@ -137,19 +183,69 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
               <ArrowRightIcon size={13} />
             </button>
           )}
+
+          {/* Edit / Save / Cancel */}
+          {isEditing ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={handleCancelEdit}
+                disabled={saveVersion.isPending}
+                className="h-7 px-3 rounded-lg text-xxs font-medium text-slate-500 border border-black/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saveVersion.isPending}
+                className="h-7 px-3 rounded-lg text-xxs font-semibold text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+              >
+                {saveVersion.isPending ? (
+                  <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+                Save
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleEnterEdit}
+              className="shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xxs font-semibold text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Edit
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Full-width iframe — proposal HTML carries its own Download as PDF button */}
-      <div className="flex-1 min-h-0 bg-slate-100 dark:bg-[#0f0f12]">
+      {/* Full-width iframe */}
+      <div className="flex-1 min-h-0 bg-slate-100 dark:bg-[#0f0f12] relative">
+        {isEditing && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-primary/90 text-white text-xxs font-medium px-3 py-1 rounded-full shadow-md pointer-events-none">
+            Click any text to edit
+          </div>
+        )}
         <iframe
-          key={proposalId}
+          ref={iframeRef}
+          key={`${proposalId}-${isEditing ? 'edit' : 'view'}`}
           srcDoc={data.version.html}
           title={data.title}
-          // No allow-same-origin: iframe can't read cookies / parent DOM.
-          // allow-modals: required so the proposal's own window.print() can open the print dialog.
-          sandbox="allow-scripts allow-forms allow-popups allow-modals"
+          // Edit mode: add allow-same-origin so we can access contentDocument for contenteditable.
+          // View mode: no allow-same-origin, iframe can't read parent DOM or cookies.
+          // allow-modals: required so the proposal's own window.print() opens the print dialog.
+          sandbox={isEditing
+            ? 'allow-scripts allow-forms allow-popups allow-modals allow-same-origin'
+            : 'allow-scripts allow-forms allow-popups allow-modals'
+          }
           className="w-full h-full border-0 bg-white"
+          onLoad={injectContentEditable}
         />
       </div>
     </div>

@@ -54,6 +54,14 @@ function isPdfDoc(doc: ViewableDoc): boolean {
   return false
 }
 
+/** HTML if storagePath ends in .html, type is proposal, or tags include 'html' */
+function isHtmlDoc(doc: ViewableDoc): boolean {
+  if (doc.storagePath?.toLowerCase().endsWith('.html')) return true
+  if (doc.type === 'proposal') return true
+  if (doc.tags?.includes('html')) return true
+  return false
+}
+
 /** Friendly type label from tags */
 function getFileTypeLabel(doc: ViewableDoc): string {
   if (!doc.tags?.length) return 'Note'
@@ -80,6 +88,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
   const isImage = isImageDoc(doc)
   const isAudio = isAudioDoc(doc)
   const isPdf = isPdfDoc(doc)
+  const isHtml = isHtmlDoc(doc)
   const hasPreloadedContent = initialContent !== undefined
   const canEdit = !isImage && !isAudio && !hasPreloadedContent
   const [viewMode, setViewMode] = useState<ViewMode>('rendered')
@@ -88,6 +97,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
   const [copied, setCopied] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const iframeRef = useRef<HTMLIFrameElement>(null)
   const isEditingRef = useRef(false)
   isEditingRef.current = isEditing
 
@@ -145,6 +155,20 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
   }
 
   function handleSave() {
+    if (isHtml) {
+      const iframeDoc = iframeRef.current?.contentDocument
+      if (!iframeDoc) return
+      // Strip contenteditable markers before saving
+      iframeDoc.querySelectorAll<HTMLElement>('[contenteditable]').forEach(el => {
+        el.removeAttribute('contenteditable')
+        el.style.removeProperty('outline')
+        el.style.removeProperty('border-radius')
+        el.style.removeProperty('cursor')
+      })
+      const html = iframeDoc.documentElement.outerHTML
+      updateDocument.mutate({ id: doc.id, content: html })
+      return
+    }
     if (!editedContent.trim()) return
     updateDocument.mutate({ id: doc.id, content: editedContent })
   }
@@ -370,8 +394,31 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
         </div>
 
         {/* ── Content ───────────────────────────────────────────────────────── */}
-        {isEditing ? (
-          /* Inline edit textarea */
+        {isEditing && isHtml ? (
+          /* HTML proposal, iframe with contenteditable injected on load */
+          <iframe
+            ref={iframeRef}
+            srcDoc={content || ''}
+            className="w-full flex-1 border-0"
+            title={doc.title}
+            onLoad={() => {
+              const iframeDoc = iframeRef.current?.contentDocument
+              if (!iframeDoc) return
+              iframeDoc.querySelectorAll<HTMLElement>('p, h1, h2, h3, h4, h5, h6, li, td, th, blockquote, span, a').forEach(el => {
+                // Skip elements that are purely containers (have block-level children)
+                const hasBlockKids = Array.from(el.children).some(c =>
+                  ['P','DIV','H1','H2','H3','H4','H5','H6','UL','OL','LI','TABLE','TR','TD','TH','BLOCKQUOTE'].includes(c.tagName)
+                )
+                if (hasBlockKids) return
+                el.contentEditable = 'true'
+                el.style.outline = '2px dashed rgba(108, 99, 255, 0.25)'
+                el.style.borderRadius = '3px'
+                el.style.cursor = 'text'
+              })
+            }}
+          />
+        ) : isEditing ? (
+          /* Inline edit textarea, for markdown and plain text */
           <div className="flex-1 flex flex-col overflow-hidden">
             {updateDocument.error && (
               <div className="px-8 pt-4">
