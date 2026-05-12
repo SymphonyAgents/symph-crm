@@ -358,19 +358,7 @@ function CatalogItemFormModal({
               Icon <span className="text-slate-400">(optional, up to 512KB)</span>
             </label>
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <IconThumb src={iconPreview} size={40} />
-                {iconPreview && (
-                  <button
-                    type="button"
-                    onClick={handleRemoveIcon}
-                    title="Remove icon"
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-200 hover:bg-red-200 dark:hover:bg-red-500/40 hover:text-red-600 dark:hover:text-red-300 transition-colors shadow-sm"
-                  >
-                    <X size={9} strokeWidth={2.5} />
-                  </button>
-                )}
-              </div>
+              <IconThumb src={iconPreview} size={40} />
               <input
                 ref={fileInputRef}
                 type="file"
@@ -378,14 +366,26 @@ function CatalogItemFormModal({
                 onChange={handleFilePick}
                 className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
-              >
-                <Upload size={13} />
-                {iconPreview ? 'Replace icon' : 'Upload icon'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                >
+                  <Upload size={13} />
+                  {iconPreview ? 'Replace icon' : 'Upload icon'}
+                </button>
+                {iconPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveIcon}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-[#dc2626] hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  >
+                    <X size={13} />
+                    Remove icon
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
