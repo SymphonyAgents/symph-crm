@@ -365,7 +365,7 @@ function CatalogItemFormModal({
                     type="button"
                     onClick={handleRemoveIcon}
                     title="Remove icon"
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-200 dark:bg-white/[.12] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-red-100 dark:hover:bg-red-500/20 hover:text-red-500 transition-colors"
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-200 hover:bg-red-200 dark:hover:bg-red-500/40 hover:text-red-600 dark:hover:text-red-300 transition-colors shadow-sm"
                   >
                     <X size={9} strokeWidth={2.5} />
                   </button>
