@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Pencil, Trash2, ToggleLeft, ToggleRight, ImageIcon, Upload } from 'lucide-react'
+import { Pencil, Trash2, ToggleLeft, ToggleRight, ImageIcon, Upload, X } from 'lucide-react'
 import { useGetInternalProducts } from '@/lib/hooks/queries'
 import {
   useCreateInternalProduct,
@@ -268,6 +268,7 @@ function CatalogItemFormModal({
   const [landingPageLink, setLandingPageLink] = useState(item?.landingPageLink ?? '')
   const [iconFile, setIconFile] = useState<File | null>(null)
   const [iconPreview, setIconPreview] = useState<string | null>(item?.iconUrl ?? null)
+  const [removeIcon, setRemoveIcon] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const create = useCreateInternalProduct({})
@@ -284,6 +285,14 @@ function CatalogItemFormModal({
     if (!f) return
     setIconFile(f)
     setIconPreview(URL.createObjectURL(f))
+    setRemoveIcon(false)
+  }
+
+  function handleRemoveIcon() {
+    setIconFile(null)
+    setIconPreview(null)
+    setRemoveIcon(true)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -300,7 +309,8 @@ function CatalogItemFormModal({
 
     let savedId = item?.id
     if (item) {
-      await update.mutateAsync({ id: item.id, data: payload })
+      const updatePayload = removeIcon ? { ...payload, iconUrl: null } : payload
+      await update.mutateAsync({ id: item.id, data: updatePayload })
     } else {
       const created = await create.mutateAsync(payload)
       savedId = created.id
@@ -348,7 +358,19 @@ function CatalogItemFormModal({
               Icon <span className="text-slate-400">(optional, up to 512KB)</span>
             </label>
             <div className="flex items-center gap-3">
-              <IconThumb src={iconPreview} size={40} />
+              <div className="relative">
+                <IconThumb src={iconPreview} size={40} />
+                {iconPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveIcon}
+                    title="Remove icon"
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-slate-200 dark:bg-white/[.12] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-red-100 dark:hover:bg-red-500/20 hover:text-red-500 transition-colors"
+                  >
+                    <X size={9} strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
