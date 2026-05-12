@@ -1,6 +1,6 @@
 import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common'
 import { eq, and, asc } from 'drizzle-orm'
-import { dealBilling, billingMilestones } from '@symph-crm/database'
+import { dealBilling, billingMilestones, deals } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 
@@ -83,6 +83,7 @@ export class BillingService implements OnModuleInit {
       .from(dealBilling)
       .where(eq(dealBilling.dealId, dealId))
 
+    let result: typeof existing
     if (existing) {
       const [updated] = await this.db
         .update(dealBilling)
@@ -96,21 +97,58 @@ export class BillingService implements OnModuleInit {
         })
         .where(eq(dealBilling.id, existing.id))
         .returning()
-      return updated
+      result = updated
+    } else {
+      const [created] = await this.db
+        .insert(dealBilling)
+        .values({
+          dealId,
+          billingType: dto.billingType,
+          contractStart: dto.contractStart ?? null,
+          contractEnd: dto.contractEnd ?? null,
+          amount: dto.amount ?? null,
+          monthlyDerived,
+        })
+        .returning()
+      result = created
     }
 
-    const [created] = await this.db
-      .insert(dealBilling)
-      .values({
-        dealId,
-        billingType: dto.billingType,
-        contractStart: dto.contractStart ?? null,
-        contractEnd: dto.contractEnd ?? null,
-        amount: dto.amount ?? null,
-        monthlyDerived,
-      })
-      .returning()
-    return created
+    // Sync to deals revenue fields so Revenue page stays accurate
+    // monthly → deals.mrr; annual → deals.mrr (monthly equivalent)
+    if (monthlyDerived && (dto.billingType === 'monthly' || dto.billingType === 'annual')) {
+      const mrr = parseFloat(monthlyDerived)
+      if (!isNaN(mrr) && mrr > 0) {
+        // Compute contractLength from dates if available
+        let contractLength: number | null = null
+        if (dto.contractStart && dto.contractEnd) {
+          const start = new Date(dto.contractStart)
+          const end = new Date(dto.contractEnd)
+          contractLength = Math.max(1, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()))
+        }
+
+        // Read current oneTimeFee to preserve it in value computation
+        const [currentDeal] = await this.db
+          .select({ oneTimeFee: deals.oneTimeFee, contractLength: deals.contractLength })
+          .from(deals)
+          .where(eq(deals.id, dealId))
+          .limit(1)
+
+        const otf = parseFloat(String(currentDeal?.oneTimeFee ?? 0)) || 0
+        const len = contractLength ?? currentDeal?.contractLength ?? 1
+        const computedValue = otf + mrr * len
+
+        await this.db
+          .update(deals)
+          .set({
+            mrr: mrr.toFixed(2),
+            ...(contractLength ? { contractLength } : {}),
+            value: computedValue.toFixed(2),
+          })
+          .where(eq(deals.id, dealId))
+      }
+    }
+
+    return result
   }
 
   async addMilestone(billingId: string, dto: UpsertMilestoneDto) {

@@ -10,7 +10,6 @@ import type { ApiDeal } from '@/lib/types'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const MONTHS = ['May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const MONTH_KEYS = ['05', '06', '07', '08', '09', '10', '11', '12']
 const TARGET_MONTHLY = 22_000_000
 
 // Service tags
@@ -82,17 +81,26 @@ function MonthCell({ value }: { value: number }) {
 
 // ─── Section A: Project-Based Revenue ─────────────────────────────────────────
 
-function ProjectRevenueSection({ deals, userMap }: { deals: ApiDeal[]; userMap: Map<string, string> }) {
-  // Monthly revenue = deal value / 12 (standard project revenue recognition)
-  // If deal has no value, show blank (user needs to fill in CRM)
-  const projectDeals = deals.filter(d => !d.servicesTags?.includes(STARTUP_TAG))
+/** Best monthly estimate for a project deal:
+ * 1. Use mrr if explicitly set
+ * 2. Use value / contractLength if both present
+ * 3. Fall back to value / 12
+ */
+function projectMonthly(deal: ApiDeal): number {
+  const mrr = numVal(deal.mrr)
+  if (mrr > 0) return mrr
+  const v = numVal(deal.value)
+  if (v <= 0) return 0
+  const len = deal.contractLength && deal.contractLength > 0 ? deal.contractLength : 12
+  return Math.round(v / len)
+}
 
-  const columnTotals = MONTHS.map(() => {
-    return projectDeals.reduce((sum, d) => {
-      const v = numVal(d.value)
-      return sum + (v > 0 ? Math.round(v / 12) : 0)
-    }, 0)
-  })
+function ProjectRevenueSection({ deals, userMap }: { deals: ApiDeal[]; userMap: Map<string, string> }) {
+  const projectDeals = deals.filter(d => !d.servicesTags?.includes(STARTUP_TAG) && !d.servicesTags?.includes(EXISTING_TAG))
+
+  const columnTotals = MONTHS.map(() =>
+    projectDeals.reduce((sum, d) => sum + projectMonthly(d), 0)
+  )
 
   return (
     <div>
@@ -123,8 +131,8 @@ function ProjectRevenueSection({ deals, userMap }: { deals: ApiDeal[]; userMap: 
               </tr>
             ) : (
               projectDeals.map((deal, i) => {
+                const monthly = projectMonthly(deal)
                 const v = numVal(deal.value)
-                const monthly = v > 0 ? Math.round(v / 12) : 0
                 const am = userMap.get(deal.assignedTo ?? '') ?? 'Unassigned'
                 return (
                   <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
@@ -142,8 +150,15 @@ function ProjectRevenueSection({ deals, userMap }: { deals: ApiDeal[]; userMap: 
                     </td>
                     <td className="px-3 py-2.5">{stageBadge(deal.stage)}</td>
                     <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
-                      {v > 0 ? phpFmt(v) : (
-                        <Link href={`/deals/${deal.id}?tab=billing&from=revenue`} className="text-amber-500 hover:text-amber-600 text-atom">
+                      {v > 0 ? (
+                        <div>
+                          <div>{phpFmt(v)}</div>
+                          {deal.contractLength && deal.contractLength > 0 && (
+                            <div className="text-atom text-slate-400">{deal.contractLength}mo</div>
+                          )}
+                        </div>
+                      ) : (
+                        <Link href={`/deals/${deal.id}?from=revenue`} className="text-amber-500 hover:text-amber-600 text-atom">
                           + Add value
                         </Link>
                       )}
@@ -404,7 +419,7 @@ export function RevenueGeneration() {
   const projectSubtotal = useMemo(() => {
     return activeDeals
       .filter(d => !d.servicesTags?.includes(STARTUP_TAG) && !d.servicesTags?.includes(EXISTING_TAG))
-      .reduce((s, d) => s + (numVal(d.value) > 0 ? Math.round(numVal(d.value) / 12) : 0), 0)
+      .reduce((s, d) => s + projectMonthly(d), 0)
   }, [activeDeals])
 
   const startupSubtotal = useMemo(() => {
@@ -520,8 +535,9 @@ export function RevenueGeneration() {
 
       {/* Note */}
       <p className="text-atom text-slate-400 dark:text-slate-500 text-center">
-        Project monthly revenue = deal value / 12. Startup and existing client revenue = MRR entered on each deal.
-        Click any deal to edit its values. Parked and lost deals are excluded.
+        Project monthly revenue uses MRR if set, then value / contract length, then value / 12.
+        Startup and existing client revenue uses MRR directly. Click any deal to edit its values.
+        Parked and lost deals are excluded.
       </p>
     </div>
   )

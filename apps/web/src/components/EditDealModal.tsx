@@ -181,6 +181,7 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [value, setValue] = useState(deal.value ? formatValueDisplay(deal.value) : '')
   const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatValueDisplay(deal.oneTimeFee) : '')
   const [mrr, setMrr] = useState(deal.mrr ? formatValueDisplay(deal.mrr) : '')
+  const [contractLength, setContractLength] = useState(deal.contractLength ? String(deal.contractLength) : '')
   const [outreachCategory, setOutreachCategory] = useState(deal.outreachCategory ?? '')
   const [serviceType, setServiceType] = useState(
     (deal.servicesTags && deal.servicesTags.length > 0) ? deal.servicesTags[0] : ''
@@ -231,6 +232,9 @@ export function EditDealModal({ deal, onClose }: Props) {
 
     const cleanMrr = mrr.replace(/,/g, '').trim() || null
     if (cleanMrr !== (deal.mrr ?? null)) changes.mrr = cleanMrr
+
+    const cleanContractLength = contractLength ? parseInt(contractLength, 10) || null : null
+    if (cleanContractLength !== (deal.contractLength ?? null)) changes.contractLength = cleanContractLength
 
     if ((outreachCategory || null) !== (deal.outreachCategory || null)) {
       changes.outreachCategory = outreachCategory || null
@@ -398,50 +402,65 @@ export function EditDealModal({ deal, onClose }: Props) {
             </div>
           </div>
 
-          {/* Revenue fields, conditional on deal type */}
-          {serviceType === 'internal_products' ? (
-            // HireAI / startup deals: One-Time Fee + MRR
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50">
-                <span className="text-atom font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Startup Revenue</span>
+          {/* Revenue fields, all deal types */}
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-white/[.08] p-3 bg-slate-50/50 dark:bg-white/[.02]">
+            <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider">Revenue</div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">One-Time Fee (PHP)</label>
+                <Input
+                  value={oneTimeFee}
+                  onChange={e => setOneTimeFee(formatValueDisplay(e.target.value))}
+                  placeholder="e.g. 1,214,000"
+                  className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
-                    One-Time Fee (PHP) <span className="text-slate-400 normal-case">setup / onboarding</span>
-                  </label>
-                  <Input
-                    value={oneTimeFee}
-                    onChange={e => setOneTimeFee(formatValueDisplay(e.target.value))}
-                    placeholder="e.g. 50,000"
-                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
-                    MRR (PHP) <span className="text-slate-400 normal-case">monthly recurring</span>
-                  </label>
-                  <Input
-                    value={mrr}
-                    onChange={e => setMrr(formatValueDisplay(e.target.value))}
-                    placeholder="e.g. 10,999"
-                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
-                  />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                  MRR (PHP) <span className="text-slate-400 normal-case font-normal">monthly</span>
+                </label>
+                <Input
+                  value={mrr}
+                  onChange={e => setMrr(formatValueDisplay(e.target.value))}
+                  placeholder="e.g. 50,000"
+                  className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                  Contract Length <span className="text-slate-400 normal-case font-normal">months</span>
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={contractLength}
+                  onChange={e => setContractLength(e.target.value)}
+                  placeholder="e.g. 12"
+                  className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                  Total Value <span className="text-slate-400 normal-case font-normal">computed</span>
+                </label>
+                <div className="h-9 flex items-center px-3 rounded-lg border border-slate-200 dark:border-white/[.06] bg-slate-100 dark:bg-white/[.04] text-ssm tabular-nums text-slate-600 dark:text-slate-400">
+                  {(() => {
+                    const otf = parseFloat(oneTimeFee.replace(/,/g, '')) || 0
+                    const mrrVal = parseFloat(mrr.replace(/,/g, '')) || 0
+                    const len = parseInt(contractLength, 10) || 1
+                    const computed = otf + mrrVal * len
+                    if (computed === 0) return <span className="text-slate-400">auto</span>
+                    return `₱${computed.toLocaleString('en-PH')}`
+                  })()}
                 </div>
               </div>
             </div>
-          ) : (
-            // Project-based deals: deal value only
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Deal Value (PHP)</label>
-              <Input
-                value={value}
-                onChange={e => setValue(formatValueDisplay(e.target.value))}
-                placeholder="e.g. 250,000"
-                className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
-              />
-            </div>
-          )}
+          </div>
 
           {/* Probability */}
           <div className="grid grid-cols-2 gap-3">

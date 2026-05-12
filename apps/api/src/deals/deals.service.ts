@@ -244,6 +244,29 @@ export class DealsService {
   async update(id: string, data: Partial<typeof deals.$inferInsert> & { pricingModel?: unknown }, performedBy?: string) {
     // Strip any dropped columns that FE might still send
     const { pricingModel, ...cleanData } = data as any
+
+    // Auto-compute value when revenue fields change:
+    // value = oneTimeFee + (mrr × contractLength)
+    // Fetch current deal to fill in any fields not included in this update
+    const revenueFields = ['oneTimeFee', 'mrr', 'contractLength', 'value']
+    const isRevenueUpdate = revenueFields.some(f => f in cleanData)
+    if (isRevenueUpdate) {
+      const current = await this.db
+        .select({ oneTimeFee: deals.oneTimeFee, mrr: deals.mrr, contractLength: deals.contractLength })
+        .from(deals)
+        .where(eq(deals.id, id))
+        .limit(1)
+        .then(r => r[0] ?? { oneTimeFee: null, mrr: null, contractLength: null })
+
+      const otf = parseFloat(String(cleanData.oneTimeFee ?? current.oneTimeFee ?? 0)) || 0
+      const mrr = parseFloat(String(cleanData.mrr ?? current.mrr ?? 0)) || 0
+      const len = parseInt(String(cleanData.contractLength ?? current.contractLength ?? 0), 10) || 0
+
+      if (otf > 0 || mrr > 0) {
+        cleanData.value = String(otf + mrr * (len || 1))
+      }
+    }
+
     const [deal] = await this.db.update(deals).set(cleanData).where(eq(deals.id, id)).returning()
 
     // Auto-add assigned user to AM roster when assignedTo changes

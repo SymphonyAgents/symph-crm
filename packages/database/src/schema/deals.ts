@@ -21,6 +21,7 @@ export const deals = pgTable('deals', {
   // Startup/HireAI deals use oneTimeFee + mrr (monthly recurring revenue)
   oneTimeFee: numeric('one_time_fee'),
   mrr: numeric('mrr'),
+  contractLength: integer('contract_length'),  // months
   probability: integer('probability').default(10),
   closeDate: date('close_date'),
   lossReason: text('loss_reason'),
