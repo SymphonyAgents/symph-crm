@@ -182,6 +182,10 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatValueDisplay(deal.oneTimeFee) : '')
   const [mrr, setMrr] = useState(deal.mrr ? formatValueDisplay(deal.mrr) : '')
   const [contractLength, setContractLength] = useState(deal.contractLength ? String(deal.contractLength) : '')
+  // Reseller-specific fields
+  const isReseller = deal.dealType === 'reseller'
+  const [costPrice, setCostPrice] = useState(deal.costPrice ? String(deal.costPrice) : '')
+  const [marginPercent, setMarginPercent] = useState(deal.marginPercent ? String(deal.marginPercent) : '')
   const [outreachCategory, setOutreachCategory] = useState(deal.outreachCategory ?? '')
   const [serviceType, setServiceType] = useState(
     (deal.servicesTags && deal.servicesTags.length > 0) ? deal.servicesTags[0] : ''
@@ -232,6 +236,12 @@ export function EditDealModal({ deal, onClose }: Props) {
 
     const cleanMrr = mrr.replace(/,/g, '').trim() || null
     if (cleanMrr !== (deal.mrr ?? null)) changes.mrr = cleanMrr
+
+    // Reseller revenue fields
+    const cleanCostPrice = costPrice.replace(/,/g, '').trim() || null
+    if (cleanCostPrice !== (deal.costPrice ?? null)) changes.costPrice = cleanCostPrice
+    const cleanMarginPercent = marginPercent.trim() || null
+    if (cleanMarginPercent !== (deal.marginPercent ?? null)) changes.marginPercent = cleanMarginPercent
 
     const cleanContractLength = contractLength ? parseInt(contractLength, 10) || null : null
     if (cleanContractLength !== (deal.contractLength ?? null)) changes.contractLength = cleanContractLength
@@ -461,6 +471,65 @@ export function EditDealModal({ deal, onClose }: Props) {
               </div>
             </div>
           </div>
+
+          {/* Reseller revenue fields — only shown for reseller deals */}
+          {isReseller && (
+            <div className="flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800/40 p-3 bg-blue-50/40 dark:bg-blue-950/20">
+              <div className="text-xxs font-semibold text-blue-500 uppercase tracking-wider">Reseller Pricing</div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Cost Price (PHP)</label>
+                  <Input
+                    value={costPrice}
+                    onChange={e => setCostPrice(e.target.value)}
+                    placeholder="e.g. 500,000"
+                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                    Gross Margin <span className="text-slate-400 normal-case font-normal">%</span>
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={99}
+                    step={0.1}
+                    value={marginPercent}
+                    onChange={e => setMarginPercent(e.target.value)}
+                    placeholder="e.g. 15"
+                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              {/* Computed billing price preview */}
+              {(() => {
+                const cost = parseFloat(costPrice.replace(/,/g, '')) || 0
+                const margin = parseFloat(marginPercent) || 0
+                if (cost <= 0) return null
+                const billing = margin > 0 && margin < 100 ? cost / (1 - margin / 100) : cost
+                const profit = billing - cost
+                return (
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-blue-200 dark:border-blue-800/30">
+                    <div>
+                      <span className="text-slate-500">Billing price</span>
+                      <span className="ml-2 font-bold text-slate-900 dark:text-white">
+                        ₱{billing.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Gross profit</span>
+                      <span className="ml-2 font-semibold text-emerald-600 dark:text-emerald-400">
+                        ₱{profit.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
 
           {/* Probability */}
           <div className="grid grid-cols-2 gap-3">

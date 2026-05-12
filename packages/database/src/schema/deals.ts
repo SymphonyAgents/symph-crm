@@ -44,6 +44,16 @@ export const deals = pgTable('deals', {
   // Build assignment — FK to users (legacy single-builder field)
   buildAssignedTo: text('build_assigned_to').references(() => users.id),
 
+  // Pipeline type, 'agency' (Symph Projects / HireAI) | 'reseller' (GWS, GCP, Josys)
+  dealType: text('deal_type').notNull().default('agency'),
+
+  // Reseller-specific revenue fields (only used when dealType = 'reseller')
+  // cost_price: what Symph pays the vendor
+  // margin_percent: gross margin % (0-100)
+  // selling price (value) is auto-computed: cost_price / (1 - margin_percent / 100)
+  costPrice: numeric('cost_price'),
+  marginPercent: numeric('margin_percent'),
+
   outreachCategory: text('outreach_category', { enum: ['inbound', 'outbound'] }),
   dateCaptured: timestamp('date_captured', { withTimezone: true }).defaultNow(),
   demoLink: text('demo_link'),

@@ -222,7 +222,7 @@ export class InternalController {
   // Deals
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /** GET /api/internal/deals — List with optional filters */
+  /** GET /api/internal/deals, List with optional filters */
   @Get('deals')
   async listDeals(
     @Query('search') search?: string,
@@ -231,6 +231,7 @@ export class InternalController {
     @Query('limit') limit?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('dealType') dealType?: string,
   ) {
     return this.deals.findAll({
       search,
@@ -239,6 +240,7 @@ export class InternalController {
       limit: limit ? parseInt(limit, 10) : 50,
       from,
       to,
+      dealType,
     })
   }
 

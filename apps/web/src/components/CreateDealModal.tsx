@@ -28,9 +28,11 @@ import { cn } from '@/lib/utils'
 import type { ApiCompanyDetail, ApiInternalProduct, ApiUser } from '@/lib/types'
 
 type Props = {
-  companies: ApiCompanyDetail[]
+  companies?: ApiCompanyDetail[]
   onClose: () => void
-  onCreated: () => void
+  onCreated?: () => void
+  /** Pre-set the deal type (e.g. 'reseller'). Defaults to 'agency'. */
+  defaultDealType?: string
 }
 
 // ─── Deal Name Input with system type autocomplete ──────────────────────────
@@ -293,7 +295,7 @@ function BuilderMultiSelect({
   )
 }
 
-export function CreateDealModal({ companies, onClose, onCreated }: Props) {
+export function CreateDealModal({ companies = [], onClose, onCreated, defaultDealType = 'agency' }: Props) {
   useEscapeKey(useCallback(onClose, [onClose]))
 
   const [title, setTitle] = useState('')
@@ -376,6 +378,7 @@ export function CreateDealModal({ companies, onClose, onCreated }: Props) {
       subAccountManagerId: subAccountManagerId || null,
       builders: builders.length > 0 ? builders : undefined,
       internalProductId: serviceType === 'internal_products' ? (internalProductId || null) : null,
+      dealType: defaultDealType ?? 'agency',
     })
   }
 

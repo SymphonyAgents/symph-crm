@@ -12,6 +12,7 @@ export type DealsFilterParams = {
   limit?: number
   from?: string
   to?: string
+  dealType?: string     // 'agency' | 'reseller', filters to a specific pipeline
 }
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
@@ -42,6 +43,7 @@ export class DealsService {
     if (params?.search) conditions.push(ilike(deals.title, `%${params.search}%`))
     if (params?.from) conditions.push(gte(deals.createdAt, new Date(params.from)))
     if (params?.to) conditions.push(lte(deals.createdAt, new Date(params.to)))
+    if (params?.dealType) conditions.push(eq(deals.dealType, params.dealType))
 
     // Filter by stage slug — resolve to stage_id via subquery
     if (params?.stage) {
@@ -245,25 +247,48 @@ export class DealsService {
     // Strip any dropped columns that FE might still send
     const { pricingModel, ...cleanData } = data as any
 
-    // Auto-compute value when revenue fields change:
-    // value = oneTimeFee + (mrr × contractLength)
-    // Fetch current deal to fill in any fields not included in this update
-    const revenueFields = ['oneTimeFee', 'mrr', 'contractLength', 'value']
-    const isRevenueUpdate = revenueFields.some(f => f in cleanData)
-    if (isRevenueUpdate) {
-      const current = await this.db
-        .select({ oneTimeFee: deals.oneTimeFee, mrr: deals.mrr, contractLength: deals.contractLength })
-        .from(deals)
-        .where(eq(deals.id, id))
-        .limit(1)
-        .then(r => r[0] ?? { oneTimeFee: null, mrr: null, contractLength: null })
+    // Fetch current deal to determine dealType and fill in missing revenue fields
+    const current = await this.db
+      .select({
+        oneTimeFee: deals.oneTimeFee,
+        mrr: deals.mrr,
+        contractLength: deals.contractLength,
+        dealType: deals.dealType,
+        costPrice: deals.costPrice,
+        marginPercent: deals.marginPercent,
+      })
+      .from(deals)
+      .where(eq(deals.id, id))
+      .limit(1)
+      .then(r => r[0] ?? { oneTimeFee: null, mrr: null, contractLength: null, dealType: 'agency', costPrice: null, marginPercent: null })
 
-      const otf = parseFloat(String(cleanData.oneTimeFee ?? current.oneTimeFee ?? 0)) || 0
-      const mrr = parseFloat(String(cleanData.mrr ?? current.mrr ?? 0)) || 0
-      const len = parseInt(String(cleanData.contractLength ?? current.contractLength ?? 0), 10) || 0
+    const effectiveDealType = cleanData.dealType ?? current.dealType ?? 'agency'
 
-      if (otf > 0 || mrr > 0) {
-        cleanData.value = String(otf + mrr * (len || 1))
+    if (effectiveDealType === 'reseller') {
+      // Reseller revenue: value = costPrice / (1 - marginPercent / 100)
+      const resellerFields = ['costPrice', 'marginPercent', 'value']
+      const isResellerRevenueUpdate = resellerFields.some(f => f in cleanData)
+      if (isResellerRevenueUpdate) {
+        const cost = parseFloat(String(cleanData.costPrice ?? current.costPrice ?? 0)) || 0
+        const margin = parseFloat(String(cleanData.marginPercent ?? current.marginPercent ?? 0)) || 0
+        if (cost > 0 && margin > 0 && margin < 100) {
+          cleanData.value = String(cost / (1 - margin / 100))
+        } else if (cost > 0) {
+          cleanData.value = String(cost) // no margin set, value = cost
+        }
+      }
+    } else {
+      // Agency revenue: value = oneTimeFee + (mrr × contractLength)
+      const revenueFields = ['oneTimeFee', 'mrr', 'contractLength', 'value']
+      const isRevenueUpdate = revenueFields.some(f => f in cleanData)
+      if (isRevenueUpdate) {
+        const otf = parseFloat(String(cleanData.oneTimeFee ?? current.oneTimeFee ?? 0)) || 0
+        const mrr = parseFloat(String(cleanData.mrr ?? current.mrr ?? 0)) || 0
+        const len = parseInt(String(cleanData.contractLength ?? current.contractLength ?? 0), 10) || 0
+
+        if (otf > 0 || mrr > 0) {
+          cleanData.value = String(otf + mrr * (len || 1))
+        }
       }
     }
 

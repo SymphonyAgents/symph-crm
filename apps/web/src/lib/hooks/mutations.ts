@@ -94,6 +94,12 @@ export type CreateDealInput = {
   internalProductId?: string | null
   createdBy?: string | null
   closeDate?: string | null
+  /** 'agency' (default) | 'reseller' */
+  dealType?: string
+  /** Reseller: vendor cost price */
+  costPrice?: string | null
+  /** Reseller: gross margin % (0-100) */
+  marginPercent?: string | null
 }
 
 export type UpdateDealInput = Partial<Omit<CreateDealInput, 'companyId' | 'productId' | 'tierId'>> & {

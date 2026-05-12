@@ -19,6 +19,7 @@ export class DealsController {
     @Query('limit') limit?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('dealType') dealType?: string,
   ) {
     return this.dealsService.findAll({
       stage,
@@ -27,6 +28,7 @@ export class DealsController {
       limit: limit ? parseInt(limit, 10) : undefined,
       from,
       to,
+      dealType,
     })
   }
 

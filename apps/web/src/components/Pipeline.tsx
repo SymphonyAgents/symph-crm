@@ -708,7 +708,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const scrolledRef = useRef(false)
   const { isSales } = useUser()
 
-  const { data: deals = [], isLoading: dealsLoading } = useGetDeals()
+  const { data: deals = [], isLoading: dealsLoading } = useGetDeals({ dealType: 'agency' })
   const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
   const { data: users = [], isLoading: usersLoading } = useGetUsers()
   const { data: catalog = [], isLoading: catalogLoading } = useGetInternalProducts()

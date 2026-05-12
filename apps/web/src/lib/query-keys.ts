@@ -12,6 +12,7 @@ type DealsFilterParams = {
   stage?: string
   companyId?: string
   limit?: number
+  dealType?: string
 }
 
 type AuditFilterParams = {
@@ -32,6 +33,7 @@ export const queryKeys = {
   },
   deals: {
     all: ['deals'] as const,
+    byType: (dealType: string) => ['deals', { dealType }] as const,
     filtered: (params: DealsFilterParams) => ['deals', params] as const,
     detail: (id: string) => ['deals', id] as const,
     notes: (id: string) => ['deals', id, 'notes'] as const,
