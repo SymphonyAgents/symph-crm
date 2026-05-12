@@ -17,6 +17,8 @@ export type ApiDeal = {
   mrr: string | null
   /** Contract duration in months, used with mrr to auto-compute value */
   contractLength: number | null
+  /** Per-month revenue overrides: { "2026-05": 500000, "2026-06": 300000 } */
+  monthlyRevenue: Record<string, number> | null
   servicesTags: string[] | null
   outreachCategory: string | null
   pricingModel: string | null

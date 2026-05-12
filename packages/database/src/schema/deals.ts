@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, numeric, integer, date, boolean, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, numeric, integer, date, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
 import { companies } from './companies'
 import { tiers } from './products'
 import { internalProducts } from './internal-products'
@@ -22,6 +22,9 @@ export const deals = pgTable('deals', {
   oneTimeFee: numeric('one_time_fee'),
   mrr: numeric('mrr'),
   contractLength: integer('contract_length'),  // months
+  // Per-month revenue overrides: { "2026-05": 500000, "2026-06": 300000 }
+  // When set, Revenue page uses these instead of flat MRR
+  monthlyRevenue: jsonb('monthly_revenue').$type<Record<string, number>>(),
   probability: integer('probability').default(10),
   closeDate: date('close_date'),
   lossReason: text('loss_reason'),
