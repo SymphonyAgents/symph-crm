@@ -94,4 +94,76 @@ export class RecordingsService {
     await this.db.delete(recordings).where(eq(recordings.id, id))
     return { ok: true }
   }
+
+  // ─── Circleback integration: proxy to meetings.symph.co ─────────────────────
+
+  private getMeetingsConfig(): { url: string; secret: string } {
+    const url = process.env.MEETINGS_APP_URL ?? 'https://meetings.symph.co'
+    const secret = process.env.MEETINGS_CRM_SECRET
+    if (!secret) throw new Error('MEETINGS_CRM_SECRET not configured')
+    return { url, secret }
+  }
+
+  async circlebackUpload(
+    _userId: string,
+    dealId: string | undefined,
+    file: Express.Multer.File,
+  ): Promise<{ ok: boolean; correlationKey: string; uploadDocId: string; dealId?: string }> {
+    const { url: meetingsUrl, secret } = this.getMeetingsConfig()
+
+    const formData = new FormData()
+    const bufferView = new Uint8Array(file.buffer)
+    const blob = new Blob([bufferView], { type: file.mimetype })
+    formData.append('file', blob, file.originalname)
+    formData.append('fileName', file.originalname)
+    if (dealId) formData.append('dealId', dealId)
+
+    const res = await fetch(`${meetingsUrl}/api/crm/upload`, {
+      method: 'POST',
+      headers: { 'X-CRM-Secret': secret },
+      body: formData,
+    })
+    if (!res.ok) throw new Error(`Upload to meetings.symph.co failed: ${await res.text()}`)
+    const data = await res.json()
+    return { ...data, dealId }
+  }
+
+  async circlebackStatus(correlationKey: string): Promise<{
+    status: string
+    crmPushStatus?: string
+    circleback_meeting_id?: string
+    uploadDocId?: string
+  }> {
+    const { url: meetingsUrl, secret } = this.getMeetingsConfig()
+
+    const res = await fetch(
+      `${meetingsUrl}/api/crm/status?correlationKey=${encodeURIComponent(correlationKey)}`,
+      { headers: { 'X-CRM-Secret': secret } },
+    )
+    if (!res.ok) throw new Error(`Status check failed: ${res.status}`)
+    return res.json()
+  }
+
+  async circlebackRetry(uploadDocId: string): Promise<{ ok: boolean; status: string }> {
+    const { url: meetingsUrl, secret } = this.getMeetingsConfig()
+
+    const res = await fetch(`${meetingsUrl}/api/crm/retry`, {
+      method: 'POST',
+      headers: { 'X-CRM-Secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uploadDocId }),
+    })
+    if (!res.ok) throw new Error(`Retry failed: ${await res.text()}`)
+    return res.json()
+  }
+
+  async circlebackPlayUrl(fileName: string): Promise<{ playbackUrl: string }> {
+    const { url: meetingsUrl, secret } = this.getMeetingsConfig()
+
+    const res = await fetch(
+      `${meetingsUrl}/api/crm/recordings/play?fileName=${encodeURIComponent(fileName)}`,
+      { headers: { 'X-CRM-Secret': secret } },
+    )
+    if (!res.ok) throw new Error(`Playback URL fetch failed: ${res.status}`)
+    return res.json()
+  }
 }

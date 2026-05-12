@@ -760,3 +760,27 @@ export function useDeleteRecording(
     ...options,
   })
 }
+
+// ─── Circleback recording upload ──────────────────────────────────────────────
+
+export type CirclebackUploadInput = { file: File; dealId?: string }
+export type CirclebackUploadResult = {
+  ok: boolean
+  correlationKey: string
+  uploadDocId: string
+  dealId?: string
+}
+
+export function useCirclebackUpload(
+  options?: UseMutationOptions<CirclebackUploadResult, Error, CirclebackUploadInput>,
+) {
+  return useMutation<CirclebackUploadResult, Error, CirclebackUploadInput>({
+    mutationFn: async ({ file, dealId }) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      if (dealId) formData.append('dealId', dealId)
+      return api.upload<CirclebackUploadResult>('/recordings/circleback-upload', formData)
+    },
+    ...options,
+  })
+}

@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Mic, MicOff, Square, Check, Trash2, Loader2 } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Mic, MicOff, Square, Check, Trash2, Loader2, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetRecordings } from '@/lib/hooks/queries'
-import { useDeleteRecording } from '@/lib/hooks/mutations'
+import { useDeleteRecording, useCirclebackUpload } from '@/lib/hooks/mutations'
 import { useRecorder } from '@/lib/hooks/use-recorder'
 import { useUser } from '@/lib/hooks/use-user'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
+import { api } from '@/lib/api'
 import type { ApiRecording } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { toast } from 'sonner'
 
 function fmtDuration(s: number): string {
   const m = Math.floor(s / 60)
@@ -30,6 +32,48 @@ export default function RecordingsPage() {
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const frozenDuration = useRef(0)
+
+  // Circleback import state
+  const cbFileInputRef = useRef<HTMLInputElement>(null)
+  const [cbCorrelationKey, setCbCorrelationKey] = useState<string | null>(null)
+  const [cbStatus, setCbStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>('idle')
+
+  const { mutate: uploadToCircleback, isPending: cbUploading } = useCirclebackUpload({
+    onSuccess: (data) => {
+      setCbCorrelationKey(data.correlationKey)
+      setCbStatus('processing')
+      toast.success('Recording uploaded, Circleback is processing it. Notes will appear in the deal once attached.')
+    },
+    onError: (err) => {
+      setCbStatus('failed')
+      toast.error(`Upload failed: ${err.message}`)
+    },
+  })
+
+  // Poll Circleback processing status
+  useEffect(() => {
+    if (!cbCorrelationKey || cbStatus !== 'processing') return
+    const interval = setInterval(async () => {
+      try {
+        const result = await api.get<{ status: string; crmPushStatus?: string }>(
+          `/recordings/circleback-status?correlationKey=${encodeURIComponent(cbCorrelationKey)}`,
+        )
+        if (result.crmPushStatus === 'done') {
+          setCbStatus('done')
+          setCbCorrelationKey(null)
+          toast.success('Meeting transcript and notes are ready!')
+          clearInterval(interval)
+        } else if (result.crmPushStatus === 'failed') {
+          setCbStatus('failed')
+          clearInterval(interval)
+          toast.error('Circleback processing failed.')
+        }
+      } catch {
+        // Keep polling
+      }
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [cbCorrelationKey, cbStatus])
 
   async function handleDone() {
     setUploadError(null)
@@ -153,6 +197,48 @@ export default function RecordingsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Circleback Import section */}
+      <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-xl px-4 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-[rgba(108,99,255,0.08)] dark:bg-primary/[.12] flex items-center justify-center shrink-0">
+          <Upload size={14} strokeWidth={1.6} className="text-[#6c63ff] dark:text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-semibold text-slate-900 dark:text-white">Import recording to Circleback</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Upload an audio/video file. Circleback will transcribe and generate notes. You can attach to a deal later from the deal view.
+          </div>
+        </div>
+        <input
+          ref={cbFileInputRef}
+          type="file"
+          accept=".mp3,.mp4,.wav,.m4a,.mov"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            setCbStatus('uploading')
+            uploadToCircleback({ file })
+            e.target.value = ''
+          }}
+        />
+        <button
+          onClick={() => cbFileInputRef.current?.click()}
+          disabled={cbUploading || cbStatus === 'processing'}
+          className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-[12px] font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+        >
+          {cbStatus === 'uploading' || cbStatus === 'processing' ? (
+            <>
+              <Loader2 size={13} strokeWidth={2} className="animate-spin" />
+              {cbStatus === 'processing' ? 'Processing…' : 'Uploading…'}
+            </>
+          ) : (
+            <>
+              <Upload size={13} strokeWidth={2} /> Upload
+            </>
+          )}
+        </button>
       </div>
 
       {/* Title input while active */}

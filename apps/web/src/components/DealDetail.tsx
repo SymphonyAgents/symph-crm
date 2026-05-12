@@ -4,7 +4,7 @@ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useGenerateDealSummary } from '@/lib/hooks/mutations'
+import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useGenerateDealSummary, useCirclebackUpload } from '@/lib/hooks/mutations'
 import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDealSummaries, useGetDealSummaryLatest, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
@@ -449,6 +449,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const [demoLinkDraft, setDemoLinkDraft] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null)
+  const circlebackFileRef = useRef<HTMLInputElement>(null)
+  const [cbCorrelationKey, setCbCorrelationKey] = useState<string | null>(null)
+  const [cbUploadDocId, setCbUploadDocId] = useState<string | null>(null)
+  const [cbPushStatus, setCbPushStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>('idle')
 
   const queryClient = useQueryClient()
   const { userId, isSales } = useUser()
@@ -632,6 +636,62 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const saveNote = useSaveDealNote({
     onSuccess: () => { setNoteText(''); setNotePasteChips([]); void refetchDocs() },
   })
+
+  const { mutate: uploadToCircleback, isPending: cbUploading } = useCirclebackUpload({
+    onSuccess: (data) => {
+      setCbCorrelationKey(data.correlationKey)
+      setCbUploadDocId(data.uploadDocId)
+      setCbPushStatus('processing')
+      toast.success('Recording uploaded, transcript and notes will appear here in a few minutes')
+    },
+    onError: (err) => {
+      setCbPushStatus('failed')
+      toast.error(`Upload failed: ${err.message}`)
+    },
+  })
+
+  // Poll Circleback processing status while a recording is in flight
+  useEffect(() => {
+    if (!cbCorrelationKey || cbPushStatus !== 'processing') return
+    const interval = setInterval(async () => {
+      try {
+        const result = await api.get<{ status: string; crmPushStatus?: string; uploadDocId?: string }>(
+          `/recordings/circleback-status?correlationKey=${encodeURIComponent(cbCorrelationKey)}`,
+        )
+        if (result.crmPushStatus === 'done') {
+          setCbPushStatus('done')
+          setCbCorrelationKey(null)
+          void refetchDocs()
+          toast.success('Meeting notes and transcript are ready!')
+          clearInterval(interval)
+        } else if (result.crmPushStatus === 'failed') {
+          setCbPushStatus('failed')
+          clearInterval(interval)
+          toast.error('Circleback processing failed, you can retry below')
+        }
+      } catch {
+        // keep polling on transient errors
+      }
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [cbCorrelationKey, cbPushStatus, refetchDocs])
+
+  const handleCbPlay = useCallback(async (doc: { tags?: string[] | null }) => {
+    const fileTag = doc.tags?.find((t: string) => t.startsWith('file:'))
+    if (!fileTag) {
+      toast.error('No recording file associated with this note')
+      return
+    }
+    const fileName = fileTag.replace('file:', '')
+    try {
+      const { playbackUrl } = await api.get<{ playbackUrl: string }>(
+        `/recordings/circleback-play?fileName=${encodeURIComponent(fileName)}`,
+      )
+      window.open(playbackUrl, '_blank')
+    } catch {
+      toast.error('Could not load recording')
+    }
+  }, [])
 
   const uploadFiles = useUploadDocumentFile({
     onSuccess: () => { void refetchResourceDocs() },
@@ -1507,7 +1567,28 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : null}
 
-              {/* Note input — Chat-style unified container */}
+              {/* Circleback retry banner */}
+              {cbPushStatus === 'failed' && cbUploadDocId && (
+                <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+                  <span className="flex-1">Recording processing failed.</span>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.post('/recordings/circleback-retry', { uploadDocId: cbUploadDocId })
+                        setCbPushStatus('processing')
+                        toast.info('Retrying…')
+                      } catch {
+                        toast.error('Retry failed')
+                      }
+                    }}
+                    className="font-medium underline"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* Note input, Chat-style unified container */}
               <div className="p-4 border-b border-black/[.05] dark:border-white/[.06]">
                 <div
                   className={cn(
@@ -1555,6 +1636,40 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
                   {/* Bottom toolbar */}
                   <div className="flex items-center gap-2 px-3 pb-3 pt-1">
+                    {/* Hidden file input for Circleback uploads */}
+                    <input
+                      ref={circlebackFileRef}
+                      type="file"
+                      accept=".mp3,.mp4,.wav,.m4a,.mov"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setCbPushStatus('uploading')
+                        uploadToCircleback({ file, dealId })
+                        e.target.value = ''
+                      }}
+                    />
+                    {/* Upload Recording button */}
+                    <button
+                      type="button"
+                      onClick={() => circlebackFileRef.current?.click()}
+                      disabled={cbUploading || cbPushStatus === 'processing'}
+                      title="Upload recording for transcription"
+                      className="h-7 px-2 rounded-md flex items-center gap-1 text-xxs text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {cbPushStatus === 'uploading' || cbPushStatus === 'processing' ? (
+                        <div className="w-3 h-3 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                      ) : (
+                        <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                          <line x1="12" y1="19" x2="12" y2="23" />
+                          <line x1="8" y1="23" x2="16" y2="23" />
+                        </svg>
+                      )}
+                      <span>{cbPushStatus === 'processing' ? 'Processing…' : 'Upload Recording'}</span>
+                    </button>
                     <Select value={noteType} onValueChange={setNoteType}>
                       <SelectTrigger className="h-7 w-auto min-w-[90px] text-xxs border-none bg-transparent shadow-none px-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1">
                         <SelectValue />
@@ -1614,6 +1729,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     const docStage = parseDocStage(doc.tags)
                     const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
                     const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
+                    const isCbMeeting = doc.tags?.includes('circleback') ?? false
                     return (
                       <div
                         key={doc.id}
@@ -1623,13 +1739,33 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         {/* Icon + type */}
                         <div className="flex items-center justify-between">
                           <div className="text-slate-300 dark:text-slate-600 group-hover:text-primary/50 transition-colors">
-                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                            </svg>
+                            {isCbMeeting ? (
+                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                              </svg>
+                            ) : (
+                              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
+                            )}
                           </div>
                           <div className="flex items-center gap-1">
                             {docStage && <StagePill stage={docStage} />}
+                            {isCbMeeting && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
+                                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-primary hover:bg-primary/[.06] transition-colors"
+                                title="Play recording"
+                              >
+                                <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
+                                  <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                              </button>
+                            )}
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
                               className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors opacity-0 group-hover:opacity-100"
@@ -1655,7 +1791,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         {/* Footer: type badge + author + date */}
                         <div className="flex items-center gap-1.5 mt-auto pt-1 flex-wrap">
                           <span className="text-atom font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
-                            {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+                            {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
                           </span>
                           {authorUser && (
                             <div className="flex items-center gap-1 min-w-0">
@@ -1675,21 +1811,31 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     const docStage = parseDocStage(doc.tags)
                     const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
                     const authorUser = doc.authorId ? users.find(u => u.id === doc.authorId) : null
+                    const isCbMeeting = doc.tags?.includes('circleback') ?? false
                     return (
                       <div
                         key={doc.id}
                         className="flex items-start gap-3 px-4 py-3 w-full min-w-0 overflow-hidden hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
                         onClick={() => setViewingDoc(doc)}
                       >
-                        {/* Obsidian-style file icon */}
+                        {/* Icon: mic for circleback meetings, file for others */}
                         <div className="mt-0.5 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-primary/50 transition-colors">
-                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
-                          </svg>
+                          {isCbMeeting ? (
+                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                              <line x1="12" y1="19" x2="12" y2="23" />
+                              <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                          ) : (
+                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <polyline points="14 2 14 8 20 8" />
+                              <line x1="16" y1="13" x2="8" y2="13" />
+                              <line x1="16" y1="17" x2="8" y2="17" />
+                              <polyline points="10 9 9 9 8 9" />
+                            </svg>
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Note name */}
@@ -1714,7 +1860,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                               </div>
                             )}
                             <span className="text-atom font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
-                              {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+                              {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
                             </span>
                             {docStage && <StagePill stage={docStage} />}
                             <span className="text-atom text-slate-400">
@@ -1724,6 +1870,17 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         </div>
                         {/* Actions */}
                         <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">
+                          {isCbMeeting && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
+                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors"
+                              title="Play recording"
+                            >
+                              <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="5 3 19 12 5 21 5 3" />
+                              </svg>
+                            </button>
+                          )}
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
                             className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"

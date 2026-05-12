@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Delete, Param, Body, Headers,
+  Controller, Get, Post, Delete, Param, Body, Headers, Query,
   UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
@@ -44,5 +44,36 @@ export class RecordingsController {
     @Headers('x-user-id') userId: string,
   ) {
     return this.recordingsService.remove(id, userId)
+  }
+
+  // ─── Circleback integration: upload, status, retry, playback ───────────────
+
+  @Post('circleback-upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async circlebackUpload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('dealId') dealId: string | undefined,
+    @Headers('x-user-id') userId: string,
+  ) {
+    if (!file) throw new BadRequestException('No file provided')
+    return this.recordingsService.circlebackUpload(userId, dealId, file)
+  }
+
+  @Get('circleback-status')
+  async circlebackStatus(@Query('correlationKey') correlationKey: string) {
+    if (!correlationKey) throw new BadRequestException('correlationKey required')
+    return this.recordingsService.circlebackStatus(correlationKey)
+  }
+
+  @Post('circleback-retry')
+  async circlebackRetry(@Body('uploadDocId') uploadDocId: string) {
+    if (!uploadDocId) throw new BadRequestException('uploadDocId required')
+    return this.recordingsService.circlebackRetry(uploadDocId)
+  }
+
+  @Get('circleback-play')
+  async circlebackPlay(@Query('fileName') fileName: string) {
+    if (!fileName) throw new BadRequestException('fileName required')
+    return this.recordingsService.circlebackPlayUrl(fileName)
   }
 }
