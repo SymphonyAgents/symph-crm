@@ -1567,6 +1567,25 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : null}
 
+              {/* Circleback: analyzing banner, shown while Circleback is processing the recording */}
+              {(cbPushStatus === 'uploading' || cbPushStatus === 'processing') && (
+                <div className="mx-4 mt-4 mb-0">
+                  <div className="rounded-md border border-primary/20 bg-primary/[.03] dark:bg-primary/[.06] px-4 py-3 flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-primary">
+                        {cbPushStatus === 'uploading' ? 'Uploading recording…' : 'Analyzing recording…'}
+                      </p>
+                      <p className="text-xxs text-slate-400 dark:text-slate-500 mt-0.5">
+                        {cbPushStatus === 'uploading'
+                          ? 'Sending to Circleback'
+                          : 'Transcript and notes will appear here once ready (2–5 min)'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Circleback retry banner */}
               {cbPushStatus === 'failed' && cbUploadDocId && (
                 <div className="mx-4 mb-2 flex items-center gap-2 rounded-md border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-xs text-red-700 dark:text-red-400">
@@ -1658,17 +1677,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       title="Upload recording for transcription"
                       className="h-7 px-2 rounded-md flex items-center gap-1 text-xxs text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {cbPushStatus === 'uploading' || cbPushStatus === 'processing' ? (
-                        <div className="w-3 h-3 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-                      ) : (
                         <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                           <line x1="12" y1="19" x2="12" y2="23" />
                           <line x1="8" y1="23" x2="16" y2="23" />
                         </svg>
-                      )}
-                      <span>{cbPushStatus === 'processing' ? 'Processing…' : 'Upload Recording'}</span>
+                      <span>Upload Recording</span>
                     </button>
                     <Select value={noteType} onValueChange={setNoteType}>
                       <SelectTrigger className="h-7 w-auto min-w-[90px] text-xxs border-none bg-transparent shadow-none px-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1">
