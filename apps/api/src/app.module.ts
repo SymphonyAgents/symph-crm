@@ -14,7 +14,7 @@ import { FileParserModule } from './file-parser/file-parser.module'
 import { VoiceModule } from './voice/voice.module'
 import { ChatModule } from './chat/chat.module'
 import { ProductsModule } from './products/products.module'
-import { InternalProductsModule } from './internal-products/internal-products.module'
+import { CatalogItemsModule } from './catalog-items/catalog-items.module'
 import { PipelineModule } from './pipeline/pipeline.module'
 import { InternalModule } from './internal/internal.module'
 import { OwnerModule } from './owner/owner.module'
@@ -45,7 +45,7 @@ import { RecordingsModule } from './recordings/recordings.module'
     VoiceModule,
     ChatModule,
     ProductsModule,
-    InternalProductsModule,
+    CatalogItemsModule,
     PipelineModule,
     CalendarModule,
     InternalModule,

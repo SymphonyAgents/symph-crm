@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { UserOption } from '@/components/UserOption'
 import { useCreateDeal, useUploadDocumentFile, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetUsers, useGetInternalProducts } from '@/lib/hooks/queries'
+import { useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -25,7 +25,7 @@ import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import type { ApiCompanyDetail, ApiInternalProduct, ApiUser } from '@/lib/types'
+import type { ApiCompanyDetail, ApiCatalogItem, ApiUser } from '@/lib/types'
 
 type Props = {
   companies?: ApiCompanyDetail[]
@@ -109,18 +109,18 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
  * deals.services_tags entries continue to resolve).
  */
 function ServiceSelect({ value, onValueChange }: { value: string; onValueChange: (v: string) => void }) {
-  const { data: catalog = [] } = useGetInternalProducts(true)
+  const { data: catalog = [] } = useGetCatalogItems(true)
 
   const groups = useMemo(() => {
-    const services: ApiInternalProduct[] = []
-    const products: ApiInternalProduct[] = []
-    const resellers: ApiInternalProduct[] = []
+    const services: ApiCatalogItem[] = []
+    const products: ApiCatalogItem[] = []
+    const resellers: ApiCatalogItem[] = []
     for (const row of catalog) {
       if (row.productType === 'service') services.push(row)
       else if (row.productType === 'internal') products.push(row)
       else if (row.productType === 'reseller') resellers.push(row)
     }
-    const sortByName = (a: ApiInternalProduct, b: ApiInternalProduct) => a.name.localeCompare(b.name)
+    const sortByName = (a: ApiCatalogItem, b: ApiCatalogItem) => a.name.localeCompare(b.name)
     return {
       services: services.sort(sortByName),
       products: products.sort(sortByName),
@@ -171,7 +171,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
 }
 
 /** Catalog row label — 16×16 logo + name. Falls back to a placeholder square. */
-function CatalogRowLabel({ item }: { item: ApiInternalProduct }) {
+function CatalogRowLabel({ item }: { item: ApiCatalogItem }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
       {item.iconUrl ? (
@@ -309,11 +309,11 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
   const [assignedToId, setAssignedToId] = useState('')
   const [subAccountManagerId, setSubAccountManagerId] = useState('')
   const [builders, setBuilders] = useState<string[]>([])
-  const [internalProductId, setInternalProductId] = useState('')
+  const [catalogItemId, setCatalogItemId] = useState('')
   const qc = useQueryClient()
   const { userId } = useUser()
   const { data: allUsers = [] } = useGetUsers()
-  const { data: internalProducts = [] } = useGetInternalProducts(true)
+  const { data: catalogItems = [] } = useGetCatalogItems(true)
   const salesUsers = useMemo(() => allUsers.filter((u: ApiUser) => u.role === 'SALES'), [allUsers])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -377,7 +377,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
       assignedTo: assignedToId || userId,
       subAccountManagerId: subAccountManagerId || null,
       builders: builders.length > 0 ? builders : undefined,
-      internalProductId: serviceType === 'internal_products' ? (internalProductId || null) : null,
+      catalogItemId: serviceType === 'internal_products' ? (catalogItemId || null) : null,
       dealType: defaultDealType ?? 'agency',
     })
   }
@@ -453,12 +453,12 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           {serviceType === 'internal_products' && (
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
-              <Select value={internalProductId} onValueChange={setInternalProductId}>
+              <Select value={catalogItemId} onValueChange={setCatalogItemId}>
                 <SelectTrigger className="h-9 text-ssm">
-                  <SelectValue placeholder={internalProducts.length === 0 ? 'No products yet, add via /products' : 'Select product...'} />
+                  <SelectValue placeholder={catalogItems.length === 0 ? 'No products yet, add via /products' : 'Select product...'} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
-                  {internalProducts.map(p => (
+                  {catalogItems.map(p => (
                     <SelectItem key={p.id} value={p.id} className="text-ssm">
                       {p.name}{p.industry ? <span className="text-slate-400 ml-1.5">· {p.industry}</span> : null}
                     </SelectItem>

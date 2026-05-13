@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGetDeals, useGetCompanies, useGetUsers, useGetInternalProducts } from '@/lib/hooks/queries'
+import { useGetDeals, useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { cn, formatPeso, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
 import { formatDealName } from '@/lib/format-deal-name'
@@ -301,7 +301,7 @@ function DealCard({
   const allServices = deal.servicesTags || []
   // Internal-products is rendered separately (icon or name fallback) so it doesn't
   // double up as a generic service pill alongside the product reference.
-  const hasInternalProduct = allServices.includes('internal_products') && !!deal.internalProductName
+  const hasCatalogItem = allServices.includes('internal_products') && !!deal.catalogItemName
   const services = allServices.filter(s => s !== 'internal_products')
   // Resolve UUID to display name — deal.assignedTo stores a user ID from the API
   const resolvedAm = users?.find(u => u.id === deal.assignedTo)
@@ -362,10 +362,10 @@ function DealCard({
         {formatDealName(deal.title)}
       </div>
 
-      {/* Services tags + internal-product reference (icon, skeleton while loading, name fallback) */}
-      {(services.length > 0 || hasInternalProduct) && (
+      {/* Services tags + catalog-item reference (icon, skeleton while loading, name fallback) */}
+      {(services.length > 0 || hasCatalogItem) && (
         <div className="flex flex-wrap gap-1.5 mb-2.5 items-center">
-          {hasInternalProduct && (
+          {hasCatalogItem && (
             productLoading ? (
               <span
                 className="rounded-sm bg-slate-200/70 dark:bg-white/[.08] animate-pulse shrink-0"
@@ -376,8 +376,8 @@ function DealCard({
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={productIconUrl}
-                alt={deal.internalProductName ?? ''}
-                title={deal.internalProductName ?? ''}
+                alt={deal.catalogItemName ?? ''}
+                title={deal.catalogItemName ?? ''}
                 width={18}
                 height={18}
                 className="rounded-sm object-contain shrink-0"
@@ -385,7 +385,7 @@ function DealCard({
               />
             ) : (
               <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
-                {deal.internalProductName}
+                {deal.catalogItemName}
               </span>
             )
           )}
@@ -711,7 +711,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const { data: deals = [], isLoading: dealsLoading } = useGetDeals({ dealType: 'agency' })
   const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
   const { data: users = [], isLoading: usersLoading } = useGetUsers()
-  const { data: catalog = [], isLoading: catalogLoading } = useGetInternalProducts()
+  const { data: catalog = [], isLoading: catalogLoading } = useGetCatalogItems()
   // Pipeline renders as soon as deals/companies/users land. Catalog (the
   // product icon source) lazy-fills via a skeleton placeholder per card.
   const isLoading = dealsLoading || companiesLoading || usersLoading
@@ -784,7 +784,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
         const amLabel = amOptions.find(o => o.id === d.assignedTo)?.label ?? ''
         // Match against service-tag display names (slug → catalog row name)
         const tagDisplay = (d.servicesTags ?? []).map(s => catalogNameBySlug.get(s) ?? s)
-        const productName = d.internalProductId ? (catalogNameById.get(d.internalProductId) ?? '') : ''
+        const productName = d.catalogItemId ? (catalogNameById.get(d.catalogItemId) ?? '') : ''
         return (
           (d.title ?? '').toLowerCase().includes(q) ||
           (d.stage ?? '').toLowerCase().includes(q) ||
@@ -1199,7 +1199,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                           deal={d}
                           colColor={col.color}
                           brandName={companyMap.get(d.companyId) ?? 'No Brand'}
-                          productIconUrl={d.internalProductId ? catalogIconById.get(d.internalProductId) ?? null : null}
+                          productIconUrl={d.catalogItemId ? catalogIconById.get(d.catalogItemId) ?? null : null}
                           productLoading={catalogLoading}
                           users={users}
                           onClick={() => onOpenDeal(d.id)}
@@ -1227,7 +1227,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                     deal={activeDeal}
                     colColor={activeDealColColor}
                     brandName={companyMap.get(activeDeal.companyId) ?? 'No Brand'}
-                    productIconUrl={activeDeal.internalProductId ? catalogIconById.get(activeDeal.internalProductId) ?? null : null}
+                    productIconUrl={activeDeal.catalogItemId ? catalogIconById.get(activeDeal.catalogItemId) ?? null : null}
                     productLoading={catalogLoading}
                     onClick={() => {}}
                   />
@@ -1359,9 +1359,9 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                 const stageLabel = STAGE_LABELS[d.stage] ?? d.stage
                 const outreach = d.outreachCategory || 'outbound'
                 const allServices = d.servicesTags || []
-                const hasInternalProduct = allServices.includes('internal_products') && !!d.internalProductName
+                const hasCatalogItem = allServices.includes('internal_products') && !!d.catalogItemName
                 const services = allServices.filter(s => s !== 'internal_products')
-                const productIconUrl = d.internalProductId ? catalogIconById.get(d.internalProductId) ?? null : null
+                const productIconUrl = d.catalogItemId ? catalogIconById.get(d.catalogItemId) ?? null : null
                 const resolvedAm = users.find(u => u.id === d.assignedTo)
                 const amShortName = resolvedAm
                   ? (resolvedAm.nickname ?? resolvedAm.firstName ?? resolvedAm.name?.split(' ')[0] ?? resolvedAm.email?.split('@')[0] ?? '?')
@@ -1406,10 +1406,10 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                       {formatDealName(d.title)}
                     </p>
 
-                    {/* Service tag + internal-product reference (icon, skeleton while loading, name fallback) */}
-                    {(services.length > 0 || hasInternalProduct) && (
+                    {/* Service tag + catalog-item reference (icon, skeleton while loading, name fallback) */}
+                    {(services.length > 0 || hasCatalogItem) && (
                       <div className="flex flex-wrap gap-1.5 mb-2.5 items-center">
-                        {hasInternalProduct && (
+                        {hasCatalogItem && (
                           catalogLoading ? (
                             <span
                               className="rounded-sm bg-slate-200/70 dark:bg-white/[.08] animate-pulse shrink-0"
@@ -1420,8 +1420,8 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={productIconUrl}
-                              alt={d.internalProductName ?? ''}
-                              title={d.internalProductName ?? ''}
+                              alt={d.catalogItemName ?? ''}
+                              title={d.catalogItemName ?? ''}
                               width={18}
                               height={18}
                               className="rounded-sm object-contain shrink-0"
@@ -1429,7 +1429,7 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
                             />
                           ) : (
                             <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
-                              {d.internalProductName}
+                              {d.catalogItemName}
                             </span>
                           )
                         )}

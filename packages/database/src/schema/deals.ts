@@ -1,7 +1,7 @@
 import { pgTable, uuid, text, numeric, integer, date, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
 import { companies } from './companies'
 import { tiers } from './products'
-import { internalProducts } from './internal-products'
+import { catalogItems } from './catalog-items'
 import { users } from './users'
 import { workspaces } from './workspaces'
 import { pipelineStages, amRoster } from './pipeline'
@@ -9,7 +9,7 @@ import { pipelineStages, amRoster } from './pipeline'
 export const deals = pgTable('deals', {
   id: uuid('id').defaultRandom().primaryKey(),
   companyId: uuid('company_id').references(() => companies.id),
-  internalProductId: uuid('internal_product_id').references(() => internalProducts.id),
+  catalogItemId: uuid('catalog_item_id').references(() => catalogItems.id).notNull(),
   tierId: uuid('tier_id').references(() => tiers.id),
   title: text('title').notNull(),
 

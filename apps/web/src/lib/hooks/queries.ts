@@ -34,7 +34,7 @@ import type {
   DealSummaryFull,
   ContactNotesResponse,
   NfsDealNote,
-  ApiInternalProduct,
+  ApiCatalogItem,
   ApiProposalListItem,
   ApiProposalSummary,
   ApiProposalHead,
@@ -287,11 +287,11 @@ export function useGetProposals(
   })
 }
 
-// ─── Internal Products ────────────────────────────────────────────────────────
+// ─── Catalog Items ───────────────────────────────────────────────────────────
 
-export function useGetInternalProducts(
-  opts: { activeOnly?: boolean; type?: 'internal' | 'service' | 'reseller' } | boolean = false,
-  options?: Partial<UseQueryOptions<ApiInternalProduct[]>>,
+export function useGetCatalogItems(
+  opts: { activeOnly?: boolean; type?: 'internal' | 'service' | 'reseller' | 'partnership' } | boolean = false,
+  options?: Partial<UseQueryOptions<ApiCatalogItem[]>>,
 ) {
   // Backwards-compat: callers passing `true` => activeOnly
   const normalized = typeof opts === 'boolean' ? { activeOnly: opts } : opts
@@ -299,11 +299,11 @@ export function useGetInternalProducts(
   const params: Record<string, string> = {}
   if (activeOnly) params.active = 'true'
   if (type) params.type = type
-  return useQuery<ApiInternalProduct[]>({
+  return useQuery<ApiCatalogItem[]>({
     queryKey: type
-      ? [...queryKeys.internalProducts.all, { type, activeOnly: !!activeOnly }] as const
-      : (activeOnly ? queryKeys.internalProducts.activeOnly : queryKeys.internalProducts.all),
-    queryFn: () => api.get<ApiInternalProduct[]>('/internal-products', Object.keys(params).length ? params : undefined),
+      ? [...queryKeys.catalogItems.all, { type, activeOnly: !!activeOnly }] as const
+      : (activeOnly ? queryKeys.catalogItems.activeOnly : queryKeys.catalogItems.all),
+    queryFn: () => api.get<ApiCatalogItem[]>('/catalog-items', Object.keys(params).length ? params : undefined),
     retry: false,
     ...options,
   })

@@ -1,5 +1,5 @@
-export class UpdateInternalProductDto {
-  productType?: 'internal' | 'service' | 'reseller'
+export class UpdateCatalogItemDto {
+  productType?: 'internal' | 'service' | 'reseller' | 'partnership'
   slug?: string | null
   name?: string
   industry?: string | null

@@ -4,12 +4,12 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Pencil, Trash2, ToggleLeft, ToggleRight, ImageIcon, Upload, X } from 'lucide-react'
-import { useGetInternalProducts } from '@/lib/hooks/queries'
+import { useGetCatalogItems } from '@/lib/hooks/queries'
 import {
-  useCreateInternalProduct,
-  useUpdateInternalProduct,
-  useDeleteInternalProduct,
-  useUploadInternalProductIcon,
+  useCreateCatalogItem,
+  useUpdateCatalogItem,
+  useDeleteCatalogItem,
+  useUploadCatalogItemIcon,
 } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
@@ -18,7 +18,7 @@ import { DataTable, SortableHeader, DataTableSkeleton } from '@/components/ui/da
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
-import type { ApiInternalProduct, ProductType } from '@/lib/types'
+import type { ApiCatalogItem, ProductType } from '@/lib/types'
 
 const TABS: { id: ProductType; label: string; addCta: string; emptyText: string }[] = [
   { id: 'internal', label: 'Products', addCta: '+ New Product', emptyText: 'No products yet' },
@@ -62,24 +62,24 @@ function IconThumb({ src, size = 16, className }: { src?: string | null; size?: 
 export default function CatalogPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<ProductType>('internal')
-  const { data: items = [], isLoading } = useGetInternalProducts({ type: tab })
-  const [editing, setEditing] = useState<ApiInternalProduct | null>(null)
+  const { data: items = [], isLoading } = useGetCatalogItems({ type: tab })
+  const [editing, setEditing] = useState<ApiCatalogItem | null>(null)
   const [creating, setCreating] = useState(false)
-  const [deleting, setDeleting] = useState<ApiInternalProduct | null>(null)
+  const [deleting, setDeleting] = useState<ApiCatalogItem | null>(null)
 
   const tabMeta = TABS.find(t => t.id === tab)!
 
-  const updateProduct = useUpdateInternalProduct({
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.internalProducts.all }),
+  const updateProduct = useUpdateCatalogItem({
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all }),
   })
-  const deleteProduct = useDeleteInternalProduct({
+  const deleteProduct = useDeleteCatalogItem({
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.internalProducts.all })
+      qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all })
       setDeleting(null)
     },
   })
 
-  const columns = useMemo<ColumnDef<ApiInternalProduct>[]>(() => [
+  const columns = useMemo<ColumnDef<ApiCatalogItem>[]>(() => [
     {
       id: 'icon',
       header: '',
@@ -99,7 +99,7 @@ export default function CatalogPage() {
       cell: ({ row }: any) => (
         <span className="text-ssm text-slate-600 dark:text-slate-300">{row.original.industry || '—'}</span>
       ),
-    } as ColumnDef<ApiInternalProduct>] : []),
+    } as ColumnDef<ApiCatalogItem>] : []),
     {
       accessorKey: 'landingPageLink',
       header: 'Landing page',
@@ -255,7 +255,7 @@ function CatalogItemFormModal({
   defaultType,
   onClose,
 }: {
-  item: ApiInternalProduct | null
+  item: ApiCatalogItem | null
   defaultType: ProductType
   onClose: () => void
 }) {
@@ -271,9 +271,9 @@ function CatalogItemFormModal({
   const [removeIcon, setRemoveIcon] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const create = useCreateInternalProduct({})
-  const update = useUpdateInternalProduct({})
-  const uploadIcon = useUploadInternalProductIcon({})
+  const create = useCreateCatalogItem({})
+  const update = useUpdateCatalogItem({})
+  const uploadIcon = useUploadCatalogItemIcon({})
   const isPending = create.isPending || update.isPending || uploadIcon.isPending
   const error = create.error || update.error || uploadIcon.error
   const canSubmit = !!name.trim()
@@ -319,7 +319,7 @@ function CatalogItemFormModal({
     if (savedId && iconFile) {
       await uploadIcon.mutateAsync({ id: savedId, file: iconFile })
     }
-    qc.invalidateQueries({ queryKey: queryKeys.internalProducts.all })
+    qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all })
     onClose()
   }
 
@@ -462,7 +462,7 @@ function ConfirmDeleteModal({
   onCancel,
   onConfirm,
 }: {
-  item: ApiInternalProduct
+  item: ApiCatalogItem
   isPending: boolean
   onCancel: () => void
   onConfirm: () => void
