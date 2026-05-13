@@ -187,6 +187,7 @@ function ProjectRevenueSection({
   onMonthSave: (dealId: string, monthKey: string, value: number) => void
 }) {
   const projectDeals = deals.filter(d => !d.servicesTags?.includes(STARTUP_TAG) && !d.servicesTags?.includes(EXISTING_TAG))
+  if (projectDeals.length === 0) return null
 
   const columnTotals = MONTH_KEYS.map(mk =>
     projectDeals.reduce((sum, d) => sum + dealMonthValue(d, mk), 0)
@@ -288,6 +289,7 @@ function StartupRevenueSection({
   onMonthSave: (dealId: string, monthKey: string, value: number) => void
 }) {
   const startupDeals = deals.filter(d => d.servicesTags?.includes(STARTUP_TAG))
+  if (startupDeals.length === 0) return null
   const agencyDeals = startupDeals.filter(d => dealStartupCategory(d) === 'agency')
   const hireaiDeals = startupDeals.filter(d => dealStartupCategory(d) === 'hireai')
 
@@ -400,6 +402,7 @@ function ExistingClientsSection({
   onMonthSave: (dealId: string, monthKey: string, value: number) => void
 }) {
   const existingDeals = deals.filter(d => d.servicesTags?.includes(EXISTING_TAG))
+  if (existingDeals.length === 0) return null
   const columnTotals = MONTH_KEYS.map(mk =>
     existingDeals.reduce((s, d) => s + dealMonthValue(d, mk), 0)
   )
@@ -571,18 +574,21 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto flex flex-col gap-6">
-      {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <TrendingUp size={20} className="text-primary" />
-            Revenue Generation
-          </h1>
-          <p className="text-ssm text-slate-500 dark:text-slate-400 mt-0.5">
-            Monthly forecast across project and startup revenue streams. Click any month cell to edit.
-          </p>
+      {/* Page header — All view only. When a tab/sub-tab filters the data
+          the banner is just chrome and the tabs already make context obvious. */}
+      {!isFiltered && (
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <TrendingUp size={20} className="text-primary" />
+              Revenue Generation
+            </h1>
+            <p className="text-ssm text-slate-500 dark:text-slate-400 mt-0.5">
+              Monthly forecast across project and startup revenue streams. Click any month cell to edit.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Summary cards + progress bar — only shown on the All tab.
           When the user drills into a specific catalog category/item, the
