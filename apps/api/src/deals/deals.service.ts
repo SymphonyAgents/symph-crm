@@ -227,7 +227,28 @@ export class DealsService {
       stageId = lead.id
     }
 
-    const [deal] = await this.db.insert(deals).values({ ...cleanData, stageId }).returning()
+    // CRITICAL: deals.catalog_item_id is NOT NULL since migration 011.
+    // Frontend forms only send it for the 'internal_products' service flow,
+    // so default everything else to The Agency (matches the 011 backfill
+    // default — admin re-tags from /catalog if needed). Fail loud if the
+    // canonical row is missing.
+    let catalogItemId: string | null = cleanData.catalogItemId ?? null
+    if (!catalogItemId) {
+      const [agency] = await this.db
+        .select({ id: catalogItems.id })
+        .from(catalogItems)
+        .where(and(eq(catalogItems.productType, 'service'), eq(catalogItems.name, 'The Agency')))
+        .limit(1)
+      if (!agency) {
+        throw new Error(
+          "Cannot create deal: catalog_items has no service row named 'The Agency'. " +
+          'Seed that catalog item before creating deals without an explicit catalog_item_id.',
+        )
+      }
+      catalogItemId = agency.id
+    }
+
+    const [deal] = await this.db.insert(deals).values({ ...cleanData, stageId, catalogItemId }).returning()
 
     // Auto-add assigned user to AM roster
     if (deal.assignedTo) {
