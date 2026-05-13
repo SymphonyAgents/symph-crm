@@ -20,7 +20,6 @@ export class DealsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('dealType') dealType?: string,
-    @Query('catalogProductType') catalogProductType?: string,
   ) {
     return this.dealsService.findAll({
       stage,
@@ -30,7 +29,6 @@ export class DealsController {
       from,
       to,
       dealType,
-      catalogProductType,
     })
   }
 

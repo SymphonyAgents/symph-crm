@@ -7,13 +7,12 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 export type DealsFilterParams = {
   companyId?: string
-  stage?: string                // pipeline stage slug (e.g. 'lead', 'discovery')
+  stage?: string        // pipeline stage slug (e.g. 'lead', 'discovery')
   search?: string
   limit?: number
   from?: string
   to?: string
-  dealType?: string             // legacy 'agency' | 'reseller', kept for back-compat
-  catalogProductType?: string   // catalog_items.product_type — drives the new pipeline tabs
+  dealType?: string     // legacy 'agency' | 'reseller', kept for back-compat
 }
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
@@ -45,13 +44,6 @@ export class DealsService {
     if (params?.from) conditions.push(gte(deals.createdAt, new Date(params.from)))
     if (params?.to) conditions.push(lte(deals.createdAt, new Date(params.to)))
     if (params?.dealType) conditions.push(eq(deals.dealType, params.dealType))
-
-    // Filter by catalog parent category (product | service | reseller | partnership)
-    if (params?.catalogProductType) {
-      conditions.push(
-        sql`${deals.catalogItemId} IN (SELECT id FROM catalog_items WHERE product_type = ${params.catalogProductType})`,
-      )
-    }
 
     // Filter by stage slug — resolve to stage_id via subquery
     if (params?.stage) {
@@ -95,7 +87,7 @@ export class DealsService {
       ),
 
       productIds.length > 0
-        ? this.db.select({ id: catalogItems.id, name: catalogItems.name })
+        ? this.db.select({ id: catalogItems.id, name: catalogItems.name, productType: catalogItems.productType })
             .from(catalogItems)
             .where(inArray(catalogItems.id, productIds as [string, ...string[]]))
         : Promise.resolve([]),
@@ -103,10 +95,11 @@ export class DealsService {
 
     const docCountMap = new Map(docCounts.map(r => [r.dealId, r.cnt]))
     const userNameMap = new Map(userRows.map(u => [u.id, u.name]))
-    const productNameMap = new Map(productRows.map(p => [p.id, p.name]))
+    const productMap = new Map(productRows.map(p => [p.id, p]))
 
     return rawDeals.map(d => {
       const stageMeta = d.stageId ? stageMap.get(d.stageId) : undefined
+      const catalog = d.catalogItemId ? productMap.get(d.catalogItemId) : undefined
       return {
         ...d,
         // Inject stage slug so FE can use deal.stage as before
@@ -115,7 +108,8 @@ export class DealsService {
         stageColor: stageMeta?.color ?? null,
         documentCount: docCountMap.get(d.id) ?? 0,
         createdByName: d.createdBy ? (userNameMap.get(d.createdBy) ?? null) : null,
-        catalogItemName: d.catalogItemId ? (productNameMap.get(d.catalogItemId) ?? null) : null,
+        catalogItemName: catalog?.name ?? null,
+        catalogItemType: catalog?.productType ?? null,
       }
     })
   }
@@ -134,7 +128,7 @@ export class DealsService {
     const [stageMap, productRows] = await Promise.all([
       resolveStages(this.db, deal.stageId ? [deal.stageId] : []),
       deal.catalogItemId
-        ? this.db.select({ id: catalogItems.id, name: catalogItems.name })
+        ? this.db.select({ id: catalogItems.id, name: catalogItems.name, productType: catalogItems.productType })
             .from(catalogItems)
             .where(eq(catalogItems.id, deal.catalogItemId))
             .limit(1)
@@ -147,6 +141,7 @@ export class DealsService {
       stageLabel: stageMeta?.label ?? null,
       stageColor: stageMeta?.color ?? null,
       catalogItemName: productRows[0]?.name ?? null,
+      catalogItemType: productRows[0]?.productType ?? null,
     }
   }
 

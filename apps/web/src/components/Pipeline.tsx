@@ -710,7 +710,12 @@ export function Pipeline({ onOpenDeal, catalogProductType }: PipelineProps) {
   const scrolledRef = useRef(false)
   const { isSales } = useUser()
 
-  const { data: deals = [], isLoading: dealsLoading } = useGetDeals(catalogProductType ? { catalogProductType } : undefined)
+  const { data: allDeals = [], isLoading: dealsLoading } = useGetDeals()
+  // Tab filter is purely client-side — one cached request, instant tab swaps.
+  const deals = useMemo(
+    () => catalogProductType ? allDeals.filter(d => d.catalogItemType === catalogProductType) : allDeals,
+    [allDeals, catalogProductType],
+  )
   const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
   const { data: users = [], isLoading: usersLoading } = useGetUsers()
   const { data: catalog = [], isLoading: catalogLoading } = useGetCatalogItems()

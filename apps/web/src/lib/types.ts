@@ -28,10 +28,12 @@ export type ApiDeal = {
   subAccountManagerId: string | null
   /** User IDs of builders/engineers assigned (any role) */
   builders: string[] | null
-  /** Internal product reference (set when servicesTags includes 'internal_products') */
+  /** Catalog row this deal points at — NOT NULL since the 011 backfill. */
   catalogItemId: string | null
-  /** Internal product name (joined in by deals.service findAll/findOne) */
+  /** Catalog row name, joined by deals.service (e.g. "HireAI", "The Agency", "GWS"). */
   catalogItemName: string | null
+  /** Catalog row's product_type — drives the pipeline tabs (internal | service | reseller | partnership). */
+  catalogItemType: ProductType | null
   lastActivityAt: string | null
   tierId: string | null
   closedAt: string | null
