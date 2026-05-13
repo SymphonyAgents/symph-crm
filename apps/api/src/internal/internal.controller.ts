@@ -302,6 +302,7 @@ export class InternalController {
     const updatableFields = [
       'value', 'title', 'notes', 'assignedTo', 'companyId', 'internalProductId', 'tierId',
       'mrr', 'oneTimeFee',
+      'dealType', 'costPrice', 'marginPercent',
       'servicesTags', 'outreachCategory', 'demoLink', 'proposalLink', 'clientBrandColor',
       'closeDate', 'probability', 'lossReason', 'isFlagged', 'flagReason',
       'buildAssignedTo', 'subAccountManagerId',
