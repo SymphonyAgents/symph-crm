@@ -275,7 +275,7 @@ export class InternalController {
       stage?: string
       value?: number
       assignedTo?: string
-      internalProductId?: string
+      catalogItemId?: string
       tierId?: string
       [key: string]: unknown
     },
@@ -300,7 +300,7 @@ export class InternalController {
     }
 
     const updatableFields = [
-      'value', 'title', 'notes', 'assignedTo', 'companyId', 'internalProductId', 'tierId',
+      'value', 'title', 'notes', 'assignedTo', 'companyId', 'catalogItemId', 'tierId',
       'mrr', 'oneTimeFee',
       'dealType', 'costPrice', 'marginPercent',
       'servicesTags', 'outreachCategory', 'demoLink', 'proposalLink', 'clientBrandColor',

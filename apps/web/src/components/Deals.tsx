@@ -160,9 +160,9 @@ function BrandDetailModal({
                             {formatServiceType(s)}
                           </span>
                         ))}
-                        {tags.includes('internal_products') && deal.internalProductName && (
+                        {tags.includes('internal_products') && deal.catalogItemName && (
                           <span className="text-atom font-semibold px-1.5 py-0.5 rounded-lg bg-violet-500/10 text-violet-500 dark:text-violet-400 whitespace-nowrap">
-                            {deal.internalProductName}
+                            {deal.catalogItemName}
                           </span>
                         )}
                       </div>

@@ -29,9 +29,9 @@ export type ApiDeal = {
   /** User IDs of builders/engineers assigned (any role) */
   builders: string[] | null
   /** Internal product reference (set when servicesTags includes 'internal_products') */
-  internalProductId: string | null
+  catalogItemId: string | null
   /** Internal product name (joined in by deals.service findAll/findOne) */
-  internalProductName: string | null
+  catalogItemName: string | null
   lastActivityAt: string | null
   tierId: string | null
   closedAt: string | null
@@ -95,11 +95,11 @@ export type ApiUser = {
   discordId: string | null
 }
 
-// ── Internal Products ────────────────────────────────────────────────────────
+// ── Catalog Items ────────────────────────────────────────────────────────────
 
-export type ProductType = 'internal' | 'service' | 'reseller'
+export type ProductType = 'internal' | 'service' | 'reseller' | 'partnership'
 
-export type ApiInternalProduct = {
+export type ApiCatalogItem = {
   id: string
   productType: ProductType
   slug: string | null

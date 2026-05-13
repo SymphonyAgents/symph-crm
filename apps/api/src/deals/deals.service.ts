@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql } from 'drizzle-orm'
-import { deals, documents, users, amRoster, pipelineStages, internalProducts } from '@symph-crm/database'
+import { deals, documents, users, amRoster, pipelineStages, catalogItems } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
@@ -62,7 +62,7 @@ export class DealsService {
     const dealIds = rawDeals.map(d => d.id)
 
     // Batch-fetch document counts, user names, stage slugs, and internal product names
-    const productIds = [...new Set(rawDeals.map(d => d.internalProductId).filter((id): id is string => !!id))]
+    const productIds = [...new Set(rawDeals.map(d => d.catalogItemId).filter((id): id is string => !!id))]
 
     const [docCounts, userRows, stageMap, productRows] = await Promise.all([
       this.db
@@ -87,9 +87,9 @@ export class DealsService {
       ),
 
       productIds.length > 0
-        ? this.db.select({ id: internalProducts.id, name: internalProducts.name })
-            .from(internalProducts)
-            .where(inArray(internalProducts.id, productIds as [string, ...string[]]))
+        ? this.db.select({ id: catalogItems.id, name: catalogItems.name })
+            .from(catalogItems)
+            .where(inArray(catalogItems.id, productIds as [string, ...string[]]))
         : Promise.resolve([]),
     ])
 
@@ -107,7 +107,7 @@ export class DealsService {
         stageColor: stageMeta?.color ?? null,
         documentCount: docCountMap.get(d.id) ?? 0,
         createdByName: d.createdBy ? (userNameMap.get(d.createdBy) ?? null) : null,
-        internalProductName: d.internalProductId ? (productNameMap.get(d.internalProductId) ?? null) : null,
+        catalogItemName: d.catalogItemId ? (productNameMap.get(d.catalogItemId) ?? null) : null,
       }
     })
   }
@@ -125,10 +125,10 @@ export class DealsService {
     if (!deal) return undefined
     const [stageMap, productRows] = await Promise.all([
       resolveStages(this.db, deal.stageId ? [deal.stageId] : []),
-      deal.internalProductId
-        ? this.db.select({ id: internalProducts.id, name: internalProducts.name })
-            .from(internalProducts)
-            .where(eq(internalProducts.id, deal.internalProductId))
+      deal.catalogItemId
+        ? this.db.select({ id: catalogItems.id, name: catalogItems.name })
+            .from(catalogItems)
+            .where(eq(catalogItems.id, deal.catalogItemId))
             .limit(1)
         : Promise.resolve([]),
     ])
@@ -138,7 +138,7 @@ export class DealsService {
       stage: stageMeta?.slug ?? null,
       stageLabel: stageMeta?.label ?? null,
       stageColor: stageMeta?.color ?? null,
-      internalProductName: productRows[0]?.name ?? null,
+      catalogItemName: productRows[0]?.name ?? null,
     }
   }
 

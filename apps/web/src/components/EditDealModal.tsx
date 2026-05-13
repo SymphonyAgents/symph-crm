@@ -13,14 +13,14 @@ import {
 import { Combobox } from '@/components/ui/combobox'
 import { UserOption } from '@/components/UserOption'
 import { useUpdateDeal, useAssignDealBrand, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetCompanies, useGetUsers, useGetInternalProducts } from '@/lib/hooks/queries'
+import { useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import type { ApiDealDetail, ApiInternalProduct } from '@/lib/types'
+import type { ApiDealDetail, ApiCatalogItem } from '@/lib/types'
 
 type Props = {
   deal: ApiDealDetail
@@ -95,9 +95,9 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
 
 /** DB-driven catalog grouped by product type. Value = row's slug. */
 function ServiceSelect({ value, onValueChange }: { value: string; onValueChange: (v: string) => void }) {
-  const { data: catalog = [] } = useGetInternalProducts(true)
+  const { data: catalog = [] } = useGetCatalogItems(true)
   const groups = useMemo(() => {
-    const sortByName = (a: ApiInternalProduct, b: ApiInternalProduct) => a.name.localeCompare(b.name)
+    const sortByName = (a: ApiCatalogItem, b: ApiCatalogItem) => a.name.localeCompare(b.name)
     return {
       services: catalog.filter(c => c.productType === 'service').sort(sortByName),
       products: catalog.filter(c => c.productType === 'internal').sort(sortByName),
@@ -140,7 +140,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
   )
 }
 
-function CatalogRowLabel({ item }: { item: ApiInternalProduct }) {
+function CatalogRowLabel({ item }: { item: ApiCatalogItem }) {
   return (
     <div className="flex items-center gap-2 min-w-0">
       {item.iconUrl ? (
@@ -170,7 +170,7 @@ export function EditDealModal({ deal, onClose }: Props) {
 
   const { data: companies = [] } = useGetCompanies()
   const { data: allUsers = [] } = useGetUsers()
-  const { data: internalProducts = [] } = useGetInternalProducts(true)
+  const { data: catalogItems = [] } = useGetCatalogItems(true)
   const salesUsers = useMemo(() => allUsers.filter(u => u.role === 'SALES'), [allUsers])
   const qc = useQueryClient()
 
@@ -196,7 +196,7 @@ export function EditDealModal({ deal, onClose }: Props) {
   )
   const [subAccountManagerId, setSubAccountManagerId] = useState(deal.subAccountManagerId ?? '')
   const [builders, setBuilders] = useState<string[]>(deal.builders ?? [])
-  const [internalProductId, setInternalProductId] = useState(deal.internalProductId ?? '')
+  const [catalogItemId, setCatalogItemId] = useState(deal.catalogItemId ?? '')
 
   const updateDeal = useUpdateDeal({
     onSuccess: () => {
@@ -271,9 +271,9 @@ export function EditDealModal({ deal, onClose }: Props) {
       changes.builders = builders
     }
 
-    const newInternalProductId = serviceType === 'internal_products' ? (internalProductId || null) : null
-    if (newInternalProductId !== (deal.internalProductId ?? null)) {
-      changes.internalProductId = newInternalProductId
+    const newCatalogItemId = serviceType === 'internal_products' ? (catalogItemId || null) : null
+    if (newCatalogItemId !== (deal.catalogItemId ?? null)) {
+      changes.catalogItemId = newCatalogItemId
     }
 
     // companyId is handled separately via useAssignDealBrand.
@@ -369,15 +369,15 @@ export function EditDealModal({ deal, onClose }: Props) {
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
               <Select
-                value={internalProductId || '__none__'}
-                onValueChange={v => setInternalProductId(v === '__none__' ? '' : v)}
+                value={catalogItemId || '__none__'}
+                onValueChange={v => setCatalogItemId(v === '__none__' ? '' : v)}
               >
                 <SelectTrigger className="h-9 text-ssm">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   <SelectItem value="__none__" className="text-ssm text-slate-400">—</SelectItem>
-                  {internalProducts.map(p => (
+                  {catalogItems.map(p => (
                     <SelectItem key={p.id} value={p.id} className="text-ssm">{p.name}</SelectItem>
                   ))}
                 </SelectContent>

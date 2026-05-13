@@ -4,18 +4,18 @@ import {
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
-import { InternalProductsService, type ProductType } from './internal-products.service'
-import { CreateInternalProductDto } from './dto/create-internal-product.dto'
-import { UpdateInternalProductDto } from './dto/update-internal-product.dto'
+import { CatalogItemsService, type ProductType } from './catalog-items.service'
+import { CreateCatalogItemDto } from './dto/create-catalog-item.dto'
+import { UpdateCatalogItemDto } from './dto/update-catalog-item.dto'
 import { StorageService } from '../storage/storage.service'
 
 const ALLOWED_ICON_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml', 'image/gif'])
 const MAX_ICON_BYTES = 512 * 1024 // 512 KB — logos are tiny
 
-@Controller('internal-products')
-export class InternalProductsController {
+@Controller('catalog-items')
+export class CatalogItemsController {
   constructor(
-    private readonly service: InternalProductsService,
+    private readonly service: CatalogItemsService,
     private readonly storage: StorageService,
   ) {}
 
@@ -26,7 +26,7 @@ export class InternalProductsController {
   ) {
     return this.service.findAll({
       activeOnly: active === 'true',
-      type: type && ['internal', 'service', 'reseller'].includes(type) ? type : undefined,
+      type: type && ['internal', 'service', 'reseller', 'partnership'].includes(type) ? type : undefined,
     })
   }
 
@@ -36,12 +36,12 @@ export class InternalProductsController {
   }
 
   @Post()
-  create(@Body() dto: CreateInternalProductDto) {
+  create(@Body() dto: CreateCatalogItemDto) {
     return this.service.create(dto)
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateInternalProductDto) {
+  update(@Param('id') id: string, @Body() dto: UpdateCatalogItemDto) {
     return this.service.update(id, dto)
   }
 
@@ -50,12 +50,10 @@ export class InternalProductsController {
     return this.service.remove(id)
   }
 
-  /**
-   * POST /api/internal-products/:id/icon
-   * Multipart upload field name: `icon`. Accepts common image MIME types up to 512KB.
-   * Uploads to Supabase Storage (public catalog-icons bucket), patches the row's
-   * icon_url, and returns the updated row.
-   */
+  // POST /api/catalog-items/:id/icon
+  // Multipart field: `icon`. Common image MIME types up to 512KB.
+  // Uploads to Supabase Storage (public catalog-icons bucket), patches the
+  // row's icon_url, and returns the updated row.
   @Post(':id/icon')
   @UseInterceptors(
     FileInterceptor('icon', {
@@ -71,7 +69,6 @@ export class InternalProductsController {
     if (!ALLOWED_ICON_MIME.has(file.mimetype)) {
       throw new BadRequestException(`unsupported mime type: ${file.mimetype}`)
     }
-    // Verify the catalog item exists before doing the upload
     const existing = await this.service.findOne(id)
     const ext = file.originalname.includes('.') ? file.originalname.split('.').pop()!.toLowerCase() : 'png'
     const storagePath = `${id}/icon-${Date.now()}.${ext}`

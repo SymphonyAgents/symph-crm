@@ -50,10 +50,10 @@ export const queryKeys = {
   products: {
     all: ['products'] as const,
   },
-  internalProducts: {
-    all: ['internal-products'] as const,
-    activeOnly: ['internal-products', 'active'] as const,
-    detail: (id: string) => ['internal-products', id] as const,
+  catalogItems: {
+    all: ['catalog-items'] as const,
+    activeOnly: ['catalog-items', 'active'] as const,
+    detail: (id: string) => ['catalog-items', id] as const,
   },
   tiers: {
     all: ['tiers'] as const,

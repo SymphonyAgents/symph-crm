@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiInternalProduct, ApiProposalHead, ApiProposalVersion, ApiProposalShareLink, ApiRecording } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalVersion, ApiProposalShareLink, ApiRecording } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ export type CreateDealInput = {
   assignedTo?: string | null
   subAccountManagerId?: string | null
   builders?: string[]
-  internalProductId?: string | null
+  catalogItemId?: string | null
   createdBy?: string | null
   closeDate?: string | null
   /** 'agency' (default) | 'reseller' */
@@ -528,10 +528,10 @@ export function useDeleteChatSession(
   })
 }
 
-// ─── Internal Product mutations ───────────────────────────────────────────────
+// ─── Catalog Item mutations ──────────────────────────────────────────────────
 
-export type CreateInternalProductInput = {
-  productType?: 'internal' | 'service' | 'reseller'
+export type CreateCatalogItemInput = {
+  productType?: 'internal' | 'service' | 'reseller' | 'partnership'
   slug?: string | null
   name: string
   industry?: string | null
@@ -540,51 +540,51 @@ export type CreateInternalProductInput = {
   isActive?: boolean
 }
 
-export type UpdateInternalProductInput = Partial<CreateInternalProductInput>
+export type UpdateCatalogItemInput = Partial<CreateCatalogItemInput>
 
-export function useCreateInternalProduct(
-  options?: UseMutationOptions<ApiInternalProduct, Error, CreateInternalProductInput>,
+export function useCreateCatalogItem(
+  options?: UseMutationOptions<ApiCatalogItem, Error, CreateCatalogItemInput>,
 ) {
-  return useMutation<ApiInternalProduct, Error, CreateInternalProductInput>({
-    mutationFn: (input) => api.post<ApiInternalProduct>('/internal-products', input),
+  return useMutation<ApiCatalogItem, Error, CreateCatalogItemInput>({
+    mutationFn: (input) => api.post<ApiCatalogItem>('/catalog-items', input),
     ...withToast('Product created', options),
   })
 }
 
-export function useUpdateInternalProduct(
-  options?: UseMutationOptions<ApiInternalProduct, Error, { id: string; data: UpdateInternalProductInput }>,
+export function useUpdateCatalogItem(
+  options?: UseMutationOptions<ApiCatalogItem, Error, { id: string; data: UpdateCatalogItemInput }>,
 ) {
-  return useMutation<ApiInternalProduct, Error, { id: string; data: UpdateInternalProductInput }>({
-    mutationFn: ({ id, data }) => api.patch<ApiInternalProduct>(`/internal-products/${id}`, data),
+  return useMutation<ApiCatalogItem, Error, { id: string; data: UpdateCatalogItemInput }>({
+    mutationFn: ({ id, data }) => api.patch<ApiCatalogItem>(`/catalog-items/${id}`, data),
     ...withToast('Product updated', options),
   })
 }
 
-export function useDeleteInternalProduct(
+export function useDeleteCatalogItem(
   options?: UseMutationOptions<void, Error, string>,
 ) {
   return useMutation<void, Error, string>({
-    mutationFn: (id: string) => api.delete(`/internal-products/${id}`),
+    mutationFn: (id: string) => api.delete(`/catalog-items/${id}`),
     ...withToast('Product deleted', options),
   })
 }
 
-export function useUploadInternalProductIcon(
-  options?: UseMutationOptions<ApiInternalProduct, Error, { id: string; file: File }>,
+export function useUploadCatalogItemIcon(
+  options?: UseMutationOptions<ApiCatalogItem, Error, { id: string; file: File }>,
 ) {
   const qc = useQueryClient()
-  return useMutation<ApiInternalProduct, Error, { id: string; file: File }>({
+  return useMutation<ApiCatalogItem, Error, { id: string; file: File }>({
     mutationFn: async ({ id, file }) => {
       const fd = new FormData()
       fd.append('icon', file)
-      return api.upload<ApiInternalProduct>(`/internal-products/${id}/icon`, fd)
+      return api.upload<ApiCatalogItem>(`/catalog-items/${id}/icon`, fd)
     },
     ...withToast('Icon uploaded', {
       ...options,
       onSuccess: (data, vars, ctx) => {
         // Refresh both the list (catalog page) and any single-row caches so
         // the new public icon URL renders immediately.
-        qc.invalidateQueries({ queryKey: queryKeys.internalProducts.all })
+        qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all })
         ;(options?.onSuccess as any)?.(data, vars, ctx)
       },
     }),

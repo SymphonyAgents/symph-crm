@@ -21,7 +21,7 @@ const EXISTING_TAG = 'existing_client'
 
 function dealStartupCategory(deal: ApiDeal): 'hireai' | 'agency' | null {
   if (!deal.servicesTags?.includes(STARTUP_TAG)) return null
-  const name = (deal.internalProductName ?? '').toLowerCase()
+  const name = (deal.catalogItemName ?? '').toLowerCase()
   if (name.includes('hireai') || name.includes('hire ai')) return 'hireai'
   return 'agency'
 }
