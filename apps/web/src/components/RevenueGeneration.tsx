@@ -36,7 +36,8 @@ function numVal(v: string | null | undefined): number {
 
 function phpFmt(n: number): string {
   if (n === 0) return ', '
-  return '₱' + formatCurrency(n)
+  // formatCurrency already prefixes with 'P' — swap it for the proper peso sign.
+  return '₱' + formatCurrency(n).slice(1)
 }
 
 /** Get the revenue for a deal in a specific month.
@@ -478,6 +479,7 @@ type RevenueGenerationProps = {
 
 export function RevenueGeneration({ catalogProductType, catalogItemId }: RevenueGenerationProps = {}) {
   const { data: rawDeals = [], isLoading } = useGetDeals()
+  const isFiltered = !!catalogProductType || !!catalogItemId
   const allDeals = useMemo(() => {
     let result = rawDeals
     if (catalogProductType) result = result.filter(d => d.catalogItemType === catalogProductType)
@@ -582,7 +584,10 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Summary cards + progress bar — only shown on the All tab.
+          When the user drills into a specific catalog category/item, the
+          target/gap framing is no longer meaningful (target = full-org). */}
+      {!isFiltered && (<>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
           <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider mb-1">Target / Month</div>
@@ -644,6 +649,7 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
           </div>
         </div>
       </div>
+      </>)}
 
       {/* Section A */}
       <ProjectRevenueSection deals={activeDeals} userMap={userMap} onMonthSave={handleMonthSave} />
