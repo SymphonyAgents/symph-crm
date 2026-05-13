@@ -7,12 +7,13 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 export type DealsFilterParams = {
   companyId?: string
-  stage?: string        // pipeline stage slug (e.g. 'lead', 'discovery')
+  stage?: string                // pipeline stage slug (e.g. 'lead', 'discovery')
   search?: string
   limit?: number
   from?: string
   to?: string
-  dealType?: string     // 'agency' | 'reseller', filters to a specific pipeline
+  dealType?: string             // legacy 'agency' | 'reseller', kept for back-compat
+  catalogProductType?: string   // catalog_items.product_type — drives the new pipeline tabs
 }
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
@@ -44,6 +45,13 @@ export class DealsService {
     if (params?.from) conditions.push(gte(deals.createdAt, new Date(params.from)))
     if (params?.to) conditions.push(lte(deals.createdAt, new Date(params.to)))
     if (params?.dealType) conditions.push(eq(deals.dealType, params.dealType))
+
+    // Filter by catalog parent category (product | service | reseller | partnership)
+    if (params?.catalogProductType) {
+      conditions.push(
+        sql`${deals.catalogItemId} IN (SELECT id FROM catalog_items WHERE product_type = ${params.catalogProductType})`,
+      )
+    }
 
     // Filter by stage slug — resolve to stage_id via subquery
     if (params?.stage) {

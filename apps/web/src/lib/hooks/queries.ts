@@ -97,13 +97,20 @@ export function useGetContactsByCompany(
 // ─── Deals ────────────────────────────────────────────────────────────────────
 
 export function useGetDeals(
-  params?: { dealType?: string },
+  params?: { dealType?: string; catalogProductType?: 'internal' | 'service' | 'reseller' | 'partnership' },
   options?: Partial<UseQueryOptions<ApiDeal[]>>,
 ) {
-  const { dealType } = params ?? {}
+  const { dealType, catalogProductType } = params ?? {}
+  const qp: Record<string, string> = {}
+  if (dealType) qp.dealType = dealType
+  if (catalogProductType) qp.catalogProductType = catalogProductType
   return useQuery<ApiDeal[]>({
-    queryKey: dealType ? queryKeys.deals.byType(dealType) : queryKeys.deals.all,
-    queryFn: () => api.get<ApiDeal[]>('/deals', dealType ? { dealType } : undefined),
+    queryKey: catalogProductType
+      ? queryKeys.deals.byCatalogType(catalogProductType)
+      : dealType
+        ? queryKeys.deals.byType(dealType)
+        : queryKeys.deals.all,
+    queryFn: () => api.get<ApiDeal[]>('/deals', Object.keys(qp).length ? qp : undefined),
     ...options,
   })
 }
