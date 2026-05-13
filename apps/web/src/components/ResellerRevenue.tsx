@@ -139,7 +139,7 @@ export function ResellerRevenue() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      <div className="px-6 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
+      <div className="px-4 md:px-6 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
         <div className="flex items-center gap-2.5 mb-4">
           <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
             <TrendingUp size={15} className="text-emerald-600 dark:text-emerald-400" />
@@ -151,7 +151,7 @@ export function ResellerRevenue() {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-4">
           <SummaryCard
             label="Total billing"
             value={fmt(totalBilling)}
@@ -183,7 +183,7 @@ export function ResellerRevenue() {
         </div>
 
         {/* Product breakdown row */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
           {PRODUCTS.map(p => {
             const stats = byProduct[p]
             const profit = stats.billing - stats.cost
@@ -243,13 +243,14 @@ export function ResellerRevenue() {
       </div>
 
       {/* Deals table */}
-      <div className="flex-1 px-6 py-4">
+      <div className="flex-1 px-4 md:px-6 py-4 min-w-0">
         {isLoading ? (
           <div className="flex items-center justify-center py-12 text-sm text-slate-400">Loading...</div>
         ) : filteredDeals.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-sm text-slate-400">No reseller deals found</div>
         ) : (
-          <div className="bg-white dark:bg-[#232428] rounded-xl border border-black/[.06] dark:border-white/[.07] overflow-hidden">
+          <div className="bg-white dark:bg-[#232428] rounded-xl border border-black/[.06] dark:border-white/[.07] overflow-x-auto">
+            <div className="min-w-[720px]">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_80px_110px_110px_90px_80px] gap-3 px-4 py-2.5 bg-slate-50 dark:bg-white/[.02] border-b border-black/[.05] dark:border-white/[.05] text-atom font-semibold text-slate-500 uppercase tracking-wide">
               <span>Deal</span>
@@ -338,6 +339,7 @@ export function ResellerRevenue() {
                 {fmt(filteredDeals.reduce((s, d) => s + getProfit(d), 0))}
               </p>
               <div />
+            </div>
             </div>
           </div>
         )}

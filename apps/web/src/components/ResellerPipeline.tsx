@@ -197,6 +197,7 @@ export function ResellerPipeline({ onOpenDeal }: ResellerPipelineProps) {
   const deleteDeal = useDeleteDeal()
   const [showCreate, setShowCreate] = useState(false)
   const [filterProduct, setFilterProduct] = useState<string | null>(null)
+  const [mobileStageFilter, setMobileStageFilter] = useState<string | null>(null)
 
   // Derive active stages from current deals (reuse same stage list as agency pipeline)
   // Filter + group deals
@@ -226,6 +227,11 @@ export function ResellerPipeline({ onOpenDeal }: ResellerPipelineProps) {
   const visibleStages = ORDERED_STAGES.filter(s => REQUIRED_RESELLER_STAGES.has(s) || (byStage[s]?.length ?? 0) > 0)
 
   const stagesMeta = ORDERED_STAGES.map(s => ({ slug: s, label: STAGE_LABELS[s] ?? s }))
+
+  const mobileDeals = useMemo(() => {
+    if (!mobileStageFilter) return filteredDeals
+    return filteredDeals.filter(d => (d.stage ?? 'lead') === mobileStageFilter)
+  }, [filteredDeals, mobileStageFilter])
 
   // Summary stats
   const totalBilling = allDeals.reduce((sum, d) => {
@@ -295,11 +301,11 @@ export function ResellerPipeline({ onOpenDeal }: ResellerPipelineProps) {
         </div>
 
         {/* Product filters */}
-        <div className="flex items-center gap-2 mt-3">
+        <div className="flex items-center gap-2 mt-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
           <button
             onClick={() => setFilterProduct(null)}
             className={cn(
-              'h-6 px-2.5 rounded-full text-atom font-semibold transition-colors',
+              'h-6 px-2.5 rounded-full text-atom font-semibold transition-colors whitespace-nowrap shrink-0',
               !filterProduct
                 ? 'bg-primary text-white'
                 : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 hover:text-slate-700 dark:hover:text-white'
@@ -315,7 +321,7 @@ export function ResellerPipeline({ onOpenDeal }: ResellerPipelineProps) {
                 key={p}
                 onClick={() => setFilterProduct(active ? null : p)}
                 className={cn(
-                  'h-6 px-2.5 rounded-full text-atom font-semibold transition-colors',
+                  'h-6 px-2.5 rounded-full text-atom font-semibold transition-colors whitespace-nowrap shrink-0',
                   active ? `${cfg.bg} ${cfg.text} ring-1 ring-current` : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 hover:text-slate-700 dark:hover:text-white'
                 )}
               >
@@ -330,7 +336,8 @@ export function ResellerPipeline({ onOpenDeal }: ResellerPipelineProps) {
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center text-sm text-slate-400">Loading reseller deals...</div>
       ) : (
-        <div className="flex-1 flex overflow-x-auto gap-3 p-4">
+        <>
+        <div className="hidden md:flex flex-1 overflow-x-auto gap-3 p-4">
           {visibleStages.map(stage => {
             const stageDeals = byStage[stage] ?? []
             const stageBilling = stageDeals.reduce((sum, d) => {
@@ -383,6 +390,72 @@ export function ResellerPipeline({ onOpenDeal }: ResellerPipelineProps) {
             )
           })}
         </div>
+
+        <div className="flex flex-col flex-1 overflow-hidden md:hidden">
+          <div className="px-4 pt-3 pb-2 shrink-0 border-b border-black/[.04] dark:border-white/[.06]">
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
+              <button
+                onClick={() => setMobileStageFilter(null)}
+                className={cn(
+                  'rounded-full text-xxs font-semibold px-3 py-1 whitespace-nowrap shrink-0 transition-colors duration-150',
+                  mobileStageFilter === null
+                    ? 'bg-primary text-white'
+                    : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
+                )}
+              >
+                All stages
+              </button>
+              {visibleStages.map(stage => {
+                const count = byStage[stage]?.length ?? 0
+                const active = mobileStageFilter === stage
+                return (
+                  <button
+                    key={stage}
+                    onClick={() => setMobileStageFilter(active ? null : stage)}
+                    className={cn(
+                      'rounded-full text-xxs font-semibold px-3 py-1 whitespace-nowrap shrink-0 transition-colors duration-150 flex items-center gap-1.5',
+                      active
+                        ? 'bg-primary text-white'
+                        : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
+                    )}
+                  >
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: STAGE_COLORS[stage] ?? '#94a3b8' }} />
+                    {STAGE_LABELS[stage] ?? stage}
+                    {count > 0 && <span className="tabular-nums">{count}</span>}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-3">
+            {mobileDeals.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400 dark:text-white/20">
+                No reseller deals found
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {mobileDeals.map(deal => {
+                  const stage = deal.stage ?? 'lead'
+                  return (
+                    <ResellerDealCard
+                      key={deal.id}
+                      deal={deal}
+                      brandName={companyNameById.get(deal.companyId) ?? 'No Brand'}
+                      colColor={STAGE_COLORS[stage] ?? '#94a3b8'}
+                      users={users}
+                      onOpen={onOpenDeal}
+                      onStageChange={handleStageChange}
+                      onDelete={handleDelete}
+                      stages={stagesMeta}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        </>
       )}
 
       {showCreate && (

@@ -24,7 +24,7 @@ export function Topbar({ onMenuToggle, onChatSessionsToggle }: TopbarProps) {
 
       {/* Cmd+K search trigger */}
       <button
-        className="flex items-center gap-2 bg-slate-100 dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] rounded-lg px-3 py-[5px] w-[260px] text-left transition-colors duration-150 hover:bg-slate-200 dark:bg-white/[.1]/70 cursor-pointer"
+        className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] rounded-lg px-3 py-[5px] w-[220px] md:w-[260px] text-left transition-colors duration-150 hover:bg-slate-200 dark:bg-white/[.1]/70 cursor-pointer"
         onClick={() => {/* TODO: open cmd+k modal */}}
       >
         <Search size={13} strokeWidth={1.4} className="text-slate-400 shrink-0" />

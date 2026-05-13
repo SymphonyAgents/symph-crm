@@ -856,15 +856,17 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
         {/* Table view */}
         {!isLoading && companies.length > 0 && (
-          <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <BrandsDataTable
-              rows={filteredTableRows}
-              onRowClick={(row) => setSelectedBrand(row.company)}
-              search={search}
-              selectedBrandId={selectedBrand?.id}
-              onEditBrand={setEditingBrand}
-              onDeleteBrand={setDeletingBrand}
-            />
+          <div className="flex-1 overflow-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            <div className="min-w-[860px]">
+              <BrandsDataTable
+                rows={filteredTableRows}
+                onRowClick={(row) => setSelectedBrand(row.company)}
+                search={search}
+                selectedBrandId={selectedBrand?.id}
+                onEditBrand={setEditingBrand}
+                onDeleteBrand={setDeletingBrand}
+              />
+            </div>
           </div>
         )}
 
