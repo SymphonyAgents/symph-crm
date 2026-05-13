@@ -469,8 +469,21 @@ function ExistingClientsSection({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function RevenueGeneration() {
-  const { data: allDeals = [], isLoading } = useGetDeals({ dealType: 'agency' })
+type RevenueGenerationProps = {
+  /** Catalog parent category filter — undefined = All deals. */
+  catalogProductType?: 'internal' | 'service' | 'reseller' | 'partnership'
+  /** Drill into a specific catalog row within the active product_type. */
+  catalogItemId?: string
+}
+
+export function RevenueGeneration({ catalogProductType, catalogItemId }: RevenueGenerationProps = {}) {
+  const { data: rawDeals = [], isLoading } = useGetDeals()
+  const allDeals = useMemo(() => {
+    let result = rawDeals
+    if (catalogProductType) result = result.filter(d => d.catalogItemType === catalogProductType)
+    if (catalogItemId) result = result.filter(d => d.catalogItemId === catalogItemId)
+    return result
+  }, [rawDeals, catalogProductType, catalogItemId])
   const { data: allUsers = [] } = useGetUsers()
   const qc = useQueryClient()
 
