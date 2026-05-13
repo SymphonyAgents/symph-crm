@@ -470,7 +470,7 @@ function ExistingClientsSection({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function RevenueGeneration() {
-  const { data: allDeals = [], isLoading } = useGetDeals()
+  const { data: allDeals = [], isLoading } = useGetDeals({ dealType: 'agency' })
   const { data: allUsers = [] } = useGetUsers()
   const qc = useQueryClient()
 

@@ -432,7 +432,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const qc = useQueryClient()
 
   const { data: companies = [], isLoading: loadingCompanies } = useGetCompanies()
-  const { data: deals = [], isLoading: loadingDeals } = useGetDeals()
+  const { data: deals = [], isLoading: loadingDeals } = useGetDeals({ dealType: 'agency' })
   const { data: users = [] } = useGetUsers()
 
   // Edit/delete mutations

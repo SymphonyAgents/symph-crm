@@ -67,7 +67,7 @@ function AMTableSkeleton() {
 
 export function Reports() {
   const { data: summary, isLoading } = useGetPipelineSummary()
-  const { data: deals = [], isLoading: loadingDeals } = useGetDeals()
+  const { data: deals = [], isLoading: loadingDeals } = useGetDeals({ dealType: 'agency' })
   const { data: users = [] } = useGetUsers()
   const userMap = new Map(users.map(u => [u.id, u.name || u.email]))
 

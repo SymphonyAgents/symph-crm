@@ -129,7 +129,7 @@ function BillRow({
 export default function BillsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const { data: deals = [], isLoading } = useGetDeals()
+  const { data: deals = [], isLoading } = useGetDeals({ dealType: 'agency' })
   const { data: companies = [] } = useGetCompanies()
   const [deleteTarget, setDeleteTarget] = useState<{ dealId: string; dealTitle: string } | null>(null)
   const [editTarget, setEditTarget] = useState<{ dealId: string; dealTitle: string } | null>(null)

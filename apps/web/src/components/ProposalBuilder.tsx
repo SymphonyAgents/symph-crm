@@ -61,7 +61,7 @@ function NewProposalModal({
   const [dealId, setDealId] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const { data: deals = [] } = useGetDeals()
+  const { data: deals = [] } = useGetDeals({ dealType: 'agency' })
 
   const mutation = useCreateDocument({
     onSuccess: (doc) => { onCreated(doc); onClose() },
