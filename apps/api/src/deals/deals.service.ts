@@ -271,6 +271,14 @@ export class DealsService {
     // Strip any dropped columns that FE might still send
     const { pricingModel, ...cleanData } = data as any
 
+    // Guard the NOT NULL catalog_item_id constraint: EditDealModal currently
+    // sends catalogItemId: null when the user picks a service type other than
+    // 'internal_products'. Treat that as "keep the existing link" — drop the
+    // field so the column retains its current value instead of being nulled.
+    if (cleanData.catalogItemId === null) {
+      delete cleanData.catalogItemId
+    }
+
     // Fetch current deal to determine dealType and fill in missing revenue fields
     const current = await this.db
       .select({
