@@ -330,14 +330,14 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
             onSettled: () => {
               qc.invalidateQueries({ queryKey: queryKeys.deals.all })
               if (brandId) qc.invalidateQueries({ queryKey: queryKeys.companies.deals(brandId) })
-              onCreated()
+              onCreated?.()
             },
           },
         )
       } else {
         qc.invalidateQueries({ queryKey: queryKeys.deals.all })
         if (brandId) qc.invalidateQueries({ queryKey: queryKeys.companies.deals(brandId) })
-        onCreated()
+        onCreated?.()
       }
     },
   })
