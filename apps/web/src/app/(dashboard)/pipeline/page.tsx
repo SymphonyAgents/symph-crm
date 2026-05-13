@@ -162,14 +162,13 @@ function SubTabButton({
       className={cn(
         'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98]',
         active
-          ? 'text-white'
+          ? 'bg-primary/10 text-primary'
           : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
       )}
-      style={active ? { background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' } : undefined}
     >
       {children}
       {count !== undefined && (
-        <span className={cn('tabular-nums', active ? 'text-white/80' : 'text-slate-400')}>
+        <span className={cn('tabular-nums', active ? 'text-primary/70' : 'text-slate-400')}>
           {count}
         </span>
       )}
