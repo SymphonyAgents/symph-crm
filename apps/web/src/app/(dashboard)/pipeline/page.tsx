@@ -10,9 +10,9 @@ import {
   type CatalogTabValue,
   type CatalogTabCounts,
 } from '@/components/CatalogTabs'
-import { useGetDeals } from '@/lib/hooks/queries'
+import { useGetDeals, useGetCatalogItems } from '@/lib/hooks/queries'
 import { CLOSED_STAGE_IDS } from '@/lib/constants'
-import { formatPeso } from '@/lib/utils'
+import { formatPeso, cn } from '@/lib/utils'
 
 function PipelineInner() {
   const router = useRouter()
@@ -20,9 +20,15 @@ function PipelineInner() {
   const searchParams = useSearchParams()
 
   const tabValue: CatalogTabValue = tabValueFromSlug(searchParams.get('tab'))
+  const itemId = searchParams.get('item') // catalog_items.id when drilled into a specific row
 
   // Cached deal fetch — Pipeline.tsx hits the same queryKey, no duplicate request.
   const { data: allDeals = [], isLoading } = useGetDeals()
+  // Catalog rows for the active product_type — only fetched when needed.
+  const showSubTabs = tabValue === 'internal' || tabValue === 'service' || tabValue === 'reseller'
+  const { data: catalogRows = [] } = useGetCatalogItems(
+    showSubTabs ? { activeOnly: true, type: tabValue } : false,
+  )
 
   // Per-tab counts (all deals, not just active — matches the tab label semantic "how many deals exist here").
   const counts: CatalogTabCounts = useMemo(() => {
@@ -35,13 +41,33 @@ function PipelineInner() {
     return c
   }, [allDeals])
 
-  // Stats strip — filtered by active tab.
+  // Sub-tab rows for products/services/reseller — each catalog item + its deal count.
+  const subTabs = useMemo(() => {
+    if (!showSubTabs) return []
+    const dealsForType = allDeals.filter(d => d.catalogItemType === tabValue)
+    return catalogRows.map(c => ({
+      id: c.id,
+      name: c.name,
+      count: dealsForType.filter(d => d.catalogItemId === c.id).length,
+    }))
+  }, [showSubTabs, catalogRows, allDeals, tabValue])
+
+  // If the active item filter no longer belongs to this product_type, drop it silently.
+  const activeItemId = useMemo(() => {
+    if (!showSubTabs) return null
+    if (!itemId) return null
+    return subTabs.some(t => t.id === itemId) ? itemId : null
+  }, [showSubTabs, itemId, subTabs])
+
+  // Stats strip — filtered by active tab AND active item.
   const stats = useMemo(() => {
-    const scoped = tabValue ? allDeals.filter(d => d.catalogItemType === tabValue) : allDeals
+    let scoped = allDeals
+    if (tabValue) scoped = scoped.filter(d => d.catalogItemType === tabValue)
+    if (activeItemId) scoped = scoped.filter(d => d.catalogItemId === activeItemId)
     const active = scoped.filter(d => !CLOSED_STAGE_IDS.has(d.stage ?? ''))
     const total = active.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
     return { activeCount: active.length, total }
-  }, [allDeals, tabValue])
+  }, [allDeals, tabValue, activeItemId])
 
   const onTabChange = useCallback(
     (next: CatalogTabValue) => {
@@ -49,6 +75,18 @@ function PipelineInner() {
       const slug = tabSlugFromValue(next)
       if (slug === 'all') params.delete('tab')
       else params.set('tab', slug)
+      params.delete('item') // clear sub-tab filter when switching parent tabs
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    },
+    [pathname, router, searchParams],
+  )
+
+  const onSubTabChange = useCallback(
+    (nextItemId: string | null) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (nextItemId) params.set('item', nextItemId)
+      else params.delete('item')
       const qs = params.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
@@ -72,15 +110,70 @@ function PipelineInner() {
           )}
         </div>
         <CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />
+
+        {/* Sub-tabs — catalog items within the active product_type. */}
+        {showSubTabs && subTabs.length > 0 && (
+          <div className="flex items-center flex-wrap gap-1.5 mt-2">
+            <SubTabButton
+              active={!activeItemId}
+              onClick={() => onSubTabChange(null)}
+            >
+              All
+            </SubTabButton>
+            {subTabs.map(s => (
+              <SubTabButton
+                key={s.id}
+                active={activeItemId === s.id}
+                onClick={() => onSubTabChange(s.id)}
+                count={s.count}
+              >
+                {s.name}
+              </SubTabButton>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
         <Pipeline
           onOpenDeal={(id) => router.push(`/deals/${id}?from=pipeline`)}
           catalogProductType={tabValue ?? undefined}
+          catalogItemId={activeItemId ?? undefined}
         />
       </div>
     </div>
+  )
+}
+
+function SubTabButton({
+  active,
+  onClick,
+  count,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98]',
+        active
+          ? 'text-white'
+          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+      )}
+      style={active ? { background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' } : undefined}
+    >
+      {children}
+      {count !== undefined && (
+        <span className={cn('tabular-nums', active ? 'text-white/80' : 'text-slate-400')}>
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
 

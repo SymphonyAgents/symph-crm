@@ -58,6 +58,8 @@ type PipelineProps = {
   onOpenDeal: (id: string) => void
   /** Catalog parent category for the new tabbed pipeline. Undefined = All tab (no filter). */
   catalogProductType?: 'internal' | 'service' | 'reseller' | 'partnership'
+  /** Drill into a specific catalog row within the active product_type. */
+  catalogItemId?: string
 }
 
 // --- Spinner ---
@@ -685,7 +687,7 @@ function MobileActionSheet({
 }
 
 // --- Pipeline ---
-export function Pipeline({ onOpenDeal, catalogProductType }: PipelineProps) {
+export function Pipeline({ onOpenDeal, catalogProductType, catalogItemId }: PipelineProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -711,11 +713,13 @@ export function Pipeline({ onOpenDeal, catalogProductType }: PipelineProps) {
   const { isSales } = useUser()
 
   const { data: allDeals = [], isLoading: dealsLoading } = useGetDeals()
-  // Tab filter is purely client-side — one cached request, instant tab swaps.
-  const deals = useMemo(
-    () => catalogProductType ? allDeals.filter(d => d.catalogItemType === catalogProductType) : allDeals,
-    [allDeals, catalogProductType],
-  )
+  // Tab + sub-tab filters are purely client-side — one cached request, instant swaps.
+  const deals = useMemo(() => {
+    let result = allDeals
+    if (catalogProductType) result = result.filter(d => d.catalogItemType === catalogProductType)
+    if (catalogItemId) result = result.filter(d => d.catalogItemId === catalogItemId)
+    return result
+  }, [allDeals, catalogProductType, catalogItemId])
   const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
   const { data: users = [], isLoading: usersLoading } = useGetUsers()
   const { data: catalog = [], isLoading: catalogLoading } = useGetCatalogItems()
