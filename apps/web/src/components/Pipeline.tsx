@@ -1026,6 +1026,12 @@ export function Pipeline({ onOpenDeal, catalogProductType }: PipelineProps) {
       {/* ── Desktop actions row (stats moved to page-level strip above the tabs) ── */}
       <div className="hidden md:flex items-center justify-end gap-2 px-4 py-2.5 shrink-0">
         <div className="flex gap-2 items-center">
+          {/* Search result count — only when actively searching */}
+          {search.trim() && (
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">
+              Showing <span className="font-semibold text-primary tabular-nums">{filteredDeals.length}</span> result{filteredDeals.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {/* Search */}
           {searchOpen ? (
             <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[200px]">
