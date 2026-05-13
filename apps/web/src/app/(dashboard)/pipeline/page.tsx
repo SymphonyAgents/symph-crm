@@ -12,7 +12,7 @@ import {
 } from '@/components/CatalogTabs'
 import { useGetDeals, useGetCatalogItems } from '@/lib/hooks/queries'
 import { CLOSED_STAGE_IDS } from '@/lib/constants'
-import { formatPeso, cn } from '@/lib/utils'
+import { formatPeso } from '@/lib/utils'
 
 function PipelineInner() {
   const router = useRouter()
@@ -110,28 +110,6 @@ function PipelineInner() {
           )}
         </div>
         <CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />
-
-        {/* Sub-tabs — catalog items within the active product_type. */}
-        {showSubTabs && subTabs.length > 0 && (
-          <div className="flex items-center flex-wrap gap-1.5 mt-2">
-            <SubTabButton
-              active={!activeItemId}
-              onClick={() => onSubTabChange(null)}
-            >
-              All
-            </SubTabButton>
-            {subTabs.map(s => (
-              <SubTabButton
-                key={s.id}
-                active={activeItemId === s.id}
-                onClick={() => onSubTabChange(s.id)}
-                count={s.count}
-              >
-                {s.name}
-              </SubTabButton>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -139,40 +117,12 @@ function PipelineInner() {
           onOpenDeal={(id) => router.push(`/deals/${id}?from=pipeline`)}
           catalogProductType={tabValue ?? undefined}
           catalogItemId={activeItemId ?? undefined}
+          subTabs={subTabs}
+          activeSubTabId={activeItemId}
+          onSubTabChange={onSubTabChange}
         />
       </div>
     </div>
-  )
-}
-
-function SubTabButton({
-  active,
-  onClick,
-  count,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  count?: number
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98]',
-        active
-          ? 'bg-primary/10 text-primary'
-          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
-      )}
-    >
-      {children}
-      {count !== undefined && (
-        <span className={cn('tabular-nums', active ? 'text-primary/70' : 'text-slate-400')}>
-          {count}
-        </span>
-      )}
-    </button>
   )
 }
 
