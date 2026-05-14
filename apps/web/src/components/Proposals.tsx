@@ -180,11 +180,11 @@ export function Proposals() {
   const open = (id: string) => router.push(`/proposals/${id}`)
 
   return (
-    <div className="p-4 md:px-6 pb-6 max-w-[1200px] mx-auto w-full">
+    <div className="p-4 md:px-6 pb-6 w-full">
       {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-base font-semibold text-slate-900 dark:text-white">Proposals</h1>
-        <p className="text-xxs text-slate-500 mt-1">
+      <div className="mb-4">
+        <h1 className="text-ssm font-semibold text-slate-900 dark:text-white">Proposals</h1>
+        <p className="text-xxs text-slate-500 mt-0.5">
           Versioned proposal documents across your workspace. New proposals are created via Aria chat.
         </p>
       </div>
