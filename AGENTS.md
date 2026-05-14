@@ -15,3 +15,9 @@ If `.claude/rules/` does not exist, or if no rule file matches the task, say so 
 If a relevant rule file exists but cannot be read, stop and report the read failure. Do not proceed using guessed rules.
 
 These project rules supplement the global instructions. If they conflict with higher-priority system, developer, or security instructions, follow the higher-priority instruction and call out the conflict when it affects the task.
+
+## Commit Workflow
+
+When the user asks for a commit, reference the `source-command-commit` skill before committing and use it as the commit workflow checklist.
+
+If `source-command-commit` conflicts with higher-priority system, developer, security, or explicit project instructions, follow the higher-priority instruction and call out the conflict before committing.
