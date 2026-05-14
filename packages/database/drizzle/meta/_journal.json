@@ -15,6 +15,27 @@
       "when": 1774585936909,
       "tag": "0001_lethal_sebastian_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778752459330,
+      "tag": "0002_create_proposal_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778754074000,
+      "tag": "0003_merge_duplicate_proposal_chains",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1778755200000,
+      "tag": "0004_standardize_proposal_titles",
+      "breakpoints": true
     }
   ]
 }
