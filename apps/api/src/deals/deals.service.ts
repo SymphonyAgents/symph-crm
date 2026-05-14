@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql } from 'drizzle-orm'
-import { deals, documents, users, amRoster, pipelineStages, catalogItems } from '@symph-crm/database'
+import { deals, documents, users, amRoster, pipelineStages, catalogItems, companies } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
@@ -12,7 +12,7 @@ export type DealsFilterParams = {
   limit?: number
   from?: string
   to?: string
-  dealType?: string     // 'agency' | 'reseller', filters to a specific pipeline
+  dealType?: string     // legacy 'agency' | 'reseller', kept for back-compat
 }
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
@@ -52,12 +52,20 @@ export class DealsService {
       )
     }
 
-    const query = conditions.length > 0
-      ? this.db.select().from(deals).where(and(...conditions)).orderBy(desc(deals.createdAt)).limit(limit)
-      : this.db.select().from(deals).orderBy(desc(deals.createdAt)).limit(limit)
+    const baseSelect = this.db
+      .select({ deal: deals, brandName: companies.name })
+      .from(deals)
+      .leftJoin(companies, eq(deals.companyId, companies.id))
 
-    const rawDeals = await query
-    if (rawDeals.length === 0) return []
+    const query = conditions.length > 0
+      ? baseSelect.where(and(...conditions)).orderBy(desc(deals.createdAt)).limit(limit)
+      : baseSelect.orderBy(desc(deals.createdAt)).limit(limit)
+
+    const dealRows = await query
+    if (dealRows.length === 0) return []
+
+    const rawDeals = dealRows.map(row => row.deal)
+    const brandNameMap = new Map(dealRows.map(row => [row.deal.id, row.brandName]))
 
     const dealIds = rawDeals.map(d => d.id)
 
@@ -87,7 +95,7 @@ export class DealsService {
       ),
 
       productIds.length > 0
-        ? this.db.select({ id: catalogItems.id, name: catalogItems.name })
+        ? this.db.select({ id: catalogItems.id, name: catalogItems.name, productType: catalogItems.productType })
             .from(catalogItems)
             .where(inArray(catalogItems.id, productIds as [string, ...string[]]))
         : Promise.resolve([]),
@@ -95,10 +103,11 @@ export class DealsService {
 
     const docCountMap = new Map(docCounts.map(r => [r.dealId, r.cnt]))
     const userNameMap = new Map(userRows.map(u => [u.id, u.name]))
-    const productNameMap = new Map(productRows.map(p => [p.id, p.name]))
+    const productMap = new Map(productRows.map(p => [p.id, p]))
 
     return rawDeals.map(d => {
       const stageMeta = d.stageId ? stageMap.get(d.stageId) : undefined
+      const catalog = d.catalogItemId ? productMap.get(d.catalogItemId) : undefined
       return {
         ...d,
         // Inject stage slug so FE can use deal.stage as before
@@ -107,7 +116,9 @@ export class DealsService {
         stageColor: stageMeta?.color ?? null,
         documentCount: docCountMap.get(d.id) ?? 0,
         createdByName: d.createdBy ? (userNameMap.get(d.createdBy) ?? null) : null,
-        catalogItemName: d.catalogItemId ? (productNameMap.get(d.catalogItemId) ?? null) : null,
+        brandName: brandNameMap.get(d.id) ?? null,
+        catalogItemName: catalog?.name ?? null,
+        catalogItemType: catalog?.productType ?? null,
       }
     })
   }
@@ -126,7 +137,7 @@ export class DealsService {
     const [stageMap, productRows] = await Promise.all([
       resolveStages(this.db, deal.stageId ? [deal.stageId] : []),
       deal.catalogItemId
-        ? this.db.select({ id: catalogItems.id, name: catalogItems.name })
+        ? this.db.select({ id: catalogItems.id, name: catalogItems.name, productType: catalogItems.productType })
             .from(catalogItems)
             .where(eq(catalogItems.id, deal.catalogItemId))
             .limit(1)
@@ -139,6 +150,7 @@ export class DealsService {
       stageLabel: stageMeta?.label ?? null,
       stageColor: stageMeta?.color ?? null,
       catalogItemName: productRows[0]?.name ?? null,
+      catalogItemType: productRows[0]?.productType ?? null,
     }
   }
 
@@ -224,7 +236,28 @@ export class DealsService {
       stageId = lead.id
     }
 
-    const [deal] = await this.db.insert(deals).values({ ...cleanData, stageId }).returning()
+    // CRITICAL: deals.catalog_item_id is NOT NULL since migration 011.
+    // Frontend forms only send it for the 'internal_products' service flow,
+    // so default everything else to The Agency (matches the 011 backfill
+    // default — admin re-tags from /catalog if needed). Fail loud if the
+    // canonical row is missing.
+    let catalogItemId: string | null = cleanData.catalogItemId ?? null
+    if (!catalogItemId) {
+      const [agency] = await this.db
+        .select({ id: catalogItems.id })
+        .from(catalogItems)
+        .where(and(eq(catalogItems.productType, 'service'), eq(catalogItems.name, 'The Agency')))
+        .limit(1)
+      if (!agency) {
+        throw new Error(
+          "Cannot create deal: catalog_items has no service row named 'The Agency'. " +
+          'Seed that catalog item before creating deals without an explicit catalog_item_id.',
+        )
+      }
+      catalogItemId = agency.id
+    }
+
+    const [deal] = await this.db.insert(deals).values({ ...cleanData, stageId, catalogItemId }).returning()
 
     // Auto-add assigned user to AM roster
     if (deal.assignedTo) {
@@ -246,6 +279,14 @@ export class DealsService {
   async update(id: string, data: Partial<typeof deals.$inferInsert> & { pricingModel?: unknown }, performedBy?: string) {
     // Strip any dropped columns that FE might still send
     const { pricingModel, ...cleanData } = data as any
+
+    // Guard the NOT NULL catalog_item_id constraint: EditDealModal currently
+    // sends catalogItemId: null when the user picks a service type other than
+    // 'internal_products'. Treat that as "keep the existing link" — drop the
+    // field so the column retains its current value instead of being nulled.
+    if (cleanData.catalogItemId === null) {
+      delete cleanData.catalogItemId
+    }
 
     // Fetch current deal to determine dealType and fill in missing revenue fields
     const current = await this.db

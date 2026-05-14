@@ -54,8 +54,20 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
   )
 }
 
+type SubTab = { id: string; name: string; count: number }
+
 type PipelineProps = {
   onOpenDeal: (id: string) => void
+  /** Catalog parent category for the new tabbed pipeline. Undefined = All tab (no filter). */
+  catalogProductType?: 'internal' | 'service' | 'reseller' | 'partnership'
+  /** Drill into a specific catalog row within the active product_type. */
+  catalogItemId?: string
+  /** Catalog-item sub-tabs to render alongside the action buttons. Empty/undefined hides the row. */
+  subTabs?: SubTab[]
+  /** Active sub-tab id; null = "All" within the parent category. */
+  activeSubTabId?: string | null
+  /** Fired when user picks a sub-tab. Null = clear filter to All. */
+  onSubTabChange?: (id: string | null) => void
 }
 
 // --- Spinner ---
@@ -65,6 +77,41 @@ function Spinner({ size = 14 }: { size?: number }) {
       className="rounded-full border-2 border-current/30 border-t-current animate-spin"
       style={{ width: size, height: size }}
     />
+  )
+}
+
+// --- PipelineSubTabButton ---
+// Small pill button used for the catalog-item sub-filter row that sits to
+// the left of the desktop action strip. Active = bg-primary/10 + text-primary
+// (matches the main-tab count badge), inactive = outlined white pill.
+function PipelineSubTabButton({
+  active,
+  onClick,
+  count,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98] shrink-0',
+        active
+          ? 'bg-primary/10 text-primary'
+          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+      )}
+    >
+      {children}
+      {count !== undefined && (
+        <span className={cn('tabular-nums', active ? 'text-primary/70' : 'text-slate-400')}>
+          {count}
+        </span>
+      )}
+    </button>
   )
 }
 
@@ -683,7 +730,14 @@ function MobileActionSheet({
 }
 
 // --- Pipeline ---
-export function Pipeline({ onOpenDeal }: PipelineProps) {
+export function Pipeline({
+  onOpenDeal,
+  catalogProductType,
+  catalogItemId,
+  subTabs,
+  activeSubTabId,
+  onSubTabChange,
+}: PipelineProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
@@ -708,7 +762,14 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
   const scrolledRef = useRef(false)
   const { isSales } = useUser()
 
-  const { data: deals = [], isLoading: dealsLoading } = useGetDeals({ dealType: 'agency' })
+  const { data: allDeals = [], isLoading: dealsLoading } = useGetDeals()
+  // Tab + sub-tab filters are purely client-side — one cached request, instant swaps.
+  const deals = useMemo(() => {
+    let result = allDeals
+    if (catalogProductType) result = result.filter(d => d.catalogItemType === catalogProductType)
+    if (catalogItemId) result = result.filter(d => d.catalogItemId === catalogItemId)
+    return result
+  }, [allDeals, catalogProductType, catalogItemId])
   const { data: companies = [], isLoading: companiesLoading } = useGetCompanies()
   const { data: users = [], isLoading: usersLoading } = useGetUsers()
   const { data: catalog = [], isLoading: catalogLoading } = useGetCatalogItems()
@@ -1016,22 +1077,37 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
         />
       )}
 
-      {/* ── Desktop stats + actions (hidden on mobile) ── */}
-      <div className="hidden md:flex items-center justify-between gap-2 px-4 py-2.5 shrink-0">
-        {isLoading ? (
-          <div className="h-4 w-40 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-        ) : (
-          <span className="text-ssm font-medium text-slate-900 dark:text-white shrink-0">
-            {activeDeals.length} active deal{activeDeals.length !== 1 ? 's' : ''}
-            {totalValue > 0 && (
-              <> &middot; <span className="tabular-nums">{formatPeso(totalValue)}</span></>
-            )}
-            {(search || amFilter) && (
-              <span className="text-slate-400 ml-1">(filtered)</span>
-            )}
-          </span>
-        )}
-        <div className="flex gap-2 items-center">
+      {/* ── Desktop actions row — sub-tabs on the left, actions on the right ── */}
+      <div className="hidden md:flex items-center justify-between gap-3 px-4 py-2.5 shrink-0">
+        {/* Sub-tabs (left) */}
+        <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+          {subTabs && subTabs.length > 0 && onSubTabChange && (
+            <>
+              <PipelineSubTabButton active={!activeSubTabId} onClick={() => onSubTabChange(null)}>
+                All
+              </PipelineSubTabButton>
+              {subTabs.map(s => (
+                <PipelineSubTabButton
+                  key={s.id}
+                  active={activeSubTabId === s.id}
+                  onClick={() => onSubTabChange(s.id)}
+                  count={s.count}
+                >
+                  {s.name}
+                </PipelineSubTabButton>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Actions (right) */}
+        <div className="flex gap-2 items-center shrink-0">
+          {/* Search result count — only when actively searching */}
+          {search.trim() && (
+            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">
+              Showing <span className="font-semibold text-primary tabular-nums">{filteredDeals.length}</span> result{filteredDeals.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {/* Search */}
           {searchOpen ? (
             <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[200px]">
@@ -1294,6 +1370,25 @@ export function Pipeline({ onOpenDeal }: PipelineProps) {
               )}
             </div>
           </div>
+
+          {/* Mobile sub-tabs — horizontal scroll, same pill style as desktop. */}
+          {subTabs && subTabs.length > 0 && onSubTabChange && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2">
+              <PipelineSubTabButton active={!activeSubTabId} onClick={() => onSubTabChange(null)}>
+                All
+              </PipelineSubTabButton>
+              {subTabs.map(s => (
+                <PipelineSubTabButton
+                  key={s.id}
+                  active={activeSubTabId === s.id}
+                  onClick={() => onSubTabChange(s.id)}
+                  count={s.count}
+                >
+                  {s.name}
+                </PipelineSubTabButton>
+              ))}
+            </div>
+          )}
 
           {/* Stage filter pills */}
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">

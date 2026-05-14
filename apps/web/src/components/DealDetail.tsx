@@ -2299,14 +2299,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {/* ── Billing tab ───────────────────────────────────────────────── */}
           {activeTab === 'billing' && (
             <div className="p-4">
-              {deal.stage === 'closed_won' ? (
-                <BillingSection dealId={dealId} />
-              ) : (
-                <div className="py-12 text-center">
-                  <p className="text-ssm font-medium text-slate-400">Billing not available yet</p>
-                  <p className="text-xxs text-slate-300 dark:text-slate-600 mt-1">Mark this deal as Won to enable billing</p>
-                </div>
-              )}
+              <BillingSection dealId={dealId} />
             </div>
           )}
 

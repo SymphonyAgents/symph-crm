@@ -20,10 +20,14 @@ import { Input } from '@/components/ui/input'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import type { ApiCatalogItem, ProductType } from '@/lib/types'
 
-const TABS: { id: ProductType; label: string; addCta: string; emptyText: string }[] = [
-  { id: 'internal', label: 'Products', addCta: '+ New Product', emptyText: 'No products yet' },
-  { id: 'service', label: 'Services', addCta: '+ New Service', emptyText: 'No services yet' },
-  { id: 'reseller', label: 'Resellers', addCta: '+ New Reseller', emptyText: 'No resellers yet' },
+type TabId = ProductType | 'all'
+
+const TABS: { id: TabId; label: string; addCta: string; emptyText: string }[] = [
+  { id: 'all',         label: 'All',         addCta: '+ New',             emptyText: 'No catalog items yet' },
+  { id: 'internal',    label: 'Products',    addCta: '+ New Product',     emptyText: 'No products yet' },
+  { id: 'service',     label: 'Services',    addCta: '+ New Service',     emptyText: 'No services yet' },
+  { id: 'reseller',    label: 'Resellers',   addCta: '+ New Reseller',    emptyText: 'No resellers yet' },
+  { id: 'partnership', label: 'Partnerships', addCta: '+ New Partnership', emptyText: 'No partnerships yet' },
 ]
 
 function formatDate(d: string): string {
@@ -61,8 +65,8 @@ function IconThumb({ src, size = 16, className }: { src?: string | null; size?: 
 
 export default function CatalogPage() {
   const qc = useQueryClient()
-  const [tab, setTab] = useState<ProductType>('internal')
-  const { data: items = [], isLoading } = useGetCatalogItems({ type: tab })
+  const [tab, setTab] = useState<TabId>('all')
+  const { data: items = [], isLoading } = useGetCatalogItems(tab === 'all' ? {} : { type: tab })
   const [editing, setEditing] = useState<ApiCatalogItem | null>(null)
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<ApiCatalogItem | null>(null)
@@ -188,13 +192,15 @@ export default function CatalogPage() {
             Manage internal products, service offerings, and reseller partners
           </p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="rounded-lg px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
-          style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
-        >
-          {tabMeta.addCta}
-        </button>
+        {tab !== 'all' && (
+          <button
+            onClick={() => setCreating(true)}
+            className="rounded-lg px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
+            style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+          >
+            {tabMeta.addCta}
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -231,7 +237,7 @@ export default function CatalogPage() {
       {(creating || editing) && (
         <CatalogItemFormModal
           item={editing}
-          defaultType={tab}
+          defaultType={tab === 'all' ? 'internal' : tab}
           onClose={() => { setCreating(false); setEditing(null) }}
         />
       )}

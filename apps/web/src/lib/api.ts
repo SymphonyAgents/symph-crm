@@ -6,7 +6,9 @@ const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localh
 // ─── Auth header injection ────────────────────────────────────────────────────
 
 let _cachedUserId: string | null = null
+let _hasCachedUserId = false
 let _cacheExpiry = 0
+let _pendingUserId: Promise<string | null> | null = null
 
 /**
  * Resolve the current user ID from the NextAuth session cookie.
@@ -14,23 +16,39 @@ let _cacheExpiry = 0
  * Exported so mutations.ts can reuse without re-fetching.
  */
 export async function resolveUserId(): Promise<string | null> {
-  if (_cachedUserId && Date.now() < _cacheExpiry) return _cachedUserId
-  try {
+  if (_hasCachedUserId && Date.now() < _cacheExpiry) return _cachedUserId
+  if (_pendingUserId) return _pendingUserId
+
+  _pendingUserId = (async () => {
     const res = await fetch('/api/auth/session')
     if (!res.ok) {
       console.warn(`[api] /api/auth/session returned ${res.status}`)
+      _cachedUserId = null
+      _hasCachedUserId = true
+      _cacheExpiry = Date.now() + 10_000
       return null
     }
+
     const session = await res.json()
     _cachedUserId = session?.user?.id ?? null
+    _hasCachedUserId = true
     if (!_cachedUserId) {
       console.warn('[api] session.user.id not found:', session)
     }
     _cacheExpiry = Date.now() + 60_000 // 1 minute
     return _cachedUserId
+  })()
+
+  try {
+    return await _pendingUserId
   } catch (err) {
     console.error('[api] resolveUserId failed:', err)
+    _cachedUserId = null
+    _hasCachedUserId = true
+    _cacheExpiry = Date.now() + 10_000
     return null
+  } finally {
+    _pendingUserId = null
   }
 }
 

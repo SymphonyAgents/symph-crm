@@ -79,7 +79,7 @@ function getNavSections(dormantCount: number): NavSection[] {
     {
       title: 'Reseller',
       items: [
-        { path: '/reseller', label: 'Pipeline', icon: ShoppingBag },
+        // Pipeline merged into the main /pipeline tabs (catalog parent-type).
         { path: '/reseller/revenue', label: 'Revenue', icon: DollarSign },
       ],
     },
