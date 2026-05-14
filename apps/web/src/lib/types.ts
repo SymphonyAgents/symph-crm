@@ -44,6 +44,8 @@ export type ApiDeal = {
   documentCount?: number
   /** Display name of the user who created this deal (injected by deals.service findAll) */
   createdByName?: string | null
+  /** Display name of the company/brand attached to this deal (injected by deals.service findAll) */
+  brandName?: string | null
   /** Pipeline type: 'agency' (default) | 'reseller' */
   dealType: string
   /** Reseller: what Symph pays the vendor (GWS/GCP/Josys) */

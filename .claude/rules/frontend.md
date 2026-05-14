@@ -44,6 +44,11 @@ apps/web/src/
 - Component files are `PascalCase` for features (`Dashboard.tsx`) and `kebab-case` for ui primitives (`button.tsx`).
 - Export named components, not default exports (e.g., `export function Dashboard()`).
 
+### Modals / Dialogs
+- Before creating or changing any modal, reference `CreateDealModal.tsx` and `CreateBrandModal.tsx` as the baseline for overlay, centered layout, close button, footer button layout, animation, spacing, and dark mode.
+- Default modal motion is simple centered fade/zoom (`animate-in zoom-in-95 fade-in-0 duration-200`). Do not use slide-in motion unless the UI is explicitly a slide-over or drawer.
+- Modal footer actions use the Create Deal/Create Brand pattern: two equal-width `h-9 rounded-lg` buttons, secondary cancel on the left and primary gradient submit on the right.
+
 ### Conditional Styling — `cn()` Utility (MANDATORY)
 
 Every component with conditional className logic MUST use the `cn()` utility from `@/lib/utils`. No exceptions.

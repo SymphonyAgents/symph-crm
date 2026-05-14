@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common'
 import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql } from 'drizzle-orm'
-import { deals, documents, users, amRoster, pipelineStages, catalogItems } from '@symph-crm/database'
+import { deals, documents, users, amRoster, pipelineStages, catalogItems, companies } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
@@ -52,12 +52,20 @@ export class DealsService {
       )
     }
 
-    const query = conditions.length > 0
-      ? this.db.select().from(deals).where(and(...conditions)).orderBy(desc(deals.createdAt)).limit(limit)
-      : this.db.select().from(deals).orderBy(desc(deals.createdAt)).limit(limit)
+    const baseSelect = this.db
+      .select({ deal: deals, brandName: companies.name })
+      .from(deals)
+      .leftJoin(companies, eq(deals.companyId, companies.id))
 
-    const rawDeals = await query
-    if (rawDeals.length === 0) return []
+    const query = conditions.length > 0
+      ? baseSelect.where(and(...conditions)).orderBy(desc(deals.createdAt)).limit(limit)
+      : baseSelect.orderBy(desc(deals.createdAt)).limit(limit)
+
+    const dealRows = await query
+    if (dealRows.length === 0) return []
+
+    const rawDeals = dealRows.map(row => row.deal)
+    const brandNameMap = new Map(dealRows.map(row => [row.deal.id, row.brandName]))
 
     const dealIds = rawDeals.map(d => d.id)
 
@@ -108,6 +116,7 @@ export class DealsService {
         stageColor: stageMeta?.color ?? null,
         documentCount: docCountMap.get(d.id) ?? 0,
         createdByName: d.createdBy ? (userNameMap.get(d.createdBy) ?? null) : null,
+        brandName: brandNameMap.get(d.id) ?? null,
         catalogItemName: catalog?.name ?? null,
         catalogItemType: catalog?.productType ?? null,
       }

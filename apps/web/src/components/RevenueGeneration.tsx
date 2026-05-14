@@ -2,13 +2,35 @@
 
 import { useMemo, useState, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { useGetDeals, useGetUsers } from '@/lib/hooks/queries'
-import { useUpdateDeal } from '@/lib/hooks/mutations'
+import { useUpdateDeal, useUpsertBilling, type UpsertBillingInput } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
-import { formatCurrency } from '@/lib/utils'
-import { TrendingUp, Building2, Rocket, Archive, ChevronRight } from 'lucide-react'
+import { cn, formatCurrency } from '@/lib/utils'
+import {
+  buildResellerSummary,
+  formatPhp,
+  getResellerBillingPrice,
+  getResellerCostPrice,
+  getResellerGrossProfit,
+  getResellerMargin,
+  getResellerProducts,
+  isActiveResellerDeal,
+  RESELLER_PRODUCTS,
+  type ResellerProduct,
+} from '@/lib/revenue/reseller'
+import { StagePill } from '@/components/StagePill'
+import { Avatar } from '@/components/Avatar'
+import {
+  Dialog,
+  DialogDescription,
+  DialogOverlay,
+  DialogPortal,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { TrendingUp, Building2, Rocket, Archive, ChevronRight, DollarSign, Package, Percent, Plus } from 'lucide-react'
 import Link from 'next/link'
-import type { ApiDeal } from '@/lib/types'
+import type { ApiDeal, ApiUser } from '@/lib/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -34,6 +56,14 @@ function numVal(v: string | null | undefined): number {
   return isNaN(n) ? 0 : n
 }
 
+function formatMoneyInput(value: string): string {
+  const raw = value.replace(/[^0-9.]/g, '')
+  const [whole = '', ...decimalParts] = raw.split('.')
+  const formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const decimal = decimalParts.join('')
+  return decimalParts.length > 0 ? `${formattedWhole}.${decimal}` : formattedWhole
+}
+
 function phpFmt(n: number): string {
   if (n === 0) return ', '
   // formatCurrency already prefixes with 'P' — swap it for the proper peso sign.
@@ -55,25 +85,6 @@ function dealMonthValue(deal: ApiDeal, monthKey: string): number {
   if (v <= 0) return 0
   const len = deal.contractLength && deal.contractLength > 0 ? deal.contractLength : 12
   return Math.round(v / len)
-}
-
-function stageBadge(stage: string) {
-  const map: Record<string, { label: string; color: string }> = {
-    lead: { label: 'Lead', color: 'bg-slate-100 text-slate-500 dark:bg-white/[.06] dark:text-slate-400' },
-    discovery: { label: 'Discovery', color: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
-    assessment: { label: 'Assessment', color: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' },
-    proposal_demo: { label: 'Proposal', color: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' },
-    followup: { label: 'Follow-up', color: 'bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400' },
-    closed_won: { label: 'Won', color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' },
-    closed_lost: { label: 'Lost', color: 'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400' },
-    parked: { label: 'Parked', color: 'bg-slate-100 text-slate-400 dark:bg-white/[.04] dark:text-slate-500' },
-  }
-  const meta = map[stage] ?? { label: stage, color: 'bg-slate-100 text-slate-500 dark:bg-white/[.06] dark:text-slate-400' }
-  return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-atom font-semibold ${meta.color}`}>
-      {meta.label}
-    </span>
-  )
 }
 
 // ─── Inline Editable Cell ─────────────────────────────────────────────────────
@@ -169,9 +180,529 @@ function MonthHeaders() {
   return (
     <>
       {MONTH_LABELS.map(m => (
-        <th key={m} className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right min-w-[90px]">{m}</th>
+        <th key={m} className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right min-w-[90px] whitespace-nowrap">{m}</th>
       ))}
     </>
+  )
+}
+
+function AddRevenueIconButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Add revenue"
+      title="Add revenue"
+      className="ml-auto flex h-5 w-5 items-center justify-center rounded-md bg-primary/10 text-primary transition-colors hover:bg-primary/15 dark:bg-primary/20 dark:text-blue-300 dark:hover:bg-primary/25"
+    >
+      <Plus size={13} strokeWidth={2.4} />
+    </button>
+  )
+}
+
+function OwnerCell({ user }: { user: ApiUser | undefined }) {
+  if (!user) {
+    return <span className="text-xs text-slate-400 dark:text-slate-500">Unassigned</span>
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 min-w-0">
+      <Avatar name={user.name || user.email} email={user.email ?? undefined} src={user.image ?? undefined} size={18} />
+      <span className="truncate text-xs text-slate-500 dark:text-slate-400">{(user.name || user.email).split(' ')[0]}</span>
+    </div>
+  )
+}
+
+function RevenueBillingModal({
+  deal,
+  onClose,
+  onSave,
+  isSaving,
+}: {
+  deal: ApiDeal
+  onClose: () => void
+  onSave: (dealId: string, data: UpsertBillingInput) => void
+  isSaving: boolean
+}) {
+  const [billingType, setBillingType] = useState<'annual' | 'monthly' | 'milestone'>('monthly')
+  const [amount, setAmount] = useState('')
+  const [contractStart, setContractStart] = useState('')
+  const [contractEnd, setContractEnd] = useState('')
+
+  useEffect(() => {
+    setBillingType('monthly')
+    setAmount('')
+    setContractStart('')
+    setContractEnd('')
+  }, [deal.id])
+
+  const amountLabel = billingType === 'annual'
+    ? 'Annual total'
+    : billingType === 'monthly'
+    ? 'Monthly amount'
+    : 'Milestone total'
+
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+    onSave(deal.id, {
+      billingType,
+      contractStart: contractStart || null,
+      contractEnd: contractEnd || null,
+      amount: amount.replace(/,/g, '') || null,
+    })
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogPortal>
+        <DialogOverlay className="z-40 bg-black/60 backdrop-blur-[2px]" />
+        <DialogPrimitive.Content
+          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] mx-4 animate-in zoom-in-95 fade-in-0 duration-200 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0"
+          onOpenAutoFocus={event => event.preventDefault()}
+        >
+          <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
+            <div className="min-w-0">
+              <DialogTitle className="text-sm font-semibold text-slate-900 dark:text-white">Add Billing</DialogTitle>
+              <DialogDescription className="mt-0.5 truncate text-xs text-slate-400">
+                {deal.title}
+              </DialogDescription>
+              <p className="mt-0.5 truncate text-xxs text-slate-400 dark:text-slate-500">
+                Brand: {deal.brandName ?? 'No brand assigned'}
+              </p>
+            </div>
+            <DialogPrimitive.Close className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors">
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </DialogPrimitive.Close>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
+          <div className="mb-3">
+            <label className="mb-1.5 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">
+              Billing type
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { value: 'monthly', label: 'Monthly' },
+                { value: 'annual', label: 'Annual' },
+                { value: 'milestone', label: 'Milestone' },
+              ].map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setBillingType(option.value as 'annual' | 'monthly' | 'milestone')}
+                  className={cn(
+                    'h-8 rounded-md text-xs font-semibold transition-colors',
+                    billingType === option.value
+                      ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-300'
+                      : 'border border-black/[.08] text-slate-600 hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]',
+                  )}
+                >
+                  {option.label}
+              </button>
+            ))}
+          </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">
+              {amountLabel}
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={event => setAmount(formatMoneyInput(event.target.value))}
+              placeholder="0.00"
+              className="h-9 w-full rounded-md border border-black/[.08] bg-transparent px-2 text-xs tabular-nums text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 dark:border-white/[.1] dark:text-white"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">Start</label>
+              <input
+                type="date"
+                value={contractStart}
+                onChange={event => setContractStart(event.target.value)}
+                className="h-9 w-full rounded-md border border-black/[.08] bg-transparent px-2 text-xs text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 dark:border-white/[.1] dark:text-white"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">End</label>
+              <input
+                type="date"
+                value={contractEnd}
+                onChange={event => setContractEnd(event.target.value)}
+                className="h-9 w-full rounded-md border border-black/[.08] bg-transparent px-2 text-xs text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 dark:border-white/[.1] dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+            >
+              <>{isSaving && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Save Billing</>
+            </button>
+          </div>
+        </form>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
+  )
+}
+
+const RESELLER_PRODUCT_STYLES: Record<ResellerProduct, string> = {
+  GWS: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300',
+  GCP: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
+  Josys: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300',
+}
+
+const RESELLER_PRODUCT_CARD_STYLES: Record<ResellerProduct, string> = {
+  GWS: 'bg-blue-50/70 border-blue-200 text-blue-950 dark:bg-blue-950/20 dark:border-blue-900/60 dark:text-blue-100',
+  GCP: 'bg-amber-50/70 border-amber-200 text-amber-950 dark:bg-amber-950/20 dark:border-amber-900/60 dark:text-amber-100',
+  Josys: 'bg-violet-50/70 border-violet-200 text-violet-950 dark:bg-violet-950/20 dark:border-violet-900/60 dark:text-violet-100',
+}
+
+function ResellerProductBadge({ product }: { product: ResellerProduct }) {
+  return (
+    <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xxs font-bold', RESELLER_PRODUCT_STYLES[product])}>
+      {product}
+    </span>
+  )
+}
+
+function EmptyValue({ align = 'right' }: { align?: 'left' | 'right' }) {
+  return (
+    <span className={cn('block text-slate-300 dark:text-slate-600', align === 'right' && 'text-right')}>
+      --
+    </span>
+  )
+}
+
+function ResellerMetricCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  tone,
+}: {
+  label: string
+  value: string
+  sub: string
+  icon: React.ElementType
+  tone: 'blue' | 'slate' | 'emerald' | 'amber'
+}) {
+  const iconClass = {
+    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
+    slate: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-400',
+    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+  }[tone]
+
+  return (
+    <div className="rounded-md border border-black/[.06] bg-white p-4 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+      <div className="mb-2 flex items-start justify-between gap-3">
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
+        <div className={cn('flex h-8 w-8 items-center justify-center rounded-md', iconClass)}>
+          <Icon size={16} />
+        </div>
+      </div>
+      <p className="text-base font-bold tabular-nums text-slate-900 dark:text-white">{value}</p>
+      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{sub}</p>
+    </div>
+  )
+}
+
+function ResellerSummaryCards({ deals }: { deals: ApiDeal[] }) {
+  const summary = buildResellerSummary(deals)
+  const profitPct = summary.totalBilling > 0 ? (summary.grossProfit / summary.totalBilling) * 100 : 0
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <ResellerMetricCard
+          label="Total billing"
+          value={formatPhp(summary.totalBilling)}
+          sub={`${summary.activeDeals.length} active deals`}
+          icon={DollarSign}
+          tone="blue"
+        />
+        <ResellerMetricCard
+          label="Total cost"
+          value={formatPhp(summary.totalCost)}
+          sub="Vendor cost"
+          icon={Package}
+          tone="slate"
+        />
+        <ResellerMetricCard
+          label="Gross profit"
+          value={formatPhp(summary.grossProfit)}
+          sub={`${profitPct.toFixed(1)}% of billing`}
+          icon={TrendingUp}
+          tone="emerald"
+        />
+        <ResellerMetricCard
+          label="Avg margin"
+          value={`${summary.avgMargin.toFixed(1)}%`}
+          sub="Gross margin"
+          icon={Percent}
+          tone="amber"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+        {RESELLER_PRODUCTS.map(product => {
+          const stats = summary.byProduct[product]
+          const count = Math.round(stats.count)
+
+          return (
+            <div key={product} className={cn('rounded-md border px-4 py-3', RESELLER_PRODUCT_CARD_STYLES[product])}>
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-bold">{product}</p>
+                <p className="text-xs text-current/70">
+                  {count} deal{count === 1 ? '' : 's'}
+                </p>
+              </div>
+              <p className="text-base font-bold tabular-nums">{formatPhp(stats.billing)}</p>
+              <p className="mt-1 text-xs text-current/75">{formatPhp(stats.profit)} profit</p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function ResellerPricingTable({ deals }: { deals: ApiDeal[] }) {
+  const totalCost = deals.reduce((sum, deal) => sum + getResellerCostPrice(deal), 0)
+  const totalBilling = deals.reduce((sum, deal) => sum + getResellerBillingPrice(deal), 0)
+  const totalProfit = deals.reduce((sum, deal) => sum + getResellerGrossProfit(deal), 0)
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+      <table className="w-full min-w-[980px] border-collapse text-left">
+        <thead>
+          <tr className="border-b border-black/[.06] bg-slate-50 dark:border-white/[.08] dark:bg-white/[.02]">
+            <th className="px-4 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Deal</th>
+            <th className="px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Product</th>
+            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cost price</th>
+            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Billing price</th>
+            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Gross profit</th>
+            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Margin</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-black/[.04] dark:divide-white/[.04]">
+          {deals.length === 0 ? (
+            <tr>
+              <td colSpan={6} className="px-4 py-10 text-center text-ssm text-slate-400">
+                No reseller deals found
+              </td>
+            </tr>
+          ) : deals.map((deal, index) => {
+            const products = getResellerProducts(deal)
+            const cost = getResellerCostPrice(deal)
+            const billing = getResellerBillingPrice(deal)
+            const profit = getResellerGrossProfit(deal)
+            const margin = getResellerMargin(deal)
+
+            return (
+              <tr
+                key={deal.id}
+                className={cn(
+                  'transition-colors hover:bg-slate-50 dark:hover:bg-white/[.02]',
+                  index % 2 === 0 ? '' : 'bg-slate-50/40 dark:bg-white/[.01]',
+                )}
+              >
+                <td className="px-4 py-2.5">
+                  <Link
+                    href={`/deals/${deal.id}?from=revenue`}
+                    className="group inline-flex max-w-[520px]"
+                  >
+                    <span className="truncate text-ssm font-medium text-slate-800 transition-colors group-hover:text-primary dark:text-slate-200">
+                      {deal.title}
+                    </span>
+                  </Link>
+                </td>
+                <td className="px-3 py-2.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    {products.length > 0
+                      ? products.map(product => <ResellerProductBadge key={product} product={product} />)
+                      : <EmptyValue align="left" />}
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                  {cost > 0 ? formatPhp(cost) : <EmptyValue />}
+                </td>
+                <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-slate-900 dark:text-white">
+                  {billing > 0 ? formatPhp(billing) : <EmptyValue />}
+                </td>
+                <td className={cn(
+                  'px-3 py-2.5 text-right text-ssm font-bold tabular-nums',
+                  profit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600',
+                )}>
+                  {profit > 0 ? formatPhp(profit) : '--'}
+                </td>
+                <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                  {margin !== null ? `${margin.toFixed(1)}%` : <EmptyValue />}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+        <tfoot>
+          <tr className="border-t border-black/[.06] bg-slate-50 dark:border-white/[.06] dark:bg-white/[.03]">
+            <td className="px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-ssm font-bold text-slate-700 dark:text-slate-300">Total</span>
+                <span className="text-xs text-slate-400">{deals.length} deal{deals.length === 1 ? '' : 's'}</span>
+              </div>
+            </td>
+            <td />
+            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-slate-700 dark:text-slate-300">
+              {formatPhp(totalCost)}
+            </td>
+            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-slate-900 dark:text-white">
+              {formatPhp(totalBilling)}
+            </td>
+            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+              {formatPhp(totalProfit)}
+            </td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  )
+}
+
+function ResellerTableTabs({
+  value,
+  onChange,
+}: {
+  value: ResellerTableView
+  onChange: (value: ResellerTableView) => void
+}) {
+  const tabs: { value: ResellerTableView; label: string }[] = [
+    { value: 'pricing', label: 'Deal pricing' },
+    { value: 'mrr', label: 'MRR' },
+  ]
+
+  return (
+    <div className="flex items-center gap-1.5">
+      {tabs.map(tab => (
+        <button
+          key={tab.value}
+          type="button"
+          onClick={() => onChange(tab.value)}
+          className={cn(
+            'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors active:scale-[0.98]',
+            value === tab.value
+              ? 'bg-primary/10 text-primary'
+              : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-[#1e1e21] dark:text-slate-300 dark:hover:bg-white/[.04]',
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function ResellerMonthlyRevenueSection({
+  deals,
+  onMonthSave,
+}: {
+  deals: ApiDeal[]
+  onMonthSave: (dealId: string, monthKey: string, value: number) => void
+}) {
+  const columnTotals = MONTH_KEYS.map(monthKey =>
+    deals.reduce((sum, deal) => sum + dealMonthValue(deal, monthKey), 0)
+  )
+
+  return (
+    <div>
+      <SectionHeader
+        icon={<TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" />}
+        title="Reseller Monthly Revenue"
+        color="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200"
+      />
+      <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+        <table className="w-full min-w-[1120px] border-collapse text-left">
+          <thead>
+            <tr className="border-b border-black/[.06] bg-slate-50 dark:border-white/[.08] dark:bg-white/[.02]">
+              <th className="sticky left-0 z-10 w-[320px] bg-slate-50 px-4 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:bg-[#1a1a1d]">Deal</th>
+              <th className="w-[110px] px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500">Product</th>
+              <th className="w-[90px] px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500">Stage</th>
+              <th className="w-[120px] px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500">Billing</th>
+              <MonthHeaders />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-black/[.04] dark:divide-white/[.04]">
+            {deals.length === 0 ? (
+              <tr>
+                <td colSpan={4 + MONTH_KEYS.length} className="px-4 py-10 text-center text-ssm text-slate-400">
+                  No reseller deals found
+                </td>
+              </tr>
+            ) : deals.map((deal, index) => {
+              const products = getResellerProducts(deal)
+              return (
+                <tr key={deal.id} className={index % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
+                  <td className="sticky left-0 z-10 bg-white px-4 py-2.5 dark:bg-[#1e1e21]">
+                    <Link
+                      href={`/deals/${deal.id}?from=revenue`}
+                      className="flex items-center gap-1 text-ssm font-medium text-slate-800 transition-colors hover:text-primary dark:text-slate-200 dark:hover:text-primary"
+                    >
+                      <span className="max-w-[270px] truncate">{deal.title}</span>
+                      <ChevronRight size={11} className="shrink-0 opacity-50" />
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {products.length > 0
+                        ? products.map(product => <ResellerProductBadge key={product} product={product} />)
+                        : <EmptyValue align="left" />}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5"><StagePill stage={deal.stage} /></td>
+                  <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                    {formatPhp(getResellerBillingPrice(deal))}
+                  </td>
+                  {MONTH_KEYS.map(monthKey => (
+                    <EditableMonthCell key={monthKey} deal={deal} monthKey={monthKey} onSave={onMonthSave} />
+                  ))}
+                </tr>
+              )
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-emerald-200 bg-emerald-50/70 dark:border-emerald-800/50 dark:bg-emerald-950/20">
+              <td colSpan={4} className="sticky left-0 z-10 bg-emerald-50/70 px-4 py-2.5 text-ssm font-semibold text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-300">
+                Reseller Monthly Subtotal
+              </td>
+              {columnTotals.map((total, index) => (
+                <td key={index} className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+                  {total > 0 ? phpFmt(total) : ', '}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
   )
 }
 
@@ -179,12 +710,14 @@ function MonthHeaders() {
 
 function ProjectRevenueSection({
   deals,
-  userMap,
   onMonthSave,
+  onBillingClick,
+  userById,
 }: {
   deals: ApiDeal[]
-  userMap: Map<string, string>
   onMonthSave: (dealId: string, monthKey: string, value: number) => void
+  onBillingClick: (deal: ApiDeal) => void
+  userById: Map<string, ApiUser>
 }) {
   const projectDeals = deals.filter(d => !d.servicesTags?.includes(STARTUP_TAG) && !d.servicesTags?.includes(EXISTING_TAG))
   if (projectDeals.length === 0) return null
@@ -204,10 +737,10 @@ function ProjectRevenueSection({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Project / Deal</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[70px]">Owner</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[70px]">Stage</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right w-[100px]">Value</th>
+              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Project / Deal</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Owner</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Stage</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[100px]">Value</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -221,7 +754,6 @@ function ProjectRevenueSection({
             ) : (
               projectDeals.map((deal, i) => {
                 const v = numVal(deal.value)
-                const am = userMap.get(deal.assignedTo ?? '') ?? 'Unassigned'
                 return (
                   <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
                     <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
@@ -233,10 +765,10 @@ function ProjectRevenueSection({
                         <ChevronRight size={11} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5 text-ssm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {am.split(' ')[0]}
+                    <td className="px-3 py-2.5 whitespace-nowrap">
+                      <OwnerCell user={deal.assignedTo ? userById.get(deal.assignedTo) : undefined} />
                     </td>
-                    <td className="px-3 py-2.5">{stageBadge(deal.stage)}</td>
+                    <td className="px-3 py-2.5"><StagePill stage={deal.stage} /></td>
                     <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
                       {v > 0 ? (
                         <div>
@@ -246,9 +778,7 @@ function ProjectRevenueSection({
                           )}
                         </div>
                       ) : (
-                        <Link href={`/deals/${deal.id}?from=revenue`} className="text-amber-500 hover:text-amber-600 text-atom">
-                          + Add
-                        </Link>
+                        <AddRevenueIconButton onClick={() => onBillingClick(deal)} />
                       )}
                     </td>
                     {MONTH_KEYS.map(mk => (
@@ -281,12 +811,14 @@ function ProjectRevenueSection({
 
 function StartupRevenueSection({
   deals,
-  userMap,
   onMonthSave,
+  onBillingClick,
+  userById,
 }: {
   deals: ApiDeal[]
-  userMap: Map<string, string>
   onMonthSave: (dealId: string, monthKey: string, value: number) => void
+  onBillingClick: (deal: ApiDeal) => void
+  userById: Map<string, ApiUser>
 }) {
   const startupDeals = deals.filter(d => d.servicesTags?.includes(STARTUP_TAG))
   if (startupDeals.length === 0) return null
@@ -300,7 +832,6 @@ function StartupRevenueSection({
   function DealRow({ deal, i }: { deal: ApiDeal; i: number }) {
     const mrr = numVal(deal.mrr)
     const otf = numVal(deal.oneTimeFee)
-    const am = userMap.get(deal.assignedTo ?? '') ?? 'Unassigned'
 
     return (
       <tr className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
@@ -313,18 +844,16 @@ function StartupRevenueSection({
             <ChevronRight size={11} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
           </Link>
         </td>
-        <td className="px-3 py-2.5 text-ssm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-          {am.split(' ')[0]}
+        <td className="px-3 py-2.5 whitespace-nowrap">
+          <OwnerCell user={deal.assignedTo ? userById.get(deal.assignedTo) : undefined} />
         </td>
-        <td className="px-3 py-2.5">{stageBadge(deal.stage)}</td>
+        <td className="px-3 py-2.5"><StagePill stage={deal.stage} /></td>
         <td className="px-3 py-2.5 text-right text-ssm tabular-nums text-slate-500 dark:text-slate-400">
           {otf > 0 ? phpFmt(otf) : ', '}
         </td>
         <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
           {mrr > 0 ? phpFmt(mrr) : (
-            <Link href={`/deals/${deal.id}?from=revenue`} className="text-amber-500 hover:text-amber-600 text-atom">
-              + Add
-            </Link>
+            <AddRevenueIconButton onClick={() => onBillingClick(deal)} />
           )}
         </td>
         {MONTH_KEYS.map(mk => (
@@ -355,11 +884,11 @@ function StartupRevenueSection({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[70px]">Owner</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[70px]">Stage</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right w-[100px]">One-Time</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right w-[90px]">MRR</th>
+              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Owner</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Stage</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[112px] whitespace-nowrap">One-Time</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[90px] whitespace-nowrap">MRR</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -418,8 +947,8 @@ function ExistingClientsSection({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
-              <th className="px-3 py-2.5 text-xxs font-semibold text-slate-500 uppercase tracking-wider text-right w-[110px]">MRR</th>
+              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
+              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[110px]">MRR</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -480,6 +1009,8 @@ type RevenueGenerationProps = {
   catalogItemId?: string
 }
 
+type ResellerTableView = 'pricing' | 'mrr'
+
 export function RevenueGeneration({ catalogProductType, catalogItemId }: RevenueGenerationProps = {}) {
   const { data: rawDeals = [], isLoading } = useGetDeals()
   const isFiltered = !!catalogProductType || !!catalogItemId
@@ -491,15 +1022,18 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
   }, [rawDeals, catalogProductType, catalogItemId])
   const { data: allUsers = [] } = useGetUsers()
   const qc = useQueryClient()
+  const [resellerTableView, setResellerTableView] = useState<ResellerTableView>('pricing')
+  const [billingDeal, setBillingDeal] = useState<ApiDeal | null>(null)
 
   const updateDeal = useUpdateDeal({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.deals.all })
     },
   })
+  const upsertBilling = useUpsertBilling()
 
-  const userMap = useMemo(() => {
-    return new Map(allUsers.map(u => [u.id, u.name]))
+  const userById = useMemo(() => {
+    return new Map(allUsers.map(u => [u.id, u]))
   }, [allUsers])
 
   // Exclude parked + lost
@@ -535,6 +1069,19 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
 
     updateDeal.mutate({ id: dealId, data: { monthlyRevenue } as any })
   }, [allDeals, qc, updateDeal])
+
+  const handleBillingSave = useCallback((dealId: string, data: UpsertBillingInput) => {
+    upsertBilling.mutate(
+      { dealId, data },
+      {
+        onSuccess: () => {
+          qc.invalidateQueries({ queryKey: queryKeys.billing.byDeal(dealId) })
+          qc.invalidateQueries({ queryKey: queryKeys.deals.all })
+          setBillingDeal(null)
+        },
+      },
+    )
+  }, [qc, upsertBilling])
 
   // Totals (per-month aware)
   const projectSubtotal = useMemo(() => {
@@ -572,47 +1119,47 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
     )
   }
 
+  if (catalogProductType === 'reseller') {
+    const resellerDeals = allDeals.filter(isActiveResellerDeal)
+
+    return (
+      <div className="p-6 max-w-[1600px] mx-auto flex flex-col gap-3">
+        <ResellerSummaryCards deals={allDeals} />
+        <ResellerTableTabs value={resellerTableView} onChange={setResellerTableView} />
+        {resellerTableView === 'pricing' ? (
+          <ResellerPricingTable deals={resellerDeals} />
+        ) : (
+          <ResellerMonthlyRevenueSection deals={resellerDeals} onMonthSave={handleMonthSave} />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto flex flex-col gap-6">
-      {/* Page header — All view only. When a tab/sub-tab filters the data
-          the banner is just chrome and the tabs already make context obvious. */}
-      {!isFiltered && (
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <TrendingUp size={20} className="text-primary" />
-              Revenue Generation
-            </h1>
-            <p className="text-ssm text-slate-500 dark:text-slate-400 mt-0.5">
-              Monthly forecast across project and startup revenue streams. Click any month cell to edit.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Summary cards + progress bar — only shown on the All tab.
           When the user drills into a specific catalog category/item, the
           target/gap framing is no longer meaningful (target = full-org). */}
       {!isFiltered && (<>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider mb-1">Target / Month</div>
+          <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Target / Month</div>
           <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{'₱'}22,000,000</div>
         </div>
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-xxs font-semibold text-teal-500 uppercase tracking-wider mb-1">Project Revenue / Mo</div>
+          <div className="text-atom font-semibold text-teal-500 uppercase tracking-wide mb-1">Project Revenue / Mo</div>
           <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(projectSubtotal)}</div>
         </div>
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-xxs font-semibold text-violet-500 uppercase tracking-wider mb-1">Startup MRR</div>
+          <div className="text-atom font-semibold text-violet-500 uppercase tracking-wide mb-1">Startup MRR</div>
           <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(startupSubtotal)}</div>
         </div>
         <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-xxs font-semibold text-amber-500 uppercase tracking-wider mb-1">Existing Clients</div>
+          <div className="text-atom font-semibold text-amber-500 uppercase tracking-wide mb-1">Existing Clients</div>
           <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(existingSubtotal)}</div>
         </div>
         <div className={`rounded-xl border p-4 ${gap < 0 ? 'border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20' : 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/20'}`}>
-          <div className={`text-xxs font-semibold uppercase tracking-wider mb-1 ${gap < 0 ? 'text-red-400' : 'text-emerald-500'}`}>
+          <div className={`text-atom font-semibold uppercase tracking-wide mb-1 ${gap < 0 ? 'text-red-400' : 'text-emerald-500'}`}>
             {gap < 0 ? 'Gap to Target' : 'Surplus'}
           </div>
           <div className={`text-xl font-bold tabular-nums ${gap < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
@@ -658,10 +1205,20 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
       </>)}
 
       {/* Section A */}
-      <ProjectRevenueSection deals={activeDeals} userMap={userMap} onMonthSave={handleMonthSave} />
+      <ProjectRevenueSection
+        deals={activeDeals}
+        userById={userById}
+        onMonthSave={handleMonthSave}
+        onBillingClick={setBillingDeal}
+      />
 
       {/* Section B */}
-      <StartupRevenueSection deals={activeDeals} userMap={userMap} onMonthSave={handleMonthSave} />
+      <StartupRevenueSection
+        deals={activeDeals}
+        userById={userById}
+        onMonthSave={handleMonthSave}
+        onBillingClick={setBillingDeal}
+      />
 
       {/* Section C */}
       <ExistingClientsSection deals={activeDeals} onMonthSave={handleMonthSave} />
@@ -707,6 +1264,15 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
         Click any month cell to enter a custom amount. Blue values = custom override; white = auto-calculated.
         Revenue uses monthly overrides first, then MRR, then value / contract length, then value / 12.
       </p>
+
+      {billingDeal && (
+        <RevenueBillingModal
+          deal={billingDeal}
+          onClose={() => setBillingDeal(null)}
+          onSave={handleBillingSave}
+          isSaving={upsertBilling.isPending}
+        />
+      )}
     </div>
   )
 }
