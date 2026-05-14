@@ -27,8 +27,6 @@ import {
   Moon,
   BookMarked,
   Mic,
-  ShoppingBag,
-  DollarSign,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -74,13 +72,6 @@ function getNavSections(dormantCount: number): NavSection[] {
         { path: '/wiki', label: 'Wiki', icon: BookMarked },
         { path: '/inbox', label: 'Inbox', icon: Mail },
         { path: '/recordings', label: 'Recordings', icon: Mic },
-      ],
-    },
-    {
-      title: 'Reseller',
-      items: [
-        // Pipeline merged into the main /pipeline tabs (catalog parent-type).
-        { path: '/reseller/revenue', label: 'Revenue', icon: DollarSign },
       ],
     },
     {

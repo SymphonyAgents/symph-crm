@@ -255,9 +255,9 @@ function RevenueBillingModal({
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogPortal>
-        <DialogOverlay className="z-40 bg-black/60 backdrop-blur-[2px]" />
+        <DialogOverlay className="z-40 bg-black/45" />
         <DialogPrimitive.Content
-          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] mx-4 animate-in zoom-in-95 fade-in-0 duration-200 data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0"
+          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0 data-[state=closed]:duration-100 data-[state=closed]:ease-in"
           onOpenAutoFocus={event => event.preventDefault()}
         >
           <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
