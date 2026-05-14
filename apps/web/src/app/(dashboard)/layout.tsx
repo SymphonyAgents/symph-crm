@@ -1,8 +1,10 @@
 'use client'
 
+import { Suspense } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { AuthUserProvider } from '@/lib/auth-context'
 import { CrmShell } from '@/components/CrmShell'
+import { ChangelogDialog } from '@/components/ChangelogDialog'
 import { ChatTypingProvider } from '@/lib/chat-typing-context'
 import { ChatSidebarProvider } from '@/lib/chat-sidebar-context'
 
@@ -26,6 +28,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <ChatTypingProvider>
           <ChatSidebarProvider>
             <CrmShell>{children}</CrmShell>
+            <Suspense>
+              <ChangelogDialog />
+            </Suspense>
           </ChatSidebarProvider>
         </ChatTypingProvider>
       </AuthUserProvider>

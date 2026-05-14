@@ -5,7 +5,7 @@ import { useGetAuditLogs, useGetUsers } from '@/lib/hooks/queries'
 import { type ColumnDef } from '@tanstack/react-table'
 import { DataTable, SortableHeader, DataTableSkeleton } from './ui/data-table'
 import { Avatar } from './Avatar'
-import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react'
 import {
   Select,
   SelectTrigger,
@@ -22,6 +22,7 @@ import {
 } from './ui/dialog'
 import { formatFullDate, describeAuditDetails, userDisplayName } from '@/lib/utils'
 import { AUDIT_ACTION_CONFIG, ENTITY_LABEL, AUDIT_PAGE_SIZE } from '@/lib/constants'
+import { CHANGELOG_OPEN_EVENT } from '@/lib/changelog-config'
 import type { AuditLogEntry, AuditLogsResponse, ApiUser } from '@/lib/types'
 
 // ── Column definitions ──────────────────────────────────────────────────────
@@ -126,9 +127,17 @@ const columns: ColumnDef<AuditLogEntry>[] = [
   },
 ]
 
-// ── Component ────────────────────────────────────────────────────────────────
-
 export function AuditLogs() {
+  return (
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
+      <AuditTab />
+    </div>
+  )
+}
+
+// ── Audit tab (existing implementation) ──────────────────────────────────────
+
+function AuditTab() {
   const [search, setSearch] = useState('')
   const [entityFilter, setEntityFilter] = useState<string>('all')
   const [actionFilter, setActionFilter] = useState<string>('all')
@@ -165,8 +174,12 @@ export function AuditLogs() {
 
   const resetPage = () => setPage(0)
 
+  function openChangeLog() {
+    window.dispatchEvent(new Event(CHANGELOG_OPEN_EVENT))
+  }
+
   return (
-    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
+    <>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
         <div>
@@ -177,6 +190,15 @@ export function AuditLogs() {
         </div>
 
         <div className="sm:ml-auto flex flex-wrap gap-2 items-center">
+          <button
+            type="button"
+            onClick={openChangeLog}
+            className="h-8 px-3 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold bg-[rgba(108,99,255,0.10)] text-primary hover:bg-[rgba(108,99,255,0.16)] dark:bg-[rgba(108,99,255,0.16)] dark:hover:bg-[rgba(108,99,255,0.22)] transition-colors"
+          >
+            <Sparkles size={13} />
+            View change logs
+          </button>
+
           {/* Search */}
           <div className="relative flex-1 sm:flex-none sm:w-[200px] min-w-[140px]">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -378,6 +400,6 @@ export function AuditLogs() {
           })()}
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
