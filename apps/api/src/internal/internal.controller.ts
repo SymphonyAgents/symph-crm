@@ -13,6 +13,7 @@ import {
   HttpCode,
   HttpStatus,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { InternalService } from './internal.service'
@@ -167,6 +168,49 @@ export class InternalController {
     const performedBy = (headers['x-performed-by'] as string) || undefined
     const performerName = (headers['x-performed-by-name'] as string) || undefined
     return { performedBy, performerName, source: 'aria' as const }
+  }
+
+  private isProposalHtmlDocument(body: {
+    type?: string
+    title?: string
+    content?: string
+    storagePath?: string
+    contentType?: string
+    metadata?: unknown
+    [key: string]: unknown
+  }): boolean {
+    const metadata = body.metadata && typeof body.metadata === 'object'
+      ? body.metadata as Record<string, unknown>
+      : {}
+    const title = String(body.title ?? '').toLowerCase()
+    const storagePath = String(body.storagePath ?? metadata.storagePath ?? '').toLowerCase()
+    const contentType = String(body.contentType ?? metadata.contentType ?? '').toLowerCase()
+    const content = String(body.content ?? '').trimStart().toLowerCase()
+    const looksLikeHtml = content.startsWith('<!doctype html') || content.startsWith('<html')
+    const looksLikeProposalFile = storagePath.startsWith('sell/') && storagePath.endsWith('.html')
+    const looksLikeCanonicalProposal = /^[a-z0-9]+(?:-[a-z0-9]+)*-[a-z0-9]+(?:-[a-z0-9]+)*-001$/i.test(title)
+
+    return body.type === 'proposal' && (
+      looksLikeHtml
+      || contentType.includes('text/html')
+      || looksLikeProposalFile
+      || looksLikeCanonicalProposal
+    )
+  }
+
+  private assertNotProposalHtmlDocument(body: {
+    type?: string
+    title?: string
+    content?: string
+    storagePath?: string
+    contentType?: string
+    metadata?: unknown
+    [key: string]: unknown
+  }) {
+    if (!this.isProposalHtmlDocument(body)) return
+    throw new BadRequestException(
+      'Proposal HTML must be uploaded through POST /api/deals/{dealId}/proposals, not the generic documents endpoint.',
+    )
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -682,6 +726,7 @@ export class InternalController {
     },
   ) {
     const { performedBy } = this.resolvePerformer(headers)
+    this.assertNotProposalHtmlDocument(body)
 
     // Resolve authorId: body → header → DB lookup → hard fallback
     let authorId = body.authorId ?? performedBy
