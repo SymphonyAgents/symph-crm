@@ -244,15 +244,16 @@ export class InternalController {
     })
   }
 
-  /** GET /api/internal/deals/:id — Full deal + context.md + activities + documents */
+  /** GET /api/internal/deals/:id, Full deal + context.md + activities + documents + UI notes */
   @Get('deals/:id')
   async getDeal(@Param('id') id: string) {
     const deal = await this.deals.findOne(id)
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
 
-    const [dealDocs, recentActivities] = await Promise.all([
+    const [dealDocs, recentActivities, notes] = await Promise.all([
       this.documents.findByDeal(id),
       this.activities.findByDeal(id, 20),
+      this.dealNotes.getNotesFlat(id),
     ])
 
     const contextDoc = dealDocs.find((d) => d.type === 'context')
@@ -261,7 +262,7 @@ export class InternalController {
       contextMarkdown = await this.documents.readContent(contextDoc.id).catch(() => null)
     }
 
-    return { deal, contextMarkdown, documents: dealDocs, recentActivities }
+    return { deal, contextMarkdown, documents: dealDocs, recentActivities, notes }
   }
 
   /** POST /api/internal/deals — Create a new deal */
@@ -379,13 +380,19 @@ export class InternalController {
     return { ok: true, note, url: this.crmUrl('deal', id) }
   }
 
-  /** GET /api/internal/deals/:id/notes — Get all notes flat */
+  /** GET /api/internal/deals/:id/notes, Get all UI notes flat */
   @Get('deals/:id/notes')
   async getDealNotes(@Param('id') id: string) {
     return this.dealNotes.getNotesFlat(id)
   }
 
-  /** GET /api/internal/deals/:id/summaries — List all summaries */
+  /** GET /api/internal/deals/:id/notes/flat, Explicit flat alias for API consumers */
+  @Get('deals/:id/notes/flat')
+  async getDealNotesFlat(@Param('id') id: string) {
+    return this.dealNotes.getNotesFlat(id)
+  }
+
+  /** GET /api/internal/deals/:id/summaries, List all summaries */
   @Get('deals/:id/summaries')
   async listDealSummaries(@Param('id') id: string) {
     return this.dealNotes.listSummaries(id)

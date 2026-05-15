@@ -211,15 +211,16 @@ export class OwnerController {
     })
   }
 
-  /** GET /api/owner/deals/:id — Full deal + context.md + activities + documents */
+  /** GET /api/owner/deals/:id, Full deal + context.md + activities + documents + UI notes */
   @Get('deals/:id')
   async getDeal(@Param('id') id: string) {
     const deal = await this.deals.findOne(id)
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
 
-    const [dealDocs, recentActivities] = await Promise.all([
+    const [dealDocs, recentActivities, notes] = await Promise.all([
       this.documents.findByDeal(id),
       this.activities.findByDeal(id, 20),
+      this.dealNotes.getNotesFlat(id),
     ])
 
     const contextDoc = dealDocs.find((d: any) => d.type === 'context')
@@ -228,7 +229,7 @@ export class OwnerController {
       contextMarkdown = await this.documents.readContent(contextDoc.id).catch(() => null)
     }
 
-    return { deal, contextMarkdown, documents: dealDocs, recentActivities }
+    return { deal, contextMarkdown, documents: dealDocs, recentActivities, notes }
   }
 
   /** POST /api/owner/deals — Create a new deal */
@@ -325,13 +326,19 @@ export class OwnerController {
   // Deal Notes & Summaries
   // ═══════════════════════════════════════════════════════════════════════════
 
-  /** GET /api/owner/deals/:id/notes — Get all notes flat */
+  /** GET /api/owner/deals/:id/notes, Get all UI notes flat */
   @Get('deals/:id/notes')
   async getDealNotes(@Param('id') id: string) {
     return this.dealNotes.getNotesFlat(id)
   }
 
-  /** POST /api/owner/deals/:id/notes — Create a note */
+  /** GET /api/owner/deals/:id/notes/flat, Explicit flat alias for API consumers */
+  @Get('deals/:id/notes/flat')
+  async getDealNotesFlat(@Param('id') id: string) {
+    return this.dealNotes.getNotesFlat(id)
+  }
+
+  /** POST /api/owner/deals/:id/notes, Create a note */
   @Post('deals/:id/notes')
   @HttpCode(HttpStatus.OK)
   async createDealNote(
