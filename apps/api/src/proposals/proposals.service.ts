@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
+import { Injectable, Inject, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
 import { proposals, proposalVersions, proposalShareLinks } from '@symph-crm/database'
@@ -30,75 +30,11 @@ import type { CreateShareLinkDto } from './dto/create-share-link.dto'
 const HTML_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 @Injectable()
-export class ProposalsService implements OnModuleInit {
-  private readonly logger = new Logger(ProposalsService.name)
-
+export class ProposalsService {
   constructor(
     @Inject(DB) private db: Database,
     private auditLogs: AuditLogsService,
   ) {}
-
-  // ── Boot migration ────────────────────────────────────────────────────────
-
-  async onModuleInit() {
-    try {
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposals (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          workspace_id UUID REFERENCES workspaces(id),
-          deal_id UUID REFERENCES deals(id) ON DELETE SET NULL,
-          title TEXT NOT NULL,
-          current_version INTEGER NOT NULL DEFAULT 1,
-          is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-          created_by TEXT NOT NULL REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          deleted_at TIMESTAMPTZ
-        )
-      `)
-
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposal_versions (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_id UUID NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,
-          version INTEGER NOT NULL,
-          html TEXT NOT NULL,
-          change_note TEXT,
-          excerpt TEXT,
-          word_count INTEGER DEFAULT 0,
-          pdf_storage_path TEXT,
-          author_id TEXT NOT NULL REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `)
-      await this.db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS proposal_versions_proposal_id_version_key ON proposal_versions(proposal_id, version)`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposal_versions_proposal ON proposal_versions(proposal_id)`)
-
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposal_share_links (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_version_id UUID NOT NULL REFERENCES proposal_versions(id) ON DELETE CASCADE,
-          token TEXT NOT NULL UNIQUE,
-          expires_at TIMESTAMPTZ,
-          view_count INTEGER NOT NULL DEFAULT 0,
-          last_viewed_at TIMESTAMPTZ,
-          created_by TEXT REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          revoked_at TIMESTAMPTZ
-        )
-      `)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_share_links_version ON proposal_share_links(proposal_version_id) WHERE revoked_at IS NULL`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_share_links_token ON proposal_share_links(token) WHERE revoked_at IS NULL`)
-
-      // Indexes for the most common reads
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposals_deal ON proposals(deal_id) WHERE deleted_at IS NULL`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposals_updated ON proposals(updated_at DESC) WHERE deleted_at IS NULL`)
-
-      this.logger.log('Proposals schema ready (proposals, proposal_versions, proposal_share_links)')
-    } catch (err: any) {
-      this.logger.error(`Boot migration failed: ${err.message}`)
-    }
-  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -115,6 +51,19 @@ export class ProposalsService implements OnModuleInit {
 
   private newToken(): string {
     return randomBytes(24).toString('base64url') // 32 chars, ~190 bits entropy
+  }
+
+  private titleBase(title: string): string {
+    return title
+      .trim()
+      .replace(/\.html?$/i, '')
+      .replace(/\s+v\d+$/i, '')
+      .replace(/-\d{3}$/i, '')
+      .trim()
+  }
+
+  private titleForVersion(baseTitle: string, version: number): string {
+    return `${this.titleBase(baseTitle)}-${String(version).padStart(3, '0')}`
   }
 
   // ── List / read ───────────────────────────────────────────────────────────
@@ -235,13 +184,65 @@ export class ProposalsService implements OnModuleInit {
   async create(dealId: string, dto: CreateProposalDto, authorId: string, workspaceId?: string) {
     if (!dto.title?.trim()) throw new BadRequestException('title is required')
     this.validateHtml(dto.html)
+    const titleBase = this.titleBase(dto.title)
+    if (!titleBase) throw new BadRequestException('title is required')
     const { excerpt, wordCount } = StorageService.extractHtmlExcerpt(dto.html)
 
     const created = await this.db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(proposals)
+        .where(and(
+          eq(proposals.dealId, dealId),
+          isNull(proposals.deletedAt),
+          sql`
+            btrim(
+              regexp_replace(
+                regexp_replace(
+                  regexp_replace(${proposals.title}, '\\.html?$', '', 'i'),
+                  '\\s+v[0-9]+$',
+                  '',
+                  'i'
+                ),
+                '-[0-9]{3}$',
+                '',
+                'i'
+              )
+            ) = ${titleBase}
+          `,
+        ))
+        .orderBy(desc(proposals.currentVersion), desc(proposals.updatedAt))
+        .limit(1)
+        .for('update')
+
+      if (existing) {
+        const nextVersion = existing.currentVersion + 1
+        const [v] = await tx.insert(proposalVersions).values({
+          proposalId: existing.id,
+          version: nextVersion,
+          html: dto.html,
+          changeNote: dto.changeNote?.trim() || `Revision ${nextVersion}`,
+          excerpt,
+          wordCount,
+          authorId,
+        }).returning()
+
+        const [p] = await tx.update(proposals)
+          .set({
+            title: this.titleForVersion(existing.title, nextVersion),
+            currentVersion: nextVersion,
+            updatedAt: new Date(),
+          })
+          .where(eq(proposals.id, existing.id))
+          .returning()
+
+        return { p, v, createdNewChain: false }
+      }
+
       const [p] = await tx.insert(proposals).values({
         workspaceId: workspaceId ?? null,
         dealId,
-        title: dto.title.trim(),
+        title: this.titleForVersion(titleBase, 1),
         currentVersion: 1,
         createdBy: authorId,
       }).returning()
@@ -256,16 +257,21 @@ export class ProposalsService implements OnModuleInit {
         authorId,
       }).returning()
 
-      return { p, v }
+      return { p, v, createdNewChain: true }
     })
 
     this.auditLogs.log({
-      action: 'create',
-      auditType: 'proposal_created',
+      action: created.createdNewChain ? 'create' : 'update',
+      auditType: created.createdNewChain ? 'proposal_created' : 'proposal_updated',
       entityType: 'proposal',
       entityId: created.p.id,
       performedBy: authorId,
-      details: { title: created.p.title, dealId, version: 1 },
+      details: {
+        title: created.p.title,
+        dealId,
+        version: created.v.version,
+        createdNewChain: created.createdNewChain,
+      },
     }).catch(() => {})
 
     return {
@@ -273,7 +279,7 @@ export class ProposalsService implements OnModuleInit {
       title: created.p.title,
       dealId: created.p.dealId,
       isPinned: created.p.isPinned,
-      currentVersion: 1,
+      currentVersion: created.p.currentVersion,
       version: this.toVersionItem(created.v, true),
     }
   }
@@ -303,7 +309,11 @@ export class ProposalsService implements OnModuleInit {
       }).returning()
 
       await tx.update(proposals)
-        .set({ currentVersion: nextVersion, updatedAt: new Date() })
+        .set({
+          title: this.titleForVersion(p.title, nextVersion),
+          currentVersion: nextVersion,
+          updatedAt: new Date(),
+        })
         .where(eq(proposals.id, proposalId))
 
       return { p, v }
@@ -323,7 +333,15 @@ export class ProposalsService implements OnModuleInit {
 
   async updateMeta(proposalId: string, dto: UpdateProposalDto, performedBy?: string) {
     const set: Partial<typeof proposals.$inferInsert> = { updatedAt: new Date() }
-    if (dto.title !== undefined) set.title = dto.title.trim()
+    if (dto.title !== undefined) {
+      const [current] = await this.db.select({ currentVersion: proposals.currentVersion })
+        .from(proposals)
+        .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+      if (!current) throw new NotFoundException(`Proposal ${proposalId} not found`)
+      const titleBase = this.titleBase(dto.title)
+      if (!titleBase) throw new BadRequestException('title is required')
+      set.title = this.titleForVersion(titleBase, current.currentVersion)
+    }
     if (dto.isPinned !== undefined) set.isPinned = dto.isPinned
 
     const [p] = await this.db.update(proposals).set(set)

@@ -187,7 +187,7 @@ export default function CatalogPage() {
     <div className="p-4 md:px-6 pb-6 w-full">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-base font-semibold text-slate-900 dark:text-white">Catalog</h1>
+          <h1 className="text-ssm font-semibold text-slate-900 dark:text-white">Catalog</h1>
           <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
             Manage internal products, service offerings, and reseller partners
           </p>
