@@ -66,11 +66,63 @@ function extractTimestamp(filename: string): number {
   const leadingMatch = filename.match(/^(\d{10,})/)
   if (leadingMatch) return parseInt(leadingMatch[1], 10)
 
+  // Support UTC note names from CRM ingest (e.g. "20260515T104105Z-meeting.md")
+  const compactUtcMatch = filename.match(/(\d{8}T\d{6}Z)/)
+  if (compactUtcMatch) {
+    const raw = compactUtcMatch[1]
+    const iso = `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}T${raw.slice(9, 11)}:${raw.slice(11, 13)}:${raw.slice(13, 15)}Z`
+    const parsed = Date.parse(iso)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+
+  // Support dashed UTC note names from CRM ingest (e.g. "notes-2026-05-01T054646Z.md")
+  const dashedUtcMatch = filename.match(/(\d{4}-\d{2}-\d{2}T\d{6}Z)/)
+  if (dashedUtcMatch) {
+    const raw = dashedUtcMatch[1]
+    const iso = `${raw.slice(0, 13)}:${raw.slice(13, 15)}:${raw.slice(15, 17)}Z`
+    const parsed = Date.parse(iso)
+    if (!Number.isNaN(parsed)) return parsed
+  }
+
   // Fallback: digits after a prefix (e.g. "general-1775524712214.md")
   const trailingMatch = filename.match(/(\d{10,})/)
   if (trailingMatch) return parseInt(trailingMatch[1], 10)
 
   return 0
+}
+
+function extractFrontmatter(content: string): string | null {
+  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
+  return fmMatch ? fmMatch[1] : null
+}
+
+function extractFrontmatterValue(content: string, key: string): string | null {
+  const frontmatter = extractFrontmatter(content)
+  if (!frontmatter) return null
+
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = frontmatter.match(new RegExp(`^${escapedKey}:\\s*(.+)$`, 'm'))
+  if (!match) return null
+
+  const value = match[1].trim().replace(/^['"]|['"]$/g, '')
+  return value || null
+}
+
+function parseDateToTimestamp(value: string | null): number {
+  if (!value) return 0
+
+  const parsed = Date.parse(value)
+  return Number.isNaN(parsed) ? 0 : parsed
+}
+
+function extractNoteTimestamp(filename: string, content: string): number {
+  return (
+    parseDateToTimestamp(extractFrontmatterValue(content, 'createdAt')) ||
+    parseDateToTimestamp(extractFrontmatterValue(content, 'created_at')) ||
+    parseDateToTimestamp(extractFrontmatterValue(content, 'submitted_at')) ||
+    parseDateToTimestamp(extractFrontmatterValue(content, 'submittedAt')) ||
+    extractTimestamp(filename)
+  )
 }
 
 /**
@@ -126,7 +178,7 @@ function fileToNfsDealNote(
   category: string,
   dealId: string,
 ): NfsDealNote {
-  const ts = extractTimestamp(filename)
+  const ts = extractNoteTimestamp(filename, content)
   const isoDate = ts ? new Date(ts).toISOString() : new Date(0).toISOString()
   return {
     id: filename.replace(/\.md$/, ''),
@@ -237,7 +289,7 @@ export class DealNotesService {
         files.map(async (filename) => {
           const filePath = path.join(catDir, filename)
           const content = await fs.promises.readFile(filePath, 'utf-8')
-          const createdAt = extractTimestamp(filename)
+          const createdAt = extractNoteTimestamp(filename, content)
           return { filename, content, createdAt }
         }),
       )
