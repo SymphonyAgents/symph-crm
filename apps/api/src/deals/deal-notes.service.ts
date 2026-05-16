@@ -2,6 +2,7 @@ import { Injectable, Inject, NotFoundException, BadRequestException, Logger } fr
 import { ConfigService } from '@nestjs/config'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as crypto from 'crypto'
 import { eq } from 'drizzle-orm'
 import { deals } from '@symph-crm/database'
 import { DB } from '../database/database.module'
@@ -162,14 +163,35 @@ function extractExcerpt(content: string): string | null {
 /**
  * Build an NfsDealNote from a file on disk.
  */
-// Parse authorId from YAML frontmatter if present
+// Parse author attribution from YAML frontmatter if present.
 function extractAuthorId(content: string): string | null {
-  const fmMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
-  if (!fmMatch) return null
-  const authorMatch = fmMatch[1].match(/authorId:\s*(.+)/)
-  if (!authorMatch) return null
-  const val = authorMatch[1].trim()
-  return val && val !== 'null' ? val : null
+  const value =
+    extractFrontmatterValue(content, 'authorId') ??
+    extractFrontmatterValue(content, 'crm_user_id') ??
+    extractFrontmatterValue(content, 'crmUserId') ??
+    extractFrontmatterValue(content, 'user_id')
+
+  return value && value !== 'null' ? value : null
+}
+
+function contentHash(content: string): string {
+  return crypto.createHash('sha256').update(content).digest('hex')
+}
+
+function isTimestampedCrmIngestFile(filename: string): boolean {
+  return /^\d{8}T\d{6}Z-/.test(filename)
+}
+
+function preferNoteCandidate(current: NfsDealNote, candidate: NfsDealNote): NfsDealNote {
+  if (isTimestampedCrmIngestFile(candidate.filename) && !isTimestampedCrmIngestFile(current.filename)) {
+    return candidate
+  }
+
+  if (!isTimestampedCrmIngestFile(candidate.filename) && isTimestampedCrmIngestFile(current.filename)) {
+    return current
+  }
+
+  return candidate.filename.localeCompare(current.filename) < 0 ? candidate : current
 }
 
 function fileToNfsDealNote(
@@ -325,9 +347,9 @@ export class DealNotesService {
 
   async getNotesFlat(dealId: string): Promise<NfsDealNote[]> {
     const dealDir = path.join(this.basePath, 'deals', dealId)
-    const allNotes: NfsDealNote[] = []
+    const notesByContent = new Map<string, NfsDealNote>()
 
-    if (!fs.existsSync(dealDir)) return allNotes
+    if (!fs.existsSync(dealDir)) return []
 
     for (const category of NOTE_CATEGORIES) {
       const catDir = path.join(dealDir, category)
@@ -343,8 +365,14 @@ export class DealNotesService {
         }),
       )
 
-      allNotes.push(...notes)
+      for (const note of notes) {
+        const key = contentHash(note.content)
+        const existing = notesByContent.get(key)
+        notesByContent.set(key, existing ? preferNoteCandidate(existing, note) : note)
+      }
     }
+
+    const allNotes = Array.from(notesByContent.values())
 
     // Sort newest first by createdAt
     allNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
