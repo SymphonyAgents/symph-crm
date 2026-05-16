@@ -18,7 +18,7 @@
  * modals, and downloads so proposals can either open print or save a PDF.
  */
 
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { useGetProposalHead } from '@/lib/hooks/queries'
 import { useSaveProposalVersion } from '@/lib/hooks/mutations'
@@ -56,6 +56,17 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
   const [isEditing, setIsEditing] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const saveVersion = useSaveProposalVersion()
+
+  useEffect(() => {
+    if (!data?.title) return
+
+    const previousTitle = document.title
+    document.title = data.title
+
+    return () => {
+      document.title = previousTitle
+    }
+  }, [data?.title])
 
   function handleEnterEdit() {
     setIsEditing(true)
