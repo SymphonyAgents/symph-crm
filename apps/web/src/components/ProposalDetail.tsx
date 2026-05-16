@@ -14,8 +14,8 @@
  *   │                                                          │
  *   └──────────────────────────────────────────────────────────┘
  *
- * "Download as PDF" calls iframe.contentWindow.print() — the iframe
- * sandbox includes allow-modals so the browser's print dialog can open.
+ * Proposal HTML owns its export behavior. The iframe sandbox allows scripts,
+ * modals, and downloads so proposals can either open print or save a PDF.
  */
 
 import { useState, useRef } from 'react'
@@ -239,10 +239,11 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
           title={data.title}
           // Edit mode: add allow-same-origin so we can access contentDocument for contenteditable.
           // View mode: no allow-same-origin, iframe can't read parent DOM or cookies.
-          // allow-modals: required so the proposal's own window.print() opens the print dialog.
+          // allow-modals: required so legacy proposal HTML can open the print dialog.
+          // allow-downloads: required so html2canvas/jsPDF proposal exports can save with the proposal filename.
           sandbox={isEditing
-            ? 'allow-scripts allow-forms allow-popups allow-modals allow-same-origin'
-            : 'allow-scripts allow-forms allow-popups allow-modals'
+            ? 'allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-same-origin'
+            : 'allow-scripts allow-forms allow-popups allow-modals allow-downloads'
           }
           className="w-full h-full border-0 bg-white"
           onLoad={injectContentEditable}
