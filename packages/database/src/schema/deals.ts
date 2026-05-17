@@ -12,6 +12,7 @@ export const deals = pgTable('deals', {
   catalogItemId: uuid('catalog_item_id').references(() => catalogItems.id).notNull(),
   tierId: uuid('tier_id').references(() => tiers.id),
   title: text('title').notNull(),
+  dealTitleNormalized: text('deal_title_normalized'),
 
   // Pipeline stage — FK to workspace-configured stages (replaces hardcoded stage enum)
   stageId: uuid('stage_id').references(() => pipelineStages.id),

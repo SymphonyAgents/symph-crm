@@ -1,9 +1,10 @@
-import { Injectable, Inject } from '@nestjs/common'
+import { BadRequestException, Injectable, Inject } from '@nestjs/common'
 import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql } from 'drizzle-orm'
 import { deals, documents, users, amRoster, pipelineStages, catalogItems, companies } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
+import { cleanDealTitleForStorage, normalizeDealTitleForSearch } from './deal-title-normalization.util'
 
 export type DealsFilterParams = {
   companyId?: string
@@ -13,6 +14,18 @@ export type DealsFilterParams = {
   from?: string
   to?: string
   dealType?: string     // legacy 'agency' | 'reseller', kept for back-compat
+}
+
+export type CreateDealData = Omit<typeof deals.$inferInsert, 'stageId' | 'dealTitleNormalized'> & {
+  stage?: string | null
+  stageId?: string | null
+  pricingModel?: unknown
+  tierId?: unknown
+}
+
+export type UpdateDealData = Omit<Partial<typeof deals.$inferInsert>, 'dealTitleNormalized'> & {
+  pricingModel?: unknown
+  dealTitleNormalized?: unknown
 }
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
@@ -40,7 +53,13 @@ export class DealsService {
     const conditions = []
 
     if (params?.companyId) conditions.push(eq(deals.companyId, params.companyId))
-    if (params?.search) conditions.push(ilike(deals.title, `%${params.search}%`))
+    if (params?.search) {
+      const normalizedSearch = normalizeDealTitleForSearch(params.search)
+      const searchTerms = normalizedSearch.split(' ').filter(Boolean)
+      if (searchTerms.length > 0) {
+        conditions.push(and(...searchTerms.map(term => ilike(deals.dealTitleNormalized, `%${term}%`))))
+      }
+    }
     if (params?.from) conditions.push(gte(deals.createdAt, new Date(params.from)))
     if (params?.to) conditions.push(lte(deals.createdAt, new Date(params.to)))
     if (params?.dealType) conditions.push(eq(deals.dealType, params.dealType))
@@ -192,17 +211,14 @@ export class DealsService {
     return deal
   }
 
-  async create(
-    data: Omit<typeof deals.$inferInsert, 'stageId'> & {
-      stage?: string | null
-      stageId?: string | null
-      pricingModel?: unknown
-      tierId?: unknown
-    },
-    performedBy?: string,
-  ) {
+  async create(data: CreateDealData, performedBy?: string) {
     // Strip fields that no longer exist in the schema
     const { stage, pricingModel, tierId, ...cleanData } = data as any
+
+    if (typeof cleanData.title !== 'string') throw new BadRequestException('Deal title is required')
+    cleanData.title = cleanDealTitleForStorage(cleanData.title)
+    if (!cleanData.title) throw new BadRequestException('Deal title is required')
+    cleanData.dealTitleNormalized = normalizeDealTitleForSearch(cleanData.title)
 
     // Resolve stage slug → stageId UUID if a slug was passed
     let stageId: string | null = cleanData.stageId ?? null
@@ -276,9 +292,16 @@ export class DealsService {
     return deal
   }
 
-  async update(id: string, data: Partial<typeof deals.$inferInsert> & { pricingModel?: unknown }, performedBy?: string) {
+  async update(id: string, data: UpdateDealData, performedBy?: string) {
     // Strip any dropped columns that FE might still send
     const { pricingModel, ...cleanData } = data as any
+    delete cleanData.dealTitleNormalized
+
+    if (typeof cleanData.title === 'string') {
+      cleanData.title = cleanDealTitleForStorage(cleanData.title)
+      if (!cleanData.title) throw new BadRequestException('Deal title is required')
+      cleanData.dealTitleNormalized = normalizeDealTitleForSearch(cleanData.title)
+    }
 
     // Guard the NOT NULL catalog_item_id constraint: EditDealModal currently
     // sends catalogItemId: null when the user picks a service type other than

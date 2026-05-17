@@ -1,8 +1,7 @@
 import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, Headers } from '@nestjs/common'
-import { DealsService } from './deals.service'
+import { CreateDealData, DealsService, UpdateDealData } from './deals.service'
 import { DealNotesService } from './deal-notes.service'
 import { SaveDealNoteDto } from './dto/save-deal-note.dto'
-import { deals } from '@symph-crm/database'
 
 @Controller('deals')
 export class DealsController {
@@ -59,7 +58,7 @@ export class DealsController {
 
   @Post()
   create(
-    @Body() data: typeof deals.$inferInsert,
+    @Body() data: CreateDealData,
     @Headers('x-user-id') userId?: string,
   ) {
     // Auto-set createdBy and assignedTo from request context
@@ -74,7 +73,7 @@ export class DealsController {
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() data: Partial<typeof deals.$inferInsert>,
+    @Body() data: UpdateDealData,
     @Headers('x-user-id') userId?: string,
   ) {
     return this.dealsService.update(id, data, userId)
