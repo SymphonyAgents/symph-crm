@@ -9,7 +9,7 @@ export const notifications = pgTable('notifications', {
   type: text('type', {
     enum: ['dormant_deal', 'deal_won', 'mention'],
   }).notNull(),
-  dealId: uuid('deal_id').references(() => deals.id),
+  dealId: uuid('deal_id').references(() => deals.id, { onDelete: 'cascade' }),
   metadata: jsonb('metadata').$type<Record<string, unknown>>().default({}),
   isRead: boolean('is_read').default(false).notNull(),
   workspaceId: uuid('workspace_id').references(() => workspaces.id),
