@@ -55,7 +55,9 @@ export class DealsService {
     if (params?.companyId) conditions.push(eq(deals.companyId, params.companyId))
     if (params?.search) {
       const normalizedSearch = normalizeDealTitleForSearch(params.search)
-      const searchTerms = normalizedSearch.split(' ').filter(Boolean)
+      const searchTerms = normalizedSearch
+        .split(' ')
+        .filter(term => term && term !== 'and')
       if (searchTerms.length > 0) {
         conditions.push(and(...searchTerms.map(term => ilike(deals.dealTitleNormalized, `%${term}%`))))
       }
