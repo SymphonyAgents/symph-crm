@@ -4,13 +4,15 @@
 ALTER TABLE deals
   ADD COLUMN IF NOT EXISTS deal_title_normalized TEXT;
 
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 UPDATE deals
 SET deal_title_normalized = lower(
   btrim(
     regexp_replace(
       regexp_replace(
         regexp_replace(
-          regexp_replace(title, '&', ' and ', 'g'),
+          regexp_replace(unaccent(title), '&', ' and ', 'g'),
           '[[:cntrl:]]',
           '',
           'g'
