@@ -5,6 +5,7 @@ import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { cleanDealTitleForStorage, normalizeDealTitleForSearch } from './deal-title-normalization.util'
+import { DealNotesService } from './deal-notes.service'
 
 export type DealsFilterParams = {
   companyId?: string
@@ -46,6 +47,7 @@ export class DealsService {
   constructor(
     @Inject(DB) private db: Database,
     private auditLogs: AuditLogsService,
+    private dealNotes: DealNotesService,
   ) {}
 
   async findAll(params?: DealsFilterParams) {
@@ -363,6 +365,7 @@ export class DealsService {
     // Auto-add assigned user to AM roster when assignedTo changes
     if (data.assignedTo && deal) {
       this.ensureOnRoster(data.assignedTo, deal.workspaceId).catch(() => {})
+      this.dealNotes.backfillMeetingArtifactAuthor(id, data.assignedTo).catch(() => {})
     }
 
     this.auditLogs.log({

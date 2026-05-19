@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalVersion, ApiProposalShareLink, ApiRecording } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -786,6 +786,46 @@ export function useCirclebackUpload(
       formData.append('file', file)
       if (dealId) formData.append('dealId', dealId)
       return api.upload<CirclebackUploadResult>('/recordings/circleback-upload', formData)
+    },
+    ...options,
+  })
+}
+
+// ─── Meetings ────────────────────────────────────────────────────────────────
+
+export function useRetryMeetingIngest(
+  options?: UseMutationOptions<unknown, Error, string>,
+) {
+  const qc = useQueryClient()
+  return useMutation<unknown, Error, string>({
+    mutationFn: (id: string) => api.post(`/meetings/${id}/retry-ingest`, {}),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: queryKeys.meetings.all })
+      toast.success('Meeting ingest retried')
+      ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
+    },
+    onError: (error, ...rest) => {
+      toast.error(error.message || 'Meeting retry failed')
+      ;(options?.onError as ((error: Error, ...a: unknown[]) => void) | undefined)?.(error, ...rest)
+    },
+    ...options,
+  })
+}
+
+export function useAssignMeetingDeal(
+  options?: UseMutationOptions<{ ok: boolean; meeting: ApiMeeting }, Error, { id: string; dealId: string }>,
+) {
+  const qc = useQueryClient()
+  return useMutation<{ ok: boolean; meeting: ApiMeeting }, Error, { id: string; dealId: string }>({
+    mutationFn: ({ id, dealId }) => api.post<{ ok: boolean; meeting: ApiMeeting }>(`/meetings/${id}/assign-deal`, { dealId }),
+    onSuccess: (...args) => {
+      qc.invalidateQueries({ queryKey: queryKeys.meetings.all })
+      toast.success('Meeting assigned')
+      ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
+    },
+    onError: (error, ...rest) => {
+      toast.error(error.message || 'Meeting assignment failed')
+      ;(options?.onError as ((error: Error, ...a: unknown[]) => void) | undefined)?.(error, ...rest)
     },
     ...options,
   })

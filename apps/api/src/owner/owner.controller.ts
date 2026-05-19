@@ -27,6 +27,7 @@ import { UsersService } from '../users/users.service'
 import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
 import { ChatService } from '../chat/chat.service'
+import { MeetingsService } from '../meetings/meetings.service'
 
 /**
  * OwnerController — full CRM access for the product owner via static API key.
@@ -51,6 +52,13 @@ import { ChatService } from '../chat/chat.service'
  *   Pipeline:
  *     GET  /api/owner/pipeline
  *     GET  /api/owner/pipeline/summary
+ *
+ *   Meetings:
+ *     GET    /api/owner/meetings
+ *     GET    /api/owner/meetings/:id
+ *     POST   /api/owner/meetings/:id/retry-ingest
+ *     POST   /api/owner/meetings/:id/assign-deal
+ *     GET    /api/owner/meeting-resolver/candidates
  *
  *   Deals:
  *     GET    /api/owner/deals
@@ -129,6 +137,7 @@ export class OwnerController {
     private readonly pipeline: PipelineService,
     private readonly wiki: WikiService,
     private readonly chat: ChatService,
+    private readonly meetings: MeetingsService,
   ) {
     this.baseUrl = (
       config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
@@ -229,6 +238,60 @@ export class OwnerController {
     @Query('to') to?: string,
   ) {
     return this.pipeline.getSummary({ from, to })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Meetings
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** GET /api/owner/meetings — List passive meeting ingests */
+  @Get('meetings')
+  async listMeetings(
+    @Query('workspaceId') workspaceId?: string,
+    @Query('status') status?: 'pending' | 'done' | 'failed',
+    @Query('dealId') dealId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.meetings.findAll({
+      workspaceId,
+      status,
+      dealId,
+      limit: limit ? parseInt(limit, 10) : 50,
+    })
+  }
+
+  /** GET /api/owner/meetings/:id — Get passive meeting ingest */
+  @Get('meetings/:id')
+  async getMeeting(@Param('id') id: string) {
+    return this.meetings.findOneWithArtifacts(id)
+  }
+
+  /** POST /api/owner/meetings/:id/retry-ingest — Retry CRM artifact ingest */
+  @Post('meetings/:id/retry-ingest')
+  @HttpCode(HttpStatus.OK)
+  async retryMeetingIngest(@Param('id') id: string) {
+    return this.meetings.retryIngest(id)
+  }
+
+  /** POST /api/owner/meetings/:id/assign-deal — Assign a meeting to a deal */
+  @Post('meetings/:id/assign-deal')
+  @HttpCode(HttpStatus.OK)
+  async assignMeetingDeal(
+    @Param('id') id: string,
+    @Body() body: { dealId: string },
+  ) {
+    if (!body.dealId) throw new BadRequestException('dealId is required')
+    return this.meetings.assignDeal(id, body.dealId)
+  }
+
+  /** GET /api/owner/meeting-resolver/candidates — Find candidate deals/brands/contacts */
+  @Get('meeting-resolver/candidates')
+  async meetingResolverCandidates(
+    @Query('terms') terms?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!terms) throw new BadRequestException('terms is required')
+    return this.meetings.findResolverCandidates(terms, limit ? parseInt(limit, 10) : 10)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

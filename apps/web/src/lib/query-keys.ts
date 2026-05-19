@@ -23,6 +23,13 @@ type AuditFilterParams = {
   offset: number
 }
 
+type MeetingsFilterParams = {
+  workspaceId?: string
+  status?: 'pending' | 'done' | 'failed'
+  dealId?: string
+  limit?: number
+}
+
 export const queryKeys = {
   companies: {
     all: ['companies'] as const,
@@ -115,5 +122,10 @@ export const queryKeys = {
   },
   recordings: {
     all: ['recordings'] as const,
+  },
+  meetings: {
+    all: ['meetings'] as const,
+    filtered: (params: MeetingsFilterParams) => ['meetings', params] as const,
+    detail: (id: string) => ['meetings', id] as const,
   },
 } as const
