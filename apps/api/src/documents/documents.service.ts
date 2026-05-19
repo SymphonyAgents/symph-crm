@@ -68,10 +68,11 @@ export class DocumentsService {
     data: Omit<typeof documents.$inferInsert, 'storagePath' | 'excerpt' | 'wordCount'> & {
       storagePath?: string
       content?: string
+      skipContentWrite?: boolean
     },
     performedBy?: string,
   ) {
-    const { content, ...rest } = data
+    const { content, skipContentWrite = false, ...rest } = data
 
     // Auto-derive storage path if not supplied
     const storagePath = rest.storagePath ?? this.derivePath(rest)
@@ -82,7 +83,9 @@ export class DocumentsService {
       const extracted = StorageService.extractExcerpt(content)
       excerpt = extracted.excerpt
       wordCount = extracted.wordCount
-      await this.storage.writeMarkdown(storagePath, content)
+      if (!skipContentWrite) {
+        await this.storage.writeMarkdown(storagePath, content)
+      }
     }
 
     const [doc] = await this.db
@@ -186,8 +189,8 @@ export class DocumentsService {
       // Voice recordings in Supabase Storage — get signed URL
       url = await this.storage.voiceRecordingSignedUrl(doc.storagePath, 3600)
     } else {
-      // All other files (markdown, images, PDFs, docs) on NFS — return API endpoint
-      url = `/api/documents/${doc.id}/download`
+      // All other files (markdown, images, PDFs, docs) on NFS, return byte-serving API endpoint
+      url = `/api/documents/${doc.id}/file`
     }
     // Extract filename from storagePath (last segment)
     const filename = doc.storagePath.split('/').pop() ?? doc.title
@@ -211,8 +214,8 @@ export class DocumentsService {
       // Voice recordings in Supabase Storage — get signed URL
       url = await this.storage.voiceRecordingSignedUrl(doc.storagePath, 3600)
     } else {
-      // All other files on NFS — return API endpoint
-      url = `/api/documents/${doc.id}/preview`
+      // All other files on NFS, return byte-serving API endpoint for inline preview
+      url = `/api/documents/${doc.id}/file?inline=1`
     }
 
     const ext = doc.tags?.find(t => [...IMAGE_TAGS, ...AUDIO_TAGS].includes(t)) ?? 'bin'

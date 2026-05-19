@@ -218,6 +218,7 @@ export class DocumentsController {
         title: titleBase,
         storagePath,
         content,
+        skipContentWrite: isBinary,
         tags,
       },
       userId ?? authorId,
