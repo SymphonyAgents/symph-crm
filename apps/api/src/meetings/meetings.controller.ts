@@ -1,7 +1,9 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
+import { Roles } from '../auth/roles.guard'
 import { MeetingsService } from './meetings.service'
 
 @Controller('meetings')
+@Roles('SALES')
 export class MeetingsController {
   constructor(private readonly meetings: MeetingsService) {}
 
