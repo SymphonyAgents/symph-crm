@@ -62,8 +62,8 @@ export class RolesGuard implements CanActivate {
     // For mutations (or @Roles()-decorated reads), resolve user role from DB
     const userId = request.headers['x-user-id'] as string | undefined
     if (!userId) {
-      // No user context — block mutations, allow reads
-      return ['GET', 'HEAD'].includes(method)
+      // No user context: anonymous reads are allowed only for routes without explicit role requirements.
+      return !requiredRoles && ['GET', 'HEAD'].includes(method)
     }
 
     const [user] = await this.db
