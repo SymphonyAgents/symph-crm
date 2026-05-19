@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   ArrowUpRight,
@@ -47,6 +47,61 @@ function statusTone(status: ApiMeetingStatus): string {
   return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20'
 }
 
+function MeetingTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'px-3 py-2 text-ssm font-medium border-b-2 -mb-px transition-colors capitalize',
+        active
+          ? 'border-primary text-primary'
+          : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function MeetingFilterButton({
+  active,
+  onClick,
+  count,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98] shrink-0 capitalize',
+        active
+          ? 'bg-primary/10 text-primary'
+          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+      )}
+    >
+      {children}
+      {count !== undefined && (
+        <span className={cn('tabular-nums', active ? 'text-primary/70' : 'text-slate-400')}>
+          {count}
+        </span>
+      )}
+    </button>
+  )
+}
+
 export default function RecordingsPage() {
   const { isAuthenticated } = useUser()
   const [activeTab, setActiveTab] = useState<ActiveTab>('meetings')
@@ -56,34 +111,31 @@ export default function RecordingsPage() {
   }
 
   return (
-    <div className="p-4 md:px-6 pb-6 w-full">
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="shrink-0 px-4 md:px-6 pt-3 pb-0">
+        <div className="mb-2 min-h-[20px]">
           <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">Meetings</h1>
           <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
             Circleback meeting artifacts and browser recordings.
           </p>
         </div>
 
-        <div className="inline-flex rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] p-1">
+        <div className="flex items-center gap-1 border-b border-black/[.06] dark:border-white/[.08]">
           {(['meetings', 'recordings'] as ActiveTab[]).map((tab) => (
-            <button
+            <MeetingTabButton
               key={tab}
+              active={activeTab === tab}
               onClick={() => setActiveTab(tab)}
-              className={cn(
-                'h-8 px-3 rounded-md text-xs font-semibold capitalize transition-colors',
-                activeTab === tab
-                  ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
-              )}
             >
               {tab}
-            </button>
+            </MeetingTabButton>
           ))}
         </div>
       </div>
 
-      {activeTab === 'meetings' ? <MeetingsTab /> : <RecordingsTab />}
+      <div className="flex-1 min-h-0 overflow-auto p-4 md:px-6 pb-6">
+        {activeTab === 'meetings' ? <MeetingsTab /> : <RecordingsTab />}
+      </div>
     </div>
   )
 }
@@ -91,37 +143,39 @@ export default function RecordingsPage() {
 function MeetingsTab() {
   const [filter, setFilter] = useState<MeetingFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const { data: meetings = [], isLoading } = useGetMeetings({
-    status: filter === 'all' ? undefined : filter,
-    limit: 100,
-  })
-  const selectedMeeting = meetings.find((meeting) => meeting.id === selectedId) ?? null
+  const { data: meetings = [], isLoading } = useGetMeetings({ limit: 100 })
+  const counts = useMemo(() => ({
+    all: meetings.length,
+    pending: meetings.filter((meeting) => meeting.status === 'pending').length,
+    done: meetings.filter((meeting) => meeting.status === 'done').length,
+    failed: meetings.filter((meeting) => meeting.status === 'failed').length,
+  }), [meetings])
+  const filteredMeetings = useMemo(() => (
+    filter === 'all' ? meetings : meetings.filter((meeting) => meeting.status === filter)
+  ), [filter, meetings])
+  const selectedMeeting = filteredMeetings.find((meeting) => meeting.id === selectedId) ?? null
 
   useEffect(() => {
-    if (!selectedId && meetings[0]) setSelectedId(meetings[0].id)
-    if (selectedId && meetings.length > 0 && !meetings.some((meeting) => meeting.id === selectedId)) {
-      setSelectedId(meetings[0].id)
+    if (!selectedId && filteredMeetings[0]) setSelectedId(filteredMeetings[0].id)
+    if (selectedId && filteredMeetings.length > 0 && !filteredMeetings.some((meeting) => meeting.id === selectedId)) {
+      setSelectedId(filteredMeetings[0].id)
     }
-  }, [meetings, selectedId])
+  }, [filteredMeetings, selectedId])
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-3">
       <section className="min-w-0">
         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center flex-wrap gap-1.5 min-w-0">
             {(['all', 'pending', 'done', 'failed'] as MeetingFilter[]).map((item) => (
-              <button
+              <MeetingFilterButton
                 key={item}
+                active={filter === item}
                 onClick={() => setFilter(item)}
-                className={cn(
-                  'h-8 px-3 rounded-md text-xs font-semibold capitalize transition-colors',
-                  filter === item
-                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-950'
-                    : 'border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white',
-                )}
+                count={counts[item]}
               >
                 {item}
-              </button>
+              </MeetingFilterButton>
             ))}
           </div>
         </div>
@@ -130,7 +184,7 @@ function MeetingsTab() {
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
             <DataTableSkeleton />
           </div>
-        ) : meetings.length === 0 ? (
+        ) : filteredMeetings.length === 0 ? (
           <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
             <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
             <div className="text-ssm font-semibold text-slate-900 dark:text-white">No meetings yet</div>
@@ -140,7 +194,7 @@ function MeetingsTab() {
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {meetings.map((meeting) => (
+            {filteredMeetings.map((meeting) => (
               <MeetingRow
                 key={meeting.id}
                 meeting={meeting}
