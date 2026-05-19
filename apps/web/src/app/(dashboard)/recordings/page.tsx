@@ -3,21 +3,18 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
-  ArrowUpRight,
   Check,
-  ExternalLink,
   FileText,
   Loader2,
   Mic,
   MicOff,
-  RefreshCw,
   Square,
   Trash2,
   Upload,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGetMeeting, useGetMeetings, useGetRecordings } from '@/lib/hooks/queries'
-import { useAssignMeetingDeal, useCirclebackUpload, useDeleteRecording, useRetryMeetingIngest } from '@/lib/hooks/mutations'
+import { useGetMeetings, useGetRecordings } from '@/lib/hooks/queries'
+import { useCirclebackUpload, useDeleteRecording } from '@/lib/hooks/mutations'
 import { useRecorder } from '@/lib/hooks/use-recorder'
 import { useUser } from '@/lib/hooks/use-user'
 import { formatDate } from '@/lib/utils'
@@ -37,9 +34,6 @@ function fmtDuration(s: number): string {
   return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
 }
 
-function stripFrontmatter(content: string): string {
-  return content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '').trim()
-}
 
 function statusTone(status: ApiMeetingStatus): string {
   if (status === 'done') return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/20'
@@ -113,13 +107,6 @@ export default function RecordingsPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 px-4 md:px-6 pt-3 pb-0">
-        <div className="mb-2 min-h-[20px]">
-          <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">Meetings</h1>
-          <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
-            Circleback meeting artifacts and browser recordings.
-          </p>
-        </div>
-
         <div className="flex items-center gap-1 border-b border-black/[.06] dark:border-white/[.08]">
           {(['meetings', 'recordings'] as ActiveTab[]).map((tab) => (
             <MeetingTabButton
@@ -142,7 +129,6 @@ export default function RecordingsPage() {
 
 function MeetingsTab() {
   const [filter, setFilter] = useState<MeetingFilter>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const { data: meetings = [], isLoading } = useGetMeetings({ limit: 100 })
   const counts = useMemo(() => ({
     all: meetings.length,
@@ -153,82 +139,52 @@ function MeetingsTab() {
   const filteredMeetings = useMemo(() => (
     filter === 'all' ? meetings : meetings.filter((meeting) => meeting.status === filter)
   ), [filter, meetings])
-  const selectedMeeting = filteredMeetings.find((meeting) => meeting.id === selectedId) ?? null
-
-  useEffect(() => {
-    if (!selectedId && filteredMeetings[0]) setSelectedId(filteredMeetings[0].id)
-    if (selectedId && filteredMeetings.length > 0 && !filteredMeetings.some((meeting) => meeting.id === selectedId)) {
-      setSelectedId(filteredMeetings[0].id)
-    }
-  }, [filteredMeetings, selectedId])
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px] gap-3">
-      <section className="min-w-0">
-        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-          <div className="flex items-center flex-wrap gap-1.5 min-w-0">
-            {(['all', 'pending', 'done', 'failed'] as MeetingFilter[]).map((item) => (
-              <MeetingFilterButton
-                key={item}
-                active={filter === item}
-                onClick={() => setFilter(item)}
-                count={counts[item]}
-              >
-                {item}
-              </MeetingFilterButton>
-            ))}
+    <section className="min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+        <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+          {(['all', 'pending', 'done', 'failed'] as MeetingFilter[]).map((item) => (
+            <MeetingFilterButton
+              key={item}
+              active={filter === item}
+              onClick={() => setFilter(item)}
+              count={counts[item]}
+            >
+              {item}
+            </MeetingFilterButton>
+          ))}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+          <DataTableSkeleton />
+        </div>
+      ) : filteredMeetings.length === 0 ? (
+        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
+          <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+          <div className="text-ssm font-semibold text-slate-900 dark:text-white">No meetings yet</div>
+          <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">
+            Passive Circleback meetings will appear here after CRM ingest.
           </div>
         </div>
-
-        {isLoading ? (
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
-            <DataTableSkeleton />
-          </div>
-        ) : filteredMeetings.length === 0 ? (
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
-            <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white">No meetings yet</div>
-            <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">
-              Passive Circleback meetings will appear here after CRM ingest.
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {filteredMeetings.map((meeting) => (
-              <MeetingRow
-                key={meeting.id}
-                meeting={meeting}
-                selected={meeting.id === selectedId}
-                onSelect={() => setSelectedId(meeting.id)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <MeetingDetail meeting={selectedMeeting} />
-    </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {filteredMeetings.map((meeting) => (
+            <MeetingRow key={meeting.id} meeting={meeting} />
+          ))}
+        </div>
+      )}
+    </section>
   )
 }
 
-function MeetingRow({
-  meeting,
-  selected,
-  onSelect,
-}: {
-  meeting: ApiMeeting
-  selected: boolean
-  onSelect: () => void
-}) {
+function MeetingRow({ meeting }: { meeting: ApiMeeting }) {
   return (
-    <button
-      onClick={onSelect}
-      className={cn(
-        'w-full text-left bg-white dark:bg-[#1e1e21] border rounded-md px-4 py-3 transition-colors',
-        selected
-          ? 'border-slate-900/20 dark:border-white/30'
-          : 'border-black/[.06] dark:border-white/[.08] hover:border-slate-300 dark:hover:border-white/20',
-      )}
+    <Link
+      href={`/meetings/${meeting.id}`}
+      className="block w-full text-left bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 transition-colors hover:border-slate-300 dark:hover:border-white/20"
     >
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
@@ -259,158 +215,7 @@ function MeetingRow({
           )}
         </div>
       </div>
-    </button>
-  )
-}
-
-function MeetingDetail({ meeting }: { meeting: ApiMeeting | null }) {
-  const { data, isLoading } = useGetMeeting(meeting?.id)
-  const retryMeeting = useRetryMeetingIngest()
-  const assignMeeting = useAssignMeetingDeal()
-  const [dealId, setDealId] = useState('')
-
-  useEffect(() => {
-    setDealId(meeting?.dealId ?? '')
-  }, [meeting?.dealId])
-
-  if (!meeting) {
-    return (
-      <aside className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-5 py-8 text-center">
-        <FileText size={24} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-        <p className="text-ssm font-semibold text-slate-900 dark:text-white">Select a meeting</p>
-        <p className="text-xxs text-slate-500 dark:text-slate-400 mt-1">Summary, transcript, and source link will show here.</p>
-      </aside>
-    )
-  }
-
-  const detail = data?.meeting ?? meeting
-  const summary = data?.summaryNote?.content ? stripFrontmatter(data.summaryNote.content) : null
-  const transcript = data?.transcriptNote?.content ? stripFrontmatter(data.transcriptNote.content) : null
-
-  return (
-    <aside className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden h-fit">
-      <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{detail.title}</p>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className={cn('border rounded-md px-1.5 py-0.5 text-atom font-semibold capitalize', statusTone(detail.status))}>
-                {detail.status}
-              </span>
-              <span className="border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 rounded-md px-1.5 py-0.5 text-atom font-semibold">
-                Circleback
-              </span>
-            </div>
-          </div>
-          <a
-            href={detail.sourceUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="w-8 h-8 rounded-lg border border-black/[.08] dark:border-white/[.1] flex items-center justify-center text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white shrink-0"
-            title="Open original meeting"
-          >
-            <ExternalLink size={14} strokeWidth={1.8} />
-          </a>
-        </div>
-      </div>
-
-      <div className="px-4 py-3 space-y-3">
-        <div className="grid grid-cols-2 gap-2 text-xxs">
-          <div>
-            <p className="text-slate-400 dark:text-slate-500">Started</p>
-            <p className="font-medium text-slate-700 dark:text-slate-300 mt-0.5">{detail.startedAt ? formatDate(detail.startedAt) : 'Not set'}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 dark:text-slate-500">Retries</p>
-            <p className="font-medium text-slate-700 dark:text-slate-300 mt-0.5">{detail.retryCount}</p>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => retryMeeting.mutate(detail.id)}
-            disabled={retryMeeting.isPending}
-            className="h-8 px-3 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 text-xs font-semibold flex items-center gap-1.5 disabled:opacity-50"
-          >
-            {retryMeeting.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            Retry
-          </button>
-          {detail.dealId && (
-            <Link
-              href={`/deals/${detail.dealId}`}
-              className="h-8 px-3 rounded-lg border border-black/[.08] dark:border-white/[.1] text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5"
-            >
-              Deal <ArrowUpRight size={13} />
-            </Link>
-          )}
-        </div>
-
-        {!detail.dealId && (
-          <div className="border border-black/[.06] dark:border-white/[.08] rounded-md p-3">
-            <p className="text-xs font-semibold text-slate-900 dark:text-white">Assign to deal</p>
-            <div className="flex gap-2 mt-2">
-              <input
-                value={dealId}
-                onChange={(event) => setDealId(event.target.value)}
-                placeholder="Deal ID"
-                className="min-w-0 flex-1 h-8 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
-              />
-              <button
-                onClick={() => assignMeeting.mutate({ id: detail.id, dealId })}
-                disabled={!dealId || assignMeeting.isPending}
-                className="h-8 px-3 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 text-xs font-semibold disabled:opacity-50"
-              >
-                Assign
-              </button>
-            </div>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="h-32 rounded-md bg-slate-100 dark:bg-white/[.06] animate-pulse" />
-        ) : (
-          <>
-            <ArtifactBlock title="Summary" content={summary} fallbackPath={detail.summaryNotePath} />
-            <ArtifactBlock title="Transcript" content={transcript} fallbackPath={detail.transcriptNotePath} />
-          </>
-        )}
-
-        {detail.lastError && (
-          <div className="rounded-md border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
-            {detail.lastError}
-          </div>
-        )}
-      </div>
-    </aside>
-  )
-}
-
-function ArtifactBlock({
-  title,
-  content,
-  fallbackPath,
-}: {
-  title: string
-  content: string | null
-  fallbackPath: string | null
-}) {
-  return (
-    <section className="border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
-      <div className="px-3 py-2 bg-slate-50 dark:bg-white/[.04] border-b border-black/[.06] dark:border-white/[.08]">
-        <p className="text-xs font-semibold text-slate-900 dark:text-white">{title}</p>
-      </div>
-      <div className="px-3 py-3">
-        {content ? (
-          <div className="max-h-80 overflow-auto whitespace-pre-wrap text-xs leading-5 text-slate-700 dark:text-slate-300">
-            {content}
-          </div>
-        ) : (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
-            {fallbackPath ? `Saved at ${fallbackPath}. Content will load when the NFS file is available.` : 'Not saved yet.'}
-          </div>
-        )}
-      </div>
-    </section>
+    </Link>
   )
 }
 
