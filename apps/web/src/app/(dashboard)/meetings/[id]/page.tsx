@@ -6,7 +6,7 @@ import { MeetingDetail } from '@/components/MeetingDetail'
 
 function MeetingDetailInner({ id }: { id: string }) {
   const router = useRouter()
-  return <MeetingDetail meetingId={id} onBack={() => router.push('/recordings')} />
+  return <MeetingDetail meetingId={id} onBack={() => router.push('/meetings?=all')} />
 }
 
 export default function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {

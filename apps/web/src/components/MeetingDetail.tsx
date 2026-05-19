@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowUpRight, ExternalLink, FileText, Loader2, RefreshCw } f
 import { useAssignMeetingDeal, useRetryMeetingIngest } from '@/lib/hooks/mutations'
 import { useGetMeeting } from '@/lib/hooks/queries'
 import { formatDate, cn } from '@/lib/utils'
-import type { ApiMeetingStatus } from '@/lib/types'
+import type { ApiMeetingRawPayload, ApiMeetingStatus } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 
 function stripFrontmatter(content: string): string {
@@ -19,6 +19,29 @@ function statusTone(status: ApiMeetingStatus): string {
   return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/20'
 }
 
+function formatTranscriptFallback(lines: ApiMeetingRawPayload['rawPayload'] extends infer Raw
+  ? Raw extends { transcript?: infer Lines } ? Lines | undefined : never
+  : never): string | null {
+  if (!Array.isArray(lines) || lines.length === 0) return null
+  const transcript = lines
+    .map((line) => {
+      if (!line || typeof line !== 'object') return null
+      const speaker = 'speaker' in line && typeof line.speaker === 'string' ? line.speaker : 'Speaker'
+      const text = 'text' in line && typeof line.text === 'string' ? line.text : ''
+      return text ? `${speaker}: ${text}` : null
+    })
+    .filter((line): line is string => Boolean(line))
+    .join('\n\n')
+  return transcript || null
+}
+
+function getRawPayloadFallback(rawPayload: ApiMeetingRawPayload | null | undefined) {
+  return {
+    summary: rawPayload?.summaryMarkdown ?? rawPayload?.rawPayload?.notes ?? null,
+    transcript: rawPayload?.transcriptMarkdown ?? formatTranscriptFallback(rawPayload?.rawPayload?.transcript),
+  }
+}
+
 export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () => void }) {
   const { data, isLoading } = useGetMeeting(meetingId)
   const retryMeeting = useRetryMeetingIngest()
@@ -26,8 +49,9 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
   const [dealId, setDealId] = useState('')
 
   const detail = data?.meeting ?? null
-  const summary = data?.summaryNote?.content ? stripFrontmatter(data.summaryNote.content) : null
-  const transcript = data?.transcriptNote?.content ? stripFrontmatter(data.transcriptNote.content) : null
+  const rawFallback = getRawPayloadFallback(detail?.rawPayload)
+  const summary = data?.summaryNote?.content ? stripFrontmatter(data.summaryNote.content) : rawFallback.summary
+  const transcript = data?.transcriptNote?.content ? stripFrontmatter(data.transcriptNote.content) : rawFallback.transcript
 
   useEffect(() => {
     setDealId(detail?.dealId ?? '')

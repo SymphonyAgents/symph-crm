@@ -523,6 +523,15 @@ export type ApiRecording = {
 
 export type ApiMeetingStatus = 'pending' | 'done' | 'failed'
 
+export type ApiMeetingRawPayload = {
+  summaryMarkdown?: string | null
+  transcriptMarkdown?: string | null
+  rawPayload?: {
+    notes?: string | null
+    transcript?: Array<{ speaker?: string; text?: string; timestamp?: number }>
+  } | null
+}
+
 export type ApiMeeting = {
   id: string
   workspaceId: string
@@ -539,6 +548,7 @@ export type ApiMeeting = {
   summaryNotePath: string | null
   transcriptNotePath: string | null
   ingestedAt: string | null
+  rawPayload: ApiMeetingRawPayload | null
   createdAt: string
   updatedAt: string
 }

@@ -459,6 +459,7 @@ export const COMMAND_ROUTES = [
   { label: 'Reports',    path: '/reports',     keywords: ['analytics', 'charts', 'metrics'] },
   { label: 'Inbox',      path: '/inbox',       keywords: ['email', 'messages', 'gmail'] },
   { label: 'Proposals',  path: '/proposals',   keywords: ['documents', 'proposal', 'builder'] },
-  { label: 'Meetings',   path: '/recordings',  keywords: ['recordings', 'circleback', 'transcripts'] },
+  { label: 'Meetings',   path: '/meetings',    keywords: ['meetings', 'circleback', 'transcripts'] },
+  { label: 'Recordings', path: '/recordings',  keywords: ['recordings', 'audio', 'uploads'] },
   { label: 'Audit Log',  path: '/audit-logs',  keywords: ['history', 'changes', 'logs'] },
 ]
