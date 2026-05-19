@@ -518,3 +518,33 @@ export type ApiRecording = {
   playbackUrl: string
   createdAt: string
 }
+
+// ── Meetings ────────────────────────────────────────────────────────────────
+
+export type ApiMeetingStatus = 'pending' | 'done' | 'failed'
+
+export type ApiMeeting = {
+  id: string
+  workspaceId: string
+  dealId: string | null
+  sourceMeetingId: string
+  sourceUrl: string
+  title: string
+  startedAt: string | null
+  endedAt: string | null
+  attendees: string[]
+  status: ApiMeetingStatus
+  lastError: string | null
+  retryCount: number
+  summaryNotePath: string | null
+  transcriptNotePath: string | null
+  ingestedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type ApiMeetingDetail = {
+  meeting: ApiMeeting
+  summaryNote: NfsDealNote | null
+  transcriptNote: NfsDealNote | null
+}

@@ -44,6 +44,12 @@ export type NfsDealNote = {
   category: string
 }
 
+export type UpsertDealNoteOptions = {
+  filename: string
+  createdAt?: Date
+  metadata?: Record<string, string | number | boolean | null | undefined>
+}
+
 /** All supported NFS note categories */
 const NOTE_CATEGORIES = ['general', 'meeting', 'notes', 'discovery', 'transcript', 'proposal'] as const
 
@@ -176,6 +182,18 @@ function extractAuthorId(content: string): string | null {
 
 function contentHash(content: string): string {
   return crypto.createHash('sha256').update(content).digest('hex')
+}
+
+function assertSafeMarkdownFilename(filename: string): void {
+  if (!filename.endsWith('.md') || filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
+    throw new BadRequestException('Invalid markdown filename')
+  }
+}
+
+function serializeFrontmatterValue(value: string | number | boolean | null | undefined): string {
+  if (value === null || value === undefined || value === '') return 'null'
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return JSON.stringify(value)
 }
 
 function isTimestampedCrmIngestFile(filename: string): boolean {
@@ -428,6 +446,118 @@ export class DealNotesService {
     this.pendingWikiSyncs.set(dealId, timer)
 
     return fileToNfsDealNote(filename, fullContent, category, dealId)
+  }
+
+  async upsertNote(
+    dealId: string,
+    type: string,
+    title: string,
+    content: string,
+    authorId: string | null | undefined,
+    options: UpsertDealNoteOptions,
+  ): Promise<NfsDealNote> {
+    const category = TYPE_TO_CATEGORY[type] || 'notes'
+
+    if (!NOTE_CATEGORIES.includes(category as typeof NOTE_CATEGORIES[number])) {
+      throw new BadRequestException(`Invalid note category resolved: ${category}`)
+    }
+
+    assertSafeMarkdownFilename(options.filename)
+
+    const catDir = path.join(this.basePath, 'deals', dealId, category)
+    fs.mkdirSync(catDir, { recursive: true })
+
+    const filePath = path.join(catDir, options.filename)
+    const createdAt = options.createdAt ?? new Date()
+    const metadata = options.metadata ?? {}
+    const frontmatterEntries = Object.entries(metadata).map(([key, value]) => `${key}: ${serializeFrontmatterValue(value)}`)
+    const frontmatter = [
+      '---',
+      `authorId: ${authorId || 'null'}`,
+      `createdAt: ${createdAt.toISOString()}`,
+      ...frontmatterEntries,
+      '---',
+    ].join('\n')
+
+    const fullContent = `${frontmatter}\n\n# ${title}\n\n${content}`
+    await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+
+    const dealName = await this.getDealName(dealId)
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'note',
+      entityType: 'deal',
+      entityId: dealId,
+      performedBy: authorId || undefined,
+      details: { noteTitle: title, category, filename: options.filename, dealName },
+    }).catch(() => {})
+
+    const existing = this.pendingWikiSyncs.get(dealId)
+    if (existing) clearTimeout(existing)
+    const timer = setTimeout(() => {
+      this.pendingWikiSyncs.delete(dealId)
+      this.fireWikiSync(dealId, authorId)
+    }, 3_000)
+    this.pendingWikiSyncs.set(dealId, timer)
+
+    return fileToNfsDealNote(options.filename, fullContent, category, dealId)
+  }
+
+  async backfillMeetingArtifactAuthor(dealId: string, authorId: string): Promise<{ updated: number }> {
+    let updated = 0
+    const categories: Array<typeof NOTE_CATEGORIES[number]> = ['meeting', 'transcript']
+
+    for (const category of categories) {
+      const catDir = path.join(this.basePath, 'deals', dealId, category)
+      if (!fs.existsSync(catDir)) continue
+
+      const files = fs.readdirSync(catDir).filter(f => f.endsWith('.md') && f.startsWith('circleback-'))
+
+      for (const filename of files) {
+        const filePath = path.join(catDir, filename)
+        const content = await fs.promises.readFile(filePath, 'utf-8')
+        const currentAuthor = extractAuthorId(content)
+        const source = extractFrontmatterValue(content, 'source')
+        if (currentAuthor || source !== 'meetings.symph.co') continue
+
+        const nextContent = content.replace(/^authorId:\s*(null|['"]?null['"]?)$/m, `authorId: ${authorId}`)
+        if (nextContent === content) continue
+
+        await fs.promises.writeFile(filePath, nextContent, 'utf-8')
+        updated += 1
+      }
+    }
+
+    if (updated > 0) {
+      const existing = this.pendingWikiSyncs.get(dealId)
+      if (existing) clearTimeout(existing)
+      const timer = setTimeout(() => {
+        this.pendingWikiSyncs.delete(dealId)
+        this.fireWikiSync(dealId, authorId)
+      }, 3_000)
+      this.pendingWikiSyncs.set(dealId, timer)
+    }
+
+    return { updated }
+  }
+
+  async readNoteByStoragePath(storagePath: string): Promise<NfsDealNote | null> {
+    const parts = storagePath.split('/')
+    if (parts.length !== 4 || parts[0] !== 'deals') {
+      throw new BadRequestException('Invalid note storage path')
+    }
+
+    const [, dealId, category, filename] = parts
+    if (!NOTE_CATEGORIES.includes(category as typeof NOTE_CATEGORIES[number])) {
+      throw new BadRequestException('Invalid note category')
+    }
+    assertSafeMarkdownFilename(filename)
+
+    const filePath = path.join(this.basePath, 'deals', dealId, category, filename)
+    if (!fs.existsSync(filePath)) return null
+
+    const content = await fs.promises.readFile(filePath, 'utf-8')
+    return fileToNfsDealNote(filename, content, category, dealId)
   }
 
   async deleteNote(dealId: string, category: string, filename: string, performedBy?: string): Promise<{ deleted: true }> {

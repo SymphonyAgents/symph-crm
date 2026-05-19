@@ -41,6 +41,8 @@ import type {
   ApiProposalVersion,
   ApiProposalShareLink,
   ApiRecording,
+  ApiMeeting,
+  ApiMeetingDetail,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -591,6 +593,26 @@ export function useGetRecordings() {
   return useQuery<ApiRecording[]>({
     queryKey: queryKeys.recordings.all,
     queryFn: () => api.get<ApiRecording[]>('/recordings'),
+    staleTime: 30_000,
+  })
+}
+
+// ─── Meetings ────────────────────────────────────────────────────────────────
+
+export function useGetMeetings(params?: { status?: 'pending' | 'done' | 'failed'; dealId?: string; limit?: number }) {
+  const query = params ?? {}
+  return useQuery<ApiMeeting[]>({
+    queryKey: queryKeys.meetings.filtered(query),
+    queryFn: () => api.get<ApiMeeting[]>('/meetings', query),
+    staleTime: 30_000,
+  })
+}
+
+export function useGetMeeting(id: string | null | undefined) {
+  return useQuery<ApiMeetingDetail>({
+    queryKey: queryKeys.meetings.detail(id ?? ''),
+    queryFn: () => api.get<ApiMeetingDetail>(`/meetings/${id}`),
+    enabled: !!id,
     staleTime: 30_000,
   })
 }

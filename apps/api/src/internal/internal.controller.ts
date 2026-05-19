@@ -30,6 +30,7 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
 import { ProposalsService } from '../proposals/proposals.service'
+import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meetings.service'
 
 /**
  * InternalController — endpoints called by Cloud Scheduler, GCP infrastructure,
@@ -64,6 +65,13 @@ import { ProposalsService } from '../proposals/proposals.service'
  *   Pipeline:
  *     GET  /api/internal/pipeline           Pipeline summary (basic, from InternalService)
  *     GET  /api/internal/pipeline/summary   Pipeline summary with date range (from PipelineService)
+ *
+ *   Meetings:
+ *     GET    /api/internal/meetings                         List passive meeting ingests
+ *     GET    /api/internal/meetings/:id                     Get passive meeting ingest
+ *     POST   /api/internal/meetings/passive-ingest           Save analyzed meeting artifacts
+ *     POST   /api/internal/meetings/:id/retry-ingest         Retry CRM artifact ingest
+ *     GET    /api/internal/meeting-resolver/candidates       Find candidate deals/brands/contacts
  *
  *   Deals:
  *     GET    /api/internal/deals              List deals (search, stage, companyId, limit, from, to)
@@ -137,6 +145,7 @@ export class InternalController {
     private readonly pipeline: PipelineService,
     private readonly wiki: WikiService,
     private readonly proposals: ProposalsService,
+    private readonly meetings: MeetingsService,
   ) {
     this.baseUrl = (
       config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
@@ -260,6 +269,56 @@ export class InternalController {
     @Query('to') to?: string,
   ) {
     return this.pipeline.getSummary({ from, to })
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Meetings
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** GET /api/internal/meetings — List passive meeting ingests */
+  @Get('meetings')
+  async listMeetings(
+    @Query('workspaceId') workspaceId?: string,
+    @Query('status') status?: 'pending' | 'done' | 'failed',
+    @Query('dealId') dealId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.meetings.findAll({
+      workspaceId,
+      status,
+      dealId,
+      limit: limit ? parseInt(limit, 10) : 50,
+    })
+  }
+
+  /** GET /api/internal/meetings/:id — Get passive meeting ingest */
+  @Get('meetings/:id')
+  async getMeeting(@Param('id') id: string) {
+    return this.meetings.findOneWithArtifacts(id)
+  }
+
+  /** POST /api/internal/meetings/passive-ingest — Save analyzed meeting artifacts */
+  @Post('meetings/passive-ingest')
+  @HttpCode(HttpStatus.OK)
+  async passiveMeetingIngest(@Body() body: PassiveMeetingIngestBody) {
+    return this.meetings.ingest(body)
+  }
+
+  /** POST /api/internal/meetings/:id/retry-ingest — Retry CRM artifact ingest */
+  @Post('meetings/:id/retry-ingest')
+  @HttpCode(HttpStatus.OK)
+  async retryMeetingIngest(@Param('id') id: string) {
+    return this.meetings.retryIngest(id)
+  }
+
+  /** GET /api/internal/meeting-resolver/candidates — Find candidate deals/brands/contacts */
+  @Get('meeting-resolver/candidates')
+  async meetingResolverCandidates(
+    @Query('terms') terms?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!terms) throw new BadRequestException('terms is required')
+    return this.meetings.findResolverCandidates(terms, limit ? parseInt(limit, 10) : 10)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

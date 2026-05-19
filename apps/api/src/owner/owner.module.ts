@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module'
 import { PipelineModule } from '../pipeline/pipeline.module'
 import { WikiModule } from '../wiki/wiki.module'
 import { ChatModule } from '../chat/chat.module'
+import { MeetingsModule } from '../meetings/meetings.module'
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ChatModule } from '../chat/chat.module'
     PipelineModule,
     WikiModule,
     ChatModule,
+    MeetingsModule,
   ],
   controllers: [OwnerController],
   providers: [OwnerGuard],

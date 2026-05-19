@@ -71,7 +71,7 @@ function getNavSections(dormantCount: number): NavSection[] {
         { path: '/deals', label: 'Brands', icon: BookOpen },
         { path: '/wiki', label: 'Wiki', icon: BookMarked },
         { path: '/inbox', label: 'Inbox', icon: Mail },
-        { path: '/recordings', label: 'Recordings', icon: Mic },
+        { path: '/recordings', label: 'Meetings', icon: Mic },
       ],
     },
     {

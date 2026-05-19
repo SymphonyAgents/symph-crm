@@ -25,6 +25,7 @@ import { GmailModule } from './gmail/gmail.module'
 import { BillingModule } from './billing/billing.module'
 import { NotificationsModule } from './notifications/notifications.module'
 import { RecordingsModule } from './recordings/recordings.module'
+import { MeetingsModule } from './meetings/meetings.module'
 
 @Module({
   providers: [
@@ -56,6 +57,7 @@ import { RecordingsModule } from './recordings/recordings.module'
     BillingModule,
     NotificationsModule,
     RecordingsModule,
+    MeetingsModule,
   ],
 })
 export class AppModule {}
