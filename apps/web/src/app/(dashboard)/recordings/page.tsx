@@ -28,8 +28,7 @@ import type { ApiMeeting, ApiMeetingStatus, ApiRecording } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { toast } from 'sonner'
 
-// Temporarily hidden per Vins: meeting summary UI is paused until reprioritized.
-// type ActiveTab = 'meetings' | 'recordings'
+type ActiveTab = 'meetings' | 'recordings'
 type MeetingFilter = 'all' | ApiMeetingStatus
 
 function fmtDuration(s: number): string {
@@ -50,8 +49,7 @@ function statusTone(status: ApiMeetingStatus): string {
 
 export default function RecordingsPage() {
   const { isAuthenticated } = useUser()
-  // Temporarily hidden per Vins: meeting summary UI is paused until reprioritized.
-  // const [activeTab, setActiveTab] = useState<ActiveTab>('meetings')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('meetings')
 
   if (!isAuthenticated) {
     return <div className="p-6 text-ssm text-slate-600 dark:text-slate-400">Please sign in.</div>
@@ -61,14 +59,13 @@ export default function RecordingsPage() {
     <div className="p-4 md:px-6 pb-6 w-full">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div>
-          <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">Recordings</h1>
+          <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">Meetings</h1>
           <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
-            Browser recordings for calls and notes.
+            Circleback meeting artifacts and browser recordings.
           </p>
         </div>
 
         <div className="inline-flex rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] p-1">
-          {/* Temporarily hidden per Vins: meeting summary UI is paused until reprioritized.
           {(['meetings', 'recordings'] as ActiveTab[]).map((tab) => (
             <button
               key={tab}
@@ -83,21 +80,10 @@ export default function RecordingsPage() {
               {tab}
             </button>
           ))}
-          */}
-          <button
-            type="button"
-            disabled
-            className="h-8 px-3 rounded-md text-xs font-semibold capitalize bg-slate-900 text-white dark:bg-white dark:text-slate-950"
-          >
-            recordings
-          </button>
         </div>
       </div>
 
-      {/* Temporarily hidden per Vins: meeting summary UI is paused until reprioritized.
       {activeTab === 'meetings' ? <MeetingsTab /> : <RecordingsTab />}
-      */}
-      <RecordingsTab />
     </div>
   )
 }
