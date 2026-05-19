@@ -4,8 +4,8 @@ import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useGenerateDealSummary, useCirclebackUpload } from '@/lib/hooks/mutations'
-import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDealSummaries, useGetDealSummaryLatest, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal } from '@/lib/hooks/queries'
+import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useCirclebackUpload } from '@/lib/hooks/mutations'
+import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
@@ -474,31 +474,35 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const { data: documents = [], isLoading: loadingResourceDocs, refetch: refetchResourceDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal })
   const { data: dealProposals = [], isLoading: loadingProposals } = useGetProposalsByDeal(dealId, { enabled: !!deal })
   // ── Summary: auto-generate + poll, no manual button ───────────────────
-  const summaryAutoTriggeredRef = useRef(false)
-  const [isSummaryGenerating, setIsSummaryGenerating] = useState(false)
-  const { data: summaries = [] } = useGetDealSummaries(dealId, {
-    // Poll every 5s whenever no summary exists yet — stops once one appears
-    refetchInterval: (query) => (!query.state.data || query.state.data.length === 0) ? 5000 : false,
-  })
-  const latestSummaryFilename = summaries[0]?.filename
-  const { data: latestSummary } = useGetDealSummaryLatest(dealId, latestSummaryFilename)
-  const triggerSummary = useGenerateDealSummary({
-    onSuccess: () => setIsSummaryGenerating(true),
-    onSettled: () => { summaryAutoTriggeredRef.current = true },
-  })
+  // Temporarily hidden per Vins: the DealDetail auto-summary feature is paused until reprioritized.
+  // Keeping the original hook flow commented here makes the feature easy to restore without running
+  // background summary jobs or polling `/summaries` while paused.
+  // const summaryAutoTriggeredRef = useRef(false)
+  // const [isSummaryGenerating, setIsSummaryGenerating] = useState(false)
+  // const { data: summaries = [] } = useGetDealSummaries(dealId, {
+  //   // Poll every 5s whenever no summary exists yet, stops once one appears.
+  //   refetchInterval: (query) => (!query.state.data || query.state.data.length === 0) ? 5000 : false,
+  // })
+  // const latestSummaryFilename = summaries[0]?.filename
+  // const { data: latestSummary } = useGetDealSummaryLatest(dealId, latestSummaryFilename)
+  // const triggerSummary = useGenerateDealSummary({
+  //   onSuccess: () => setIsSummaryGenerating(true),
+  //   onSettled: () => { summaryAutoTriggeredRef.current = true },
+  // })
 
-  // Auto-trigger once when deal has notes but no summary
-  useEffect(() => {
-    if (summaryAutoTriggeredRef.current) return
-    if (!deal || loadingDocs || nfsNotes.length === 0 || summaries.length > 0) return
-    summaryAutoTriggeredRef.current = true
-    triggerSummary.mutate(dealId)
-  }, [deal, nfsNotes.length, summaries.length, loadingDocs, dealId])
+  // Auto-trigger once when deal has notes but no summary.
+  // Paused with the summary hooks above so opening a deal no longer starts summary generation.
+  // useEffect(() => {
+  //   if (summaryAutoTriggeredRef.current) return
+  //   if (!deal || loadingDocs || nfsNotes.length === 0 || summaries.length > 0) return
+  //   summaryAutoTriggeredRef.current = true
+  //   triggerSummary.mutate(dealId)
+  // }, [deal, nfsNotes.length, summaries.length, loadingDocs, dealId])
 
-  // Clear generating state once summary file lands
-  useEffect(() => {
-    if (summaries.length > 0) setIsSummaryGenerating(false)
-  }, [summaries.length])
+  // Clear generating state once summary file lands.
+  // useEffect(() => {
+  //   if (summaries.length > 0) setIsSummaryGenerating(false)
+  // }, [summaries.length])
   const { data: users = [] } = useGetUsers()
   const deleteNfsNote = useDeleteDealNote({
     onSuccess: () => {
@@ -1513,59 +1517,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {/* ── Notes tab ─────────────────────────────────────────────────── */}
           {activeTab === 'notes' && (
             <div>
-              {/* Note Summary — auto-generated, no button */}
-              {nfsNotes.length === 0 ? (
-                /* Guard rail: no notes → no summary possible */
-                <div className="mx-4 mt-4 mb-0">
-                  <div className="rounded-md border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] px-4 py-3 flex items-center gap-2">
-                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" className="text-slate-300 dark:text-slate-600 shrink-0">
-                      <path d="M9 12h6M9 16h6M6 8h.01M6 12h.01M6 16h.01" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
-                      <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth={2} />
-                    </svg>
-                    <span className="text-[12px] text-slate-400 dark:text-slate-500">No notes to summarize</span>
-                  </div>
-                </div>
-              ) : latestSummary ? (
-                <div className="mx-4 mt-4 mb-0">
-                  <div
-                    className="rounded-md bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] overflow-hidden"
-                    style={{ borderTopWidth: '2px', borderImage: 'linear-gradient(90deg, #6c63ff, #a78bfa, #c084fc) 1' }}
-                  >
-                    <div className="px-4 py-3">
-                      <PartialCollapse
-                        label="Note Summary"
-                        date={new Date(latestSummary.meta.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        icon={
-                          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="text-primary">
-                            <path d="M12 2l2.09 6.26L20.18 9l-4.64 3.74L16.72 19 12 15.77 7.28 19l1.18-6.26L3.82 9l6.09-.74L12 2z" fill="currentColor" />
-                            <circle cx="19" cy="5" r="2" fill="currentColor" opacity="0.4" />
-                            <circle cx="5" cy="5" r="1.5" fill="currentColor" opacity="0.3" />
-                          </svg>
-                        }
-                      >
-                        <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                          {latestSummary.content
-                            .replace(/^---[\s\S]*?---\s*/, '')
-                            .replace(/^#\s+.+\n+/, '')
-                            .trim()
-                          }
-                        </div>
-                      </PartialCollapse>
-                    </div>
-                  </div>
-                </div>
-              ) : isSummaryGenerating ? (
-                <div className="mx-4 mt-4 mb-0">
-                  <div className="rounded-md border border-dashed border-primary/20 bg-primary/[.02] px-4 py-3 flex items-center gap-2 text-primary text-xs">
-                    <svg className="animate-spin shrink-0" width={12} height={12} viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span className="font-medium">Generating summary...</span>
-                    <span className="text-primary/50">Aria is reading your notes</span>
-                  </div>
-                </div>
-              ) : null}
+              {/* Note Summary, auto-generated, no button.
+                  Temporarily hidden per Vins: the DealDetail auto-summary UI is paused until reprioritized.
+                  Original UI states preserved for restoration:
+                  - No notes state: rendered `No notes to summarize`.
+                  - Existing summary state: rendered `PartialCollapse` with `Note Summary` and `latestSummary.content`.
+                  - Generating state: rendered `Generating summary...` plus `Aria is reading your notes`.
+              */}
 
               {/* Circleback: analyzing banner, shown while Circleback is processing the recording */}
               {(cbPushStatus === 'uploading' || cbPushStatus === 'processing') && (
