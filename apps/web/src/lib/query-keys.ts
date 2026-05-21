@@ -128,5 +128,6 @@ export const queryKeys = {
     all: ['meetings'] as const,
     filtered: (params: MeetingsFilterParams) => ['meetings', params] as const,
     detail: (id: string) => ['meetings', id] as const,
+    resolverCandidates: (terms: string, limit: number) => ['meetings', 'resolver-candidates', terms, limit] as const,
   },
 } as const

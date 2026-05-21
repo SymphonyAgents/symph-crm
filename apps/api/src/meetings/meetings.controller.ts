@@ -22,6 +22,15 @@ export class MeetingsController {
     })
   }
 
+  @Get('resolver/candidates')
+  async resolverCandidates(
+    @Query('terms') terms?: string,
+    @Query('limit') limit?: string,
+  ) {
+    if (!terms) throw new BadRequestException('terms is required')
+    return this.meetings.findResolverCandidates(terms, limit ? parseInt(limit, 10) : 10)
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.meetings.findOneWithArtifacts(id)

@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ArrowUpRight, ExternalLink, FileText, Loader2, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, ExternalLink, FileText, Loader2, RefreshCw, Search } from 'lucide-react'
 import { useAssignMeetingDeal, useRetryMeetingIngest } from '@/lib/hooks/mutations'
-import { useGetMeeting } from '@/lib/hooks/queries'
+import { useGetMeeting, useGetMeetingResolverCandidates } from '@/lib/hooks/queries'
 import { formatDate, cn } from '@/lib/utils'
-import type { ApiMeetingRawPayload, ApiMeetingStatus } from '@/lib/types'
+import type { ApiDeal, ApiMeetingRawPayload, ApiMeetingResolverCandidates, ApiMeetingStatus } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 
 function stripFrontmatter(content: string): string {
@@ -42,20 +42,69 @@ function getRawPayloadFallback(rawPayload: ApiMeetingRawPayload | null | undefin
   }
 }
 
+function getInitialSearchTerm(title: string, attendees: string[]): string {
+  const cleanedTitle = title
+    .replace(/^discovery call:\s*/i, '')
+    .replace(/^meeting summary\s*-\s*/i, '')
+    .replace(/^transcript\s*-\s*/i, '')
+    .trim()
+
+  if (cleanedTitle) return cleanedTitle
+
+  const firstExternalAttendee = attendees.find((attendee) => !attendee.toLowerCase().includes('@symph.co'))
+  if (!firstExternalAttendee) return ''
+
+  return firstExternalAttendee
+    .replace(/^.*<([^>]+)>.*$/, '$1')
+    .split('@')[1]
+    ?.split('.')[0]
+    ?.trim() ?? firstExternalAttendee
+}
+
+type DealCandidate = {
+  deal: ApiDeal
+  reason: string
+}
+
+function getDealCandidates(candidates: ApiMeetingResolverCandidates | undefined): DealCandidate[] {
+  const byId = new Map<string, DealCandidate>()
+
+  candidates?.deals.forEach((deal) => {
+    byId.set(deal.id, { deal, reason: 'Deal title match' })
+  })
+
+  candidates?.dealsByCompany.forEach((deal) => {
+    if (!byId.has(deal.id)) {
+      byId.set(deal.id, { deal, reason: 'Brand or contact match' })
+    }
+  })
+
+  return Array.from(byId.values())
+}
+
 export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack: () => void }) {
   const { data, isLoading } = useGetMeeting(meetingId)
   const retryMeeting = useRetryMeetingIngest()
   const assignMeeting = useAssignMeetingDeal()
-  const [dealId, setDealId] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedDealId, setSelectedDealId] = useState('')
 
   const detail = data?.meeting ?? null
   const rawFallback = getRawPayloadFallback(detail?.rawPayload)
   const summary = data?.summaryNote?.content ? stripFrontmatter(data.summaryNote.content) : rawFallback.summary
   const transcript = data?.transcriptNote?.content ? stripFrontmatter(data.transcriptNote.content) : rawFallback.transcript
+  const resolverTerms = searchTerm.trim()
+  const resolverCandidates = useGetMeetingResolverCandidates(resolverTerms, 8)
+  const dealCandidates = useMemo(() => getDealCandidates(resolverCandidates.data), [resolverCandidates.data])
 
   useEffect(() => {
-    setDealId(detail?.dealId ?? '')
+    setSelectedDealId(detail?.dealId ?? '')
   }, [detail?.dealId])
+
+  useEffect(() => {
+    if (!detail || detail.dealId || searchTerm) return
+    setSearchTerm(getInitialSearchTerm(detail.title, detail.attendees))
+  }, [detail, searchTerm])
 
   if (isLoading && !detail) {
     return (
@@ -163,22 +212,90 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
             </div>
 
             {!detail.dealId && (
-              <div className="border border-black/[.06] dark:border-white/[.08] rounded-md p-3">
-                <p className="text-xs font-semibold text-slate-900 dark:text-white">Assign to deal</p>
-                <div className="flex gap-2 mt-2">
+              <div className="border border-black/[.06] dark:border-white/[.08] rounded-md p-3 space-y-3">
+                <div>
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">Assign to deal</p>
+                  <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Pick the matching deal, then CRM will ingest the saved summary and transcript.
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <Search size={13} strokeWidth={1.8} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
-                    value={dealId}
-                    onChange={(event) => setDealId(event.target.value)}
-                    placeholder="Deal ID"
-                    className="min-w-0 flex-1 h-8 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
+                    value={searchTerm}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value)
+                      setSelectedDealId('')
+                    }}
+                    placeholder="Search by deal, brand, contact, or attendee"
+                    className="w-full h-8 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-transparent pl-8 pr-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  {resolverCandidates.isFetching && (
+                    <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                      <Loader2 size={13} className="animate-spin" /> Searching deals
+                    </div>
+                  )}
+
+                  {!resolverCandidates.isFetching && resolverTerms && dealCandidates.length === 0 && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">No matching deals found. Try a company, contact, or deal title.</p>
+                  )}
+
+                  {dealCandidates.map(({ deal, reason }) => {
+                    const selected = selectedDealId === deal.id
+                    return (
+                      <button
+                        key={deal.id}
+                        type="button"
+                        onClick={() => setSelectedDealId(deal.id)}
+                        className={cn(
+                          'w-full text-left rounded-lg border px-3 py-2 transition-colors',
+                          selected
+                            ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                            : 'border-black/[.06] dark:border-white/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04]',
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">{deal.title}</p>
+                            <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
+                              {deal.brandName ?? 'No brand'} · {deal.stage} · {reason}
+                            </p>
+                          </div>
+                          <span className={cn(
+                            'shrink-0 rounded-md px-1.5 py-0.5 text-atom font-semibold border',
+                            selected
+                              ? 'border-primary/30 text-primary bg-primary/10'
+                              : 'border-black/[.08] dark:border-white/[.1] text-slate-500 dark:text-slate-400',
+                          )}>
+                            {selected ? 'Selected' : 'Choose'}
+                          </span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="flex gap-2 pt-1">
                   <button
-                    onClick={() => assignMeeting.mutate({ id: detail.id, dealId })}
-                    disabled={!dealId || assignMeeting.isPending}
-                    className="h-8 px-3 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 text-xs font-semibold disabled:opacity-50"
+                    onClick={() => assignMeeting.mutate({ id: detail.id, dealId: selectedDealId })}
+                    disabled={!selectedDealId || assignMeeting.isPending}
+                    className="h-8 px-3 rounded-lg bg-slate-900 text-white dark:bg-white dark:text-slate-950 text-xs font-semibold disabled:opacity-50 flex items-center gap-1.5"
                   >
-                    Assign
+                    {assignMeeting.isPending && <Loader2 size={13} className="animate-spin" />}
+                    Assign and ingest
                   </button>
+                  {selectedDealId && (
+                    <Link
+                      href={`/deals/${selectedDealId}`}
+                      className="h-8 px-3 rounded-lg border border-black/[.08] dark:border-white/[.1] text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      Preview deal <ArrowUpRight size={13} />
+                    </Link>
+                  )}
                 </div>
               </div>
             )}

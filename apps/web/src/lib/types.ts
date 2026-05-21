@@ -556,6 +556,22 @@ export type ApiMeeting = {
   updatedAt: string
 }
 
+export type ApiMeetingResolverContact = {
+  id: string
+  companyId: string
+  name: string
+  email: string | null
+  phone: string | null
+  title: string | null
+}
+
+export type ApiMeetingResolverCandidates = {
+  deals: ApiDeal[]
+  companies: ApiCompanyDetail[]
+  contacts: ApiMeetingResolverContact[]
+  dealsByCompany: ApiDeal[]
+}
+
 export type ApiMeetingDetail = {
   meeting: ApiMeeting
   summaryNote: NfsDealNote | null
