@@ -43,7 +43,6 @@ import type {
   ApiRecording,
   ApiMeeting,
   ApiMeetingDetail,
-  ApiMeetingResolverCandidates,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -624,15 +623,6 @@ export function useGetMeeting(id: string | null | undefined) {
     queryKey: queryKeys.meetings.detail(id ?? ''),
     queryFn: () => api.get<ApiMeetingDetail>(`/meetings/${id}`),
     enabled: !!id,
-    staleTime: 30_000,
-  })
-}
-
-export function useGetMeetingResolverCandidates(terms: string, limit = 8) {
-  return useQuery<ApiMeetingResolverCandidates>({
-    queryKey: queryKeys.meetings.resolverCandidates(terms, limit),
-    queryFn: () => api.get<ApiMeetingResolverCandidates>('/meetings/resolver/candidates', { terms, limit }),
-    enabled: terms.trim().length > 0,
     staleTime: 30_000,
   })
 }

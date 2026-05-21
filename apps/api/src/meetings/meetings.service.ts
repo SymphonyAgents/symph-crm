@@ -135,7 +135,70 @@ export class MeetingsService {
 
     if (!body.dealId) return { ok: true, meeting, status: 'pending' as const }
 
-    return this.processMeetingArtifacts(meeting.id, body, startedAt)
+    try {
+      const deal = await this.dealsService.findOne(body.dealId)
+      if (!deal) throw new NotFoundException(`Deal ${body.dealId} not found`)
+
+      if (!body.summaryMarkdown || !body.transcriptMarkdown) {
+        const updated = await this.updateMeeting(meeting.id, {
+          status: 'pending',
+          lastError: 'Summary and transcript markdown are required before marking meeting done.',
+        })
+        return { ok: true, meeting: updated, status: 'pending' as const }
+      }
+
+      const noteDate = meetingNoteDate(startedAt)
+      const sourceId = safeSourceId(body.sourceMeetingId)
+      const metadata = {
+        source: 'meetings.symph.co',
+        sourceMeetingId: body.sourceMeetingId,
+        sourceUrl: body.sourceUrl,
+        meetingId: meeting.id,
+      }
+      const authorId = deal.assignedTo ?? null
+
+      const [summaryNote, transcriptNote] = await Promise.all([
+        this.dealNotes.upsertNote(
+          body.dealId,
+          'meeting',
+          `Meeting Summary - ${body.title}`,
+          body.summaryMarkdown,
+          authorId,
+          {
+            filename: `circleback-${sourceId}-summary.md`,
+            createdAt: noteDate,
+            metadata: { ...metadata, artifactType: 'summary' },
+          },
+        ),
+        this.dealNotes.upsertNote(
+          body.dealId,
+          'transcript_raw',
+          `Transcript - ${body.title}`,
+          body.transcriptMarkdown,
+          authorId,
+          {
+            filename: `circleback-${sourceId}-transcript.md`,
+            createdAt: noteDate,
+            metadata: { ...metadata, artifactType: 'transcript' },
+          },
+        ),
+      ])
+
+      const updated = await this.updateMeeting(meeting.id, {
+        status: 'done',
+        lastError: null,
+        summaryNotePath: summaryNote.storagePath,
+        transcriptNotePath: transcriptNote.storagePath,
+        ingestedAt: new Date(),
+      })
+
+      return { ok: true, meeting: updated, summaryNote, transcriptNote, status: 'done' as const }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Meeting ingest failed'
+      const failed = await this.updateMeeting(meeting.id, { status: 'failed', lastError: message })
+      if (error instanceof NotFoundException) throw error
+      return { ok: false, meeting: failed, status: 'failed' as const, error: message }
+    }
   }
 
   async retryIngest(id: string) {
@@ -178,7 +241,7 @@ export class MeetingsService {
       .where(eq(meetings.id, id))
       .returning()
 
-    return this.processMeetingArtifacts(updated.id, rawPayload, parseOptionalDate(rawPayload.startedAt))
+    return { ok: true, meeting: updated }
   }
 
   async findResolverCandidates(terms: string, limit = 10) {
@@ -204,10 +267,7 @@ export class MeetingsService {
           .limit(limit)
       : []
 
-    const companyIds = Array.from(new Set([
-      ...companyRows.map(row => row.company.id),
-      ...contactRows.map(row => row.contact.companyId),
-    ]))
+    const companyIds = companyRows.map(row => row.company.id)
     const dealsByCompany = companyIds.length > 0
       ? await this.db.select().from(deals).where(and(
           inArray(deals.companyId, companyIds as [string, ...string[]]),
@@ -220,82 +280,6 @@ export class MeetingsService {
       companies: companyRows.map(row => row.company),
       contacts: contactRows.map(row => row.contact),
       dealsByCompany,
-    }
-  }
-
-  private async processMeetingArtifacts(meetingId: string, body: PassiveMeetingIngestBody, startedAt: Date | null) {
-    try {
-      const dealId = body.dealId
-      if (!dealId) {
-        const updated = await this.updateMeeting(meetingId, {
-          status: 'pending',
-          lastError: null,
-        })
-        return { ok: true, meeting: updated, status: 'pending' as const }
-      }
-
-      const deal = await this.dealsService.findOne(dealId)
-      if (!deal) throw new NotFoundException(`Deal ${dealId} not found`)
-
-      if (!body.summaryMarkdown || !body.transcriptMarkdown) {
-        const updated = await this.updateMeeting(meetingId, {
-          status: 'pending',
-          lastError: 'Summary and transcript markdown are required before marking meeting done.',
-        })
-        return { ok: true, meeting: updated, status: 'pending' as const }
-      }
-
-      const noteDate = meetingNoteDate(startedAt)
-      const sourceId = safeSourceId(body.sourceMeetingId)
-      const metadata = {
-        source: 'meetings.symph.co',
-        sourceMeetingId: body.sourceMeetingId,
-        sourceUrl: body.sourceUrl,
-        meetingId,
-      }
-      const authorId = deal.assignedTo ?? null
-
-      const [summaryNote, transcriptNote] = await Promise.all([
-        this.dealNotes.upsertNote(
-          dealId,
-          'meeting',
-          `Meeting Summary - ${body.title}`,
-          body.summaryMarkdown,
-          authorId,
-          {
-            filename: `circleback-${sourceId}-summary.md`,
-            createdAt: noteDate,
-            metadata: { ...metadata, artifactType: 'summary' },
-          },
-        ),
-        this.dealNotes.upsertNote(
-          dealId,
-          'transcript_raw',
-          `Transcript - ${body.title}`,
-          body.transcriptMarkdown,
-          authorId,
-          {
-            filename: `circleback-${sourceId}-transcript.md`,
-            createdAt: noteDate,
-            metadata: { ...metadata, artifactType: 'transcript' },
-          },
-        ),
-      ])
-
-      const updated = await this.updateMeeting(meetingId, {
-        status: 'done',
-        lastError: null,
-        summaryNotePath: summaryNote.storagePath,
-        transcriptNotePath: transcriptNote.storagePath,
-        ingestedAt: new Date(),
-      })
-
-      return { ok: true, meeting: updated, summaryNote, transcriptNote, status: 'done' as const }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Meeting ingest failed'
-      const failed = await this.updateMeeting(meetingId, { status: 'failed', lastError: message })
-      if (error instanceof NotFoundException) throw error
-      return { ok: false, meeting: failed, status: 'failed' as const, error: message }
     }
   }
 
