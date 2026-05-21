@@ -222,6 +222,63 @@ export class InternalController {
     )
   }
 
+  private normalizeInternalActivityBody(body: {
+    type: string
+    metadata?: Record<string, unknown>
+    [key: string]: unknown
+  }) {
+    const activityTypeAliases: Record<string, string> = {
+      note: 'note_added',
+      call: 'note_added',
+      email: 'note_added',
+      meeting: 'note_added',
+      status_change: 'deal_updated',
+      document_added: 'file_uploaded',
+    }
+    const allowedActivityTypes = new Set([
+      'deal_created',
+      'deal_stage_changed',
+      'deal_updated',
+      'deal_value_changed',
+      'note_added',
+      'note_updated',
+      'file_uploaded',
+      'contact_added',
+      'company_created',
+      'company_updated',
+      'customization_requested',
+      'customization_delivered',
+      'pitch_created',
+      'am_assigned',
+      'deal_flagged',
+      'deal_unflagged',
+      'deal_won',
+      'deal_lost',
+      'proposal_created',
+      'proposal_sent',
+      'attachment_added',
+    ])
+    const requestedType = String(body.type ?? '').trim()
+    const normalizedType = activityTypeAliases[requestedType] ?? requestedType
+
+    if (!allowedActivityTypes.has(normalizedType)) {
+      throw new BadRequestException(
+        `Unsupported activity type "${requestedType}". Use one of: ${Array.from(allowedActivityTypes).join(', ')}.`,
+      )
+    }
+
+    if (normalizedType === requestedType) return body
+
+    return {
+      ...body,
+      type: normalizedType,
+      metadata: {
+        ...(body.metadata ?? {}),
+        originalType: requestedType,
+      },
+    }
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Infrastructure (Cloud Scheduler)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -719,8 +776,9 @@ export class InternalController {
     },
   ) {
     const { performedBy } = this.resolvePerformer(headers)
+    const normalizedBody = this.normalizeInternalActivityBody(body)
     const activity = await this.activities.create({
-      ...body,
+      ...normalizedBody,
       performedBy: body.performedBy ?? performedBy,
     } as any)
     return { ok: true, activity }
