@@ -43,6 +43,7 @@ import type {
   ApiRecording,
   ApiMeeting,
   ApiMeetingDetail,
+  ApiMeetingListItem,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -611,9 +612,9 @@ export function useGetRecordings() {
 
 export function useGetMeetings(params?: { status?: 'pending' | 'done' | 'failed'; dealId?: string; limit?: number }) {
   const query = params ?? {}
-  return useQuery<ApiMeeting[]>({
+  return useQuery<ApiMeetingListItem[]>({
     queryKey: queryKeys.meetings.filtered(query),
-    queryFn: () => api.get<ApiMeeting[]>('/meetings', query),
+    queryFn: () => api.get<ApiMeetingListItem[]>('/meetings', query),
     staleTime: 30_000,
   })
 }

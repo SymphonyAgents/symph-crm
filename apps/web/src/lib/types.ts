@@ -535,24 +535,27 @@ export type ApiMeetingRawPayload = {
   } | null
 }
 
-export type ApiMeeting = {
+export type ApiMeetingListItem = {
   id: string
-  workspaceId: string
   dealId: string | null
-  sourceMeetingId: string
-  sourceUrl: string
   title: string
   startedAt: string | null
-  endedAt: string | null
   attendees: string[]
   status: ApiMeetingStatus
   lastError: string | null
+  createdAt: string
+}
+
+export type ApiMeeting = ApiMeetingListItem & {
+  workspaceId: string
+  sourceMeetingId: string
+  sourceUrl: string
+  endedAt: string | null
   retryCount: number
   summaryNotePath: string | null
   transcriptNotePath: string | null
   ingestedAt: string | null
   rawPayload: ApiMeetingRawPayload | null
-  createdAt: string
   updatedAt: string
 }
 

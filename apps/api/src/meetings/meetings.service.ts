@@ -60,7 +60,17 @@ export class MeetingsService {
     if (params?.status) conditions.push(eq(meetings.status, params.status))
     if (params?.dealId) conditions.push(eq(meetings.dealId, params.dealId))
 
-    const base = this.db.select().from(meetings)
+    const base = this.db.select({
+      id: meetings.id,
+      dealId: meetings.dealId,
+      title: meetings.title,
+      startedAt: meetings.startedAt,
+      attendees: meetings.attendees,
+      status: meetings.status,
+      lastError: meetings.lastError,
+      createdAt: meetings.createdAt,
+    }).from(meetings)
+
     return conditions.length > 0
       ? base.where(and(...conditions)).orderBy(desc(meetings.createdAt)).limit(limit)
       : base.orderBy(desc(meetings.createdAt)).limit(limit)

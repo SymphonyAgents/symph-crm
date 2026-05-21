@@ -21,7 +21,7 @@ import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
 import { api } from '@/lib/api'
-import type { ApiMeeting, ApiMeetingStatus, ApiRecording } from '@/lib/types'
+import type { ApiMeetingListItem, ApiMeetingStatus, ApiRecording } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { toast } from 'sonner'
 
@@ -206,7 +206,7 @@ function MeetingsTab() {
   )
 }
 
-function MeetingRow({ meeting }: { meeting: ApiMeeting }) {
+function MeetingRow({ meeting }: { meeting: ApiMeetingListItem }) {
   return (
     <Link
       href={`/meetings/${meeting.id}`}
