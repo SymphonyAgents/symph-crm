@@ -771,6 +771,7 @@ export class InternalController {
       title?: string
       description?: string
       performedBy?: string
+      actorId?: string
       metadata?: Record<string, unknown>
       [key: string]: unknown
     },
@@ -779,7 +780,7 @@ export class InternalController {
     const normalizedBody = this.normalizeInternalActivityBody(body)
     const activity = await this.activities.create({
       ...normalizedBody,
-      performedBy: body.performedBy ?? performedBy,
+      actorId: body.actorId ?? body.performedBy ?? performedBy,
     } as any)
     return { ok: true, activity }
   }
