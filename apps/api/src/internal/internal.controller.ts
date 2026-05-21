@@ -29,6 +29,7 @@ import { UsersService } from '../users/users.service'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
+import { ensureDealNoteAuthorFrontmatter } from '../wiki/wiki-frontmatter'
 import { ProposalsService } from '../proposals/proposals.service'
 import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meetings.service'
 
@@ -1052,16 +1053,21 @@ export class InternalController {
   @Post('wiki/page')
   @HttpCode(HttpStatus.OK)
   async writeWikiPage(
+    @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: { path: string; content: string; append?: boolean },
   ) {
     if (!body.path || body.content === undefined) {
       return { ok: false, error: 'path and content are required' }
     }
+
+    const { performedBy } = this.resolvePerformer(headers)
+    const content = ensureDealNoteAuthorFrontmatter(body.path, body.content, performedBy)
+
     if (body.append) {
-      await this.wiki.appendPage(body.path, body.content)
+      await this.wiki.appendPage(body.path, content)
       return { ok: true, path: body.path, action: 'appended' }
     }
-    await this.wiki.writePage(body.path, body.content)
+    await this.wiki.writePage(body.path, content)
     return { ok: true, path: body.path, action: 'written' }
   }
 
