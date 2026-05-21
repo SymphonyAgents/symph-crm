@@ -41,6 +41,11 @@ export class DealsController {
     return this.dealNotesService.getNotes(id)
   }
 
+  @Get('trash')
+  listTrash() {
+    return this.dealsService.listTrash()
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.dealsService.findOne(id)
@@ -134,6 +139,16 @@ export class DealsController {
     @Headers('x-user-id') userId?: string,
   ) {
     return this.dealNotesService.deleteNote(id, category, filename, userId)
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+    return this.dealsService.restore(id, userId)
+  }
+
+  @Delete(':id/permanent')
+  deletePermanently(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+    return this.dealsService.deletePermanently(id, userId)
   }
 
   @Delete(':id')

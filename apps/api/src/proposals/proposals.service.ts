@@ -143,7 +143,7 @@ export class ProposalsService implements OnModuleInit {
         v.author_id   AS current_author_id,
         v.created_at  AS current_version_created_at
       FROM proposals p
-      LEFT JOIN deals d ON d.id = p.deal_id
+      LEFT JOIN deals d ON d.id = p.deal_id AND d.deleted_at IS NULL
       LEFT JOIN companies c ON c.id = d.company_id
       LEFT JOIN proposal_versions v
         ON v.proposal_id = p.id AND v.version = p.current_version

@@ -175,8 +175,8 @@ function CardActionsMenu({
       </button>
       {open && (
         <div className="absolute right-0 top-7 z-50 min-w-[180px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
-          {/* Assign — locked for won/lost deals */}
-          {isTerminal ? (
+          {/* Assign, locked for won/lost deals */}
+          {isSales && isTerminal ? (
             <div
               className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none"
               title="Cannot reassign AM — deal is won/lost"
@@ -189,7 +189,7 @@ function CardActionsMenu({
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
             </div>
-          ) : (
+          ) : isSales ? (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAssign(v => !v); setShowAdvanceTo(false); setShowMoveTo(false) }}
@@ -217,10 +217,10 @@ function CardActionsMenu({
                 </div>
               )}
             </>
-          )}
+          ) : null}
 
           {/* Advance (next stage, no confirmation, shows spinner) */}
-          {canAdvance && (
+          {isSales && canAdvance && (
             <button
               onClick={(e) => { e.stopPropagation(); onAdvance() }}
               disabled={isAdvancing}
@@ -232,7 +232,7 @@ function CardActionsMenu({
           )}
 
           {/* Advance to... (choose target stage) */}
-          {advanceTargets.length > 1 && (
+          {isSales && advanceTargets.length > 1 && (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAdvanceTo(v => !v); setShowAssign(false); setShowMoveTo(false) }}
@@ -259,7 +259,7 @@ function CardActionsMenu({
           )}
 
           {/* Move to previous stage */}
-          {moveBackTargets.length > 0 && (
+          {isSales && moveBackTargets.length > 0 && (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMoveTo(v => !v); setShowAssign(false); setShowAdvanceTo(false) }}
@@ -286,12 +286,14 @@ function CardActionsMenu({
           )}
 
           {/* Edit deal */}
-          <button
-            onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit() }}
-            className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
-          >
-            <Pencil size={14} /> Edit deal
-          </button>
+          {isSales && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit() }}
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+            >
+              <Pencil size={14} /> Edit deal
+            </button>
+          )}
 
           {/* Delete */}
           {isSales && (
@@ -378,7 +380,7 @@ function DealCard({
           {brandName}
         </span>
         <div className="flex items-center gap-1">
-          {onDelete !== undefined && onAdvance !== undefined && onAssign !== undefined && onAdvanceTo !== undefined && onMoveTo !== undefined && onEdit !== undefined && (
+          {isSales && onDelete !== undefined && onAdvance !== undefined && onAssign !== undefined && onAdvanceTo !== undefined && onMoveTo !== undefined && onEdit !== undefined && (
             <CardActionsMenu
               deal={deal}
               currentStage={deal.stage}
@@ -609,7 +611,7 @@ function MobileActionSheet({
         {/* Actions */}
         <div>
           {/* Assign */}
-          {!isTerminal && (
+          {isSales && !isTerminal && (
             <>
               <button
                 onClick={() => { setShowAssign(!showAssign); setShowAdvance(false); setShowMoveBack(false) }}
@@ -640,7 +642,7 @@ function MobileActionSheet({
           )}
 
           {/* Advance to... */}
-          {advanceTargets.length > 0 && (
+          {isSales && advanceTargets.length > 0 && (
             <>
               <button
                 onClick={() => { setShowAdvance(!showAdvance); setShowMoveBack(false); setShowAssign(false) }}
@@ -667,7 +669,7 @@ function MobileActionSheet({
           )}
 
           {/* Move back... */}
-          {moveBackTargets.length > 0 && (
+          {isSales && moveBackTargets.length > 0 && (
             <>
               <button
                 onClick={() => { setShowMoveBack(!showMoveBack); setShowAdvance(false); setShowAssign(false) }}
@@ -872,21 +874,23 @@ export function Pipeline({
   }, [filteredDeals, mobileStageFilter])
 
   const handleDeleteDeal = useCallback((dealId: string) => {
+    if (!isSales) return
     setDeleteConfirmDealId(dealId)
-  }, [])
+  }, [isSales])
 
   const confirmDelete = useCallback(() => {
-    if (!deleteConfirmDealId) return
+    if (!isSales || !deleteConfirmDealId) return
     deleteDeal.mutate(deleteConfirmDealId, {
       onSettled: () => {
         setDeleteConfirmDealId(null)
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
       },
     })
-  }, [deleteConfirmDealId, deleteDeal, queryClient])
+  }, [deleteConfirmDealId, deleteDeal, isSales, queryClient])
 
   /** Advance to the immediate next stage (no confirmation, spinner in menu) */
   const handleAdvanceDeal = useCallback((dealId: string, currentStage: string) => {
+    if (!isSales) return
     const nextStage = STAGE_ADVANCE_MAP[currentStage]
     if (!nextStage) return
     setAdvancingDealId(dealId)
@@ -903,13 +907,14 @@ export function Pipeline({
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
       },
     })
-  }, [deals, patchStage, queryClient])
+  }, [deals, isSales, patchStage, queryClient])
 
   /**
    * Advance to a specific forward stage.
    * All intermediate stages are applied sequentially so activity logs stay correct.
    */
   const handleAdvanceTo = useCallback(async (dealId: string, targetStage: string) => {
+    if (!isSales) return
     const deal = deals.find(d => d.id === dealId)
     if (!deal) return
     setAdvancingDealId(dealId)
@@ -948,17 +953,18 @@ export function Pipeline({
       setAdvancingDealId(null)
       queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
     }
-  }, [deals, patchStage, queryClient])
+  }, [deals, isSales, patchStage, queryClient])
 
   // Move deal back to a previous stage — shows confirmation modal
   const handleMoveTo = useCallback((dealId: string, targetStage: string) => {
+    if (!isSales) return
     const deal = deals.find(d => d.id === dealId)
     if (!deal) return
     setMoveConfirm({ dealId, currentStage: deal.stage, targetStage, dealTitle: deal.title })
-  }, [deals])
+  }, [deals, isSales])
 
   const confirmMove = useCallback(() => {
-    if (!moveConfirm) return
+    if (!isSales || !moveConfirm) return
     const { dealId, targetStage, dealTitle } = moveConfirm
     const deal = deals.find(d => d.id === dealId)
     const fromStage = deal?.stage ?? 'lead'
@@ -974,9 +980,10 @@ export function Pipeline({
         queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
       },
     })
-  }, [moveConfirm, patchStage, queryClient])
+  }, [deals, isSales, moveConfirm, patchStage, queryClient])
 
   const handleAssignDeal = useCallback((dealId: string, userId: string, displayName: string) => {
+    if (!isSales) return
     const previousDeals = queryClient.getQueryData<ApiDeal[]>(queryKeys.deals.all)
     // Optimistic update: show display name immediately in the UI
     queryClient.setQueryData<ApiDeal[]>(queryKeys.deals.all, old =>
@@ -987,7 +994,7 @@ export function Pipeline({
       onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
       onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
     })
-  }, [updateDeal, queryClient])
+  }, [isSales, updateDeal, queryClient])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -1026,6 +1033,7 @@ export function Pipeline({
   }
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!isSales) return
     const { active, over } = event
     setActiveDealId(null)
     if (!over) return
@@ -1594,8 +1602,8 @@ export function Pipeline({
             className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete deal?</p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">This action cannot be undone. The deal will be permanently removed from your pipeline.</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">Move deal to trash?</p>
+            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">This will hide the deal from CRM views. It can be restored from Trash for 30 days before permanent deletion.</p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setDeleteConfirmDealId(null)}
@@ -1608,7 +1616,7 @@ export function Pipeline({
                 disabled={deleteDeal.isPending}
                 className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
               >
-                <>{deleteDeal.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Delete</>
+                <>{deleteDeal.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Move to trash</>
               </button>
             </div>
           </div>

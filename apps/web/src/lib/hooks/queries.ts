@@ -110,6 +110,16 @@ export function useGetDeals(
   })
 }
 
+export function useGetTrashedDeals(
+  options?: Partial<UseQueryOptions<ApiDeal[]>>,
+) {
+  return useQuery<ApiDeal[]>({
+    queryKey: queryKeys.deals.trash,
+    queryFn: () => api.get<ApiDeal[]>('/deals/trash'),
+    ...options,
+  })
+}
+
 export function useGetDeal(
   id: string,
   options?: Partial<UseQueryOptions<ApiDealDetail>>,

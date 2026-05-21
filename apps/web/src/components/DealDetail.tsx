@@ -461,6 +461,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const deleteDeal = useDeleteDeal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.deals.trash })
       onBack()
     },
   })
@@ -971,7 +972,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           >
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete deal?</p>
             <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-              This action cannot be undone. The deal will be permanently removed from your pipeline.
+              This will hide the deal from CRM views and move it to Trash. It can be restored for 30 days before permanent deletion.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
@@ -986,7 +987,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
               >
                 {deleteDeal.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                Delete
+                Move to trash
               </button>
             </div>
           </div>

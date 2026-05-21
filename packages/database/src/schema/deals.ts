@@ -64,6 +64,9 @@ export const deals = pgTable('deals', {
   lastActivityAt: timestamp('last_activity_at', { withTimezone: true }).defaultNow(),
   isFlagged: boolean('is_flagged').default(false),
   flagReason: text('flag_reason'),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  deletedBy: text('deleted_by').references(() => users.id),
+  deleteAfter: timestamp('delete_after', { withTimezone: true }),
   workspaceId: uuid('workspace_id').references(() => workspaces.id),
 
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

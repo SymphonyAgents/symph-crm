@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { notifications, deals, companies, pipelineStages } from '@symph-crm/database'
-import { eq, and, lt, sql, inArray } from 'drizzle-orm'
+import { eq, and, lt, sql, inArray, isNull } from 'drizzle-orm'
 
 @Injectable()
 export class NotificationsService {
@@ -21,6 +21,7 @@ export class NotificationsService {
       .where(
         and(
           eq(deals.assignedTo, userId),
+          isNull(deals.deletedAt),
           lt(deals.lastActivityAt, sql`NOW() - INTERVAL '3 days'`),
           sql`COALESCE(${pipelineStages.slug}, '') NOT IN ('closed_won', 'closed_lost')`,
         ),
@@ -65,7 +66,7 @@ export class NotificationsService {
       })
       .from(notifications)
       .leftJoin(deals, eq(notifications.dealId, deals.id))
-      .where(eq(notifications.userId, userId))
+      .where(and(eq(notifications.userId, userId), sql`${deals.deletedAt} IS NULL OR ${notifications.dealId} IS NULL`))
       .orderBy(sql`${notifications.isRead} ASC, ${notifications.createdAt} DESC`)
       .limit(50)
 

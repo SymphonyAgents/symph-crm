@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar } from './Avatar'
@@ -18,6 +19,7 @@ import {
   Mail,
   Phone,
   MessageCircle,
+  Trash2,
 } from 'lucide-react'
 
 // ─── Google icon (brand SVG) ─────────────────────────────────────────────────
@@ -153,6 +155,23 @@ export function Settings() {
               </span>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* System */}
+      <section>
+        <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-slate-400 mb-3">System</h2>
+        <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
+          <Link href="/settings/trash" className="flex items-center gap-4 group">
+            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/[.08] border border-red-100 dark:border-red-500/20 flex items-center justify-center shrink-0">
+              <Trash2 size={18} className="text-red-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-ssm font-semibold text-slate-900 dark:text-white">Deal Trash</div>
+              <div className="text-xs text-slate-400 mt-0.5">Restore deals for 30 days or permanently delete trashed records</div>
+            </div>
+            <ChevronRight size={16} className="text-slate-300 group-hover:text-primary transition-colors" />
+          </Link>
         </div>
       </section>
 

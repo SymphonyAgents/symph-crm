@@ -53,7 +53,7 @@ export class PipelineService {
         SELECT ps.slug AS stage, COUNT(*)::int AS count, COALESCE(SUM(d.value), 0)::float8 AS total_value
         FROM deals d
         LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
-        WHERE d.created_at >= ${from}::timestamptz AND d.created_at <= ${to}::timestamptz
+        WHERE d.deleted_at IS NULL AND d.created_at >= ${from}::timestamptz AND d.created_at <= ${to}::timestamptz
         GROUP BY ps.slug
       `)
     } else if (from) {
@@ -61,7 +61,7 @@ export class PipelineService {
         SELECT ps.slug AS stage, COUNT(*)::int AS count, COALESCE(SUM(d.value), 0)::float8 AS total_value
         FROM deals d
         LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
-        WHERE d.created_at >= ${from}::timestamptz
+        WHERE d.deleted_at IS NULL AND d.created_at >= ${from}::timestamptz
         GROUP BY ps.slug
       `)
     } else if (to) {
@@ -69,7 +69,7 @@ export class PipelineService {
         SELECT ps.slug AS stage, COUNT(*)::int AS count, COALESCE(SUM(d.value), 0)::float8 AS total_value
         FROM deals d
         LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
-        WHERE d.created_at <= ${to}::timestamptz
+        WHERE d.deleted_at IS NULL AND d.created_at <= ${to}::timestamptz
         GROUP BY ps.slug
       `)
     } else {
@@ -77,6 +77,7 @@ export class PipelineService {
         SELECT ps.slug AS stage, COUNT(*)::int AS count, COALESCE(SUM(d.value), 0)::float8 AS total_value
         FROM deals d
         LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
+        WHERE d.deleted_at IS NULL
         GROUP BY ps.slug
       `)
     }
@@ -102,13 +103,13 @@ export class PipelineService {
     // Value query — with optional date filter
     let valueQuery
     if (from && to) {
-      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL AND created_at >= ${from}::timestamptz AND created_at <= ${to}::timestamptz`)
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE deleted_at IS NULL AND value IS NOT NULL AND created_at >= ${from}::timestamptz AND created_at <= ${to}::timestamptz`)
     } else if (from) {
-      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL AND created_at >= ${from}::timestamptz`)
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE deleted_at IS NULL AND value IS NOT NULL AND created_at >= ${from}::timestamptz`)
     } else if (to) {
-      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL AND created_at <= ${to}::timestamptz`)
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE deleted_at IS NULL AND value IS NOT NULL AND created_at <= ${to}::timestamptz`)
     } else {
-      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE value IS NOT NULL`)
+      valueQuery = this.db.execute(sql`SELECT value AS v FROM deals WHERE deleted_at IS NULL AND value IS NOT NULL`)
     }
     const valueRows = await valueQuery
 
@@ -180,7 +181,7 @@ export class PipelineService {
           SELECT DISTINCT d.id::text AS entity_id, ps.slug AS stage
           FROM deals d
           LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
-          WHERE ps.slug IS NOT NULL ${dealFilter}
+          WHERE ps.slug IS NOT NULL AND d.deleted_at IS NULL ${dealFilter}
         ),
         all_stage_entries AS (
           SELECT entity_id, stage FROM deal_created_entries

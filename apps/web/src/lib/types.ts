@@ -35,6 +35,9 @@ export type ApiDeal = {
   /** Catalog row's product_type — drives the pipeline tabs (internal | service | reseller | partnership). */
   catalogItemType: ProductType | null
   lastActivityAt: string | null
+  deletedAt: string | null
+  deletedBy: string | null
+  deleteAfter: string | null
   tierId: string | null
   closedAt: string | null
   closedReason: string | null

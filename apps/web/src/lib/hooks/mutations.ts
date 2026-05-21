@@ -143,7 +143,25 @@ export function useDeleteDeal(
 ) {
   return useMutation({
     mutationFn: (id: string) => api.delete(`/deals/${id}`),
-    ...withToast('Deal deleted', options),
+    ...withToast('Deal moved to trash', options),
+  })
+}
+
+export function useRestoreDeal(
+  options?: UseMutationOptions<unknown, Error, string>,
+) {
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/deals/${id}/restore`, {}),
+    ...withToast('Deal restored', options),
+  })
+}
+
+export function usePermanentlyDeleteDeal(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/deals/${id}/permanent`),
+    ...withToast('Deal permanently deleted', options),
   })
 }
 

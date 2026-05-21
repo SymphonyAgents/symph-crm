@@ -1,4 +1,4 @@
-import { Injectable, CanActivate, ExecutionContext, Inject, SetMetadata } from '@nestjs/common'
+import { Injectable, CanActivate, ExecutionContext, Inject, SetMetadata, ForbiddenException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { eq } from 'drizzle-orm'
 import { users } from '@symph-crm/database'
@@ -71,14 +71,18 @@ export class RolesGuard implements CanActivate {
       .from(users)
       .where(eq(users.id, userId))
 
-    if (!user) return false
+    if (!user) {
+      throw new ForbiddenException('You do not have permission to make CRM changes.')
+    }
 
     // If @Roles() is set, check against those
     if (requiredRoles) {
-      return requiredRoles.includes(user.role)
+      if (requiredRoles.includes(user.role)) return true
+      throw new ForbiddenException('You do not have permission to make CRM changes.')
     }
 
     // Default: mutations require SALES
-    return user.role === 'SALES'
+    if (user.role === 'SALES') return true
+    throw new ForbiddenException('You do not have permission to make CRM changes.')
   }
 }

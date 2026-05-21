@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { and, desc, eq, ilike, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm'
 import { companies, contacts, deals, meetings } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
@@ -269,7 +269,10 @@ export class MeetingsService {
 
     const companyIds = companyRows.map(row => row.company.id)
     const dealsByCompany = companyIds.length > 0
-      ? await this.db.select().from(deals).where(inArray(deals.companyId, companyIds as [string, ...string[]])).limit(limit)
+      ? await this.db.select().from(deals).where(and(
+          inArray(deals.companyId, companyIds as [string, ...string[]]),
+          isNull(deals.deletedAt),
+        )).limit(limit)
       : []
 
     return {

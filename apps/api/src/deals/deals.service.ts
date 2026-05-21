@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, Inject } from '@nestjs/common'
-import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql } from 'drizzle-orm'
+import { BadRequestException, Injectable, Inject, NotFoundException } from '@nestjs/common'
+import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql, isNotNull } from 'drizzle-orm'
 import { deals, documents, users, amRoster, pipelineStages, catalogItems, companies } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
@@ -15,7 +15,11 @@ export type DealsFilterParams = {
   from?: string
   to?: string
   dealType?: string     // legacy 'agency' | 'reseller', kept for back-compat
+  includeDeleted?: boolean
+  deletedOnly?: boolean
 }
+
+const TRASH_RETENTION_DAYS = 30
 
 export type CreateDealData = Omit<typeof deals.$inferInsert, 'stageId' | 'dealTitleNormalized'> & {
   stage?: string | null
@@ -54,6 +58,8 @@ export class DealsService {
     const limit = params?.limit ?? 200
     const conditions = []
 
+    if (params?.deletedOnly) conditions.push(isNotNull(deals.deletedAt))
+    else if (!params?.includeDeleted) conditions.push(isNull(deals.deletedAt))
     if (params?.companyId) conditions.push(eq(deals.companyId, params.companyId))
     if (params?.search) {
       const normalizedSearch = normalizeDealTitleForSearch(params.search)
@@ -150,12 +156,14 @@ export class DealsService {
     return this.db
       .select()
       .from(deals)
-      .where(eq(deals.companyId, companyId))
+      .where(and(eq(deals.companyId, companyId), isNull(deals.deletedAt)))
       .orderBy(desc(deals.createdAt))
   }
 
-  async findOne(id: string) {
-    const [deal] = await this.db.select().from(deals).where(eq(deals.id, id))
+  async findOne(id: string, options?: { includeDeleted?: boolean }) {
+    const conditions = [eq(deals.id, id)]
+    if (!options?.includeDeleted) conditions.push(isNull(deals.deletedAt))
+    const [deal] = await this.db.select().from(deals).where(and(...conditions))
     if (!deal) return undefined
     const [stageMap, productRows] = await Promise.all([
       resolveStages(this.db, deal.stageId ? [deal.stageId] : []),
@@ -178,6 +186,7 @@ export class DealsService {
   }
 
   async updateStage(id: string, stage: string, performedBy?: string) {
+    await this.assertActiveDeal(id)
     // Resolve slug → pipeline_stage ID
     const [pipelineStage] = await this.db
       .select({ id: pipelineStages.id })
@@ -297,6 +306,7 @@ export class DealsService {
   }
 
   async update(id: string, data: UpdateDealData, performedBy?: string) {
+    await this.assertActiveDeal(id)
     // Strip any dropped columns that FE might still send
     const { pricingModel, ...cleanData } = data as any
     delete cleanData.dealTitleNormalized
@@ -380,19 +390,101 @@ export class DealsService {
     return deal
   }
 
-  async remove(id: string, performedBy?: string) {
-    const existing = await this.findOne(id)
+  async listTrash() {
+    return this.findAll({ includeDeleted: true, deletedOnly: true, limit: 1000 })
+  }
 
-    await this.db.delete(deals).where(eq(deals.id, id))
+  async remove(id: string, performedBy?: string) {
+    return this.trash(id, performedBy)
+  }
+
+  async trash(id: string, performedBy?: string) {
+    const existing = await this.findOne(id)
+    if (!existing) throw new NotFoundException(`Deal ${id} not found`)
+    const deletedAt = new Date()
+    const deleteAfter = new Date(deletedAt)
+    deleteAfter.setDate(deleteAfter.getDate() + TRASH_RETENTION_DAYS)
+
+    const [deal] = await this.db
+      .update(deals)
+      .set({
+        deletedAt,
+        deletedBy: performedBy ?? null,
+        deleteAfter,
+        isFlagged: false,
+        flagReason: null,
+        updatedAt: deletedAt,
+      })
+      .where(eq(deals.id, id))
+      .returning()
 
     this.auditLogs.log({
       action: 'delete',
-      auditType: 'deal_deleted',
+      auditType: 'deal_trashed',
       entityType: 'deal',
       entityId: id,
       performedBy: performedBy ?? undefined,
-      details: { dealName: existing?.title },
+      details: { dealName: existing.title, deleteAfter: deleteAfter.toISOString() },
     }).catch(() => {})
+
+    return deal
+  }
+
+  async restore(id: string, performedBy?: string) {
+    const existing = await this.findOne(id, { includeDeleted: true })
+    if (!existing?.deletedAt) throw new NotFoundException(`Trashed deal ${id} not found`)
+
+    const [deal] = await this.db
+      .update(deals)
+      .set({ deletedAt: null, deletedBy: null, deleteAfter: null, updatedAt: new Date() })
+      .where(eq(deals.id, id))
+      .returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'deal_restored',
+      entityType: 'deal',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: { dealName: existing.title },
+    }).catch(() => {})
+
+    return deal
+  }
+
+  async deletePermanently(id: string, performedBy?: string) {
+    const existing = await this.findOne(id, { includeDeleted: true })
+    if (!existing?.deletedAt) throw new BadRequestException('Only trashed deals can be permanently deleted.')
+
+    this.auditLogs.log({
+      action: 'delete',
+      auditType: 'deal_permanently_deleted',
+      entityType: 'deal',
+      entityId: id,
+      performedBy: performedBy ?? undefined,
+      details: { dealName: existing.title },
+    }).catch(() => {})
+
+    await this.db.delete(deals).where(eq(deals.id, id))
+    return { id }
+  }
+
+  async purgeExpiredTrash(performedBy?: string) {
+    const expired = await this.db
+      .select({ id: deals.id })
+      .from(deals)
+      .where(and(isNotNull(deals.deletedAt), lte(deals.deleteAfter, new Date())))
+
+    for (const row of expired) {
+      await this.deletePermanently(row.id, performedBy)
+    }
+
+    return { purged: expired.length, dealIds: expired.map(row => row.id) }
+  }
+
+  private async assertActiveDeal(id: string) {
+    const existing = await this.findOne(id)
+    if (!existing) throw new NotFoundException(`Deal ${id} not found`)
   }
 
   /**

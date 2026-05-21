@@ -1,5 +1,5 @@
 import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common'
-import { eq, and, asc } from 'drizzle-orm'
+import { eq, and, asc, isNull } from 'drizzle-orm'
 import { dealBilling, billingMilestones, deals } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
@@ -130,7 +130,7 @@ export class BillingService implements OnModuleInit {
         const [currentDeal] = await this.db
           .select({ oneTimeFee: deals.oneTimeFee, contractLength: deals.contractLength })
           .from(deals)
-          .where(eq(deals.id, dealId))
+          .where(and(eq(deals.id, dealId), isNull(deals.deletedAt)))
           .limit(1)
 
         const otf = parseFloat(String(currentDeal?.oneTimeFee ?? 0)) || 0
@@ -144,7 +144,7 @@ export class BillingService implements OnModuleInit {
             ...(contractLength ? { contractLength } : {}),
             value: computedValue.toFixed(2),
           })
-          .where(eq(deals.id, dealId))
+          .where(and(eq(deals.id, dealId), isNull(deals.deletedAt)))
       }
     }
 

@@ -44,6 +44,7 @@ export class InternalService {
       FROM workspaces w
       LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
       WHERE d.workspace_id = w.id
+        AND d.deleted_at IS NULL
         AND COALESCE(ps.slug, '') NOT IN ('closed_won', 'closed_lost')
         AND d.last_activity_at < now() - (
           COALESCE((w.settings->>'dormancy_threshold_days')::int, 3) * INTERVAL '1 day'
@@ -92,7 +93,8 @@ export class InternalService {
         COALESCE(SUM(d.value), 0)::float                     AS total_value
       FROM deals d
       LEFT JOIN pipeline_stages ps ON ps.id = d.stage_id
-      WHERE COALESCE(ps.slug, '') NOT IN ('closed_won', 'closed_lost')
+      WHERE d.deleted_at IS NULL
+        AND COALESCE(ps.slug, '') NOT IN ('closed_won', 'closed_lost')
       GROUP BY ps.slug, ps.label, ps.sort_order
       ORDER BY ps.sort_order NULLS LAST
     `)
@@ -103,7 +105,7 @@ export class InternalService {
     const totalPipelineValue = stages.reduce((sum, r) => sum + r.total_value, 0)
 
     const [flaggedRow] = await this.db.execute(sql`
-      SELECT COUNT(*)::int AS count FROM deals WHERE is_flagged = true
+      SELECT COUNT(*)::int AS count FROM deals WHERE is_flagged = true AND deleted_at IS NULL
     `)
     const flaggedDeals = (flaggedRow as any)?.count ?? 0
 

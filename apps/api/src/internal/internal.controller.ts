@@ -80,7 +80,7 @@ import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meet
  *     PATCH  /api/internal/deals/:id          Update deal fields
  *     PATCH  /api/internal/deals/:id/stage    Update deal stage
  *     PATCH  /api/internal/deals/:id/assign   Reassign deal
- *     DELETE /api/internal/deals/:id          Soft-delete deal
+ *     DELETE /api/internal/deals/:id          Move deal to trash
  *
  *   Companies:
  *     GET    /api/internal/companies           List / search companies
@@ -404,6 +404,43 @@ export class InternalController {
     })
   }
 
+  /** GET /api/internal/deals/trash, List trashed deals */
+  @Get('deals/trash')
+  async listTrashedDeals() {
+    return this.deals.listTrash()
+  }
+
+  /** POST /api/internal/deals/trash/purge-expired, Permanently delete expired trash */
+  @Post('deals/trash/purge-expired')
+  @HttpCode(HttpStatus.OK)
+  async purgeExpiredDeals(@Headers() headers: Record<string, string | string[] | undefined>) {
+    const { performedBy } = this.resolvePerformer(headers)
+    return this.deals.purgeExpiredTrash(performedBy)
+  }
+
+  /** POST /api/internal/deals/:id/restore, Restore a trashed deal */
+  @Post('deals/:id/restore')
+  @HttpCode(HttpStatus.OK)
+  async restoreDeal(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
+    const deal = await this.deals.restore(id, performedBy)
+    return { ok: true, deal, url: this.crmUrl('deal', id) }
+  }
+
+  /** DELETE /api/internal/deals/:id/permanent, Permanently delete a trashed deal */
+  @Delete('deals/:id/permanent')
+  async deleteDealPermanently(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
+    const result = await this.deals.deletePermanently(id, performedBy)
+    return { ok: true, deleted: result.id }
+  }
+
   /** GET /api/internal/deals/:id, Full deal + context.md + activities + documents + UI notes */
   @Get('deals/:id')
   async getDeal(@Param('id') id: string) {
@@ -509,7 +546,7 @@ export class InternalController {
     return { ok: true, deal: updated, url: this.crmUrl('deal', id) }
   }
 
-  /** DELETE /api/internal/deals/:id — Remove deal */
+  /** DELETE /api/internal/deals/:id — Move deal to trash */
   @Delete('deals/:id')
   async removeDeal(
     @Headers() headers: Record<string, string | string[] | undefined>,
@@ -519,7 +556,7 @@ export class InternalController {
     const deal = await this.deals.findOne(id)
     if (!deal) throw new NotFoundException(`Deal ${id} not found`)
     await this.deals.remove(id, performedBy)
-    return { ok: true, deleted: id }
+    return { ok: true, trashed: id }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -661,7 +698,7 @@ export class InternalController {
     const company = await this.companies.findOne(id)
     if (!company) throw new NotFoundException(`Company ${id} not found`)
     await this.companies.remove(id, performedBy)
-    return { ok: true, deleted: id }
+    return { ok: true, trashed: id }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -720,7 +757,7 @@ export class InternalController {
     const contact = await this.contacts.findOne(id)
     if (!contact) throw new NotFoundException(`Contact ${id} not found`)
     await this.contacts.remove(id)
-    return { ok: true, deleted: id }
+    return { ok: true, trashed: id }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -894,7 +931,7 @@ export class InternalController {
     const doc = await this.documents.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
     await this.documents.remove(id)
-    return { ok: true, deleted: id }
+    return { ok: true, trashed: id }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
