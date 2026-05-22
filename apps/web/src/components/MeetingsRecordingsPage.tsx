@@ -6,6 +6,7 @@ import {
   Check,
   FileText,
   Loader2,
+  Search,
   Mic,
   MicOff,
   Square,
@@ -13,16 +14,20 @@ import {
   Upload,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGetMeetings, useGetRecordings } from '@/lib/hooks/queries'
-import { useCirclebackUpload, useDeleteRecording } from '@/lib/hooks/mutations'
+import { useGetDeals, useGetMeetings, useGetRecordings } from '@/lib/hooks/queries'
+import { useAssignMeetingDeal, useCirclebackUpload, useDeleteMeeting, useDeleteRecording } from '@/lib/hooks/mutations'
 import { useRecorder } from '@/lib/hooks/use-recorder'
 import { useUser } from '@/lib/hooks/use-user'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { queryKeys } from '@/lib/query-keys'
 import { api } from '@/lib/api'
-import type { ApiMeetingListItem, ApiMeetingStatus, ApiRecording } from '@/lib/types'
+import type { ApiDeal, ApiMeetingListItem, ApiMeetingStatus, ApiRecording } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { Input } from '@/components/ui/input'
+import { Combobox } from '@/components/ui/combobox'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { MeetingAttendeeIdentity, MeetingAttendeesPopover } from '@/components/MeetingAttendeesPopover'
 import { toast } from 'sonner'
 
 type ActiveTab = 'meetings' | 'recordings'
@@ -144,7 +149,11 @@ function readMeetingFilterFromUrl(): MeetingFilter {
 
 function MeetingsTab() {
   const [filter, setFilter] = useState<MeetingFilter>('all')
+  const [search, setSearch] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<ApiMeetingListItem | null>(null)
   const { data: meetings = [], isLoading } = useGetMeetings({ limit: 100 })
+  const { data: deals = [] } = useGetDeals()
+  const deleteMeeting = useDeleteMeeting({ onSuccess: () => setDeleteTarget(null) })
 
   useEffect(() => {
     setFilter(readMeetingFilterFromUrl())
@@ -156,20 +165,31 @@ function MeetingsTab() {
     const url = new URL(window.location.href)
     window.history.replaceState(null, '', `${url.pathname}?=${item}`)
   }
+
+  const dealById = useMemo(() => new Map(deals.map((deal) => [deal.id, deal])), [deals])
   const counts = useMemo(() => ({
     all: meetings.length,
     pending: meetings.filter((meeting) => meeting.status === 'pending').length,
     done: meetings.filter((meeting) => meeting.status === 'done').length,
     failed: meetings.filter((meeting) => meeting.status === 'failed').length,
   }), [meetings])
-  const filteredMeetings = useMemo(() => (
-    filter === 'all' ? meetings : meetings.filter((meeting) => meeting.status === filter)
-  ), [filter, meetings])
+  const filteredMeetings = useMemo(() => {
+    const statusMatches = filter === 'all' ? meetings : meetings.filter((meeting) => meeting.status === filter)
+    const query = search.trim().toLowerCase()
+    if (!query) return statusMatches
+    return statusMatches.filter((meeting) => {
+      const dealTitle = meeting.dealId ? dealById.get(meeting.dealId)?.title ?? '' : ''
+      const attendeeText = (meeting.attendeeDetails.length ? meeting.attendeeDetails : meeting.attendees.map((email) => ({ email, name: null, avatarUrl: null })))
+        .map((attendee) => `${attendee.name ?? ''} ${attendee.email ?? ''}`)
+        .join(' ')
+      return `${meeting.title} ${dealTitle} ${attendeeText}`.toLowerCase().includes(query)
+    })
+  }, [dealById, filter, meetings, search])
 
   return (
     <section className="min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-        <div className="flex items-center flex-wrap gap-1.5 min-w-0">
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           {(['all', 'pending', 'done', 'failed'] as MeetingFilter[]).map((item) => (
             <MeetingFilterButton
               key={item}
@@ -181,6 +201,15 @@ function MeetingsTab() {
             </MeetingFilterButton>
           ))}
         </div>
+        <div className="relative w-full md:w-[280px]">
+          <Search size={14} strokeWidth={1.7} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search meetings"
+            className="h-8 rounded-lg pl-8 text-xs"
+          />
+        </div>
       </div>
 
       {isLoading ? (
@@ -190,58 +219,131 @@ function MeetingsTab() {
       ) : filteredMeetings.length === 0 ? (
         <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
           <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">No meetings yet</div>
+          <div className="text-ssm font-semibold text-slate-900 dark:text-white">{search ? 'No meetings found' : 'No meetings yet'}</div>
           <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">
-            Passive Circleback meetings will appear here after CRM ingest.
+            {search ? 'Try another attendee, deal, or meeting title.' : 'Passive Circleback meetings will appear here after CRM ingest.'}
           </div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {filteredMeetings.map((meeting) => (
-            <MeetingRow key={meeting.id} meeting={meeting} />
+            <MeetingRow key={meeting.id} meeting={meeting} deals={deals} onDelete={() => setDeleteTarget(meeting)} />
           ))}
         </div>
       )}
+
+      <DeleteMeetingDialog
+        meetingTitle={deleteTarget?.title ?? ''}
+        open={!!deleteTarget}
+        isPending={deleteMeeting.isPending}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+        onConfirm={() => deleteTarget && deleteMeeting.mutate(deleteTarget.id)}
+      />
     </section>
   )
 }
 
-function MeetingRow({ meeting }: { meeting: ApiMeetingListItem }) {
+function MeetingDealSelect({ meeting, deals }: { meeting: ApiMeetingListItem; deals: ApiDeal[] }) {
+  const assignMeeting = useAssignMeetingDeal()
+  const options = useMemo(() => deals.map((deal) => ({ value: deal.id, label: deal.title })), [deals])
+
   return (
-    <Link
-      href={`/meetings/${meeting.id}`}
-      className="block w-full text-left bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 transition-colors hover:border-slate-300 dark:hover:border-white/20"
-    >
-      <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
-          <FileText size={15} strokeWidth={1.7} className="text-slate-500 dark:text-slate-300" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 min-w-0">
-            <p className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{meeting.title}</p>
-            <span className="shrink-0 border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 rounded-md px-1.5 py-0.5 text-atom font-semibold">
-              Circleback
-            </span>
+    <div onClick={(event) => event.stopPropagation()} className="w-full sm:w-[260px]">
+      <Combobox
+        options={options}
+        value={meeting.dealId ?? ''}
+        onValueChange={(value) => {
+          if (!value || value === meeting.dealId) return
+          assignMeeting.mutate({ id: meeting.id, dealId: value })
+        }}
+        placeholder={assignMeeting.isPending ? 'Assigning...' : 'Assign deal'}
+        className="h-8 rounded-lg text-xxs shadow-none"
+      />
+    </div>
+  )
+}
+
+function MeetingRow({ meeting, deals, onDelete }: { meeting: ApiMeetingListItem; deals: ApiDeal[]; onDelete: () => void }) {
+  const primaryAttendee = meeting.attendeeDetails[0] ?? (meeting.attendees[0] ? { email: meeting.attendees[0], name: null, avatarUrl: null } : null)
+
+  return (
+    <div className="w-full bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 transition-colors hover:border-slate-300 dark:hover:border-white/20">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <Link href={`/meetings/${meeting.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30">
+          <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
+            <FileText size={15} strokeWidth={1.7} className="text-slate-500 dark:text-slate-300" />
           </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className={cn('border rounded-md px-1.5 py-0.5 text-atom font-semibold capitalize', statusTone(meeting.status))}>
-              {meeting.status}
-            </span>
-            <span className="text-xxs text-slate-500 dark:text-slate-400">
-              {meeting.startedAt ? formatDate(meeting.startedAt) : formatDate(meeting.createdAt)}
-            </span>
-            {meeting.attendees.length > 0 && (
-              <span className="text-xxs text-slate-400 dark:text-slate-500 truncate">
-                {meeting.attendees.slice(0, 3).join(', ')}
-              </span>
+          <div className="min-w-0 flex-1">
+            <p className="min-w-0 truncate text-ssm font-semibold text-slate-900 dark:text-white">{meeting.title}</p>
+            {meeting.lastError && (
+              <p className="text-xxs text-red-600 dark:text-red-400 mt-1 line-clamp-1">{meeting.lastError}</p>
             )}
           </div>
-          {meeting.lastError && (
-            <p className="text-xxs text-red-600 dark:text-red-400 mt-1 line-clamp-1">{meeting.lastError}</p>
-          )}
+        </Link>
+
+        <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
+          <span className={cn('border rounded-md px-1.5 py-0.5 text-atom font-semibold capitalize', statusTone(meeting.status))}>
+            {meeting.status}
+          </span>
+          <span className="text-xxs text-slate-500 dark:text-slate-400 tabular-nums">
+            {meeting.startedAt ? formatDate(meeting.startedAt) : formatDate(meeting.createdAt)}
+          </span>
+          {primaryAttendee && <MeetingAttendeeIdentity attendee={primaryAttendee} compact />}
+          <MeetingAttendeesPopover attendees={meeting.attendeeDetails} />
+          <MeetingDealSelect meeting={meeting} deals={deals} />
+          <button
+            type="button"
+            onClick={onDelete}
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-600 transition-colors duration-150 hover:bg-red-50 active:scale-[0.96] dark:border-red-500/20 dark:text-red-300 dark:hover:bg-red-500/10"
+            title="Delete meeting"
+          >
+            <Trash2 size={13} strokeWidth={1.7} />
+          </button>
         </div>
       </div>
-    </Link>
+    </div>
+  )
+}
+
+function DeleteMeetingDialog({
+  meetingTitle,
+  open,
+  isPending,
+  onOpenChange,
+  onConfirm,
+}: {
+  meetingTitle: string
+  open: boolean
+  isPending: boolean
+  onOpenChange: (open: boolean) => void
+  onConfirm: () => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="mx-4 w-full max-w-sm rounded-lg p-4">
+        <DialogTitle className="text-sm font-semibold text-slate-950 dark:text-white">Delete meeting?</DialogTitle>
+        <DialogDescription className="mt-1 text-ssm leading-relaxed text-slate-500 dark:text-slate-400">
+          This will permanently delete <span className="font-semibold text-slate-700 dark:text-slate-200">{meetingTitle}</span> from CRM meetings. This cannot be undone.
+        </DialogDescription>
+        <div className="mt-4 flex gap-2.5">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-8 flex-1 rounded-lg border border-black/[.1] text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:scale-[0.96] dark:border-white/[.12] dark:text-slate-300 dark:hover:bg-white/[.06]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className="h-8 flex-1 rounded-lg bg-red-600 text-xs font-semibold text-white transition-colors hover:bg-red-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isPending ? 'Deleting...' : 'Delete permanently'}
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
