@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { and, desc, eq, ilike, inArray, isNull, sql } from 'drizzle-orm'
 import { companies, contacts, deals, meetings } from '@symph-crm/database'
 import { DB } from '../database/database.module'
@@ -6,6 +6,8 @@ import type { Database } from '../database/database.types'
 import { DealNotesService } from '../deals/deal-notes.service'
 import { DealsService } from '../deals/deals.service'
 import { normalizeDealTitleForSearch } from '../deals/deal-title-normalization.util'
+import { normalizeAttendeeEmails, withMeetingAttendeeDetails } from '../common/utils/meeting-attendees.util'
+import { AriaGatewayService } from '../common/aria/aria-gateway.service'
 
 type MeetingStatus = 'pending' | 'done' | 'failed'
 
@@ -17,13 +19,14 @@ export type PassiveMeetingIngestBody = {
   title: string
   startedAt?: string | null
   endedAt?: string | null
-  attendees?: string[]
+  attendees?: Array<string | Record<string, unknown>>
   summaryMarkdown?: string | null
   transcriptMarkdown?: string | null
   rawPayload?: Record<string, unknown>
 }
 
 type MeetingUpdate = Partial<typeof meetings.$inferInsert>
+const ASSIGNMENT_RESOLVER_TRIGGERED_AT = 'assignmentResolverTriggeredAt'
 
 function parseOptionalDate(value: string | null | undefined): Date | null {
   if (!value) return null
@@ -46,10 +49,13 @@ function meetingNoteDate(startedAt: Date | null): Date {
 
 @Injectable()
 export class MeetingsService {
+  private readonly logger = new Logger(MeetingsService.name)
+
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly dealNotes: DealNotesService,
     private readonly dealsService: DealsService,
+    private readonly ariaGateway: AriaGatewayService,
   ) {}
 
   async findAll(params?: { workspaceId?: string; status?: MeetingStatus; dealId?: string; limit?: number }) {
@@ -60,26 +66,32 @@ export class MeetingsService {
     if (params?.status) conditions.push(eq(meetings.status, params.status))
     if (params?.dealId) conditions.push(eq(meetings.dealId, params.dealId))
 
-    const base = this.db.select({
-      id: meetings.id,
-      dealId: meetings.dealId,
-      title: meetings.title,
-      startedAt: meetings.startedAt,
-      attendees: meetings.attendees,
-      status: meetings.status,
-      lastError: meetings.lastError,
-      createdAt: meetings.createdAt,
-    }).from(meetings)
+    const base = this.db.select().from(meetings)
 
-    return conditions.length > 0
-      ? base.where(and(...conditions)).orderBy(desc(meetings.createdAt)).limit(limit)
-      : base.orderBy(desc(meetings.createdAt)).limit(limit)
+    const rows = conditions.length > 0
+      ? await base.where(and(...conditions)).orderBy(desc(meetings.createdAt)).limit(limit)
+      : await base.orderBy(desc(meetings.createdAt)).limit(limit)
+
+    return rows.map((meeting) => {
+      const enriched = withMeetingAttendeeDetails(meeting)
+      return {
+        id: enriched.id,
+        dealId: enriched.dealId,
+        title: enriched.title,
+        startedAt: enriched.startedAt,
+        attendees: enriched.attendees,
+        attendeeDetails: enriched.attendeeDetails,
+        status: enriched.status,
+        lastError: enriched.lastError,
+        createdAt: enriched.createdAt,
+      }
+    })
   }
 
   async findOne(id: string) {
     const [meeting] = await this.db.select().from(meetings).where(eq(meetings.id, id)).limit(1)
     if (!meeting) throw new NotFoundException(`Meeting ${id} not found`)
-    return meeting
+    return withMeetingAttendeeDetails(meeting)
   }
 
   async findOneWithArtifacts(id: string) {
@@ -105,21 +117,28 @@ export class MeetingsService {
   async ingest(body: PassiveMeetingIngestBody) {
     this.validateIngestBody(body)
 
+    const existingMeeting = await this.findExistingBySourceMeetingId(body.sourceMeetingId)
+    const effectiveDealId = body.dealId ?? existingMeeting?.dealId ?? null
     const startedAt = parseOptionalDate(body.startedAt)
     const endedAt = parseOptionalDate(body.endedAt)
-    const rawPayload: Record<string, unknown> = { ...body }
+    const rawPayload: Record<string, unknown> = {
+      ...(existingMeeting?.rawPayload ?? {}),
+      ...body,
+      dealId: effectiveDealId,
+    }
+    const attendeeEmails = normalizeAttendeeEmails(body.attendees)
 
     const [meeting] = await this.db
       .insert(meetings)
       .values({
         workspaceId: body.workspaceId,
-        dealId: body.dealId ?? null,
+        dealId: effectiveDealId,
         sourceMeetingId: body.sourceMeetingId,
         sourceUrl: body.sourceUrl,
         title: body.title,
         startedAt,
         endedAt,
-        attendees: body.attendees ?? [],
+        attendees: attendeeEmails,
         status: 'pending',
         lastError: null,
         rawPayload,
@@ -129,12 +148,12 @@ export class MeetingsService {
         target: meetings.sourceMeetingId,
         set: {
           workspaceId: body.workspaceId,
-          dealId: body.dealId ?? null,
+          dealId: effectiveDealId,
           sourceUrl: body.sourceUrl,
           title: body.title,
           startedAt,
           endedAt,
-          attendees: body.attendees ?? [],
+          attendees: attendeeEmails,
           status: 'pending',
           lastError: null,
           rawPayload,
@@ -143,11 +162,14 @@ export class MeetingsService {
       })
       .returning()
 
-    if (!body.dealId) return { ok: true, meeting, status: 'pending' as const }
+    if (!effectiveDealId) {
+      await this.triggerAssignmentResolverIfReady(meeting, rawPayload, body, attendeeEmails)
+      return { ok: true, meeting, status: 'pending' as const, resolution: 'unresolved' as const }
+    }
 
     try {
-      const deal = await this.dealsService.findOne(body.dealId)
-      if (!deal) throw new NotFoundException(`Deal ${body.dealId} not found`)
+      const deal = await this.dealsService.findOne(effectiveDealId)
+      if (!deal) throw new NotFoundException(`Deal ${effectiveDealId} not found`)
 
       if (!body.summaryMarkdown || !body.transcriptMarkdown) {
         const updated = await this.updateMeeting(meeting.id, {
@@ -169,7 +191,7 @@ export class MeetingsService {
 
       const [summaryNote, transcriptNote] = await Promise.all([
         this.dealNotes.upsertNote(
-          body.dealId,
+          effectiveDealId,
           'meeting',
           `Meeting Summary - ${body.title}`,
           body.summaryMarkdown,
@@ -181,7 +203,7 @@ export class MeetingsService {
           },
         ),
         this.dealNotes.upsertNote(
-          body.dealId,
+          effectiveDealId,
           'transcript_raw',
           `Transcript - ${body.title}`,
           body.transcriptMarkdown,
@@ -228,6 +250,12 @@ export class MeetingsService {
     return this.ingest(rawPayload as PassiveMeetingIngestBody)
   }
 
+  async deleteMeeting(id: string) {
+    await this.findOne(id)
+    await this.db.delete(meetings).where(eq(meetings.id, id))
+    return { ok: true }
+  }
+
   async assignDeal(id: string, dealId: string) {
     const meeting = await this.findOne(id)
     const deal = await this.dealsService.findOne(dealId)
@@ -245,13 +273,48 @@ export class MeetingsService {
       dealId,
     } as PassiveMeetingIngestBody
 
-    const [updated] = await this.db
-      .update(meetings)
-      .set({ dealId, rawPayload, updatedAt: new Date() })
-      .where(eq(meetings.id, id))
-      .returning()
+    return this.ingest(rawPayload)
+  }
 
-    return { ok: true, meeting: updated }
+  private async findExistingBySourceMeetingId(sourceMeetingId: string) {
+    const [meeting] = await this.db
+      .select()
+      .from(meetings)
+      .where(eq(meetings.sourceMeetingId, sourceMeetingId))
+      .limit(1)
+    return meeting ?? null
+  }
+
+  private async triggerAssignmentResolverIfReady(
+    meeting: typeof meetings.$inferSelect,
+    rawPayload: Record<string, unknown>,
+    body: PassiveMeetingIngestBody,
+    attendees: string[],
+  ): Promise<void> {
+    if (!body.summaryMarkdown || !body.transcriptMarkdown) return
+    if (rawPayload[ASSIGNMENT_RESOLVER_TRIGGERED_AT]) return
+
+    const triggeredAt = new Date().toISOString()
+    const nextRawPayload = { ...rawPayload, [ASSIGNMENT_RESOLVER_TRIGGERED_AT]: triggeredAt }
+    await this.updateMeeting(meeting.id, { rawPayload: nextRawPayload })
+
+    const sessionId = `crm-meeting-assignment-${meeting.id}-${Date.now()}`
+    const content = [
+      '[CRM_MEETING_ASSIGNMENT]',
+      `meeting_id=${meeting.id}`,
+      `source_meeting_id=${body.sourceMeetingId}`,
+      `workspace_id=${body.workspaceId}`,
+      `title=${body.title}`,
+      `started_at=${body.startedAt ?? ''}`,
+      `attendees=${JSON.stringify(attendees)}`,
+      'task=assign_deal_only',
+      'allowed_action=POST /api/internal/meetings/{meeting_id}/assign-deal',
+      'resolver=GET /api/internal/meeting-resolver/candidates?terms={meeting_title_or_attendees}',
+      'do_not_use_summary_or_transcript=true',
+    ].join('\n')
+
+    this.ariaGateway.sendFireAndForget({ sessionId, content, userId: 'system' })
+    this.logger.log(`Meeting assignment resolver triggered for meeting ${meeting.id} (session ${sessionId})`)
   }
 
   async findResolverCandidates(terms: string, limit = 10) {
