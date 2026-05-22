@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
 import { Roles } from '../auth/roles.guard'
 import { MeetingsService } from './meetings.service'
 
@@ -31,6 +31,12 @@ export class MeetingsController {
   @HttpCode(HttpStatus.OK)
   async retryIngest(@Param('id') id: string) {
     return this.meetings.retryIngest(id)
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.OK)
+  async deleteMeeting(@Param('id') id: string) {
+    return this.meetings.deleteMeeting(id)
   }
 
   @Post(':id/assign-deal')

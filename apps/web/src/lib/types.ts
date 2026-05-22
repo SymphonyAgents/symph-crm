@@ -526,9 +526,16 @@ export type ApiRecording = {
 
 export type ApiMeetingStatus = 'pending' | 'done' | 'failed'
 
+export type ApiMeetingAttendee = {
+  email: string | null
+  name: string | null
+  avatarUrl: string | null
+}
+
 export type ApiMeetingRawPayload = {
   summaryMarkdown?: string | null
   transcriptMarkdown?: string | null
+  attendees?: Array<string | Partial<ApiMeetingAttendee> & { picture?: string | null; photoUrl?: string | null; image?: string | null }>
   rawPayload?: {
     notes?: string | null
     transcript?: Array<{ speaker?: string; text?: string; timestamp?: number }>
@@ -541,6 +548,7 @@ export type ApiMeetingListItem = {
   title: string
   startedAt: string | null
   attendees: string[]
+  attendeeDetails: ApiMeetingAttendee[]
   status: ApiMeetingStatus
   lastError: string | null
   createdAt: string

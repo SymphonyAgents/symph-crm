@@ -72,6 +72,7 @@ import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meet
  *     GET    /api/internal/meetings/:id                     Get passive meeting ingest
  *     POST   /api/internal/meetings/passive-ingest           Save analyzed meeting artifacts
  *     POST   /api/internal/meetings/:id/retry-ingest         Retry CRM artifact ingest
+ *     POST   /api/internal/meetings/:id/assign-deal          Assign unresolved meeting to deal
  *     GET    /api/internal/meeting-resolver/candidates       Find candidate deals/brands/contacts
  *
  *   Deals:
@@ -367,6 +368,17 @@ export class InternalController {
   @HttpCode(HttpStatus.OK)
   async retryMeetingIngest(@Param('id') id: string) {
     return this.meetings.retryIngest(id)
+  }
+
+  /** POST /api/internal/meetings/:id/assign-deal — Assign unresolved meeting to a deal */
+  @Post('meetings/:id/assign-deal')
+  @HttpCode(HttpStatus.OK)
+  async assignMeetingDeal(
+    @Param('id') id: string,
+    @Body() body: { dealId: string },
+  ) {
+    if (!body.dealId) throw new BadRequestException('dealId is required')
+    return this.meetings.assignDeal(id, body.dealId)
   }
 
   /** GET /api/internal/meeting-resolver/candidates — Find candidate deals/brands/contacts */
