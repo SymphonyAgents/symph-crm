@@ -830,6 +830,27 @@ export function useRetryMeetingIngest(
   })
 }
 
+export function useDeleteMeeting(
+  options?: UseMutationOptions<{ ok: boolean }, Error, string>,
+) {
+  const qc = useQueryClient()
+  return useMutation<{ ok: boolean }, Error, string>({
+    mutationFn: (id: string) => api.delete<{ ok: boolean }>(`/meetings/${id}`),
+    onSuccess: (...args) => {
+      const [, id] = args
+      qc.invalidateQueries({ queryKey: queryKeys.meetings.all })
+      if (typeof id === 'string') qc.invalidateQueries({ queryKey: queryKeys.meetings.detail(id) })
+      toast.success('Meeting deleted')
+      ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
+    },
+    onError: (error, ...rest) => {
+      toast.error(error.message || 'Meeting deletion failed')
+      ;(options?.onError as ((error: Error, ...a: unknown[]) => void) | undefined)?.(error, ...rest)
+    },
+    ...options,
+  })
+}
+
 export function useAssignMeetingDeal(
   options?: UseMutationOptions<{ ok: boolean; meeting: ApiMeeting }, Error, { id: string; dealId: string }>,
 ) {
@@ -837,7 +858,11 @@ export function useAssignMeetingDeal(
   return useMutation<{ ok: boolean; meeting: ApiMeeting }, Error, { id: string; dealId: string }>({
     mutationFn: ({ id, dealId }) => api.post<{ ok: boolean; meeting: ApiMeeting }>(`/meetings/${id}/assign-deal`, { dealId }),
     onSuccess: (...args) => {
+      const [, variables] = args
       qc.invalidateQueries({ queryKey: queryKeys.meetings.all })
+      if (variables && typeof variables === 'object' && 'id' in variables) {
+        qc.invalidateQueries({ queryKey: queryKeys.meetings.detail(String(variables.id)) })
+      }
       toast.success('Meeting assigned')
       ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
     },
