@@ -1,5 +1,4 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
@@ -8,6 +7,7 @@ import { deals } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
+import { AriaGatewayService } from '../common/aria/aria-gateway.service'
 
 export type DealNoteFile = {
   filename: string
@@ -241,8 +241,6 @@ function fileToNfsDealNote(
 export class DealNotesService {
   private readonly basePath: string
   private readonly logger = new Logger(DealNotesService.name)
-  private readonly gatewayUrl: string
-  private readonly apiToken: string
 
   /**
    * Per-deal debounce timers for wiki sync. When a user saves notes rapidly,
@@ -255,13 +253,9 @@ export class DealNotesService {
   constructor(
     private readonly auditLogs: AuditLogsService,
     @Inject(DB) private readonly db: Database,
-    private readonly config: ConfigService,
+    private readonly ariaGateway: AriaGatewayService,
   ) {
     this.basePath = process.env.NFS_CRM_PATH || '/share/crm'
-    this.gatewayUrl = (
-      config.get<string>('ARIA_GATEWAY_URL') ?? 'https://aria-gateway.symph.co'
-    ).replace(/\/+$/, '')
-    this.apiToken = config.get<string>('ARIA_API_TOKEN') ?? ''
   }
 
   /**
@@ -273,23 +267,7 @@ export class DealNotesService {
     const sessionId = `crm-wiki-sync-${dealId}-${Date.now()}`
     const message = `[CRM_WIKI_SYNC] deal_id=${dealId}${performedBy ? ` performed_by=${performedBy}` : ''}`
 
-    fetch(`${this.gatewayUrl}/v1/chat/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiToken}`,
-      },
-      body: JSON.stringify({
-        session_id: sessionId,
-        content: message,
-        user_id: performedBy ?? 'system',
-        user_tier: 3,
-        workspace_path: '/share/agency/products/symph-crm',
-      }),
-    }).catch(err => {
-      this.logger.error(`Wiki sync fire failed for deal ${dealId}: ${err}`)
-    })
-
+    this.ariaGateway.sendFireAndForget({ sessionId, content: message, userId: performedBy })
     this.logger.log(`Wiki sync triggered for deal ${dealId} (session ${sessionId})`)
   }
 
@@ -613,23 +591,7 @@ export class DealNotesService {
     const triggerMessage = `[CRM_SUMMARY] deal_id=${dealId}${userId ? ` performed_by=${userId}` : ''}`
 
     // Fire-and-forget — do not await or poll. Aria writes the file to NFS when done.
-    fetch(`${this.gatewayUrl}/v1/chat/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.apiToken}`,
-      },
-      body: JSON.stringify({
-        session_id: sessionId,
-        content: triggerMessage,
-        user_id: userId ?? 'system',
-        user_tier: 3,
-        workspace_path: '/share/agency/products/symph-crm',
-      }),
-    }).catch(err => {
-      this.logger.error(`Failed to trigger summary generation for deal ${dealId}: ${err}`)
-    })
-
+    this.ariaGateway.sendFireAndForget({ sessionId, content: triggerMessage, userId })
     this.logger.log(`Summary generation triggered for deal ${dealId} (session ${sessionId})`)
     return { status: 'generating', triggeredAt }
   }
