@@ -163,6 +163,9 @@ export type ApiProposalListItem = {
   wordCount: number | null
   authorId: string | null
   createdBy: string
+  creatorName: string | null
+  creatorEmail: string | null
+  creatorImage: string | null
   createdAt: string
   updatedAt: string
 }
@@ -193,6 +196,10 @@ export type ApiProposalHead = {
   isPinned: boolean
   currentVersion: number
   versionCount: number
+  createdBy: string
+  creatorName: string | null
+  creatorEmail: string | null
+  creatorImage: string | null
   createdAt: string
   updatedAt: string
   version: ApiProposalVersion & { html: string }
