@@ -1,14 +1,16 @@
 'use client'
 
 import { use, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ProposalDetail } from '@/components/ProposalDetail'
 
 function ProposalDetailInner({ id }: { id: string }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   return (
     <ProposalDetail
       proposalId={id}
+      versionId={searchParams.get('versionId') ?? undefined}
       onBack={() => router.push('/proposals')}
       onOpenDeal={(dealId) => router.push(`/deals/${dealId}?from=proposals`)}
     />
