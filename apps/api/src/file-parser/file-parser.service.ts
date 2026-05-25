@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import mammoth from 'mammoth'
+import * as XLSX from 'xlsx'
 
 // pdf-parse has no bundled types — require directly
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -17,6 +18,8 @@ const SUPPORTED_MIME_TYPES = new Set([
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/msword',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
   'text/plain',
   'text/csv',
   'application/csv',
@@ -48,6 +51,13 @@ export class FileParserService {
         return await this.parseDocx(buffer)
       }
 
+      if (
+        mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        mimetype === 'application/vnd.ms-excel'
+      ) {
+        return this.parseXlsx(buffer)
+      }
+
       if (mimetype === 'text/html') {
         return this.parseHtml(buffer)
       }
@@ -73,6 +83,23 @@ export class FileParserService {
   private async parseDocx(buffer: Buffer): Promise<ParseResult> {
     const result = await mammoth.extractRawText({ buffer })
     const text = result.value.trim()
+    return { text, wordCount: this.countWords(text) }
+  }
+
+  private parseXlsx(buffer: Buffer): ParseResult {
+    const workbook = XLSX.read(buffer, { type: 'buffer' })
+    const lines: string[] = []
+
+    for (const sheetName of workbook.SheetNames) {
+      const sheet = workbook.Sheets[sheetName]
+      const csv = XLSX.utils.sheet_to_csv(sheet)
+      if (csv.trim()) {
+        lines.push(`### Sheet: ${sheetName}`)
+        lines.push(csv.trim())
+      }
+    }
+
+    const text = lines.join('\n\n')
     return { text, wordCount: this.countWords(text) }
   }
 

@@ -155,7 +155,7 @@ export class DocumentsController {
 
     // Classify MIME type to determine storage path and write strategy.
     // TEXT_MIMES: parsed and stored as markdown on NFS.
-    // BINARY_DOC_MIMES: binary written verbatim to NFS (PDF, DOCX, PPTX), NOT via writeMarkdown.
+    // BINARY_DOC_MIMES: binary written verbatim to NFS (PDF, DOCX, XLSX, PPTX) — NOT via writeMarkdown.
     //   Previously these fell through to fileParser and had their extracted text written to the .pdf
     //   path via writeMarkdown(), overwriting the binary. The /file endpoint then served text as PDF.
     const TEXT_MIMES = new Set([
@@ -164,6 +164,7 @@ export class DocumentsController {
     const BINARY_DOC_MIMES = new Set([
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     ])
 

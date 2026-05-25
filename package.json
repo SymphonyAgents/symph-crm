@@ -15,17 +15,5 @@
   },
   "engines": {
     "node": ">=20"
-  },
-  "pnpm": {
-    "overrides": {
-      "@babel/plugin-transform-modules-systemjs": "^7.29.4",
-      "@xmldom/xmldom": "^0.9.10",
-      "fast-uri": "^3.1.2",
-      "lodash": "^4.18.1",
-      "path-to-regexp": "^8.4.2",
-      "picomatch": "^4.0.4",
-      "protobufjs": "^7.5.6",
-      "serialize-javascript": "^7.0.5"
-    }
   }
 }
