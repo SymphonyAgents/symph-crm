@@ -455,8 +455,6 @@ export const COMMAND_ROUTES = [
   { label: 'Dashboard',  path: '/dashboard',  keywords: ['home', 'overview'] },
   { label: 'Pipeline',   path: '/pipeline',   keywords: ['kanban', 'stages', 'deals'] },
   { label: 'Deals',      path: '/deals',      keywords: ['list', 'brand', 'opportunities'] },
-  { label: 'Calendar',   path: '/calendar',   keywords: ['events', 'schedule', 'meetings'] },
-  { label: 'Reports',    path: '/reports',     keywords: ['analytics', 'charts', 'metrics'] },
   { label: 'Inbox',      path: '/inbox',       keywords: ['email', 'messages', 'gmail'] },
   { label: 'Proposals',  path: '/proposals',   keywords: ['documents', 'proposal', 'builder'] },
   { label: 'Meetings',   path: '/meetings',    keywords: ['meetings', 'circleback', 'transcripts'] },
