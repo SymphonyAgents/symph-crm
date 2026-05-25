@@ -13,7 +13,6 @@ function DealDetailInner({ id }: { id: string }) {
     pipeline: 'Back to Pipeline',
     dashboard: 'Back to Dashboard',
     bills: 'Back to Bills',
-    calendar: 'Back to Calendar',
     inbox: 'Back to Inbox',
   }
   const backLabel = backLabels[from ?? ''] ?? 'Go Back'
