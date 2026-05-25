@@ -1,7 +1,7 @@
 import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
-import { proposals, proposalVersions, proposalShareLinks } from '@symph-crm/database'
+import { proposals, proposalVersions, proposalShareLinks, users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { StorageService } from '../storage/storage.service'
@@ -136,6 +136,9 @@ export class ProposalsService implements OnModuleInit {
         d.title       AS deal_title,
         c.id          AS brand_id,
         c.name        AS brand_name,
+        u.name        AS creator_name,
+        u.email       AS creator_email,
+        u.image       AS creator_image,
         v.id          AS current_version_id,
         v.change_note AS current_change_note,
         v.excerpt     AS current_excerpt,
@@ -145,6 +148,7 @@ export class ProposalsService implements OnModuleInit {
       FROM proposals p
       LEFT JOIN deals d ON d.id = p.deal_id AND d.deleted_at IS NULL
       LEFT JOIN companies c ON c.id = d.company_id
+      LEFT JOIN users u ON u.id = p.created_by
       LEFT JOIN proposal_versions v
         ON v.proposal_id = p.id AND v.version = p.current_version
       WHERE p.deleted_at IS NULL
@@ -165,6 +169,9 @@ export class ProposalsService implements OnModuleInit {
       SELECT
         p.id, p.title, p.deal_id, p.is_pinned, p.current_version,
         p.created_by, p.created_at, p.updated_at,
+        u.name        AS creator_name,
+        u.email       AS creator_email,
+        u.image       AS creator_image,
         v.id          AS current_version_id,
         v.change_note AS current_change_note,
         v.excerpt     AS current_excerpt,
@@ -172,6 +179,7 @@ export class ProposalsService implements OnModuleInit {
         v.author_id   AS current_author_id,
         v.created_at  AS current_version_created_at
       FROM proposals p
+      LEFT JOIN users u ON u.id = p.created_by
       LEFT JOIN proposal_versions v
         ON v.proposal_id = p.id AND v.version = p.current_version
       WHERE p.deal_id = ${dealId}
@@ -192,6 +200,9 @@ export class ProposalsService implements OnModuleInit {
       .where(and(eq(proposalVersions.proposalId, proposalId), eq(proposalVersions.version, p.currentVersion)))
     if (!v) throw new NotFoundException(`Proposal ${proposalId} has no current version`)
 
+    const [creator] = await this.db.select({ name: users.name, email: users.email, image: users.image }).from(users)
+      .where(eq(users.id, p.createdBy))
+
     return {
       id: p.id,
       title: p.title,
@@ -199,6 +210,10 @@ export class ProposalsService implements OnModuleInit {
       isPinned: p.isPinned,
       currentVersion: p.currentVersion,
       versionCount: p.currentVersion, // monotonic; we never delete versions individually
+      createdBy: p.createdBy,
+      creatorName: creator?.name ?? null,
+      creatorEmail: creator?.email ?? null,
+      creatorImage: creator?.image ?? null,
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
       version: this.toVersionItem(v, true),
@@ -499,6 +514,9 @@ export class ProposalsService implements OnModuleInit {
     wordCount: r.current_word_count,
     authorId: r.current_author_id,
     createdBy: r.created_by ?? r.createdBy,
+    creatorName: r.creator_name ?? null,
+    creatorEmail: r.creator_email ?? null,
+    creatorImage: r.creator_image ?? null,
     createdAt: r.created_at ?? r.createdAt,
     updatedAt: r.updated_at ?? r.updatedAt,
   })

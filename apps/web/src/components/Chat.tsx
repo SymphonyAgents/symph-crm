@@ -699,8 +699,6 @@ export function Chat({ dealId }: { dealId?: string }) {
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       'application/msword',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
       'text/plain',
       'text/markdown',
       'text/csv',
@@ -714,9 +712,9 @@ export function Chat({ dealId }: { dealId?: string }) {
     ])
     // Some browsers report empty MIME for .md files — fall back to extension check
     const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
-    const ACCEPTED_EXTS = new Set(['md', 'txt', 'csv', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'webm', 'm4a'])
+    const ACCEPTED_EXTS = new Set(['md', 'txt', 'csv', 'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'gif', 'webm', 'm4a'])
     if (!ACCEPTED_MIMES.has(file.type) && !ACCEPTED_EXTS.has(ext)) {
-      setAttachmentError(`Unsupported file type: ${file.type || ext}. Accepted: PDF, DOCX, XLSX, TXT, MD, CSV, images, audio (webm, m4a).`)
+      setAttachmentError(`Unsupported file type: ${file.type || ext}. Accepted: PDF, DOCX, TXT, MD, CSV, images, audio (webm, m4a).`)
       return
     }
     const isImage = file.type.startsWith('image/')

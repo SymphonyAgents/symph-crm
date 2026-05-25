@@ -6,20 +6,19 @@
  * Replaces the deal-tree sidebar pattern. One fetch returns all proposals
  * with deal + brand context joined server-side. Click a card → /proposals/[id].
  *
- * View toggle (grid / list) persists in localStorage. Sorted newest-first by
- * updatedAt server-side.
+ * Sorted newest-first by updatedAt server-side.
  */
 
-import { useMemo, useRef, useState, useEffect } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Eye, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useGetAllProposals } from '@/lib/hooks/queries'
+import { useGetAllProposals, useGetProposalVersions } from '@/lib/hooks/queries'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { DataTableSkeleton } from '@/components/ui/data-table'
-import type { ApiProposalSummary } from '@/lib/types'
-
-type ViewMode = 'grid' | 'list'
-const VIEW_KEY = 'proposals.view'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
+import type { ApiProposalSummary, ApiProposalVersion } from '@/lib/types'
 
 function FileIcon({ size = 28, className }: { size?: number; className?: string }) {
   return (
@@ -37,28 +36,11 @@ function FileIcon({ size = 28, className }: { size?: number; className?: string 
   )
 }
 
-function GridIcon({ active }: { active: boolean }) {
-  return (
-    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={cn(active ? 'text-primary' : 'text-slate-400')}>
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  )
-}
-
-function ListIcon({ active }: { active: boolean }) {
-  return (
-    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={cn(active ? 'text-primary' : 'text-slate-400')}>
-      <line x1="8" y1="6" x2="21" y2="6" />
-      <line x1="8" y1="12" x2="21" y2="12" />
-      <line x1="8" y1="18" x2="21" y2="18" />
-      <circle cx="4" cy="6" r="1" />
-      <circle cx="4" cy="12" r="1" />
-      <circle cx="4" cy="18" r="1" />
-    </svg>
-  )
+function initials(name?: string | null, email?: string | null) {
+  const source = name || email || 'User'
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return source.slice(0, 2).toUpperCase()
 }
 
 function relTime(iso: string): string {
@@ -74,71 +56,121 @@ function relTime(iso: string): string {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-// ─── Card (grid) ────────────────────────────────────────────────────────────
-
-function ProposalCard({ p, onOpen }: { p: ApiProposalSummary; onOpen: () => void }) {
-  return (
-    <button
-      onClick={onOpen}
-      className={cn(
-        'group flex flex-col text-left',
-        'rounded-xl border border-black/[.06] dark:border-white/[.08]',
-        'bg-white dark:bg-[#1c1c1f]',
-        'shadow-[var(--shadow-card)]',
-        'hover:border-primary/40 hover:shadow-[0_0_0_3px_rgba(108,99,255,0.06)]',
-        'transition-colors duration-150 active:scale-[0.99]',
-      )}
-    >
-      {/* Thumbnail panel */}
-      <div className="aspect-[4/3] flex items-center justify-center bg-slate-50 dark:bg-white/[.03] rounded-t-xl border-b border-black/[.06] dark:border-white/[.08]">
-        <FileIcon size={36} className="text-slate-400 group-hover:text-primary transition-colors duration-150" />
-      </div>
-      {/* Meta */}
-      <div className="px-3 py-2.5">
-        <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate" title={p.title}>
-          {p.title}
-        </div>
-        <div className="text-xxs text-slate-500 mt-0.5 truncate flex items-center gap-1.5">
-          {p.brandName && <span className="truncate">{p.brandName}</span>}
-          {p.brandName && <span className="text-slate-300">·</span>}
-          <span className="font-mono shrink-0">v{p.currentVersion}</span>
-          <span className="text-slate-300">·</span>
-          <span className="shrink-0">{relTime(p.updatedAt)}</span>
-        </div>
-      </div>
-    </button>
-  )
-}
-
 // ─── Row (list) ─────────────────────────────────────────────────────────────
 
-function ProposalRow({ p, onOpen }: { p: ApiProposalSummary; onOpen: () => void }) {
+function ProposalRow({ p, onOpen, onViewVersions }: { p: ApiProposalSummary; onOpen: () => void; onViewVersions: () => void }) {
   return (
-    <button
-      onClick={onOpen}
+    <div
       className={cn(
         'w-full flex items-center gap-3 text-left',
         'px-3 py-2.5 rounded-lg',
         'hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150',
       )}
     >
-      <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.04] flex items-center justify-center shrink-0">
+      <button type="button" onClick={onOpen} className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.04] flex items-center justify-center shrink-0 transition-transform active:scale-[0.96]">
         <FileIcon size={16} className="text-slate-400" />
-      </div>
-      <div className="min-w-0 flex-1">
+      </button>
+      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left transition-transform active:scale-[0.99]">
         <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{p.title}</div>
-        <div className="text-xxs text-slate-500 mt-0.5 truncate flex items-center gap-1.5">
-          {p.brandName && <span className="truncate">{p.brandName}</span>}
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xxs text-slate-500">
+          <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
+            {p.creatorImage && <AvatarImage src={p.creatorImage} alt={p.creatorName || p.creatorEmail || 'Creator'} />}
+            <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+              {initials(p.creatorName, p.creatorEmail)}
+            </AvatarFallback>
+          </AvatarRoot>
+          <span className="max-w-[120px] truncate" title={p.creatorName || p.creatorEmail || 'Creator'}>
+            {p.creatorName || p.creatorEmail || 'Creator'}
+          </span>
+          {(p.brandName || p.dealTitle) && <span className="text-slate-300">·</span>}
+          {p.brandName && <span className="truncate text-slate-400">{p.brandName}</span>}
           {p.brandName && p.dealTitle && <span className="text-slate-300">·</span>}
           {p.dealTitle && <span className="truncate text-slate-400">{p.dealTitle}</span>}
         </div>
-      </div>
-      <div className="flex items-center gap-3 text-xxs text-slate-500 shrink-0">
+      </button>
+      <div className="hidden items-center gap-2 text-xxs text-slate-500 shrink-0 sm:flex">
         <span className="font-mono">v{p.currentVersion}</span>
         <span className="text-slate-300">·</span>
         <span>{relTime(p.updatedAt)}</span>
       </div>
-    </button>
+      <button
+        type="button"
+        onClick={onViewVersions}
+        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/[.08] px-2.5 text-xxs font-semibold text-slate-600 transition-colors hover:bg-white active:scale-[0.96] dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.05]"
+      >
+        <History className="h-3.5 w-3.5" strokeWidth={1.8} />
+        View versions
+      </button>
+    </div>
+  )
+}
+
+function ProposalVersionsDialog({
+  proposal,
+  open,
+  onOpenChange,
+  onViewVersion,
+}: {
+  proposal: ApiProposalSummary | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onViewVersion: (version: ApiProposalVersion) => void
+}) {
+  const { data: versions = [], isLoading } = useGetProposalVersions(proposal?.id, { enabled: open && !!proposal?.id })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[80dvh] w-[calc(100vw-2rem)] max-w-[560px] overflow-hidden rounded-lg">
+        <DialogHeader className="px-4 sm:px-6">
+          <div className="min-w-0">
+            <DialogTitle>Proposal versions</DialogTitle>
+            <DialogDescription className="mt-1 truncate">
+              {proposal?.title ?? 'Select a proposal'}
+            </DialogDescription>
+          </div>
+        </DialogHeader>
+        <div className="max-h-[60dvh] overflow-auto p-3 sm:p-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="h-14 rounded-md bg-slate-100 dark:bg-white/[.06] animate-pulse" />
+              ))}
+            </div>
+          ) : versions.length === 0 ? (
+            <div className="rounded-md border border-black/[.06] px-4 py-8 text-center dark:border-white/[.08]">
+              <History className="mx-auto mb-2 h-5 w-5 text-slate-300 dark:text-slate-600" strokeWidth={1.6} />
+              <p className="text-ssm font-semibold text-slate-700 dark:text-slate-200">No versions yet</p>
+              <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">Saved proposal versions will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {versions.map((version) => (
+                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-[#1c1c1f] sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">v{version.version}</span>
+                      {version.wordCount != null && <span className="text-xxs text-slate-400 tabular-nums">{version.wordCount.toLocaleString()} words</span>}
+                    </div>
+                    <p className="mt-0.5 truncate text-xxs text-slate-500 dark:text-slate-400">
+                      {version.changeNote || version.excerpt || 'Saved version'}
+                    </p>
+                    <p className="mt-1 text-atom text-slate-400 dark:text-slate-500">{relTime(version.createdAt)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onViewVersion(version)}
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xxs font-semibold text-white transition-colors hover:bg-slate-700 active:scale-[0.96] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                  >
+                    <Eye className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    View
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -148,19 +180,9 @@ export function Proposals() {
   const router = useRouter()
   const { data: proposals = [], isLoading } = useGetAllProposals()
   const [search, setSearch] = useState('')
-  const [view, setView] = useState<ViewMode>('grid')
+  const [versionProposal, setVersionProposal] = useState<ApiProposalSummary | null>(null)
+  const [versionsOpen, setVersionsOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
-
-  // Persist view choice across reloads.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const stored = window.localStorage.getItem(VIEW_KEY)
-    if (stored === 'list' || stored === 'grid') setView(stored)
-  }, [])
-  const setViewPersisted = (next: ViewMode) => {
-    setView(next)
-    if (typeof window !== 'undefined') window.localStorage.setItem(VIEW_KEY, next)
-  }
 
   useSearchHotkey({
     inputRef: searchInputRef,
@@ -178,18 +200,10 @@ export function Proposals() {
   }, [proposals, search])
 
   const open = (id: string) => router.push(`/proposals/${id}`)
+  const openVersion = (proposalId: string, versionId: string) => router.push(`/proposals/${proposalId}?versionId=${versionId}`)
 
   return (
-    <div className="p-4 md:px-6 pb-6 max-w-[1200px] mx-auto w-full">
-      {/* Header */}
-      <div className="mb-5">
-        <h1 className="text-base font-semibold text-slate-900 dark:text-white">Proposals</h1>
-        <p className="text-xxs text-slate-500 mt-1">
-          Versioned proposal documents across your workspace. New proposals are created via Aria chat.
-        </p>
-      </div>
-
-      {/* Search + view toggle */}
+    <div className="p-4 md:px-6 pb-6 w-full">
       <div className="flex items-center gap-3 mb-5">
         <div className="relative flex-1">
           <svg
@@ -206,30 +220,6 @@ export function Proposals() {
             placeholder="Search proposals, brands, deals…"
             className="w-full h-9 pl-9 pr-3 text-xs rounded-lg bg-slate-100 dark:bg-white/[.04] border border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-[#1c1c1f] outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
           />
-        </div>
-        <div className="flex items-center bg-slate-100 dark:bg-white/[.04] rounded-lg p-0.5 shrink-0">
-          <button
-            onClick={() => setViewPersisted('list')}
-            aria-pressed={view === 'list'}
-            className={cn(
-              'h-8 w-8 rounded-md flex items-center justify-center transition-colors duration-150',
-              view === 'list' ? 'bg-white dark:bg-[#1c1c1f] shadow-[0_1px_2px_rgba(0,0,0,0.06)]' : 'hover:bg-white/60 dark:hover:bg-white/[.04]',
-            )}
-            title="List view"
-          >
-            <ListIcon active={view === 'list'} />
-          </button>
-          <button
-            onClick={() => setViewPersisted('grid')}
-            aria-pressed={view === 'grid'}
-            className={cn(
-              'h-8 w-8 rounded-md flex items-center justify-center transition-colors duration-150',
-              view === 'grid' ? 'bg-white dark:bg-[#1c1c1f] shadow-[0_1px_2px_rgba(0,0,0,0.06)]' : 'hover:bg-white/60 dark:hover:bg-white/[.04]',
-            )}
-            title="Grid view"
-          >
-            <GridIcon active={view === 'grid'} />
-          </button>
         </div>
       </div>
 
@@ -248,19 +238,24 @@ export function Proposals() {
             {search ? 'Try another search term.' : 'New proposals are created via Aria chat.'}
           </div>
         </div>
-      ) : view === 'grid' ? (
-        <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(190px,1fr))]">
-          {filtered.map(p => (
-            <ProposalCard key={p.id} p={p} onOpen={() => open(p.id)} />
-          ))}
-        </div>
       ) : (
         <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] divide-y divide-black/[.06] dark:divide-white/[.06] overflow-hidden">
           {filtered.map(p => (
-            <ProposalRow key={p.id} p={p} onOpen={() => open(p.id)} />
+            <ProposalRow key={p.id} p={p} onOpen={() => open(p.id)} onViewVersions={() => { setVersionProposal(p); setVersionsOpen(true) }} />
           ))}
         </div>
       )}
+
+      <ProposalVersionsDialog
+        proposal={versionProposal}
+        open={versionsOpen}
+        onOpenChange={setVersionsOpen}
+        onViewVersion={(version) => {
+          if (!versionProposal) return
+          setVersionsOpen(false)
+          openVersion(versionProposal.id, version.id)
+        }}
+      />
     </div>
   )
 }

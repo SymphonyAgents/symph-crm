@@ -134,6 +134,8 @@ export async function POST(req: NextRequest) {
       'All requests require:',
       `- Base URL: ${INTERNAL_BASE}`,
       `- Header: X-Internal-Secret: ${internalSecret}`,
+      '- For every POST, PUT, PATCH, or DELETE request, include Header: X-Performed-By: the current User ID from Session context.',
+      '- Do not use your own ID, a name, an email, or the string "aria" for X-Performed-By. Use the exact current User ID.',
       '',
       'Key endpoints (always include workspaceId):',
       `- GET /deals?workspaceId=${ws}&limit=20&sortBy=createdAt&sortOrder=desc — list recent deals`,

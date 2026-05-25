@@ -8,12 +8,10 @@
 const MIME_TO_LABEL: Record<string, string> = {
   // Microsoft Office Open XML formats
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'XLSX',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'PPTX',
 
   // Legacy Microsoft Office formats
   'application/msword': 'DOC',
-  'application/vnd.ms-excel': 'XLS',
   'application/vnd.ms-powerpoint': 'PPT',
 
   // PDF
@@ -55,8 +53,6 @@ const MIME_TO_LABEL: Record<string, string> = {
 const EXT_TO_LABEL: Record<string, string> = {
   docx: 'DOCX',
   doc: 'DOC',
-  xlsx: 'XLSX',
-  xls: 'XLS',
   pptx: 'PPTX',
   ppt: 'PPT',
   pdf: 'PDF',
@@ -141,8 +137,6 @@ const TEXT_DOCUMENT_MIMES = new Set([
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'application/vnd.ms-powerpoint',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   'text/plain',
@@ -157,7 +151,7 @@ const TEXT_DOCUMENT_MIMES = new Set([
 ])
 
 const TEXT_DOCUMENT_EXTS = new Set([
-  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+  'pdf', 'doc', 'docx', 'ppt', 'pptx',
   'txt', 'md', 'html', 'htm', 'csv', 'json', 'xml', 'yaml', 'yml',
 ])
 
@@ -175,7 +169,7 @@ const AUDIO_EXTS = new Set(['mp4', 'x-m4a', 'mpeg', 'mp3', 'm4a'])
 
 /**
  * Determine if a document type supports word count.
- * Only text-based documents (PDF, DOCX, XLSX, etc.) have meaningful word counts.
+ * Only text-based documents (PDF, DOCX, TXT, CSV, etc.) have meaningful word counts.
  * Images, videos, archives, etc. do not.
  *
  * @param mimeOrExt - MIME type or file extension

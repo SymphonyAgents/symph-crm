@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -41,11 +41,26 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeValue, setActiveValue] = useState('')
+  const listRef = useRef<HTMLDivElement>(null)
 
-  const normalized: Option[] = options.map(o =>
+  const normalized: Option[] = useMemo(() => options.map(o =>
     typeof o === 'string' ? { value: o, label: o } : o,
-  )
+  ), [options])
+  const visibleOptions = useMemo(() => (
+    allowCustom
+      ? normalized.filter(o => !query || o.label.toLowerCase().includes(query.toLowerCase()))
+      : normalized
+  ), [allowCustom, normalized, query])
   const selectedLabel = normalized.find(o => o.value === value)?.label ?? value
+
+  useEffect(() => {
+    const first = visibleOptions[0]?.label ?? ''
+    setActiveValue(first)
+    requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = 0
+    })
+  }, [open, query, visibleOptions])
 
   function select(val: string) {
     onValueChange(val)
@@ -73,13 +88,13 @@ export function Combobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command shouldFilter={!allowCustom}>
+        <Command shouldFilter={!allowCustom} value={activeValue} onValueChange={setActiveValue}>
           <CommandInput
             placeholder={placeholder}
             value={query}
             onValueChange={setQuery}
           />
-          <CommandList>
+          <CommandList ref={listRef}>
             <CommandEmpty>
               {allowCustom && query.trim() ? (
                 <button
@@ -94,13 +109,7 @@ export function Combobox({
               )}
             </CommandEmpty>
             <CommandGroup>
-              {normalized
-                .filter(o =>
-                  allowCustom
-                    ? !query || o.label.toLowerCase().includes(query.toLowerCase())
-                    : true,
-                )
-                .map(o => (
+              {visibleOptions.map(o => (
                   <CommandItem
                     key={o.value}
                     value={o.label}

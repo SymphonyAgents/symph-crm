@@ -422,7 +422,6 @@ export const TOOL_LABELS: Record<string, string> = {
 export const ACCEPTED_FILE_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain',
   'text/markdown',
   'text/csv',
@@ -455,8 +454,6 @@ export const COMMAND_ROUTES = [
   { label: 'Dashboard',  path: '/dashboard',  keywords: ['home', 'overview'] },
   { label: 'Pipeline',   path: '/pipeline',   keywords: ['kanban', 'stages', 'deals'] },
   { label: 'Deals',      path: '/deals',      keywords: ['list', 'brand', 'opportunities'] },
-  { label: 'Calendar',   path: '/calendar',   keywords: ['events', 'schedule', 'meetings'] },
-  { label: 'Reports',    path: '/reports',     keywords: ['analytics', 'charts', 'metrics'] },
   { label: 'Inbox',      path: '/inbox',       keywords: ['email', 'messages', 'gmail'] },
   { label: 'Proposals',  path: '/proposals',   keywords: ['documents', 'proposal', 'builder'] },
   { label: 'Meetings',   path: '/meetings',    keywords: ['meetings', 'circleback', 'transcripts'] },

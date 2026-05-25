@@ -18,8 +18,6 @@ const ROUTES: CommandItem[] = [
   { id: 'pipeline', label: 'Pipeline', path: '/pipeline', section: 'Pages' },
   { id: 'deals', label: 'Deals', path: '/deals', section: 'Pages' },
   { id: 'inbox', label: 'Inbox', path: '/inbox', section: 'Pages' },
-  { id: 'calendar', label: 'Calendar', path: '/calendar', section: 'Pages' },
-  { id: 'reports', label: 'Reports', path: '/reports', section: 'Pages' },
   { id: 'proposals', label: 'Proposals', path: '/proposals', section: 'Pages' },
 ]
 
