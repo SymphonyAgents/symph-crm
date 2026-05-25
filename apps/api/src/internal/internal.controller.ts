@@ -181,6 +181,19 @@ export class InternalController {
     return { performedBy, performerName, source: 'aria' as const }
   }
 
+  private async requireValidPerformer(performedBy?: string) {
+    if (!performedBy) {
+      throw new BadRequestException('X-Performed-By header is required for proposal mutations')
+    }
+
+    const user = await this.users.findOne(performedBy)
+    if (!user) {
+      throw new BadRequestException('X-Performed-By must match an existing CRM user ID')
+    }
+
+    return performedBy
+  }
+
   private isProposalHtmlDocument(body: {
     type?: string
     title?: string
@@ -1135,7 +1148,7 @@ export class InternalController {
    * Create a new proposal chain and write v1.
    *
    * Body: { title: string, html: string, changeNote?: string }
-   * Headers: X-Performed-By (CRM user ID used as authorId)
+   * Headers: X-Performed-By (required CRM user ID used as authorId)
    *
    * Returns: { ok: true, proposal, version, url }
    */
@@ -1149,15 +1162,7 @@ export class InternalController {
     if (!body.title) return { ok: false, error: 'title is required' }
     if (!body.html) return { ok: false, error: 'html is required' }
 
-    // Resolve authorId: header → fallback to first SALES user → first user.
-    // Mirrors createDocument(), never require a UUID header from Aria callers.
-    let authorId = performedBy
-    if (!authorId || !authorId.match(/^[0-9a-f-]{8,}$/i)) {
-      const allUsers = await this.users.findAll()
-      const fallback = allUsers.find((u: any) => u.role === 'SALES') ?? allUsers[0]
-      authorId = fallback?.id
-    }
-    if (!authorId) return { ok: false, error: 'Could not resolve authorId, no users in DB' }
+    const authorId = await this.requireValidPerformer(performedBy)
 
     const result = await this.proposals.create(
       dealId,
@@ -1188,7 +1193,7 @@ export class InternalController {
    * Save a new version of a proposal.
    *
    * Body: { html: string, changeNote?: string }
-   * Headers: X-Performed-By (CRM user ID, or any string, resolved to a real user FK below)
+   * Headers: X-Performed-By (required CRM user ID used as authorId)
    */
   @Post('proposals/:id/versions')
   async saveProposalVersion(
@@ -1198,16 +1203,7 @@ export class InternalController {
   ) {
     if (!body.html) return { ok: false, error: 'html is required' }
 
-    // Resolve authorId: header → fallback to first SALES user → first user.
-    // author_id is a NOT NULL FK to users.id, so passing 'aria' or undefined
-    // causes a constraint violation → 500. Mirror createDocument() pattern.
-    let authorId = performedBy
-    if (!authorId || !authorId.match(/^[0-9a-f-]{8,}$/i)) {
-      const allUsers = await this.users.findAll()
-      const fallback = allUsers.find((u: any) => u.role === 'SALES') ?? allUsers[0]
-      authorId = fallback?.id
-    }
-    if (!authorId) return { ok: false, error: 'Could not resolve authorId, no users in DB' }
+    const authorId = await this.requireValidPerformer(performedBy)
 
     const version = await this.proposals.saveVersion(id, { html: body.html, changeNote: body.changeNote }, authorId)
     return { ok: true, version }
