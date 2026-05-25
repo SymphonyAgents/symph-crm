@@ -185,14 +185,8 @@ export default function CatalogPage() {
 
   return (
     <div className="p-4 md:px-6 pb-6 w-full">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-base font-semibold text-slate-900 dark:text-white">Catalog</h1>
-          <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage internal products, service offerings, and reseller partners
-          </p>
-        </div>
-        {tab !== 'all' && (
+      {tab !== 'all' && (
+        <div className="mb-4 flex justify-end">
           <button
             onClick={() => setCreating(true)}
             className="rounded-lg px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
@@ -200,8 +194,8 @@ export default function CatalogPage() {
           >
             {tabMeta.addCta}
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-black/[.06] dark:border-white/[.08]">
