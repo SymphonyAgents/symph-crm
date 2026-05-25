@@ -179,15 +179,6 @@ export default function BillsPage() {
 
   return (
     <div className="p-4 md:px-6 pb-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
-        <div>
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">Bills</div>
-          <div className="text-xxs text-slate-400 mt-0.5">
-            {isInitialLoading ? 'Loading\u2026' : `${wonDeals.length} won deal${wonDeals.length !== 1 ? 's' : ''}`}
-          </div>
-        </div>
-      </div>
-
       <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
         {isInitialLoading ? (
           <DataTableSkeleton />
