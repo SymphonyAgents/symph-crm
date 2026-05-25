@@ -422,7 +422,6 @@ export const TOOL_LABELS: Record<string, string> = {
 export const ACCEPTED_FILE_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain',
   'text/markdown',
   'text/csv',
