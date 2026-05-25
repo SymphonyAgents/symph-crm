@@ -19,10 +19,15 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { Eye, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useGetProposalHead } from '@/lib/hooks/queries'
+import { useGetProposalHead, useGetProposalVersion, useGetProposalVersions } from '@/lib/hooks/queries'
 import { useSaveProposalVersion } from '@/lib/hooks/mutations'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
+import type { ApiProposalVersion } from '@/lib/types'
 
 function ChevronLeftIcon({ size = 14 }: { size?: number }) {
   return (
@@ -41,19 +46,104 @@ function ArrowRightIcon({ size = 12 }: { size?: number }) {
   )
 }
 
+function initials(name?: string | null, email?: string | null) {
+  const source = name || email || 'User'
+  const parts = source.split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return source.slice(0, 2).toUpperCase()
+}
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function ProposalVersionsDialog({
+  title,
+  proposalId,
+  versions,
+  isLoading,
+  open,
+  onOpenChange,
+  onViewVersion,
+}: {
+  title: string
+  proposalId: string
+  versions: ApiProposalVersion[]
+  isLoading: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onViewVersion: (versionId: string) => void
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[80dvh] w-[calc(100vw-2rem)] max-w-[560px] overflow-hidden rounded-lg">
+        <DialogHeader className="px-4 sm:px-6">
+          <div className="min-w-0">
+            <DialogTitle>Proposal versions</DialogTitle>
+            <DialogDescription className="mt-1 truncate">{title}</DialogDescription>
+          </div>
+        </DialogHeader>
+        <div className="max-h-[60dvh] overflow-auto p-3 sm:p-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((item) => (
+                <div key={item} className="h-14 rounded-md bg-slate-100 dark:bg-white/[.06] animate-pulse" />
+              ))}
+            </div>
+          ) : versions.length === 0 ? (
+            <div className="rounded-md border border-black/[.06] px-4 py-8 text-center dark:border-white/[.08]">
+              <History className="mx-auto mb-2 h-5 w-5 text-slate-300 dark:text-slate-600" strokeWidth={1.6} />
+              <p className="text-ssm font-semibold text-slate-700 dark:text-slate-200">No versions yet</p>
+              <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">Saved proposal versions will appear here.</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {versions.map((version) => (
+                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-[#1c1c1f] sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">v{version.version}</span>
+                      {version.wordCount != null && <span className="text-xxs text-slate-400 tabular-nums">{version.wordCount.toLocaleString()} words</span>}
+                    </div>
+                    <p className="mt-0.5 truncate text-xxs text-slate-500 dark:text-slate-400">
+                      {version.changeNote || version.excerpt || 'Saved version'}
+                    </p>
+                    <p className="mt-1 text-atom text-slate-400 dark:text-slate-500">
+                      {new Date(version.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onViewVersion(version.id)}
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xxs font-semibold text-white transition-colors hover:bg-slate-700 active:scale-[0.96] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                  >
+                    <Eye className="h-3.5 w-3.5" strokeWidth={1.8} />
+                    View
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 interface ProposalDetailProps {
   proposalId: string
+  versionId?: string
   onBack: () => void
   onOpenDeal: (dealId: string) => void
 }
 
-export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetailProps) {
+export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: ProposalDetailProps) {
+  const router = useRouter()
   const { data, isLoading, error } = useGetProposalHead(proposalId)
+  const { data: selectedVersion, isLoading: isVersionLoading, error: versionError } = useGetProposalVersion(proposalId, versionId, { enabled: !!versionId })
+  const { data: versions = [], isLoading: isVersionsLoading } = useGetProposalVersions(proposalId)
   const [isEditing, setIsEditing] = useState(false)
+  const [showVersions, setShowVersions] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const saveVersion = useSaveProposalVersion()
 
@@ -109,7 +199,7 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
     })
   }
 
-  if (isLoading) {
+  if (isLoading || isVersionLoading) {
     return (
       <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0f0f12]">
         <div className="shrink-0 bg-white dark:bg-[#1c1c1f] border-b border-black/[.06] dark:border-white/[.08] h-[57px]" />
@@ -122,11 +212,11 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
     )
   }
 
-  if (error || !data) {
+  if (error || versionError || !data) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
         <div className="text-ssm font-semibold text-slate-700 dark:text-slate-200">
-          {error?.message ?? 'Proposal not found'}
+          {error?.message ?? versionError?.message ?? 'Proposal not found'}
         </div>
         <button
           onClick={onBack}
@@ -138,11 +228,13 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
     )
   }
 
+  const activeVersion = selectedVersion ?? data.version
+
   return (
     <div className="h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-[#0f0f12]">
       {/* Sticky header */}
       <div className="shrink-0 bg-white dark:bg-[#1c1c1f] border-b border-black/[.06] dark:border-white/[.08]">
-        <div className="flex items-center gap-3 px-4 md:px-6 py-3 max-w-[1400px] mx-auto w-full">
+        <div className="flex flex-col gap-3 px-4 py-3 md:mx-auto md:w-full md:max-w-[1400px] md:flex-row md:items-center md:px-6">
           <button
             onClick={onBack}
             className="shrink-0 flex items-center gap-1.5 h-7 px-2 -ml-2 rounded-md text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.05] transition-colors duration-150"
@@ -151,90 +243,127 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
             <span>Proposals</span>
           </button>
 
-          <div className="w-px h-5 bg-black/[.08] dark:bg-white/[.08] shrink-0" />
+          <div className="hidden h-5 w-px shrink-0 bg-black/[.08] dark:bg-white/[.08] md:block" />
 
           <div className="min-w-0 flex-1">
             <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate" title={data.title}>
               {data.title}
             </div>
             <div className="text-xxs text-slate-500 mt-0.5 truncate flex items-center gap-1.5">
-              <span className="font-mono">v{data.currentVersion}</span>
-              {data.version.wordCount != null && (
+              <span className="font-mono">v{activeVersion.version}</span>
+              {versionId && <span className="text-slate-400">Viewing saved version</span>}
+              <span className="text-slate-300">·</span>
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
+                  {data.creatorImage && <AvatarImage src={data.creatorImage} alt={data.creatorName || data.creatorEmail || 'Creator'} />}
+                  <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                    {initials(data.creatorName, data.creatorEmail)}
+                  </AvatarFallback>
+                </AvatarRoot>
+                <span className="truncate" title={data.creatorName || data.creatorEmail || 'Creator'}>
+                  {data.creatorName || data.creatorEmail || 'Creator'}
+                </span>
+              </span>
+              {activeVersion.wordCount != null && (
                 <>
                   <span className="text-slate-300">·</span>
-                  <span className="font-mono">{data.version.wordCount.toLocaleString()} words</span>
+                  <span className="font-mono">{activeVersion.wordCount.toLocaleString()} words</span>
                 </>
               )}
-              {data.version.changeNote && (
+              {activeVersion.changeNote && (
                 <>
                   <span className="text-slate-300">·</span>
-                  <span className="text-slate-400 truncate" title={data.version.changeNote}>
-                    {data.version.changeNote}
+                  <span className="text-slate-400 truncate" title={activeVersion.changeNote}>
+                    {activeVersion.changeNote}
                   </span>
                 </>
               )}
             </div>
           </div>
 
-          <div className="hidden sm:block text-xxs text-slate-400 shrink-0 font-mono">
+          <div className="hidden lg:block text-xxs text-slate-400 shrink-0 font-mono">
             {fmtDate(data.updatedAt)}
           </div>
 
-          {data.dealId && !isEditing && (
-            <button
-              onClick={() => data.dealId && onOpenDeal(data.dealId)}
-              className={cn(
-                'shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg',
-                'bg-primary/10 text-primary',
-                'text-xs font-semibold',
-                'hover:bg-primary/15 transition-colors duration-150 active:scale-[0.98]',
-              )}
-            >
-              <span>View deal</span>
-              <ArrowRightIcon size={13} />
-            </button>
-          )}
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 md:w-auto md:flex-nowrap md:justify-end">
+            {!isEditing && (
+              <button
+                onClick={() => setShowVersions(true)}
+                className="shrink-0 h-8 px-3 rounded-lg border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 dark:hover:bg-white/[.05] transition-colors duration-150 active:scale-[0.96]"
+              >
+                <History className="h-3.5 w-3.5" strokeWidth={1.8} />
+                <span>View versions</span>
+              </button>
+            )}
 
-          {/* Edit / Save / Cancel */}
-          {isEditing ? (
-            <div className="flex items-center gap-2 shrink-0">
+            {data.dealId && !isEditing && (
               <button
-                onClick={handleCancelEdit}
-                disabled={saveVersion.isPending}
-                className="h-7 px-3 rounded-lg text-xxs font-medium text-slate-500 border border-black/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saveVersion.isPending}
-                className="h-7 px-3 rounded-lg text-xxs font-semibold text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
-              >
-                {saveVersion.isPending ? (
-                  <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                onClick={() => data.dealId && onOpenDeal(data.dealId)}
+                className={cn(
+                  'shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-lg',
+                  'bg-primary/10 text-primary',
+                  'text-xs font-semibold',
+                  'hover:bg-primary/15 transition-colors duration-150 active:scale-[0.98]',
                 )}
-                Save
+              >
+                <span>View deal</span>
+                <ArrowRightIcon size={13} />
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleEnterEdit}
-              className="shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xxs font-semibold text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
-            >
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-              Edit
-            </button>
-          )}
+            )}
+
+            {isEditing ? (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleCancelEdit}
+                  disabled={saveVersion.isPending}
+                  className="h-7 px-3 rounded-lg text-xxs font-medium text-slate-500 border border-black/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saveVersion.isPending}
+                  className="h-7 px-3 rounded-lg text-xxs font-semibold text-white flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+                >
+                  {saveVersion.isPending ? (
+                    <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                  Save
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleEnterEdit}
+                className="shrink-0 h-7 px-2.5 rounded-lg flex items-center gap-1.5 text-xxs font-semibold text-slate-500 hover:text-primary hover:bg-primary/10 transition-colors"
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+                Edit
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      <ProposalVersionsDialog
+        title={data.title}
+        proposalId={proposalId}
+        versions={versions}
+        isLoading={isVersionsLoading}
+        open={showVersions}
+        onOpenChange={setShowVersions}
+        onViewVersion={(nextVersionId) => {
+          setShowVersions(false)
+          router.push(`/proposals/${proposalId}?versionId=${nextVersionId}`)
+        }}
+      />
 
       {/* Full-width iframe */}
       <div className="flex-1 min-h-0 bg-slate-100 dark:bg-[#0f0f12] relative">
@@ -246,7 +375,7 @@ export function ProposalDetail({ proposalId, onBack, onOpenDeal }: ProposalDetai
         <iframe
           ref={iframeRef}
           key={`${proposalId}-${isEditing ? 'edit' : 'view'}`}
-          srcDoc={data.version.html}
+          srcDoc={activeVersion.html ?? ''}
           title={data.title}
           // Edit mode: add allow-same-origin so we can access contentDocument for contenteditable.
           // View mode: no allow-same-origin, iframe can't read parent DOM or cookies.
