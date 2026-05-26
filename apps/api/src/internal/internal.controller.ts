@@ -31,6 +31,7 @@ import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
 import { ensureDealNoteAuthorFrontmatter } from '../wiki/wiki-frontmatter'
 import { ProposalsService } from '../proposals/proposals.service'
+import type { ProposalType } from '@symph-crm/database'
 import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meetings.service'
 
 /**
@@ -1155,7 +1156,7 @@ export class InternalController {
   @Post('deals/:dealId/proposals')
   async createProposal(
     @Param('dealId') dealId: string,
-    @Body() body: { title: string; html: string; changeNote?: string },
+    @Body() body: { title: string; html: string; type?: ProposalType; changeNote?: string },
     @Headers('x-performed-by') performedBy?: string,
     @Headers('x-workspace-id') workspaceId?: string,
   ) {
@@ -1166,7 +1167,7 @@ export class InternalController {
 
     const result = await this.proposals.create(
       dealId,
-      { title: body.title, html: body.html, changeNote: body.changeNote },
+      { title: body.title, type: body.type, html: body.html, changeNote: body.changeNote },
       authorId,
       workspaceId,
     )
