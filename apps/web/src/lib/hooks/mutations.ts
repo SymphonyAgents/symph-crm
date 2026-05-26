@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -614,6 +614,7 @@ export function useUploadCatalogItemIcon(
 export type CreateProposalInput = {
   dealId: string
   title: string
+  type?: ApiProposalType
   html: string
   changeNote?: string
 }
@@ -662,6 +663,7 @@ export function useSaveProposalVersion(
 export type UpdateProposalMetaInput = {
   proposalId: string
   title?: string
+  type?: ApiProposalType
   isPinned?: boolean
 }
 

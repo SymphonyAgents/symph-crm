@@ -151,9 +151,12 @@ export type ApiDocument = {
 
 // ── Proposals ────────────────────────────────────────────────────────────────
 
+export type ApiProposalType = 'presentation' | 'formal'
+
 export type ApiProposalListItem = {
   id: string
   title: string
+  type: ApiProposalType | null
   dealId: string | null
   isPinned: boolean
   currentVersion: number
@@ -192,6 +195,7 @@ export type ApiProposalVersion = {
 export type ApiProposalHead = {
   id: string
   title: string
+  type: ApiProposalType | null
   dealId: string | null
   isPinned: boolean
   currentVersion: number

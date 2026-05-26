@@ -3,6 +3,9 @@ import { workspaces } from './workspaces'
 import { deals } from './deals'
 import { users } from './users'
 
+export const PROPOSAL_TYPES = ['presentation', 'formal'] as const
+export type ProposalType = typeof PROPOSAL_TYPES[number]
+
 /**
  * proposals — chain identity for a versioned proposal document.
  *
@@ -24,6 +27,7 @@ export const proposals = pgTable('proposals', {
   dealId: uuid('deal_id').references(() => deals.id, { onDelete: 'set null' }),
 
   title: text('title').notNull(),
+  type: text('type', { enum: PROPOSAL_TYPES }),
 
   // Denormalized counter — equals MAX(proposal_versions.version) for this proposal.
   // Used as the basis for the next version number on save (with FOR UPDATE locking).
