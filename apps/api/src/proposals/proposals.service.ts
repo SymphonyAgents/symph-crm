@@ -1,7 +1,7 @@
 import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
-import { proposals, proposalVersions, proposalShareLinks, users } from '@symph-crm/database'
+import { proposals, proposalVersions, proposalShareLinks, users, PROPOSAL_TYPES, type ProposalType } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { StorageService } from '../storage/storage.service'
@@ -48,6 +48,7 @@ export class ProposalsService implements OnModuleInit {
           workspace_id UUID REFERENCES workspaces(id),
           deal_id UUID REFERENCES deals(id) ON DELETE SET NULL,
           title TEXT NOT NULL,
+          type TEXT,
           current_version INTEGER NOT NULL DEFAULT 1,
           is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
           created_by TEXT NOT NULL REFERENCES users(id),
@@ -55,6 +56,22 @@ export class ProposalsService implements OnModuleInit {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           deleted_at TIMESTAMPTZ
         )
+      `)
+
+      await this.db.execute(`
+        ALTER TABLE proposals
+        ADD COLUMN IF NOT EXISTS type TEXT
+      `)
+      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type DROP DEFAULT`)
+      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type DROP NOT NULL`)
+      await this.db.execute(`
+        DO $$ BEGIN
+          ALTER TABLE proposals
+            ADD CONSTRAINT proposals_type_check
+            CHECK (type IN ('presentation', 'formal'));
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
       `)
 
       await this.db.execute(`
@@ -117,6 +134,12 @@ export class ProposalsService implements OnModuleInit {
     return randomBytes(24).toString('base64url') // 32 chars, ~190 bits entropy
   }
 
+  private normalizeType(type?: ProposalType | null): ProposalType | null {
+    if (!type) return null
+    if (PROPOSAL_TYPES.includes(type)) return type
+    throw new BadRequestException(`type must be one of: ${PROPOSAL_TYPES.join(', ')}`)
+  }
+
   // ── List / read ───────────────────────────────────────────────────────────
 
   /**
@@ -131,7 +154,7 @@ export class ProposalsService implements OnModuleInit {
   async listAll(workspaceId?: string) {
     const rows = await this.db.execute<any>(sql`
       SELECT
-        p.id, p.title, p.deal_id, p.is_pinned, p.current_version,
+        p.id, p.title, p.type, p.deal_id, p.is_pinned, p.current_version,
         p.created_by, p.created_at, p.updated_at,
         d.title       AS deal_title,
         c.id          AS brand_id,
@@ -167,7 +190,7 @@ export class ProposalsService implements OnModuleInit {
   async listByDeal(dealId: string) {
     const rows = await this.db.execute<any>(sql`
       SELECT
-        p.id, p.title, p.deal_id, p.is_pinned, p.current_version,
+        p.id, p.title, p.type, p.deal_id, p.is_pinned, p.current_version,
         p.created_by, p.created_at, p.updated_at,
         u.name        AS creator_name,
         u.email       AS creator_email,
@@ -207,6 +230,7 @@ export class ProposalsService implements OnModuleInit {
       id: p.id,
       title: p.title,
       dealId: p.dealId,
+      type: p.type ?? null,
       isPinned: p.isPinned,
       currentVersion: p.currentVersion,
       versionCount: p.currentVersion, // monotonic; we never delete versions individually
@@ -251,12 +275,14 @@ export class ProposalsService implements OnModuleInit {
     if (!dto.title?.trim()) throw new BadRequestException('title is required')
     this.validateHtml(dto.html)
     const { excerpt, wordCount } = StorageService.extractHtmlExcerpt(dto.html)
+    const type = this.normalizeType(dto.type)
 
     const created = await this.db.transaction(async (tx) => {
       const [p] = await tx.insert(proposals).values({
         workspaceId: workspaceId ?? null,
         dealId,
         title: dto.title.trim(),
+        type,
         currentVersion: 1,
         createdBy: authorId,
       }).returning()
@@ -287,6 +313,7 @@ export class ProposalsService implements OnModuleInit {
       id: created.p.id,
       title: created.p.title,
       dealId: created.p.dealId,
+      type: created.p.type ?? null,
       isPinned: created.p.isPinned,
       currentVersion: 1,
       version: this.toVersionItem(created.v, true),
@@ -339,6 +366,7 @@ export class ProposalsService implements OnModuleInit {
   async updateMeta(proposalId: string, dto: UpdateProposalDto, performedBy?: string) {
     const set: Partial<typeof proposals.$inferInsert> = { updatedAt: new Date() }
     if (dto.title !== undefined) set.title = dto.title.trim()
+    if (dto.type !== undefined) set.type = this.normalizeType(dto.type)
     if (dto.isPinned !== undefined) set.isPinned = dto.isPinned
 
     const [p] = await this.db.update(proposals).set(set)
@@ -505,6 +533,7 @@ export class ProposalsService implements OnModuleInit {
   private toListItem = (r: any) => ({
     id: r.id,
     title: r.title,
+    type: r.type ?? null,
     dealId: r.deal_id ?? r.dealId,
     isPinned: r.is_pinned ?? r.isPinned ?? false,
     currentVersion: r.current_version ?? r.currentVersion,
