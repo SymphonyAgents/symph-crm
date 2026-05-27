@@ -11,14 +11,19 @@
 
 import { useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, History } from 'lucide-react'
+import { Download, Eye, History, Loader2, MoreVertical, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGetAllProposals, useGetProposalVersions } from '@/lib/hooks/queries'
+import { useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
-import type { ApiProposalSummary, ApiProposalVersion } from '@/lib/types'
+import type { ApiProposalStatus, ApiProposalSummary, ApiProposalVersion } from '@/lib/types'
 
 function FileIcon({ size = 28, className }: { size?: number; className?: string }) {
   return (
@@ -58,50 +63,178 @@ function relTime(iso: string): string {
 
 // ─── Row (list) ─────────────────────────────────────────────────────────────
 
-function ProposalRow({ p, onOpen, onViewVersions }: { p: ApiProposalSummary; onOpen: () => void; onViewVersions: () => void }) {
+const STATUS_LABELS: Record<ApiProposalStatus, string> = {
+  draft: 'Draft',
+  sent: 'Sent',
+  signed: 'Signed',
+}
+
+const STATUS_CLASSES: Record<ApiProposalStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-300',
+  sent: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+  signed: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+}
+
+function ProposalActionsMenu({
+  p,
+  onViewVersions,
+  onSignedPdfUpload,
+  isPdfPending,
+}: {
+  p: ApiProposalSummary
+  onViewVersions: () => void
+  onSignedPdfUpload: (file: File) => void
+  isPdfPending: boolean
+}) {
+  const canUploadPdf = p.status === 'signed'
+  const hasPdf = Boolean(p.signedPdfFileName)
+
   return (
-    <div
-      className={cn(
-        'w-full flex items-center gap-3 text-left',
-        'px-3 py-2.5 rounded-lg',
-        'hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150',
-      )}
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Proposal actions"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-black/[.08] bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-800 active:scale-[0.96] dark:border-white/[.1] dark:bg-white/[.04] dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+        >
+          <MoreVertical className="h-4 w-4" strokeWidth={1.8} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-44 rounded-md p-1">
+        <button
+          type="button"
+          onClick={onViewVersions}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+        >
+          <History className="h-3.5 w-3.5" strokeWidth={1.8} />
+          View versions
+        </button>
+        <label className={cn(
+          'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
+          canUploadPdf && !isPdfPending
+            ? 'cursor-pointer text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
+            : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
+        )}>
+          {isPdfPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />}
+          {hasPdf ? 'Replace PDF' : 'Upload PDF'}
+          <input
+            type="file"
+            accept="application/pdf"
+            className="sr-only"
+            disabled={!canUploadPdf || isPdfPending}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file && canUploadPdf && !isPdfPending) onSignedPdfUpload(file)
+              event.target.value = ''
+            }}
+          />
+        </label>
+        <a
+          href={hasPdf ? `/proposals/${p.id}/signed-pdf` : undefined}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={!hasPdf}
+          className={cn(
+            'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-xs font-medium transition-colors',
+            hasPdf
+              ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
+              : 'pointer-events-none text-slate-300 dark:text-slate-600',
+          )}
+        >
+          <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Download PDF
+        </a>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+function ProposalRow({
+  p,
+  onOpen,
+  onViewVersions,
+  onStatusChange,
+  onSignedPdfUpload,
+  isStatusPending,
+  isPdfPending,
+}: {
+  p: ApiProposalSummary
+  onOpen: () => void
+  onViewVersions: () => void
+  onStatusChange: (status: ApiProposalStatus) => void
+  onSignedPdfUpload: (file: File) => void
+  isStatusPending: boolean
+  isPdfPending: boolean
+}) {
+  return (
+    <TableRow
+      onClick={onOpen}
+      className="cursor-pointer transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[.03]"
     >
-      <button type="button" onClick={onOpen} className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.04] flex items-center justify-center shrink-0 transition-transform active:scale-[0.96]">
-        <FileIcon size={16} className="text-slate-400" />
-      </button>
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left transition-transform active:scale-[0.99]">
-        <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{p.title}</div>
-        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xxs text-slate-500">
-          <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
-            {p.creatorImage && <AvatarImage src={p.creatorImage} alt={p.creatorName || p.creatorEmail || 'Creator'} />}
-            <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
-              {initials(p.creatorName, p.creatorEmail)}
-            </AvatarFallback>
-          </AvatarRoot>
-          <span className="max-w-[120px] truncate" title={p.creatorName || p.creatorEmail || 'Creator'}>
-            {p.creatorName || p.creatorEmail || 'Creator'}
-          </span>
-          {(p.brandName || p.dealTitle) && <span className="text-slate-300">·</span>}
-          {p.brandName && <span className="truncate text-slate-400">{p.brandName}</span>}
-          {p.brandName && p.dealTitle && <span className="text-slate-300">·</span>}
-          {p.dealTitle && <span className="truncate text-slate-400">{p.dealTitle}</span>}
+      <TableCell className="py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-100 dark:bg-white/[.04]">
+            <FileIcon size={16} className="text-slate-400" />
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{p.title}</div>
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xxs text-slate-500">
+              <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
+                {p.creatorImage && <AvatarImage src={p.creatorImage} alt={p.creatorName || p.creatorEmail || 'Creator'} />}
+                <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                  {initials(p.creatorName, p.creatorEmail)}
+                </AvatarFallback>
+              </AvatarRoot>
+              <span className="max-w-[120px] truncate" title={p.creatorName || p.creatorEmail || 'Creator'}>
+                {p.creatorName || p.creatorEmail || 'Creator'}
+              </span>
+              {(p.brandName || p.dealTitle) && <span className="text-slate-300">·</span>}
+              {p.brandName && <span className="truncate text-slate-400">{p.brandName}</span>}
+              {p.brandName && p.dealTitle && <span className="text-slate-300">·</span>}
+              {p.dealTitle && <span className="truncate text-slate-400">{p.dealTitle}</span>}
+            </div>
+          </div>
         </div>
-      </button>
-      <div className="hidden items-center gap-2 text-xxs text-slate-500 shrink-0 sm:flex">
-        <span className="font-mono">v{p.currentVersion}</span>
-        <span className="text-slate-300">·</span>
-        <span>{relTime(p.updatedAt)}</span>
-      </div>
-      <button
-        type="button"
-        onClick={onViewVersions}
-        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/[.08] px-2.5 text-xxs font-semibold text-slate-600 transition-colors hover:bg-white active:scale-[0.96] dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.05]"
-      >
-        <History className="h-3.5 w-3.5" strokeWidth={1.8} />
-        View versions
-      </button>
-    </div>
+      </TableCell>
+      <TableCell className="w-[118px] py-3" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1.5">
+          <Select value={p.status} onValueChange={(value) => onStatusChange(value as ApiProposalStatus)} disabled={isStatusPending}>
+            <SelectTrigger
+              aria-label="Proposal status"
+              size="sm"
+              className={cn(
+                'h-5 w-[78px] rounded-md border-transparent px-2 text-xxs font-semibold leading-none shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3',
+                STATUS_CLASSES[p.status],
+              )}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start" className="min-w-[92px] rounded-md">
+              <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>
+              <SelectItem value="sent" className="text-xs font-semibold">Sent</SelectItem>
+              <SelectItem value="signed" className="text-xs font-semibold">Signed</SelectItem>
+            </SelectContent>
+          </Select>
+          {isStatusPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" strokeWidth={1.8} />}
+          {p.signedPdfFileName && <span className="inline-flex h-5 items-center rounded-md bg-emerald-50 px-2 text-xxs font-semibold leading-none text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">PDF</span>}
+        </div>
+      </TableCell>
+      <TableCell className="w-[190px] py-3" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-center justify-end gap-1.5">
+          <div className="hidden items-center gap-1.5 text-xxs text-slate-500 sm:flex">
+            <span className="font-mono">v{p.currentVersion}</span>
+            <span className="text-slate-300">·</span>
+            <span>{relTime(p.updatedAt)}</span>
+          </div>
+          <ProposalActionsMenu
+            p={p}
+            onViewVersions={onViewVersions}
+            onSignedPdfUpload={onSignedPdfUpload}
+            isPdfPending={isPdfPending}
+          />
+        </div>
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -179,7 +312,12 @@ function ProposalVersionsDialog({
 export function Proposals() {
   const router = useRouter()
   const { data: proposals = [], isLoading } = useGetAllProposals()
+  const updateProposal = useUpdateProposalMeta()
+  const uploadSignedPdf = useUploadSignedProposalPdf()
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ApiProposalStatus | 'all'>('all')
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null)
+  const [pdfPendingId, setPdfPendingId] = useState<string | null>(null)
   const [versionProposal, setVersionProposal] = useState<ApiProposalSummary | null>(null)
   const [versionsOpen, setVersionsOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -189,15 +327,33 @@ export function Proposals() {
     onClear: () => setSearch(''),
   })
 
+  const statusCounts = useMemo(() => {
+    return proposals.reduce<Record<ApiProposalStatus | 'all', number>>((acc, proposal) => {
+      acc.all += 1
+      acc[proposal.status] += 1
+      return acc
+    }, { all: 0, draft: 0, sent: 0, signed: 0 })
+  }, [proposals])
+
+  const statusItems = useMemo<TabFilterItem<ApiProposalStatus | 'all'>[]>(() => [
+    { id: 'all', label: 'All', count: statusCounts.all },
+    { id: 'draft', label: 'Draft', count: statusCounts.draft },
+    { id: 'sent', label: 'Sent', count: statusCounts.sent },
+    { id: 'signed', label: 'Signed', count: statusCounts.signed },
+  ], [statusCounts])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return proposals
-    return proposals.filter(p =>
-      (p.title ?? '').toLowerCase().includes(q) ||
-      (p.brandName ?? '').toLowerCase().includes(q) ||
-      (p.dealTitle ?? '').toLowerCase().includes(q),
-    )
-  }, [proposals, search])
+    return proposals.filter(p => {
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (!q) return true
+      return (
+        (p.title ?? '').toLowerCase().includes(q) ||
+        (p.brandName ?? '').toLowerCase().includes(q) ||
+        (p.dealTitle ?? '').toLowerCase().includes(q)
+      )
+    })
+  }, [proposals, search, statusFilter])
 
   const open = (id: string) => router.push(`/proposals/${id}`)
   const openVersion = (proposalId: string, versionId: string) => router.push(`/proposals/${proposalId}?versionId=${versionId}`)
@@ -221,6 +377,7 @@ export function Proposals() {
             className="w-full h-9 pl-9 pr-3 text-xs rounded-lg bg-slate-100 dark:bg-white/[.04] border border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-[#1c1c1f] outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
           />
         </div>
+        <TabFilter items={statusItems} value={statusFilter} onChange={setStatusFilter} />
       </div>
 
       {/* Body */}
@@ -239,10 +396,36 @@ export function Proposals() {
           </div>
         </div>
       ) : (
-        <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] divide-y divide-black/[.06] dark:divide-white/[.06] overflow-hidden">
-          {filtered.map(p => (
-            <ProposalRow key={p.id} p={p} onOpen={() => open(p.id)} onViewVersions={() => { setVersionProposal(p); setVersionsOpen(true) }} />
-          ))}
+        <div className="overflow-hidden rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1c1c1f]">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Proposal</TableHead>
+                <TableHead className="w-[118px] text-right">Status</TableHead>
+                <TableHead className="w-[190px] text-right">Time and version</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(p => (
+                <ProposalRow
+                  key={p.id}
+                  p={p}
+                  onOpen={() => open(p.id)}
+                  onViewVersions={() => { setVersionProposal(p); setVersionsOpen(true) }}
+                  onStatusChange={(status) => {
+                    setStatusPendingId(p.id)
+                    updateProposal.mutate({ proposalId: p.id, status }, { onSettled: () => setStatusPendingId(null) })
+                  }}
+                  onSignedPdfUpload={(file) => {
+                    setPdfPendingId(p.id)
+                    uploadSignedPdf.mutate({ proposalId: p.id, file }, { onSettled: () => setPdfPendingId(null) })
+                  }}
+                  isStatusPending={statusPendingId === p.id}
+                  isPdfPending={pdfPendingId === p.id}
+                />
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 
