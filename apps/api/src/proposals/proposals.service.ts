@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
+import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
 import { proposals, proposalVersions, proposalShareLinks, users, PROPOSAL_TYPES, type ProposalType } from '@symph-crm/database'
@@ -10,6 +10,19 @@ import type { CreateProposalDto } from './dto/create-proposal.dto'
 import type { SaveVersionDto } from './dto/save-version.dto'
 import type { UpdateProposalDto } from './dto/update-proposal.dto'
 import type { CreateShareLinkDto } from './dto/create-share-link.dto'
+import { validateProposalHtmlDocument } from './proposal-html-validation'
+
+export function normalizeProposalTitleForDuplicateCheck(title: string) {
+  return title
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
+    .replace(new RegExp('[\\u2010-\\u2015]', 'g'), '-')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
 /**
  * ProposalsService — versioned proposal documents stored in Postgres.
@@ -27,8 +40,6 @@ import type { CreateShareLinkDto } from './dto/create-share-link.dto'
  * List endpoints NEVER select the html column (column-narrow projections).
  * Detail / editor / share-link endpoints select html for one row at a time.
  */
-const HTML_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
-
 @Injectable()
 export class ProposalsService implements OnModuleInit {
   private readonly logger = new Logger(ProposalsService.name)
@@ -120,14 +131,7 @@ export class ProposalsService implements OnModuleInit {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private validateHtml(html: string) {
-    if (!html?.trim()) throw new BadRequestException('html is required')
-    const bytes = Buffer.byteLength(html, 'utf8')
-    if (bytes > HTML_MAX_BYTES) {
-      throw new PayloadTooLargeException(
-        `Proposal HTML is ${(bytes / 1024 / 1024).toFixed(2)}MB; cap is ${HTML_MAX_BYTES / 1024 / 1024}MB. ` +
-        `Move embedded images/videos to Supabase Storage and reference by URL.`,
-      )
-    }
+    validateProposalHtmlDocument(html)
   }
 
   private newToken(): string {
@@ -138,6 +142,10 @@ export class ProposalsService implements OnModuleInit {
     if (!type) return null
     if (PROPOSAL_TYPES.includes(type)) return type
     throw new BadRequestException(`type must be one of: ${PROPOSAL_TYPES.join(', ')}`)
+  }
+
+  private duplicateAdvisoryLockKey(dealId: string, normalizedTitle: string) {
+    return `proposal:${dealId}:${normalizedTitle}`
   }
 
   // ── List / read ───────────────────────────────────────────────────────────
@@ -274,14 +282,33 @@ export class ProposalsService implements OnModuleInit {
   async create(dealId: string, dto: CreateProposalDto, authorId: string, workspaceId?: string) {
     if (!dto.title?.trim()) throw new BadRequestException('title is required')
     this.validateHtml(dto.html)
+    const title = dto.title.trim()
+    const normalizedTitle = normalizeProposalTitleForDuplicateCheck(title)
     const { excerpt, wordCount } = StorageService.extractHtmlExcerpt(dto.html)
     const type = this.normalizeType(dto.type)
 
     const created = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${this.duplicateAdvisoryLockKey(dealId, normalizedTitle)}, 0))`)
+
+      const activeRows = await tx
+        .select({ id: proposals.id, title: proposals.title, currentVersion: proposals.currentVersion })
+        .from(proposals)
+        .where(and(eq(proposals.dealId, dealId), isNull(proposals.deletedAt)))
+
+      const duplicate = activeRows.find(row => normalizeProposalTitleForDuplicateCheck(row.title) === normalizedTitle)
+      if (duplicate) {
+        throw new ConflictException({
+          message: 'Proposal already exists for this deal and title. Save a new version on the existing proposal instead.',
+          existingProposalId: duplicate.id,
+          existingProposalTitle: duplicate.title,
+          existingCurrentVersion: duplicate.currentVersion,
+        })
+      }
+
       const [p] = await tx.insert(proposals).values({
         workspaceId: workspaceId ?? null,
         dealId,
-        title: dto.title.trim(),
+        title,
         type,
         currentVersion: 1,
         createdBy: authorId,
