@@ -11,7 +11,7 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalStatus, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -664,7 +664,13 @@ export type UpdateProposalMetaInput = {
   proposalId: string
   title?: string
   type?: ApiProposalType
+  status?: ApiProposalStatus
   isPinned?: boolean
+}
+
+export type UploadSignedProposalPdfInput = {
+  proposalId: string
+  file: File
 }
 
 export function useUpdateProposalMeta(
@@ -675,6 +681,27 @@ export function useUpdateProposalMeta(
     mutationFn: ({ proposalId, ...body }) =>
       api.put<ApiProposalHead>(`/proposals/${proposalId}`, body),
     ...withToast('Proposal updated', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        qc.invalidateQueries({ queryKey: queryKeys.proposals.detail(vars.proposalId) })
+        qc.invalidateQueries({ queryKey: queryKeys.proposals.all })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
+  })
+}
+
+export function useUploadSignedProposalPdf(
+  options?: UseMutationOptions<ApiProposalHead, Error, UploadSignedProposalPdfInput>,
+) {
+  const qc = useQueryClient()
+  return useMutation<ApiProposalHead, Error, UploadSignedProposalPdfInput>({
+    mutationFn: ({ proposalId, file }) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      return api.upload<ApiProposalHead>(`/proposals/${proposalId}/signed-pdf`, formData)
+    },
+    ...withToast('Signed PDF uploaded', {
       ...options,
       onSuccess: (data, vars, ctx) => {
         qc.invalidateQueries({ queryKey: queryKeys.proposals.detail(vars.proposalId) })
