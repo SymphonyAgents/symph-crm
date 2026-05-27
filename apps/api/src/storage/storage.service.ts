@@ -199,6 +199,25 @@ export class StorageService implements OnModuleInit {
     if (error) this.logger.warn(`Voice recording delete failed [${storagePath}]: ${error.message}`)
   }
 
+  /** Upload a signed proposal PDF to Supabase Storage. Returns the storage path. */
+  async uploadProposalSignedPdf(storagePath: string, buffer: Buffer, mimeType: string): Promise<string> {
+    const { error } = await this.supabaseClient.storage.from(ATTACHMENTS_BUCKET).upload(storagePath, buffer, {
+      upsert: true,
+      contentType: mimeType,
+    })
+    if (error) throw new Error(`Signed proposal PDF upload failed [${storagePath}]: ${error.message}`)
+    return storagePath
+  }
+
+  /** Generate a signed URL for a signed proposal PDF. */
+  async proposalSignedPdfUrl(storagePath: string, expiresInSeconds = 3600): Promise<string> {
+    const { data, error } = await this.supabaseClient.storage
+      .from(ATTACHMENTS_BUCKET)
+      .createSignedUrl(storagePath, expiresInSeconds)
+    if (error) throw new Error(`Signed proposal PDF URL failed [${storagePath}]: ${error.message}`)
+    return data.signedUrl
+  }
+
   // ── Catalog icons (Supabase Storage, public bucket) ──────────────────────
   //
   // Catalog icons (product / service / reseller logos) are public assets so
