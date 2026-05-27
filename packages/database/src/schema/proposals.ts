@@ -6,6 +6,9 @@ import { users } from './users'
 export const PROPOSAL_TYPES = ['presentation', 'formal'] as const
 export type ProposalType = typeof PROPOSAL_TYPES[number]
 
+export const PROPOSAL_STATUSES = ['draft', 'sent', 'signed'] as const
+export type ProposalStatus = typeof PROPOSAL_STATUSES[number]
+
 /**
  * proposals — chain identity for a versioned proposal document.
  *
@@ -28,6 +31,14 @@ export const proposals = pgTable('proposals', {
 
   title: text('title').notNull(),
   type: text('type', { enum: PROPOSAL_TYPES }),
+  status: text('status', { enum: PROPOSAL_STATUSES }).default('draft').notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  signedAt: timestamp('signed_at', { withTimezone: true }),
+  signedPdfStoragePath: text('signed_pdf_storage_path'),
+  signedPdfFileName: text('signed_pdf_file_name'),
+  signedPdfMimeType: text('signed_pdf_mime_type'),
+  signedPdfSizeBytes: integer('signed_pdf_size_bytes'),
+  signedPdfUploadedAt: timestamp('signed_pdf_uploaded_at', { withTimezone: true }),
 
   // Denormalized counter — equals MAX(proposal_versions.version) for this proposal.
   // Used as the basis for the next version number on save (with FOR UPDATE locking).
