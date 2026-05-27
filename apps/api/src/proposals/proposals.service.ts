@@ -1,7 +1,8 @@
-import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
+import { Injectable, Inject, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
+import { extname } from 'path'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
-import { proposals, proposalVersions, proposalShareLinks, users, PROPOSAL_TYPES, type ProposalType } from '@symph-crm/database'
+import { companies, deals, proposals, proposalVersions, proposalShareLinks, users, PROPOSAL_TYPES, PROPOSAL_STATUSES, type ProposalType, type ProposalStatus } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { StorageService } from '../storage/storage.service'
@@ -30,92 +31,12 @@ import type { CreateShareLinkDto } from './dto/create-share-link.dto'
 const HTML_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
 
 @Injectable()
-export class ProposalsService implements OnModuleInit {
-  private readonly logger = new Logger(ProposalsService.name)
-
+export class ProposalsService {
   constructor(
     @Inject(DB) private db: Database,
     private auditLogs: AuditLogsService,
+    private storage: StorageService,
   ) {}
-
-  // ── Boot migration ────────────────────────────────────────────────────────
-
-  async onModuleInit() {
-    try {
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposals (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          workspace_id UUID REFERENCES workspaces(id),
-          deal_id UUID REFERENCES deals(id) ON DELETE SET NULL,
-          title TEXT NOT NULL,
-          type TEXT,
-          current_version INTEGER NOT NULL DEFAULT 1,
-          is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-          created_by TEXT NOT NULL REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          deleted_at TIMESTAMPTZ
-        )
-      `)
-
-      await this.db.execute(`
-        ALTER TABLE proposals
-        ADD COLUMN IF NOT EXISTS type TEXT
-      `)
-      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type DROP DEFAULT`)
-      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type DROP NOT NULL`)
-      await this.db.execute(`
-        DO $$ BEGIN
-          ALTER TABLE proposals
-            ADD CONSTRAINT proposals_type_check
-            CHECK (type IN ('presentation', 'formal'));
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-      `)
-
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposal_versions (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_id UUID NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,
-          version INTEGER NOT NULL,
-          html TEXT NOT NULL,
-          change_note TEXT,
-          excerpt TEXT,
-          word_count INTEGER DEFAULT 0,
-          pdf_storage_path TEXT,
-          author_id TEXT NOT NULL REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `)
-      await this.db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS proposal_versions_proposal_id_version_key ON proposal_versions(proposal_id, version)`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposal_versions_proposal ON proposal_versions(proposal_id)`)
-
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposal_share_links (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_version_id UUID NOT NULL REFERENCES proposal_versions(id) ON DELETE CASCADE,
-          token TEXT NOT NULL UNIQUE,
-          expires_at TIMESTAMPTZ,
-          view_count INTEGER NOT NULL DEFAULT 0,
-          last_viewed_at TIMESTAMPTZ,
-          created_by TEXT REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          revoked_at TIMESTAMPTZ
-        )
-      `)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_share_links_version ON proposal_share_links(proposal_version_id) WHERE revoked_at IS NULL`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_share_links_token ON proposal_share_links(token) WHERE revoked_at IS NULL`)
-
-      // Indexes for the most common reads
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposals_deal ON proposals(deal_id) WHERE deleted_at IS NULL`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposals_updated ON proposals(updated_at DESC) WHERE deleted_at IS NULL`)
-
-      this.logger.log('Proposals schema ready (proposals, proposal_versions, proposal_share_links)')
-    } catch (err: any) {
-      this.logger.error(`Boot migration failed: ${err.message}`)
-    }
-  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -140,6 +61,24 @@ export class ProposalsService implements OnModuleInit {
     throw new BadRequestException(`type must be one of: ${PROPOSAL_TYPES.join(', ')}`)
   }
 
+  private normalizeStatus(status?: ProposalStatus | null): ProposalStatus | undefined {
+    if (status === undefined) return undefined
+    if (status && PROPOSAL_STATUSES.includes(status)) return status
+    throw new BadRequestException(`status must be one of: ${PROPOSAL_STATUSES.join(', ')}`)
+  }
+
+  private signedPdfStoragePath(dealId: string | null, proposalId: string, filename: string) {
+    const ext = extname(filename).toLowerCase() || '.pdf'
+    const base = filename
+      .replace(/\.[^/.]+$/, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'signed-proposal'
+    const dealSegment = dealId ?? 'unlinked-deal'
+    return `deals/${dealSegment}/proposals/${proposalId}/signed/${base}-${Date.now()}${ext}`
+  }
+
   // ── List / read ───────────────────────────────────────────────────────────
 
   /**
@@ -152,65 +91,97 @@ export class ProposalsService implements OnModuleInit {
    * round-trip per row. Never selects html (column-narrow projection).
    */
   async listAll(workspaceId?: string) {
-    const rows = await this.db.execute<any>(sql`
-      SELECT
-        p.id, p.title, p.type, p.deal_id, p.is_pinned, p.current_version,
-        p.created_by, p.created_at, p.updated_at,
-        d.title       AS deal_title,
-        c.id          AS brand_id,
-        c.name        AS brand_name,
-        u.name        AS creator_name,
-        u.email       AS creator_email,
-        u.image       AS creator_image,
-        v.id          AS current_version_id,
-        v.change_note AS current_change_note,
-        v.excerpt     AS current_excerpt,
-        v.word_count  AS current_word_count,
-        v.author_id   AS current_author_id,
-        v.created_at  AS current_version_created_at
-      FROM proposals p
-      LEFT JOIN deals d ON d.id = p.deal_id AND d.deleted_at IS NULL
-      LEFT JOIN companies c ON c.id = d.company_id
-      LEFT JOIN users u ON u.id = p.created_by
-      LEFT JOIN proposal_versions v
-        ON v.proposal_id = p.id AND v.version = p.current_version
-      WHERE p.deleted_at IS NULL
-        ${workspaceId ? sql`AND p.workspace_id = ${workspaceId}` : sql``}
-      ORDER BY p.updated_at DESC
-    `)
-    const list = (rows as any).rows ?? rows
-    return (list as any[]).map(r => ({
+    const rows = await this.db
+      .select({
+        id: proposals.id,
+        title: proposals.title,
+        type: proposals.type,
+        status: proposals.status,
+        sentAt: proposals.sentAt,
+        signedAt: proposals.signedAt,
+        signedPdfStoragePath: proposals.signedPdfStoragePath,
+        signedPdfFileName: proposals.signedPdfFileName,
+        signedPdfMimeType: proposals.signedPdfMimeType,
+        signedPdfSizeBytes: proposals.signedPdfSizeBytes,
+        signedPdfUploadedAt: proposals.signedPdfUploadedAt,
+        dealId: proposals.dealId,
+        isPinned: proposals.isPinned,
+        currentVersion: proposals.currentVersion,
+        createdBy: proposals.createdBy,
+        createdAt: proposals.createdAt,
+        updatedAt: proposals.updatedAt,
+        dealTitle: deals.title,
+        brandId: companies.id,
+        brandName: companies.name,
+        creatorName: users.name,
+        creatorEmail: users.email,
+        creatorImage: users.image,
+        currentVersionId: proposalVersions.id,
+        changeNote: proposalVersions.changeNote,
+        excerpt: proposalVersions.excerpt,
+        wordCount: proposalVersions.wordCount,
+        authorId: proposalVersions.authorId,
+      })
+      .from(proposals)
+      .leftJoin(deals, and(eq(deals.id, proposals.dealId), isNull(deals.deletedAt)))
+      .leftJoin(companies, eq(companies.id, deals.companyId))
+      .leftJoin(users, eq(users.id, proposals.createdBy))
+      .leftJoin(proposalVersions, and(
+        eq(proposalVersions.proposalId, proposals.id),
+        eq(proposalVersions.version, proposals.currentVersion),
+      ))
+      .where(workspaceId
+        ? and(isNull(proposals.deletedAt), eq(proposals.workspaceId, workspaceId))
+        : isNull(proposals.deletedAt))
+      .orderBy(desc(proposals.updatedAt))
+
+    return rows.map(r => ({
       ...this.toListItem(r),
-      dealTitle: r.deal_title ?? null,
-      brandId: r.brand_id ?? null,
-      brandName: r.brand_name ?? null,
+      dealTitle: r.dealTitle ?? null,
+      brandId: r.brandId ?? null,
+      brandName: r.brandName ?? null,
     }))
   }
 
   async listByDeal(dealId: string) {
-    const rows = await this.db.execute<any>(sql`
-      SELECT
-        p.id, p.title, p.type, p.deal_id, p.is_pinned, p.current_version,
-        p.created_by, p.created_at, p.updated_at,
-        u.name        AS creator_name,
-        u.email       AS creator_email,
-        u.image       AS creator_image,
-        v.id          AS current_version_id,
-        v.change_note AS current_change_note,
-        v.excerpt     AS current_excerpt,
-        v.word_count  AS current_word_count,
-        v.author_id   AS current_author_id,
-        v.created_at  AS current_version_created_at
-      FROM proposals p
-      LEFT JOIN users u ON u.id = p.created_by
-      LEFT JOIN proposal_versions v
-        ON v.proposal_id = p.id AND v.version = p.current_version
-      WHERE p.deal_id = ${dealId}
-        AND p.deleted_at IS NULL
-      ORDER BY p.updated_at DESC
-    `)
-    const list = (rows as any).rows ?? rows
-    return (list as any[]).map(this.toListItem)
+    const rows = await this.db
+      .select({
+        id: proposals.id,
+        title: proposals.title,
+        type: proposals.type,
+        status: proposals.status,
+        sentAt: proposals.sentAt,
+        signedAt: proposals.signedAt,
+        signedPdfStoragePath: proposals.signedPdfStoragePath,
+        signedPdfFileName: proposals.signedPdfFileName,
+        signedPdfMimeType: proposals.signedPdfMimeType,
+        signedPdfSizeBytes: proposals.signedPdfSizeBytes,
+        signedPdfUploadedAt: proposals.signedPdfUploadedAt,
+        dealId: proposals.dealId,
+        isPinned: proposals.isPinned,
+        currentVersion: proposals.currentVersion,
+        createdBy: proposals.createdBy,
+        createdAt: proposals.createdAt,
+        updatedAt: proposals.updatedAt,
+        creatorName: users.name,
+        creatorEmail: users.email,
+        creatorImage: users.image,
+        currentVersionId: proposalVersions.id,
+        changeNote: proposalVersions.changeNote,
+        excerpt: proposalVersions.excerpt,
+        wordCount: proposalVersions.wordCount,
+        authorId: proposalVersions.authorId,
+      })
+      .from(proposals)
+      .leftJoin(users, eq(users.id, proposals.createdBy))
+      .leftJoin(proposalVersions, and(
+        eq(proposalVersions.proposalId, proposals.id),
+        eq(proposalVersions.version, proposals.currentVersion),
+      ))
+      .where(and(eq(proposals.dealId, dealId), isNull(proposals.deletedAt)))
+      .orderBy(desc(proposals.updatedAt))
+
+    return rows.map(this.toListItem)
   }
 
   /** Head + the current version's HTML (for the editor open-on-load). */
@@ -231,6 +202,14 @@ export class ProposalsService implements OnModuleInit {
       title: p.title,
       dealId: p.dealId,
       type: p.type ?? null,
+      status: p.status,
+      sentAt: p.sentAt,
+      signedAt: p.signedAt,
+      signedPdfStoragePath: p.signedPdfStoragePath,
+      signedPdfFileName: p.signedPdfFileName,
+      signedPdfMimeType: p.signedPdfMimeType,
+      signedPdfSizeBytes: p.signedPdfSizeBytes,
+      signedPdfUploadedAt: p.signedPdfUploadedAt,
       isPinned: p.isPinned,
       currentVersion: p.currentVersion,
       versionCount: p.currentVersion, // monotonic; we never delete versions individually
@@ -314,6 +293,14 @@ export class ProposalsService implements OnModuleInit {
       title: created.p.title,
       dealId: created.p.dealId,
       type: created.p.type ?? null,
+      status: created.p.status,
+      sentAt: created.p.sentAt,
+      signedAt: created.p.signedAt,
+      signedPdfStoragePath: created.p.signedPdfStoragePath,
+      signedPdfFileName: created.p.signedPdfFileName,
+      signedPdfMimeType: created.p.signedPdfMimeType,
+      signedPdfSizeBytes: created.p.signedPdfSizeBytes,
+      signedPdfUploadedAt: created.p.signedPdfUploadedAt,
       isPinned: created.p.isPinned,
       currentVersion: 1,
       version: this.toVersionItem(created.v, true),
@@ -367,6 +354,15 @@ export class ProposalsService implements OnModuleInit {
     const set: Partial<typeof proposals.$inferInsert> = { updatedAt: new Date() }
     if (dto.title !== undefined) set.title = dto.title.trim()
     if (dto.type !== undefined) set.type = this.normalizeType(dto.type)
+    const status = this.normalizeStatus(dto.status)
+    if (status !== undefined) {
+      set.status = status
+      if (status === 'sent') set.sentAt = new Date()
+      if (status === 'signed') {
+        set.sentAt = new Date()
+        set.signedAt = new Date()
+      }
+    }
     if (dto.isPinned !== undefined) set.isPinned = dto.isPinned
 
     const [p] = await this.db.update(proposals).set(set)
@@ -384,6 +380,111 @@ export class ProposalsService implements OnModuleInit {
     }).catch(() => {})
 
     return this.getHead(proposalId)
+  }
+
+  async uploadSignedPdf(
+    proposalId: string,
+    file: { originalname: string; mimetype: string; size: number; buffer: Buffer },
+    performedBy?: string,
+  ) {
+    if (file.mimetype !== 'application/pdf') {
+      throw new BadRequestException('signed PDF upload must be a PDF file')
+    }
+
+    const [existing] = await this.db.select().from(proposals)
+      .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+    if (!existing) throw new NotFoundException(`Proposal ${proposalId} not found`)
+
+    const storagePath = this.signedPdfStoragePath(existing.dealId, proposalId, file.originalname)
+    await this.storage.uploadProposalSignedPdf(storagePath, file.buffer, file.mimetype)
+
+    const now = new Date()
+    const [p] = await this.db.update(proposals)
+      .set({
+        status: 'signed',
+        sentAt: existing.sentAt ?? now,
+        signedAt: existing.signedAt ?? now,
+        signedPdfStoragePath: storagePath,
+        signedPdfFileName: file.originalname,
+        signedPdfMimeType: file.mimetype,
+        signedPdfSizeBytes: file.size,
+        signedPdfUploadedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+      .returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'proposal_updated',
+      entityType: 'proposal',
+      entityId: proposalId,
+      performedBy,
+      details: { signedPdfStoragePath: storagePath, signedPdfFileName: file.originalname },
+    }).catch(() => {})
+
+    return this.getHead(p.id)
+  }
+
+  async getSignedPdfUrl(proposalId: string) {
+    const [p] = await this.db.select({
+      id: proposals.id,
+      dealId: proposals.dealId,
+      signedPdfStoragePath: proposals.signedPdfStoragePath,
+      signedPdfFileName: proposals.signedPdfFileName,
+    }).from(proposals)
+      .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+    if (!p) throw new NotFoundException(`Proposal ${proposalId} not found`)
+    if (!p.signedPdfStoragePath) throw new NotFoundException(`Proposal ${proposalId} has no signed PDF`)
+
+    const url = await this.storage.proposalSignedPdfUrl(p.signedPdfStoragePath, 3600)
+    return {
+      url,
+      fileName: p.signedPdfFileName,
+      storagePath: p.signedPdfStoragePath,
+      dealId: p.dealId,
+      proposalId: p.id,
+      slug: p.signedPdfStoragePath.split('/').pop() ?? null,
+    }
+  }
+
+  async attachSignedPdfReference(
+    proposalId: string,
+    data: { storagePath: string; fileName: string; mimeType?: string; sizeBytes?: number },
+    performedBy?: string,
+  ) {
+    if (!data.storagePath?.trim()) throw new BadRequestException('storagePath is required')
+    if (!data.fileName?.trim()) throw new BadRequestException('fileName is required')
+    const now = new Date()
+    const [existing] = await this.db.select().from(proposals)
+      .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+    if (!existing) throw new NotFoundException(`Proposal ${proposalId} not found`)
+
+    const [p] = await this.db.update(proposals)
+      .set({
+        status: 'signed',
+        sentAt: existing.sentAt ?? now,
+        signedAt: existing.signedAt ?? now,
+        signedPdfStoragePath: data.storagePath.trim(),
+        signedPdfFileName: data.fileName.trim(),
+        signedPdfMimeType: data.mimeType ?? 'application/pdf',
+        signedPdfSizeBytes: data.sizeBytes ?? null,
+        signedPdfUploadedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+      .returning()
+
+    this.auditLogs.log({
+      action: 'update',
+      auditType: 'proposal_updated',
+      entityType: 'proposal',
+      entityId: proposalId,
+      performedBy,
+      details: { signedPdfStoragePath: data.storagePath, signedPdfFileName: data.fileName },
+    }).catch(() => {})
+
+    return this.getHead(p.id)
   }
 
   async softDelete(proposalId: string, performedBy?: string) {
@@ -534,18 +635,26 @@ export class ProposalsService implements OnModuleInit {
     id: r.id,
     title: r.title,
     type: r.type ?? null,
+    status: r.status ?? 'draft',
+    sentAt: r.sent_at ?? r.sentAt ?? null,
+    signedAt: r.signed_at ?? r.signedAt ?? null,
+    signedPdfStoragePath: r.signed_pdf_storage_path ?? r.signedPdfStoragePath ?? null,
+    signedPdfFileName: r.signed_pdf_file_name ?? r.signedPdfFileName ?? null,
+    signedPdfMimeType: r.signed_pdf_mime_type ?? r.signedPdfMimeType ?? null,
+    signedPdfSizeBytes: r.signed_pdf_size_bytes ?? r.signedPdfSizeBytes ?? null,
+    signedPdfUploadedAt: r.signed_pdf_uploaded_at ?? r.signedPdfUploadedAt ?? null,
     dealId: r.deal_id ?? r.dealId,
     isPinned: r.is_pinned ?? r.isPinned ?? false,
     currentVersion: r.current_version ?? r.currentVersion,
-    currentVersionId: r.current_version_id,
-    changeNote: r.current_change_note,
-    excerpt: r.current_excerpt,
-    wordCount: r.current_word_count,
-    authorId: r.current_author_id,
+    currentVersionId: r.current_version_id ?? r.currentVersionId ?? null,
+    changeNote: r.current_change_note ?? r.changeNote ?? null,
+    excerpt: r.current_excerpt ?? r.excerpt ?? null,
+    wordCount: r.current_word_count ?? r.wordCount ?? null,
+    authorId: r.current_author_id ?? r.authorId ?? null,
     createdBy: r.created_by ?? r.createdBy,
-    creatorName: r.creator_name ?? null,
-    creatorEmail: r.creator_email ?? null,
-    creatorImage: r.creator_image ?? null,
+    creatorName: r.creator_name ?? r.creatorName ?? null,
+    creatorEmail: r.creator_email ?? r.creatorEmail ?? null,
+    creatorImage: r.creator_image ?? r.creatorImage ?? null,
     createdAt: r.created_at ?? r.createdAt,
     updatedAt: r.updated_at ?? r.updatedAt,
   })
