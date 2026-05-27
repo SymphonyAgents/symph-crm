@@ -11,7 +11,7 @@ import {
   type CatalogTabCounts,
 } from '@/components/CatalogTabs'
 import { useGetDeals, useGetCatalogItems } from '@/lib/hooks/queries'
-import { cn } from '@/lib/utils'
+import { SubTabFilter } from '@/components/ui/sub-tab-filter'
 
 function RevenueInner() {
   const router = useRouter()
@@ -84,20 +84,12 @@ function RevenueInner() {
         <CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />
 
         {showSubTabs && subTabs.length > 0 && (
-          <div className="flex items-center flex-wrap gap-1.5 mt-2">
-            <SubTabButton active={!activeItemId} onClick={() => onSubTabChange(null)}>
-              All
-            </SubTabButton>
-            {subTabs.map(s => (
-              <SubTabButton
-                key={s.id}
-                active={activeItemId === s.id}
-                onClick={() => onSubTabChange(s.id)}
-                count={s.count}
-              >
-                {s.name}
-              </SubTabButton>
-            ))}
+          <div className="mt-2 max-w-full overflow-x-auto">
+            <SubTabFilter
+              items={[{ id: 'all', label: 'All' }, ...subTabs.map(s => ({ id: s.id, label: s.name, count: s.count }))]}
+              value={activeItemId ?? 'all'}
+              onChange={(next) => onSubTabChange(next === 'all' ? null : next)}
+            />
           </div>
         )}
       </div>
@@ -109,37 +101,6 @@ function RevenueInner() {
         />
       </div>
     </div>
-  )
-}
-
-function SubTabButton({
-  active,
-  onClick,
-  count,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  count?: number
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98]',
-        active
-          ? 'bg-primary/10 text-primary'
-          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
-      )}
-    >
-      {children}
-      {count !== undefined && (
-        <span className={cn('tabular-nums', active ? 'text-primary/70' : 'text-slate-400')}>
-          {count}
-        </span>
-      )}
-    </button>
   )
 }
 
