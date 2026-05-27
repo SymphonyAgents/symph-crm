@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException } from '@nestjs/common'
+import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
 import { proposals, proposalVersions, proposalShareLinks } from '@symph-crm/database'
@@ -11,6 +11,18 @@ import type { SaveVersionDto } from './dto/save-version.dto'
 import type { UpdateProposalDto } from './dto/update-proposal.dto'
 import type { CreateShareLinkDto } from './dto/create-share-link.dto'
 import { validateProposalHtmlDocument } from './proposal-html-validation'
+
+export function normalizeProposalTitleForDuplicateCheck(title: string) {
+  return title
+    .trim()
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
+    .replace(new RegExp('[\\u2010-\\u2015]', 'g'), '-')
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
 
 /**
  * ProposalsService — versioned proposal documents stored in Postgres.
@@ -107,6 +119,10 @@ export class ProposalsService implements OnModuleInit {
 
   private newToken(): string {
     return randomBytes(24).toString('base64url') // 32 chars, ~190 bits entropy
+  }
+
+  private duplicateAdvisoryLockKey(dealId: string, normalizedTitle: string) {
+    return `proposal:${dealId}:${normalizedTitle}`
   }
 
   // ── List / read ───────────────────────────────────────────────────────────
@@ -227,13 +243,32 @@ export class ProposalsService implements OnModuleInit {
   async create(dealId: string, dto: CreateProposalDto, authorId: string, workspaceId?: string) {
     if (!dto.title?.trim()) throw new BadRequestException('title is required')
     this.validateHtml(dto.html)
+    const title = dto.title.trim()
+    const normalizedTitle = normalizeProposalTitleForDuplicateCheck(title)
     const { excerpt, wordCount } = StorageService.extractHtmlExcerpt(dto.html)
 
     const created = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${this.duplicateAdvisoryLockKey(dealId, normalizedTitle)}, 0))`)
+
+      const activeRows = await tx
+        .select({ id: proposals.id, title: proposals.title, currentVersion: proposals.currentVersion })
+        .from(proposals)
+        .where(and(eq(proposals.dealId, dealId), isNull(proposals.deletedAt)))
+
+      const duplicate = activeRows.find(row => normalizeProposalTitleForDuplicateCheck(row.title) === normalizedTitle)
+      if (duplicate) {
+        throw new ConflictException({
+          message: 'Proposal already exists for this deal and title. Save a new version on the existing proposal instead.',
+          existingProposalId: duplicate.id,
+          existingProposalTitle: duplicate.title,
+          existingCurrentVersion: duplicate.currentVersion,
+        })
+      }
+
       const [p] = await tx.insert(proposals).values({
         workspaceId: workspaceId ?? null,
         dealId,
-        title: dto.title.trim(),
+        title,
         currentVersion: 1,
         createdBy: authorId,
       }).returning()
