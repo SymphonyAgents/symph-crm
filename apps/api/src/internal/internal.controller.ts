@@ -31,7 +31,7 @@ import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
 import { ensureDealNoteAuthorFrontmatter } from '../wiki/wiki-frontmatter'
 import { ProposalsService } from '../proposals/proposals.service'
-import type { ProposalType } from '@symph-crm/database'
+import type { ProposalStatus, ProposalType } from '@symph-crm/database'
 import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meetings.service'
 
 /**
@@ -1187,6 +1187,43 @@ export class InternalController {
     const head = await this.proposals.getHead(id)
     if (!head) throw new NotFoundException(`Proposal ${id} not found`)
     return head
+  }
+
+  /**
+   * PUT /api/internal/proposals/:id
+   * Update proposal metadata/status.
+   */
+  @Put('proposals/:id')
+  async updateProposal(
+    @Param('id') id: string,
+    @Body() body: { title?: string; type?: ProposalType; status?: ProposalStatus; isPinned?: boolean },
+    @Headers('x-performed-by') performedBy?: string,
+  ) {
+    const performer = await this.requireValidPerformer(performedBy)
+    const proposal = await this.proposals.updateMeta(id, body, performer)
+    return { ok: true, proposal }
+  }
+
+  /**
+   * POST /api/internal/proposals/:id/signed-pdf
+   * Attach an already-uploaded signed PDF reference to a proposal.
+   */
+  @Post('proposals/:id/signed-pdf')
+  async attachProposalSignedPdf(
+    @Param('id') id: string,
+    @Body() body: { storagePath?: string; fileName?: string; mimeType?: string; sizeBytes?: number },
+    @Headers('x-performed-by') performedBy?: string,
+  ) {
+    if (!body.storagePath) return { ok: false, error: 'storagePath is required' }
+    if (!body.fileName) return { ok: false, error: 'fileName is required' }
+    const performer = await this.requireValidPerformer(performedBy)
+    const proposal = await this.proposals.attachSignedPdfReference(id, {
+      storagePath: body.storagePath,
+      fileName: body.fileName,
+      mimeType: body.mimeType,
+      sizeBytes: body.sizeBytes,
+    }, performer)
+    return { ok: true, proposal }
   }
 
   /**
