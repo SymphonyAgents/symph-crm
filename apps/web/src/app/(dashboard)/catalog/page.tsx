@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { INDUSTRY_OPTIONS } from '@/lib/constants'
 import { DataTable, SortableHeader, DataTableSkeleton } from '@/components/ui/data-table'
 import { Combobox } from '@/components/ui/combobox'
+import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
 import { Input } from '@/components/ui/input'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import type { ApiCatalogItem, ProductType } from '@/lib/types'
@@ -72,6 +73,7 @@ export default function CatalogPage() {
   const [deleting, setDeleting] = useState<ApiCatalogItem | null>(null)
 
   const tabMeta = TABS.find(t => t.id === tab)!
+  const tabItems = useMemo<TabFilterItem<TabId>[]>(() => TABS.map(t => ({ id: t.id, label: t.label })), [])
 
   const updateProduct = useUpdateCatalogItem({
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all }),
@@ -185,8 +187,9 @@ export default function CatalogPage() {
 
   return (
     <div className="p-4 md:px-6 pb-6 w-full">
-      {tab !== 'all' && (
-        <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <TabFilter items={tabItems} value={tab} onChange={setTab} />
+        {tab !== 'all' && (
           <button
             onClick={() => setCreating(true)}
             className="rounded-lg px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
@@ -194,25 +197,7 @@ export default function CatalogPage() {
           >
             {tabMeta.addCta}
           </button>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-4 border-b border-black/[.06] dark:border-white/[.08]">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'px-3 py-2 text-ssm font-medium border-b-2 -mb-px transition-colors',
-              tab === t.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
+        )}
       </div>
 
       <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md shadow-[var(--shadow-card)]">
