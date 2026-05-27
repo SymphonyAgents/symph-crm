@@ -20,14 +20,16 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Eye, History } from 'lucide-react'
+import { Download, Eye, History, Loader2, MoreVertical, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGetProposalHead, useGetProposalVersion, useGetProposalVersions } from '@/lib/hooks/queries'
-import { useSaveProposalVersion } from '@/lib/hooks/mutations'
+import { useSaveProposalVersion, useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
-import type { ApiProposalVersion } from '@/lib/types'
+import type { ApiProposalStatus, ApiProposalVersion } from '@/lib/types'
 
 function ChevronLeftIcon({ size = 14 }: { size?: number }) {
   return (
@@ -55,6 +57,89 @@ function initials(name?: string | null, email?: string | null) {
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const STATUS_CLASSES: Record<ApiProposalStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-300',
+  sent: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
+  signed: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+}
+
+function ProposalActionsMenu({
+  proposalId,
+  status,
+  hasPdf,
+  onViewVersions,
+  onSignedPdfUpload,
+  isPdfPending,
+}: {
+  proposalId: string
+  status: ApiProposalStatus
+  hasPdf: boolean
+  onViewVersions: () => void
+  onSignedPdfUpload: (file: File) => void
+  isPdfPending: boolean
+}) {
+  const canUploadPdf = status === 'signed'
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Proposal actions"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-black/[.08] bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-800 active:scale-[0.96] dark:border-white/[.1] dark:bg-white/[.04] dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+        >
+          <MoreVertical className="h-4 w-4" strokeWidth={1.8} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-44 rounded-md p-1">
+        <button
+          type="button"
+          onClick={onViewVersions}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+        >
+          <History className="h-3.5 w-3.5" strokeWidth={1.8} />
+          View versions
+        </button>
+        <label className={cn(
+          'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
+          canUploadPdf && !isPdfPending
+            ? 'cursor-pointer text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
+            : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
+        )}>
+          {isPdfPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />}
+          {hasPdf ? 'Replace PDF' : 'Upload PDF'}
+          <input
+            type="file"
+            accept="application/pdf"
+            className="sr-only"
+            disabled={!canUploadPdf || isPdfPending}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file && canUploadPdf && !isPdfPending) onSignedPdfUpload(file)
+              event.target.value = ''
+            }}
+          />
+        </label>
+        <a
+          href={hasPdf ? `/proposals/${proposalId}/signed-pdf` : undefined}
+          target="_blank"
+          rel="noreferrer"
+          aria-disabled={!hasPdf}
+          className={cn(
+            'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-xs font-medium transition-colors',
+            hasPdf
+              ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
+              : 'pointer-events-none text-slate-300 dark:text-slate-600',
+          )}
+        >
+          <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Download PDF
+        </a>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 function ProposalVersionsDialog({
@@ -146,6 +231,8 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
   const [showVersions, setShowVersions] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const saveVersion = useSaveProposalVersion()
+  const updateProposal = useUpdateProposalMeta()
+  const uploadSignedPdf = useUploadSignedProposalPdf()
 
   useEffect(() => {
     if (!data?.title) return
@@ -181,6 +268,14 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
       { proposalId, html, changeNote: 'Inline edit' },
       { onSuccess: () => setIsEditing(false) },
     )
+  }
+
+  function handleStatusChange(status: ApiProposalStatus) {
+    updateProposal.mutate({ proposalId, status })
+  }
+
+  function handleSignedPdfUpload(file: File) {
+    uploadSignedPdf.mutate({ proposalId, file })
   }
 
   function injectContentEditable() {
@@ -287,13 +382,37 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
 
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2 md:w-auto md:flex-nowrap md:justify-end">
             {!isEditing && (
-              <button
-                onClick={() => setShowVersions(true)}
-                className="shrink-0 h-8 px-3 rounded-lg border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 hover:bg-slate-50 dark:hover:bg-white/[.05] transition-colors duration-150 active:scale-[0.96]"
-              >
-                <History className="h-3.5 w-3.5" strokeWidth={1.8} />
-                <span>View versions</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <Select value={data.status} onValueChange={(value) => handleStatusChange(value as ApiProposalStatus)} disabled={updateProposal.isPending}>
+                  <SelectTrigger
+                    aria-label="Proposal status"
+                    size="sm"
+                    className={cn(
+                      'h-5 w-[78px] rounded-md border-transparent px-2 text-xxs font-semibold leading-none shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3',
+                      STATUS_CLASSES[data.status],
+                    )}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="start" className="min-w-[92px] rounded-md">
+                    <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>
+                    <SelectItem value="sent" className="text-xs font-semibold">Sent</SelectItem>
+                    <SelectItem value="signed" className="text-xs font-semibold">Signed</SelectItem>
+                  </SelectContent>
+                </Select>
+                {updateProposal.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" strokeWidth={1.8} />}
+              </div>
+            )}
+
+            {!isEditing && (
+              <ProposalActionsMenu
+                proposalId={proposalId}
+                status={data.status}
+                hasPdf={Boolean(data.signedPdfFileName)}
+                onViewVersions={() => setShowVersions(true)}
+                onSignedPdfUpload={handleSignedPdfUpload}
+                isPdfPending={uploadSignedPdf.isPending}
+              />
             )}
 
             {data.dealId && !isEditing && (
