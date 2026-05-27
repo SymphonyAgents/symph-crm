@@ -28,6 +28,8 @@ import { PipelineService } from '../pipeline/pipeline.service'
 import { WikiService } from '../wiki/wiki.service'
 import { ChatService } from '../chat/chat.service'
 import { MeetingsService } from '../meetings/meetings.service'
+import { ProposalsService } from '../proposals/proposals.service'
+import type { ProposalStatus, ProposalType } from '@symph-crm/database'
 
 /**
  * OwnerController — full CRM access for the product owner via static API key.
@@ -138,6 +140,7 @@ export class OwnerController {
     private readonly wiki: WikiService,
     private readonly chat: ChatService,
     private readonly meetings: MeetingsService,
+    private readonly proposals: ProposalsService,
   ) {
     this.baseUrl = (
       config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
@@ -927,6 +930,37 @@ export class OwnerController {
   async getChatHistory(@Param('sessionId') sessionId: string) {
     const messages = await this.chat.getHistory(sessionId)
     return { sessionId, messages }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Proposals
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @Put('proposals/:id')
+  async updateProposal(
+    @Param('id') id: string,
+    @Body() body: { title?: string; type?: ProposalType; status?: ProposalStatus; isPinned?: boolean },
+    @Headers('x-performed-by') performedBy?: string,
+  ) {
+    const proposal = await this.proposals.updateMeta(id, body, performedBy ?? 'owner')
+    return { ok: true, proposal }
+  }
+
+  @Post('proposals/:id/signed-pdf')
+  async attachProposalSignedPdf(
+    @Param('id') id: string,
+    @Body() body: { storagePath?: string; fileName?: string; mimeType?: string; sizeBytes?: number },
+    @Headers('x-performed-by') performedBy?: string,
+  ) {
+    if (!body.storagePath) return { ok: false, error: 'storagePath is required' }
+    if (!body.fileName) return { ok: false, error: 'fileName is required' }
+    const proposal = await this.proposals.attachSignedPdfReference(id, {
+      storagePath: body.storagePath,
+      fileName: body.fileName,
+      mimeType: body.mimeType,
+      sizeBytes: body.sizeBytes,
+    }, performedBy ?? 'owner')
+    return { ok: true, proposal }
   }
 
   /**
