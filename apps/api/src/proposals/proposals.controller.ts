@@ -1,7 +1,10 @@
 import {
   Controller, Get, Post, Put, Delete,
   Param, Body, Query, Headers, HttpCode, BadRequestException,
+  UploadedFile, UseInterceptors,
 } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { memoryStorage } from 'multer'
 import { ProposalsService } from './proposals.service'
 import { CreateProposalDto } from './dto/create-proposal.dto'
 import { SaveVersionDto } from './dto/save-version.dto'
@@ -50,6 +53,25 @@ export class ProposalsController {
     @Headers('x-user-id') userId?: string,
   ) {
     return this.proposals.updateMeta(id, dto, userId)
+  }
+
+  @Post('proposals/:id/signed-pdf')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 },
+  }))
+  uploadSignedPdf(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    if (!file) throw new BadRequestException('file is required')
+    return this.proposals.uploadSignedPdf(id, file, userId)
+  }
+
+  @Get('proposals/:id/signed-pdf')
+  getSignedPdfUrl(@Param('id') id: string) {
+    return this.proposals.getSignedPdfUrl(id)
   }
 
   // Soft delete the entire chain.
