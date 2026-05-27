@@ -11,6 +11,7 @@ import { PipelineModule } from '../pipeline/pipeline.module'
 import { WikiModule } from '../wiki/wiki.module'
 import { ChatModule } from '../chat/chat.module'
 import { MeetingsModule } from '../meetings/meetings.module'
+import { ProposalsModule } from '../proposals/proposals.module'
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MeetingsModule } from '../meetings/meetings.module'
     WikiModule,
     ChatModule,
     MeetingsModule,
+    ProposalsModule,
   ],
   controllers: [OwnerController],
   providers: [OwnerGuard],
