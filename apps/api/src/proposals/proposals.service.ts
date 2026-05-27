@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, PayloadTooLargeException } from '@nestjs/common'
+import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
 import { proposals, proposalVersions, proposalShareLinks } from '@symph-crm/database'
@@ -10,6 +10,7 @@ import type { CreateProposalDto } from './dto/create-proposal.dto'
 import type { SaveVersionDto } from './dto/save-version.dto'
 import type { UpdateProposalDto } from './dto/update-proposal.dto'
 import type { CreateShareLinkDto } from './dto/create-share-link.dto'
+import { validateProposalHtmlDocument } from './proposal-html-validation'
 
 /**
  * ProposalsService — versioned proposal documents stored in Postgres.
@@ -27,8 +28,6 @@ import type { CreateShareLinkDto } from './dto/create-share-link.dto'
  * List endpoints NEVER select the html column (column-narrow projections).
  * Detail / editor / share-link endpoints select html for one row at a time.
  */
-const HTML_MAX_BYTES = 5 * 1024 * 1024 // 5 MB
-
 @Injectable()
 export class ProposalsService implements OnModuleInit {
   private readonly logger = new Logger(ProposalsService.name)
@@ -103,14 +102,7 @@ export class ProposalsService implements OnModuleInit {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private validateHtml(html: string) {
-    if (!html?.trim()) throw new BadRequestException('html is required')
-    const bytes = Buffer.byteLength(html, 'utf8')
-    if (bytes > HTML_MAX_BYTES) {
-      throw new PayloadTooLargeException(
-        `Proposal HTML is ${(bytes / 1024 / 1024).toFixed(2)}MB; cap is ${HTML_MAX_BYTES / 1024 / 1024}MB. ` +
-        `Move embedded images/videos to Supabase Storage and reference by URL.`,
-      )
-    }
+    validateProposalHtmlDocument(html)
   }
 
   private newToken(): string {
