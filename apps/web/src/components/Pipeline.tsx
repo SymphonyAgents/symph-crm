@@ -31,6 +31,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { usePatchDealStage, useDeleteDeal, useUpdateDeal } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
+import { SubTabFilter } from '@/components/ui/sub-tab-filter'
 import {
   MoreHorizontal, Search, X, Trash2, ExternalLink,
   ChevronDown, ChevronRight, User as UserIcon, Paperclip,
@@ -1090,21 +1091,11 @@ export function Pipeline({
         {/* Sub-tabs (left) */}
         <div className="flex items-center flex-wrap gap-1.5 min-w-0">
           {subTabs && subTabs.length > 0 && onSubTabChange && (
-            <>
-              <PipelineSubTabButton active={!activeSubTabId} onClick={() => onSubTabChange(null)}>
-                All
-              </PipelineSubTabButton>
-              {subTabs.map(s => (
-                <PipelineSubTabButton
-                  key={s.id}
-                  active={activeSubTabId === s.id}
-                  onClick={() => onSubTabChange(s.id)}
-                  count={s.count}
-                >
-                  {s.name}
-                </PipelineSubTabButton>
-              ))}
-            </>
+            <SubTabFilter
+              items={[{ id: 'all', label: 'All' }, ...subTabs.map(s => ({ id: s.id, label: s.name, count: s.count }))]}
+              value={activeSubTabId ?? 'all'}
+              onChange={(next) => onSubTabChange(next === 'all' ? null : next)}
+            />
           )}
         </div>
 
@@ -1381,20 +1372,12 @@ export function Pipeline({
 
           {/* Mobile sub-tabs — horizontal scroll, same pill style as desktop. */}
           {subTabs && subTabs.length > 0 && onSubTabChange && (
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2">
-              <PipelineSubTabButton active={!activeSubTabId} onClick={() => onSubTabChange(null)}>
-                All
-              </PipelineSubTabButton>
-              {subTabs.map(s => (
-                <PipelineSubTabButton
-                  key={s.id}
-                  active={activeSubTabId === s.id}
-                  onClick={() => onSubTabChange(s.id)}
-                  count={s.count}
-                >
-                  {s.name}
-                </PipelineSubTabButton>
-              ))}
+            <div className="-mx-4 overflow-x-auto px-4 pb-2">
+              <SubTabFilter
+                items={[{ id: 'all', label: 'All' }, ...subTabs.map(s => ({ id: s.id, label: s.name, count: s.count }))]}
+                value={activeSubTabId ?? 'all'}
+                onChange={(next) => onSubTabChange(next === 'all' ? null : next)}
+              />
             </div>
           )}
 
