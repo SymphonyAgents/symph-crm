@@ -152,11 +152,20 @@ export type ApiDocument = {
 // ── Proposals ────────────────────────────────────────────────────────────────
 
 export type ApiProposalType = 'presentation' | 'formal'
+export type ApiProposalStatus = 'draft' | 'sent' | 'signed'
 
 export type ApiProposalListItem = {
   id: string
   title: string
   type: ApiProposalType | null
+  status: ApiProposalStatus
+  sentAt: string | null
+  signedAt: string | null
+  signedPdfStoragePath: string | null
+  signedPdfFileName: string | null
+  signedPdfMimeType: string | null
+  signedPdfSizeBytes: number | null
+  signedPdfUploadedAt: string | null
   dealId: string | null
   isPinned: boolean
   currentVersion: number
@@ -196,6 +205,14 @@ export type ApiProposalHead = {
   id: string
   title: string
   type: ApiProposalType | null
+  status: ApiProposalStatus
+  sentAt: string | null
+  signedAt: string | null
+  signedPdfStoragePath: string | null
+  signedPdfFileName: string | null
+  signedPdfMimeType: string | null
+  signedPdfSizeBytes: number | null
+  signedPdfUploadedAt: string | null
   dealId: string | null
   isPinned: boolean
   currentVersion: number
