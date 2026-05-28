@@ -6,7 +6,7 @@ import type { ProposalType } from '@symph-crm/database'
 
 export class CreateProposalDto {
   title: string
-  type?: ProposalType
+  type?: ProposalType | null
   html: string
   changeNote?: string  // defaults to "Initial draft" if absent
 }
