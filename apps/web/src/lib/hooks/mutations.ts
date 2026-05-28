@@ -691,6 +691,15 @@ export function useUpdateProposalMeta(
   })
 }
 
+export function useDownloadProposalHtml(
+  options?: UseMutationOptions<ApiProposalHead, Error, string>,
+) {
+  return useMutation<ApiProposalHead, Error, string>({
+    mutationFn: (proposalId) => api.get<ApiProposalHead>(`/proposals/${proposalId}`),
+    ...options,
+  })
+}
+
 export function useUploadSignedProposalPdf(
   options?: UseMutationOptions<ApiProposalHead, Error, UploadSignedProposalPdfInput>,
 ) {
@@ -864,6 +873,7 @@ export function useDeleteMeeting(
 ) {
   const qc = useQueryClient()
   return useMutation<{ ok: boolean }, Error, string>({
+    ...options,
     mutationFn: (id: string) => api.delete<{ ok: boolean }>(`/meetings/${id}`),
     onSuccess: (...args) => {
       const [, id] = args
@@ -876,7 +886,6 @@ export function useDeleteMeeting(
       toast.error(error.message || 'Meeting deletion failed')
       ;(options?.onError as ((error: Error, ...a: unknown[]) => void) | undefined)?.(error, ...rest)
     },
-    ...options,
   })
 }
 
