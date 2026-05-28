@@ -59,6 +59,22 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function downloadHtmlFile(title: string, html: string) {
+  const safeTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'proposal'
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${safeTitle}.html`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 const STATUS_CLASSES: Record<ApiProposalStatus, string> = {
   draft: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-300',
   sent: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
@@ -70,6 +86,7 @@ function ProposalActionsMenu({
   status,
   hasPdf,
   onViewVersions,
+  onDownloadHtml,
   onSignedPdfUpload,
   isPdfPending,
 }: {
@@ -77,6 +94,7 @@ function ProposalActionsMenu({
   status: ApiProposalStatus
   hasPdf: boolean
   onViewVersions: () => void
+  onDownloadHtml: () => void
   onSignedPdfUpload: (file: File) => void
   isPdfPending: boolean
 }) {
@@ -101,6 +119,14 @@ function ProposalActionsMenu({
         >
           <History className="h-3.5 w-3.5" strokeWidth={1.8} />
           View versions
+        </button>
+        <button
+          type="button"
+          onClick={onDownloadHtml}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+        >
+          <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Download HTML
         </button>
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
@@ -387,12 +413,11 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
                   <SelectTrigger
                     aria-label="Proposal status"
                     size="sm"
-                    className={cn(
-                      'h-5 w-[78px] rounded-md border-transparent px-2 text-xxs font-semibold leading-none shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3',
-                      STATUS_CLASSES[data.status],
-                    )}
+                    className="h-7 w-auto gap-1 border-transparent bg-transparent p-0 text-xs font-semibold shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3"
                   >
-                    <SelectValue />
+                    <span className={cn('inline-flex h-7 items-center rounded-md px-2 leading-none', STATUS_CLASSES[data.status])}>
+                      <SelectValue />
+                    </span>
                   </SelectTrigger>
                   <SelectContent align="start" className="min-w-[92px] rounded-md">
                     <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>
@@ -410,6 +435,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
                 status={data.status}
                 hasPdf={Boolean(data.signedPdfFileName)}
                 onViewVersions={() => setShowVersions(true)}
+                onDownloadHtml={() => downloadHtmlFile(data.title, activeVersion.html ?? '')}
                 onSignedPdfUpload={handleSignedPdfUpload}
                 isPdfPending={uploadSignedPdf.isPending}
               />
