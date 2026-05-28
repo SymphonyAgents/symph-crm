@@ -1,4 +1,4 @@
-import { Injectable, Inject, OnModuleInit, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common'
+import { Injectable, Inject, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common'
 import { randomBytes } from 'crypto'
 import { extname } from 'path'
 import { and, eq, desc, isNull, sql } from 'drizzle-orm'
@@ -48,94 +48,12 @@ export function normalizeProposalTypeForCreate(type?: ProposalType | null): Prop
  * Detail / editor / share-link endpoints select html for one row at a time.
  */
 @Injectable()
-export class ProposalsService implements OnModuleInit {
-  private readonly logger = new Logger(ProposalsService.name)
-
+export class ProposalsService {
   constructor(
     @Inject(DB) private db: Database,
     private auditLogs: AuditLogsService,
     private storage: StorageService,
   ) {}
-
-  // ── Boot migration ────────────────────────────────────────────────────────
-
-  async onModuleInit() {
-    try {
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposals (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          workspace_id UUID REFERENCES workspaces(id),
-          deal_id UUID REFERENCES deals(id) ON DELETE SET NULL,
-          title TEXT NOT NULL,
-          type TEXT,
-          current_version INTEGER NOT NULL DEFAULT 1,
-          is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
-          created_by TEXT NOT NULL REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          deleted_at TIMESTAMPTZ
-        )
-      `)
-
-      await this.db.execute(`
-        ALTER TABLE proposals
-        ADD COLUMN IF NOT EXISTS type TEXT
-      `)
-      await this.db.execute(`UPDATE proposals SET type = 'formal' WHERE type IS NULL`)
-      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type SET DEFAULT 'formal'`)
-      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type SET NOT NULL`)
-      await this.db.execute(`
-        DO $$ BEGIN
-          ALTER TABLE proposals
-            ADD CONSTRAINT proposals_type_check
-            CHECK (type IN ('presentation', 'formal'));
-        EXCEPTION
-          WHEN duplicate_object THEN null;
-        END $$;
-      `)
-
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposal_versions (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_id UUID NOT NULL REFERENCES proposals(id) ON DELETE CASCADE,
-          version INTEGER NOT NULL,
-          html TEXT NOT NULL,
-          change_note TEXT,
-          excerpt TEXT,
-          word_count INTEGER DEFAULT 0,
-          pdf_storage_path TEXT,
-          author_id TEXT NOT NULL REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-      `)
-      await this.db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS proposal_versions_proposal_id_version_key ON proposal_versions(proposal_id, version)`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposal_versions_proposal ON proposal_versions(proposal_id)`)
-
-      await this.db.execute(`
-        CREATE TABLE IF NOT EXISTS proposal_share_links (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          proposal_version_id UUID NOT NULL REFERENCES proposal_versions(id) ON DELETE CASCADE,
-          token TEXT NOT NULL UNIQUE,
-          expires_at TIMESTAMPTZ,
-          view_count INTEGER NOT NULL DEFAULT 0,
-          last_viewed_at TIMESTAMPTZ,
-          created_by TEXT REFERENCES users(id),
-          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-          revoked_at TIMESTAMPTZ
-        )
-      `)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_share_links_version ON proposal_share_links(proposal_version_id) WHERE revoked_at IS NULL`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_share_links_token ON proposal_share_links(token) WHERE revoked_at IS NULL`)
-
-      // Indexes for the most common reads
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposals_deal ON proposals(deal_id) WHERE deleted_at IS NULL`)
-      await this.db.execute(`CREATE INDEX IF NOT EXISTS idx_proposals_updated ON proposals(updated_at DESC) WHERE deleted_at IS NULL`)
-
-      this.logger.log('Proposals schema ready (proposals, proposal_versions, proposal_share_links)')
-    } catch (err: any) {
-      this.logger.error(`Boot migration failed: ${err.message}`)
-    }
-  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
