@@ -25,6 +25,12 @@ export function normalizeProposalTitleForDuplicateCheck(title: string) {
     .replace(/^-+|-+$/g, '')
 }
 
+export function normalizeProposalTypeForCreate(type?: ProposalType | null): ProposalType {
+  if (type === undefined || type === null) return 'formal'
+  if (PROPOSAL_TYPES.includes(type)) return type
+  throw new BadRequestException(`type must be one of: ${PROPOSAL_TYPES.join(', ')}`)
+}
+
 /**
  * ProposalsService — versioned proposal documents stored in Postgres.
  *
@@ -75,8 +81,9 @@ export class ProposalsService implements OnModuleInit {
         ALTER TABLE proposals
         ADD COLUMN IF NOT EXISTS type TEXT
       `)
-      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type DROP DEFAULT`)
-      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type DROP NOT NULL`)
+      await this.db.execute(`UPDATE proposals SET type = 'formal' WHERE type IS NULL`)
+      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type SET DEFAULT 'formal'`)
+      await this.db.execute(`ALTER TABLE proposals ALTER COLUMN type SET NOT NULL`)
       await this.db.execute(`
         DO $$ BEGIN
           ALTER TABLE proposals
@@ -140,10 +147,8 @@ export class ProposalsService implements OnModuleInit {
     return randomBytes(24).toString('base64url') // 32 chars, ~190 bits entropy
   }
 
-  private normalizeType(type?: ProposalType | null): ProposalType | null {
-    if (!type) return null
-    if (PROPOSAL_TYPES.includes(type)) return type
-    throw new BadRequestException(`type must be one of: ${PROPOSAL_TYPES.join(', ')}`)
+  private normalizeType(type?: ProposalType | null): ProposalType {
+    return normalizeProposalTypeForCreate(type)
   }
 
   private normalizeStatus(status?: ProposalStatus | null): ProposalStatus | undefined {
