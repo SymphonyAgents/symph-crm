@@ -10,11 +10,11 @@
  */
 
 import { useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Download, Eye, History, Loader2, MoreVertical, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useGetAllProposals, useGetProposalVersions } from '@/lib/hooks/queries'
-import { useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
+import { useDownloadProposalHtml, useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
-import type { ApiProposalStatus, ApiProposalSummary, ApiProposalVersion } from '@/lib/types'
+import type { ApiProposalStatus, ApiProposalSummary, ApiProposalType, ApiProposalVersion } from '@/lib/types'
 
 function FileIcon({ size = 28, className }: { size?: number; className?: string }) {
   return (
@@ -61,6 +61,22 @@ function relTime(iso: string): string {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
+function downloadHtmlFile(title: string, html: string) {
+  const safeTitle = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'proposal'
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${safeTitle}.html`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 // ─── Row (list) ─────────────────────────────────────────────────────────────
 
 const STATUS_LABELS: Record<ApiProposalStatus, string> = {
@@ -78,12 +94,16 @@ const STATUS_CLASSES: Record<ApiProposalStatus, string> = {
 function ProposalActionsMenu({
   p,
   onViewVersions,
+  onDownloadHtml,
   onSignedPdfUpload,
+  isHtmlPending,
   isPdfPending,
 }: {
   p: ApiProposalSummary
   onViewVersions: () => void
+  onDownloadHtml: () => void
   onSignedPdfUpload: (file: File) => void
+  isHtmlPending: boolean
   isPdfPending: boolean
 }) {
   const canUploadPdf = p.status === 'signed'
@@ -108,6 +128,15 @@ function ProposalActionsMenu({
         >
           <History className="h-3.5 w-3.5" strokeWidth={1.8} />
           View versions
+        </button>
+        <button
+          type="button"
+          onClick={onDownloadHtml}
+          disabled={isHtmlPending}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-200 dark:hover:bg-white/[.06] dark:disabled:text-slate-600"
+        >
+          {isHtmlPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Download className="h-3.5 w-3.5" strokeWidth={1.8} />}
+          Download HTML
         </button>
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
@@ -154,16 +183,22 @@ function ProposalRow({
   onOpen,
   onViewVersions,
   onStatusChange,
+  onDownloadHtml,
   onSignedPdfUpload,
+  showStatusControls,
   isStatusPending,
+  isHtmlPending,
   isPdfPending,
 }: {
   p: ApiProposalSummary
   onOpen: () => void
   onViewVersions: () => void
   onStatusChange: (status: ApiProposalStatus) => void
+  onDownloadHtml: () => void
   onSignedPdfUpload: (file: File) => void
+  showStatusControls: boolean
   isStatusPending: boolean
+  isHtmlPending: boolean
   isPdfPending: boolean
 }) {
   return (
@@ -196,29 +231,30 @@ function ProposalRow({
           </div>
         </div>
       </TableCell>
-      <TableCell className="w-[118px] py-3" onClick={(event) => event.stopPropagation()}>
-        <div className="flex items-center justify-end gap-1.5">
-          <Select value={p.status} onValueChange={(value) => onStatusChange(value as ApiProposalStatus)} disabled={isStatusPending}>
-            <SelectTrigger
-              aria-label="Proposal status"
-              size="sm"
-              className={cn(
-                'h-5 w-[78px] rounded-md border-transparent px-2 text-xxs font-semibold leading-none shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3',
-                STATUS_CLASSES[p.status],
-              )}
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="start" className="min-w-[92px] rounded-md">
-              <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>
-              <SelectItem value="sent" className="text-xs font-semibold">Sent</SelectItem>
-              <SelectItem value="signed" className="text-xs font-semibold">Signed</SelectItem>
-            </SelectContent>
-          </Select>
-          {isStatusPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" strokeWidth={1.8} />}
-          {p.signedPdfFileName && <span className="inline-flex h-5 items-center rounded-md bg-emerald-50 px-2 text-xxs font-semibold leading-none text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">PDF</span>}
-        </div>
-      </TableCell>
+      {showStatusControls && (
+        <TableCell className="w-[118px] py-3" onClick={(event) => event.stopPropagation()}>
+          <div className="flex items-center justify-end gap-1.5">
+            {p.signedPdfFileName && <span className="inline-flex h-5 items-center rounded-md bg-emerald-50 px-2 text-xxs font-semibold leading-none text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">PDF</span>}
+            <Select value={p.status} onValueChange={(value) => onStatusChange(value as ApiProposalStatus)} disabled={isStatusPending}>
+              <SelectTrigger
+                aria-label="Proposal status"
+                size="sm"
+                className="h-7 w-auto gap-1 border-transparent bg-transparent p-0 text-xs font-semibold shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3"
+              >
+                <span className={cn('inline-flex h-7 items-center rounded-md px-2 leading-none', STATUS_CLASSES[p.status])}>
+                  <SelectValue />
+                </span>
+              </SelectTrigger>
+              <SelectContent align="start" className="min-w-[92px] rounded-md">
+                <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>
+                <SelectItem value="sent" className="text-xs font-semibold">Sent</SelectItem>
+                <SelectItem value="signed" className="text-xs font-semibold">Signed</SelectItem>
+              </SelectContent>
+            </Select>
+            {isStatusPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" strokeWidth={1.8} />}
+          </div>
+        </TableCell>
+      )}
       <TableCell className="w-[190px] py-3" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-end gap-1.5">
           <div className="hidden items-center gap-1.5 text-xxs text-slate-500 sm:flex">
@@ -229,7 +265,9 @@ function ProposalRow({
           <ProposalActionsMenu
             p={p}
             onViewVersions={onViewVersions}
+            onDownloadHtml={onDownloadHtml}
             onSignedPdfUpload={onSignedPdfUpload}
+            isHtmlPending={isHtmlPending}
             isPdfPending={isPdfPending}
           />
         </div>
@@ -311,12 +349,19 @@ function ProposalVersionsDialog({
 
 export function Proposals() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { data: proposals = [], isLoading } = useGetAllProposals()
   const updateProposal = useUpdateProposalMeta()
+  const downloadProposalHtml = useDownloadProposalHtml()
   const uploadSignedPdf = useUploadSignedProposalPdf()
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ApiProposalStatus | 'all'>('all')
+  const pathType = pathname.split('/').filter(Boolean).at(-1)
+  const typeFilter: ApiProposalType = pathType === 'presentation' || searchParams.get('type') === 'presentation' ? 'presentation' : 'formal'
+  const statusParam = searchParams.get('status')
+  const statusFilter: ApiProposalStatus | 'all' = statusParam === 'draft' || statusParam === 'sent' || statusParam === 'signed' ? statusParam : 'all'
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null)
+  const [htmlPendingId, setHtmlPendingId] = useState<string | null>(null)
   const [pdfPendingId, setPdfPendingId] = useState<string | null>(null)
   const [versionProposal, setVersionProposal] = useState<ApiProposalSummary | null>(null)
   const [versionsOpen, setVersionsOpen] = useState(false)
@@ -327,13 +372,26 @@ export function Proposals() {
     onClear: () => setSearch(''),
   })
 
+  const typeCounts = useMemo(() => {
+    return proposals.reduce<Record<ApiProposalType, number>>((acc, proposal) => {
+      if (proposal.type) acc[proposal.type] += 1
+      return acc
+    }, { presentation: 0, formal: 0 })
+  }, [proposals])
+
+  const typeItems = useMemo<TabFilterItem<ApiProposalType>[]>(() => [
+    { id: 'presentation', label: 'Presentation', count: typeCounts.presentation },
+    { id: 'formal', label: 'Formal', count: typeCounts.formal },
+  ], [typeCounts])
+
   const statusCounts = useMemo(() => {
     return proposals.reduce<Record<ApiProposalStatus | 'all', number>>((acc, proposal) => {
+      if (proposal.type !== typeFilter) return acc
       acc.all += 1
       acc[proposal.status] += 1
       return acc
     }, { all: 0, draft: 0, sent: 0, signed: 0 })
-  }, [proposals])
+  }, [proposals, typeFilter])
 
   const statusItems = useMemo<TabFilterItem<ApiProposalStatus | 'all'>[]>(() => [
     { id: 'all', label: 'All', count: statusCounts.all },
@@ -345,7 +403,8 @@ export function Proposals() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return proposals.filter(p => {
-      if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (p.type !== typeFilter) return false
+      if (typeFilter === 'formal' && statusFilter !== 'all' && p.status !== statusFilter) return false
       if (!q) return true
       return (
         (p.title ?? '').toLowerCase().includes(q) ||
@@ -353,15 +412,27 @@ export function Proposals() {
         (p.dealTitle ?? '').toLowerCase().includes(q)
       )
     })
-  }, [proposals, search, statusFilter])
+  }, [proposals, search, statusFilter, typeFilter])
+
+  const showStatusControls = typeFilter === 'formal'
+
+  function updateFilters(nextType: ApiProposalType, nextStatus: ApiProposalStatus | 'all' = 'all') {
+    if (nextType === 'presentation') {
+      router.push('/proposals/presentation', { scroll: false })
+      return
+    }
+
+    router.push(`/proposals/formal?status=${nextStatus}`, { scroll: false })
+  }
 
   const open = (id: string) => router.push(`/proposals/${id}`)
   const openVersion = (proposalId: string, versionId: string) => router.push(`/proposals/${proposalId}?versionId=${versionId}`)
 
   return (
     <div className="p-4 md:px-6 pb-6 w-full">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1">
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <TabFilter items={typeItems} value={typeFilter} onChange={(next) => updateFilters(next)} />
+        <div className="relative min-w-[260px] flex-1">
           <svg
             width={14} height={14} viewBox="0 0 24 24"
             fill="none" stroke="currentColor" strokeWidth={1.6}
@@ -377,7 +448,7 @@ export function Proposals() {
             className="w-full h-9 pl-9 pr-3 text-xs rounded-lg bg-slate-100 dark:bg-white/[.04] border border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-[#1c1c1f] outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
           />
         </div>
-        <TabFilter items={statusItems} value={statusFilter} onChange={setStatusFilter} />
+        {showStatusControls && <TabFilter items={statusItems} value={statusFilter} onChange={(next) => updateFilters('formal', next)} />}
       </div>
 
       {/* Body */}
@@ -401,7 +472,7 @@ export function Proposals() {
             <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead>Proposal</TableHead>
-                <TableHead className="w-[118px] text-right">Status</TableHead>
+                {showStatusControls && <TableHead className="w-[118px] text-right">Status</TableHead>}
                 <TableHead className="w-[190px] text-right">Time and version</TableHead>
               </TableRow>
             </TableHeader>
@@ -416,11 +487,20 @@ export function Proposals() {
                     setStatusPendingId(p.id)
                     updateProposal.mutate({ proposalId: p.id, status }, { onSettled: () => setStatusPendingId(null) })
                   }}
+                  onDownloadHtml={() => {
+                    setHtmlPendingId(p.id)
+                    downloadProposalHtml.mutate(p.id, {
+                      onSuccess: (proposal) => downloadHtmlFile(proposal.title, proposal.version.html),
+                      onSettled: () => setHtmlPendingId(null),
+                    })
+                  }}
                   onSignedPdfUpload={(file) => {
                     setPdfPendingId(p.id)
                     uploadSignedPdf.mutate({ proposalId: p.id, file }, { onSettled: () => setPdfPendingId(null) })
                   }}
+                  showStatusControls={showStatusControls}
                   isStatusPending={statusPendingId === p.id}
+                  isHtmlPending={htmlPendingId === p.id}
                   isPdfPending={pdfPendingId === p.id}
                 />
               ))}
