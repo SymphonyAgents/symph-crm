@@ -911,10 +911,10 @@ export function Chat({ dealId }: { dealId?: string }) {
     // navigation (e.g. new-session redirect). Awaited to guarantee the
     // message is in the DB before history is fetched on the new page.
     try {
-      await fetch(`/api/chat/sessions/${activeSessionId}/messages/user`, {
+      await fetch(`/api/backend/chat/sessions/${activeSessionId}/messages/user`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': userId },
-        body: JSON.stringify({ userId, userMessage: text }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userMessage: text }),
       })
     } catch (err) {
       console.error('[Chat] pre-save user message failed:', err)

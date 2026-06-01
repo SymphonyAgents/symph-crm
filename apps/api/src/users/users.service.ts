@@ -1,14 +1,15 @@
-import { Injectable, Inject } from '@nestjs/common'
-import { eq } from 'drizzle-orm'
+import { BadRequestException, Injectable, Inject, NotFoundException } from '@nestjs/common'
+import { and, asc, eq, isNull, ne } from 'drizzle-orm'
 import { users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
-/**
- * Emails that are auto-assigned the SALES role on first sign-in.
- * Everyone else defaults to BUILD.
- */
+type UserRole = 'SALES' | 'BUILD' | 'PARTNER'
+type UserStatus = 'active' | 'pending' | 'rejected'
+
+// Emails that are auto-assigned the SALES role on sign-in.
+// Non-Symph emails enter a pending PARTNER flow for Sales review.
 const SALES_EMAILS = new Set([
   'mary.amora@symph.co',
   'gee@symph.co',
@@ -23,6 +24,33 @@ const SALES_EMAILS = new Set([
   'dave@symph.co',
 ])
 
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase()
+}
+
+function getInternalEmailDomains() {
+  return (process.env.INTERNAL_EMAIL_DOMAINS ?? 'symph.co')
+    .split(',')
+    .map(domain => domain.trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean)
+}
+
+function isInternalEmail(email: string) {
+  const normalizedEmail = normalizeEmail(email)
+  return getInternalEmailDomains().some(domain => normalizedEmail.endsWith(`@${domain}`))
+}
+
+function roleForEmail(email: string): UserRole {
+  const normalizedEmail = normalizeEmail(email)
+  if (SALES_EMAILS.has(normalizedEmail)) return 'SALES'
+  if (isInternalEmail(normalizedEmail)) return 'BUILD'
+  return 'PARTNER'
+}
+
+function statusForEmail(email: string): UserStatus {
+  return isInternalEmail(email) ? 'active' : 'pending'
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -30,48 +58,70 @@ export class UsersService {
     private auditLogs: AuditLogsService,
   ) {}
 
-  /**
-   * Upsert a user from NextAuth signIn callback.
-   * Called once per login — keeps public.users in sync with Google OAuth identity.
-   * Auto-assigns SALES role for known email list; everyone else gets BUILD.
-   * id = NextAuth user.id (Google OAuth sub claim)
-   */
   async sync(data: { id: string; email: string; name?: string | null; image?: string | null }) {
-    const role: 'SALES' | 'BUILD' = SALES_EMAILS.has(data.email) ? 'SALES' : 'BUILD'
+    const email = normalizeEmail(data.email)
+    const incomingRole = roleForEmail(email)
+    const incomingStatus = statusForEmail(email)
+
+    const [existing] = await this.db.select().from(users).where(eq(users.email, email)).limit(1)
+
+    if (existing) {
+      const isInternal = isInternalEmail(email)
+      const isRemovedOrRejected = existing.status === 'rejected' || !!existing.deletedAt || !existing.isActive
+      const isApprovedExternal = !isInternal && !isRemovedOrRejected && existing.role === 'PARTNER' && existing.status === 'active'
+      const role = isInternal ? incomingRole : 'PARTNER'
+      const status = isRemovedOrRejected
+        ? 'rejected'
+        : isInternal || isApprovedExternal
+          ? 'active'
+          : 'pending'
+      const [updated] = await this.db
+        .update(users)
+        .set({
+          name: data.name ?? null,
+          image: data.image ?? null,
+          role,
+          status,
+          isActive: status === 'active' || status === 'pending',
+          isOnboarded: isInternal ? existing.isOnboarded : isApprovedExternal,
+          currentTeam: isInternal ? existing.currentTeam : null,
+          deletedAt: status === 'pending' ? null : existing.deletedAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.email, email))
+        .returning()
+      return updated
+    }
 
     const [user] = await this.db
       .insert(users)
       .values({
         id: data.id,
-        email: data.email,
+        email,
         name: data.name ?? null,
         image: data.image ?? null,
-        role,
-      })
-      .onConflictDoUpdate({
-        // Conflict on email (not id) — the same Google account can generate
-        // different OAuth UUIDs across sessions when no DB adapter is used.
-        // Email is the stable identifier from Google OAuth.
-        target: users.email,
-        set: {
-          name: data.name ?? null,
-          image: data.image ?? null,
-          role, // re-apply on every login in case email list changes
-          updatedAt: new Date(),
-          // Note: we intentionally do NOT update `id` here.
-          // The existing DB id is kept stable so JWT token.id stays consistent.
-        },
+        role: incomingRole,
+        status: incomingStatus,
+        isActive: incomingStatus !== 'rejected',
       })
       .returning()
+
+    this.auditLogs.log({
+      action: 'create',
+      auditType: 'user_synced',
+      entityType: 'user',
+      entityId: user.id,
+      performedBy: user.id,
+      details: {
+        email,
+        role: user.role,
+        status: user.status,
+      },
+    }).catch(() => {})
 
     return user
   }
 
-  /**
-   * Complete onboarding for a user.
-   * Sets the user's current team and marks isOnboarded = true.
-   * Name is taken from Google OAuth (already stored in the name column).
-   */
   async completeOnboarding(
     id: string,
     data: {
@@ -103,21 +153,19 @@ export class UsersService {
   }
 
   async findOne(id: string) {
-    const [user] = await this.db.select().from(users).where(eq(users.id, id))
+    const [user] = await this.db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt)))
     return user ?? null
   }
 
-  /** Find a user by their Discord ID */
   async findByDiscordId(discordId: string) {
     const [user] = await this.db
       .select()
       .from(users)
-      .where(eq(users.discordId, discordId))
+      .where(and(eq(users.discordId, discordId), isNull(users.deletedAt)))
       .limit(1)
     return user ?? null
   }
 
-  /** Link a Discord ID to a CRM user — idempotent, safe to call multiple times */
   async linkDiscordId(id: string, discordId: string) {
     const [user] = await this.db
       .update(users)
@@ -145,11 +193,135 @@ export class UsersService {
         email: users.email,
         image: users.image,
         role: users.role,
+        status: users.status,
+        isActive: users.isActive,
         isOnboarded: users.isOnboarded,
         firstName: users.firstName,
         lastName: users.lastName,
         nickname: users.nickname,
+        discordId: users.discordId,
       })
       .from(users)
+      .where(and(eq(users.isActive, true), isNull(users.deletedAt)))
+      .orderBy(asc(users.name))
+  }
+
+  async findExternalUsers() {
+    return this.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        role: users.role,
+        status: users.status,
+        isActive: users.isActive,
+        isOnboarded: users.isOnboarded,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        nickname: users.nickname,
+        discordId: users.discordId,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(and(ne(users.email, ''), isNull(users.deletedAt), eq(users.isActive, true)))
+      .orderBy(asc(users.createdAt))
+      .then(rows => rows.filter(user => user.email ? !isInternalEmail(user.email) : false))
+  }
+
+  async approveExternalUser(id: string, performedBy?: string) {
+    const user = await this.findOne(id)
+    if (!user) throw new NotFoundException('User not found')
+    const email = user.email ?? ''
+    if (isInternalEmail(email)) throw new BadRequestException('Internal users do not need external approval')
+
+    const [updated] = await this.db
+      .update(users)
+      .set({ role: 'PARTNER', status: 'active', isActive: true, isOnboarded: true, deletedAt: null, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+
+    await this.logExternalUserChange('user_external_approved', id, performedBy, {
+      email,
+      previousStatus: user.status,
+      status: updated.status,
+    })
+
+    return updated
+  }
+
+  async rejectExternalUser(id: string, performedBy?: string) {
+    const user = await this.findOne(id)
+    if (!user) throw new NotFoundException('User not found')
+    const email = user.email ?? ''
+    if (isInternalEmail(email)) throw new BadRequestException('Internal users cannot be rejected here')
+
+    const [updated] = await this.db
+      .update(users)
+      .set({ status: 'rejected', isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+
+    await this.logExternalUserChange('user_external_rejected', id, performedBy, {
+      email,
+      previousStatus: user.status,
+      status: updated.status,
+    })
+
+    return updated
+  }
+
+  async updateExternalUserRole(id: string, role: UserRole, performedBy?: string) {
+    const user = await this.findOne(id)
+    if (!user) throw new NotFoundException('User not found')
+    const email = user.email ?? ''
+    if (isInternalEmail(email)) throw new BadRequestException('Internal user roles are managed by the internal allowlist')
+    if (role !== 'PARTNER') throw new BadRequestException('External users can only be PARTNER')
+
+    const [updated] = await this.db
+      .update(users)
+      .set({ role, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+
+    await this.logExternalUserChange('user_external_role_updated', id, performedBy, {
+      email,
+      previousRole: user.role,
+      role: updated.role,
+    })
+
+    return updated
+  }
+
+  async removeExternalUser(id: string, performedBy?: string) {
+    const user = await this.findOne(id)
+    if (!user) throw new NotFoundException('User not found')
+    const email = user.email ?? ''
+    if (isInternalEmail(email)) throw new BadRequestException('Internal users cannot be removed here')
+
+    const [updated] = await this.db
+      .update(users)
+      .set({ status: 'rejected', isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning()
+
+    await this.logExternalUserChange('user_external_removed', id, performedBy, {
+      email,
+      previousStatus: user.status,
+    })
+
+    return updated
+  }
+
+  private async logExternalUserChange(auditType: string, entityId: string, performedBy: string | undefined, details: Record<string, unknown>) {
+    await this.auditLogs.log({
+      action: 'update',
+      auditType,
+      entityType: 'user',
+      entityId,
+      performedBy,
+      details,
+    }).catch(() => {})
   }
 }

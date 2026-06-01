@@ -1,7 +1,3 @@
-// ─── API Base URL ─────────────────────────────────────────────────────────────
-
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
-
 // ─── Pipeline / Deal Stages ──────────────────────────────────────────────────
 
 /** Typed shape for a kanban column entry. `matches` is `readonly string[]` so

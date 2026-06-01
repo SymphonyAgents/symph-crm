@@ -29,6 +29,8 @@ export default function OnboardingPage() {
 
   const userId = session?.user?.id
   const displayName = session?.user?.name ?? session?.user?.email ?? ''
+  const isPartnerPending = (session?.user as { role?: string; status?: string } | undefined)?.role === 'PARTNER'
+    && (session?.user as { status?: string } | undefined)?.status === 'pending'
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -36,7 +38,7 @@ export default function OnboardingPage() {
     setError(null)
 
     startTransition(async () => {
-      const result = await completeOnboardingAction(userId, currentTeam)
+      const result = await completeOnboardingAction(currentTeam)
       if (result?.error) {
         setError(result.error)
       }
@@ -69,39 +71,48 @@ export default function OnboardingPage() {
             </h1>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-1.5">
-              <label className="block text-xxs font-medium text-muted-foreground uppercase tracking-wide">
-                Current Team
-              </label>
-              <Select value={currentTeam} onValueChange={setCurrentTeam}>
-                <SelectTrigger className="w-full h-9 text-sm">
-                  <SelectValue placeholder="Select your team…" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TEAM_OPTIONS.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {isPartnerPending ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-center dark:border-amber-500/20 dark:bg-amber-500/10">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">Waiting for account approval</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                Waiting for account approval, Please check back later
+              </p>
             </div>
-
-            {error && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3.5 py-2.5 text-ssm text-destructive">
-                {error}
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="block text-xxs font-medium text-muted-foreground uppercase tracking-wide">
+                  Current Team
+                </label>
+                <Select value={currentTeam} onValueChange={setCurrentTeam}>
+                  <SelectTrigger className="w-full h-9 text-sm">
+                    <SelectValue placeholder="Select your team…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TEAM_OPTIONS.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
 
-            <Button
-              type="submit"
-              disabled={isPending || !currentTeam}
-              className="w-full h-9 text-ssm"
-            >
-              {isPending ? 'Setting up…' : 'Get started →'}
-            </Button>
-          </form>
+              {error && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-3.5 py-2.5 text-ssm text-destructive">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isPending || !currentTeam}
+                className="w-full h-9 text-ssm"
+              >
+                {isPending ? 'Setting up…' : 'Get started →'}
+              </Button>
+            </form>
+          )}
         </div>
 
         <p className="text-xxs text-muted-foreground text-center mt-4">

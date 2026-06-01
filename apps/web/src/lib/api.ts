@@ -3,56 +3,10 @@ import posthog from 'posthog-js'
 // In dev: calls localhost:4000 directly (no rewrite in dev mode).
 // In production: /api/* is proxied by Next.js to the NestJS Cloud Run service
 // via the rewrites() config in next.config.ts — no NEXT_PUBLIC_ var needed.
-const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:4000/api'
+const API_BASE = '/api/backend'
 
-// ─── Auth header injection ────────────────────────────────────────────────────
-
-let _cachedUserId: string | null = null
-let _hasCachedUserId = false
-let _cacheExpiry = 0
-let _pendingUserId: Promise<string | null> | null = null
-
-/**
- * Resolve the current user ID from the NextAuth session cookie.
- * Cached for 1 minute to avoid repeated session fetches.
- * Exported so mutations.ts can reuse without re-fetching.
- */
-export async function resolveUserId(): Promise<string | null> {
-  if (_hasCachedUserId && Date.now() < _cacheExpiry) return _cachedUserId
-  if (_pendingUserId) return _pendingUserId
-
-  _pendingUserId = (async () => {
-    const res = await fetch('/api/auth/session')
-    if (!res.ok) {
-      console.warn(`[api] /api/auth/session returned ${res.status}`)
-      _cachedUserId = null
-      _hasCachedUserId = true
-      _cacheExpiry = Date.now() + 10_000
-      return null
-    }
-
-    const session = await res.json()
-    _cachedUserId = session?.user?.id ?? null
-    _hasCachedUserId = true
-    if (!_cachedUserId) {
-      console.warn('[api] session.user.id not found:', session)
-    }
-    _cacheExpiry = Date.now() + 60_000 // 1 minute
-    return _cachedUserId
-  })()
-
-  try {
-    return await _pendingUserId
-  } catch (err) {
-    console.error('[api] resolveUserId failed:', err)
-    _cachedUserId = null
-    _hasCachedUserId = true
-    _cacheExpiry = Date.now() + 10_000
-    return null
-  } finally {
-    _pendingUserId = null
-  }
-}
+// The browser talks only to the Next.js API bridge. The bridge validates
+// the NextAuth session server-side and injects trusted API headers.
 
 // ─── Core fetcher ─────────────────────────────────────────────────────────────
 
@@ -81,14 +35,12 @@ function captureApiError(input: {
 }
 
 async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
-  const userId = await resolveUserId()
   const isFormData = init?.body instanceof FormData
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       // Don't set Content-Type for FormData — browser sets multipart/form-data + boundary
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(userId ? { 'x-user-id': userId } : {}),
       ...init?.headers,
     },
   })

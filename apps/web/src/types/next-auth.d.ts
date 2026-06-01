@@ -4,7 +4,8 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string
-      role: 'SALES' | 'BUILD'
+      role: 'SALES' | 'BUILD' | 'PARTNER'
+      status?: 'active' | 'pending' | 'rejected'
       isOnboarded: boolean
       firstName?: string | null
       lastName?: string | null
@@ -22,7 +23,8 @@ declare module 'next-auth' {
 declare module 'next-auth/jwt' {
   interface JWT {
     id?: string
-    role?: 'SALES' | 'BUILD'
+    role?: 'SALES' | 'BUILD' | 'PARTNER'
+    status?: 'active' | 'pending' | 'rejected'
     isOnboarded?: boolean
     firstName?: string | null
     lastName?: string | null

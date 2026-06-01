@@ -95,7 +95,10 @@ export type ApiUser = {
   name: string
   email: string
   image?: string | null
-  role?: 'SALES' | 'BUILD'
+  role?: 'SALES' | 'BUILD' | 'PARTNER'
+  status?: 'active' | 'pending' | 'rejected'
+  isActive?: boolean
+  isOnboarded?: boolean
   firstName?: string | null
   lastName?: string | null
   nickname?: string | null

@@ -1,29 +1,20 @@
 'use client'
 
-/**
- * AuthUserProvider — single source of truth for the current user.
- *
- * Why this exists:
- *   Calling `useSession()` directly in every component triggers `status: 'loading'`
- *   on every remount, which makes back-navigation feel sluggish (skeleton flashes
- *   while session re-resolves). Instead, we call `useSession()` ONCE here, expose
- *   the resolved shape via React Context, and have every consumer read it
- *   synchronously via `useUser()` — no async, no `enabled: !!userId` deadlocks.
- *
- *   Pattern lifted from /work/ml-asys (AuthUserProvider) — works perfectly there.
- *
- * Drop-in compat:
- *   `useUser()` returns the same shape as the old `lib/hooks/use-user.ts` hook,
- *   so existing call sites don't change.
- */
+// AuthUserProvider is the single source of truth for the current user.
+// Calling useSession() in every component triggers loading on remounts.
+// This provider resolves the session once and exposes a synchronous useUser() shape.
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import { useSession } from 'next-auth/react'
 
+type UserRole = 'SALES' | 'BUILD' | 'PARTNER'
+type UserStatus = 'active' | 'pending' | 'rejected'
+
 type UserShape = {
   userId: string | null
   user: any
-  role: 'SALES' | 'BUILD'
+  role: UserRole
+  status: UserStatus
   isSales: boolean
   isBuild: boolean
   isLoading: boolean
@@ -32,53 +23,38 @@ type UserShape = {
 
 const AuthUserContext = createContext<UserShape | null>(null)
 
+function resolveUserShape(session: any, status: 'loading' | 'authenticated' | 'unauthenticated'): UserShape {
+  const role = (session?.user?.role as UserRole | undefined) ?? 'BUILD'
+  const userStatus = (session?.user?.status as UserStatus | undefined) ?? 'active'
+  return {
+    userId: session?.user?.id ?? null,
+    user: session?.user ?? null,
+    role,
+    status: userStatus,
+    isSales: role === 'SALES',
+    isBuild: role !== 'SALES',
+    isLoading: status === 'loading',
+    isAuthenticated: status === 'authenticated',
+  }
+}
+
 export function AuthUserProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession()
-
-  const value = useMemo<UserShape>(() => {
-    const role = ((session?.user as any)?.role as 'SALES' | 'BUILD' | undefined) ?? 'BUILD'
-    return {
-      userId: session?.user?.id ?? null,
-      user: session?.user ?? null,
-      role,
-      isSales: role === 'SALES',
-      isBuild: role !== 'SALES',
-      isLoading: status === 'loading',
-      isAuthenticated: status === 'authenticated',
-    }
-  }, [session, status])
-
+  const value = useMemo<UserShape>(() => resolveUserShape(session, status), [session, status])
   return <AuthUserContext.Provider value={value}>{children}</AuthUserContext.Provider>
 }
 
 export function useUser(): UserShape {
   const ctx = useContext(AuthUserContext)
   if (!ctx) {
-    // Fallback: if a component renders outside AuthUserProvider, fall through to
-    // the raw session hook. Keeps backwards-compat for any tree that hasn't been
-    // wrapped yet (e.g. error boundaries, isolated test renders).
-    // Lint disable: hooks rule — this fallback path is stable per render tree.
+    // Fallback for isolated trees that render outside AuthUserProvider.
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { data: session, status } = useSession()
-    const role = ((session?.user as any)?.role as 'SALES' | 'BUILD' | undefined) ?? 'BUILD'
-    return {
-      userId: session?.user?.id ?? null,
-      user: session?.user ?? null,
-      role,
-      isSales: role === 'SALES',
-      isBuild: role !== 'SALES',
-      isLoading: status === 'loading',
-      isAuthenticated: status === 'authenticated',
-    }
+    return resolveUserShape(session, status)
   }
   return ctx
 }
 
-/** Headers helper for components that build their own fetch calls. */
 export function useApiHeaders() {
-  const { userId } = useUser()
-  return {
-    'Content-Type': 'application/json',
-    ...(userId ? { 'x-user-id': userId } : {}),
-  }
+  return { 'Content-Type': 'application/json' }
 }

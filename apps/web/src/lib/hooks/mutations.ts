@@ -777,6 +777,72 @@ export function useRevokeProposalShareLink(
   })
 }
 
+// ─── User management ─────────────────────────────────────────────────────────
+
+export function useApproveExternalUser(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  const qc = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => api.patch<void>(`/users/external/${id}/approve`, {}),
+    ...withToast('User approved', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        qc.invalidateQueries({ queryKey: queryKeys.users.external })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
+  })
+}
+
+export function useRejectExternalUser(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  const qc = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => api.patch<void>(`/users/external/${id}/reject`, {}),
+    ...withToast('User rejected', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        qc.invalidateQueries({ queryKey: queryKeys.users.external })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
+  })
+}
+
+export function useUpdateExternalUserRole(
+  options?: UseMutationOptions<void, Error, { id: string; role: 'PARTNER' }>,
+) {
+  const qc = useQueryClient()
+  return useMutation<void, Error, { id: string; role: 'PARTNER' }>({
+    mutationFn: ({ id, role }) => api.patch<void>(`/users/external/${id}/role`, { role }),
+    ...withToast('Role updated', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        qc.invalidateQueries({ queryKey: queryKeys.users.external })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
+  })
+}
+
+export function useRemoveExternalUser(
+  options?: UseMutationOptions<void, Error, string>,
+) {
+  const qc = useQueryClient()
+  return useMutation<void, Error, string>({
+    mutationFn: (id: string) => api.delete(`/users/external/${id}`),
+    ...withToast('User removed', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        qc.invalidateQueries({ queryKey: queryKeys.users.external })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
+  })
+}
+
 // ─── Recordings ───────────────────────────────────────────────────────────────
 
 export type CreateRecordingInput = {
