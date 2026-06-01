@@ -8,7 +8,6 @@ import { useTheme } from 'next-themes'
 import { Avatar } from './Avatar'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useGetNotifications } from '@/lib/hooks/queries'
 import {
   MessageCircle,
   LayoutGrid,
@@ -25,6 +24,7 @@ import {
   Moon,
   BookMarked,
   Mic,
+  Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -84,6 +84,7 @@ function getNavSections(dormantCount: number): NavSection[] {
     {
       title: 'System',
       items: [
+        { path: '/users', label: 'Users', icon: Users },
         { path: '/audit-logs', label: 'Logs', icon: ClipboardList },
       ],
     },
@@ -144,10 +145,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
   const [signingOut, setSigningOut] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const user = session?.user
-
-  const { data: notifications = [] } = useGetNotifications()
-  const dormantCount = notifications.filter(n => n.type === 'dormant_deal' && !n.isRead).length
-  const navSections = getNavSections(dormantCount)
+  const navSections = getNavSections(0)
 
   async function handleSignOut() {
     setShowLogoutConfirm(false)
