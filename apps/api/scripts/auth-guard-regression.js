@@ -17,6 +17,7 @@ const chatController = fs.readFileSync(path.join(root, 'src', 'chat', 'chat.cont
 const chatPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'Chat.tsx'), 'utf8')
 const recordingsPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'MeetingsRecordingsPage.tsx'), 'utf8')
 const authContext = fs.readFileSync(path.join(root, '..', 'web', 'src', 'lib', 'auth-context.tsx'), 'utf8')
+const nextConfig = fs.readFileSync(path.join(root, '..', 'web', 'next.config.ts'), 'utf8')
 
 assert.match(rolesGuard, /getPathname\(request\.url \|\| ''\)/, 'RolesGuard derives an exact pathname before route matching')
 assert.doesNotMatch(rolesGuard, /url\.includes/, 'RolesGuard must not use substring URL bypasses')
@@ -35,6 +36,7 @@ assert.match(backendProxy, /const session = await auth\(\)/, 'Backend bridge res
 assert.match(backendProxy, /headers\.set\('x-user-id', userId\)/, 'Backend bridge injects the trusted user id')
 assert.match(backendProxy, /headers\.set\('x-internal-secret', internalSecret\)/, 'Backend bridge injects the internal secret')
 assert.match(backendProxy, /redirect: 'manual'/, 'Backend bridge preserves upstream OAuth redirects')
+assert.match(nextConfig, /source: '\/api\/backend\/:path\*'[\s\S]*destination: '\/api\/backend\/:path\*'[\s\S]*source: '\/api\/:path\*'/, 'Next.js rewrites must preserve the backend bridge route before the API catch-all proxy')
 
 assert.doesNotMatch(calendarController, /@Query\('userId'\)/, 'Calendar OAuth connect must not accept caller-controlled userId')
 assert.match(calendarController, /req\.headers\['x-user-id'\]/, 'Calendar OAuth connect uses the trusted bridge user id')

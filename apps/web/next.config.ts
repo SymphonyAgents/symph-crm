@@ -52,9 +52,15 @@ const nextConfig: NextConfig = {
         source: '/api/auth/google-calendar/:path*',
         destination: `${apiUrl}/api/auth/google-calendar/:path*`,
       },
+      // The trusted backend bridge must stay inside Next.js so it can validate
+      // NextAuth and inject server-side CRM headers before calling NestJS.
+      {
+        source: '/api/backend/:path*',
+        destination: '/api/backend/:path*',
+      },
       // NextAuth routes (/api/auth/*) must NOT be proxied to the NestJS backend.
       // They are handled by the Next.js route handler at app/api/auth/[...nextauth]/route.ts.
-      // Self-referential rewrites in Next.js are non-recursive — they resolve to the
+      // Self-referential rewrites in Next.js are non-recursive, they resolve to the
       // file system route rather than looping.
       {
         source: '/api/auth/:path*',
