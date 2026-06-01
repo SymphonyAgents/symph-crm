@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
 import { Roles } from '../auth/roles.guard'
 import { MeetingsService } from './meetings.service'
 
@@ -29,8 +29,11 @@ export class MeetingsController {
 
   @Post(':id/retry-ingest')
   @HttpCode(HttpStatus.OK)
-  async retryIngest(@Param('id') id: string) {
-    return this.meetings.retryIngest(id)
+  async retryIngest(
+    @Param('id') id: string,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.meetings.retryIngest(id, { authorId: userId ?? null })
   }
 
   @Delete(':id')
@@ -44,8 +47,9 @@ export class MeetingsController {
   async assignDeal(
     @Param('id') id: string,
     @Body() body: { dealId: string },
+    @Headers('x-user-id') userId?: string,
   ) {
     if (!body.dealId) throw new BadRequestException('dealId is required')
-    return this.meetings.assignDeal(id, body.dealId)
+    return this.meetings.assignDeal(id, body.dealId, { authorId: userId ?? null })
   }
 }

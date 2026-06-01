@@ -25,6 +25,10 @@ export type PassiveMeetingIngestBody = {
   rawPayload?: Record<string, unknown>
 }
 
+type MeetingIngestOptions = {
+  authorId?: string | null
+}
+
 type MeetingUpdate = Partial<typeof meetings.$inferInsert>
 const ASSIGNMENT_RESOLVER_TRIGGERED_AT = 'assignmentResolverTriggeredAt'
 
@@ -114,7 +118,7 @@ export class MeetingsService {
     return meeting
   }
 
-  async ingest(body: PassiveMeetingIngestBody) {
+  async ingest(body: PassiveMeetingIngestBody, options: MeetingIngestOptions = {}) {
     this.validateIngestBody(body)
 
     const existingMeeting = await this.findExistingBySourceMeetingId(body.sourceMeetingId)
@@ -187,7 +191,7 @@ export class MeetingsService {
         sourceUrl: body.sourceUrl,
         meetingId: meeting.id,
       }
-      const authorId = deal.assignedTo ?? null
+      const authorId = options.authorId ?? deal.assignedTo ?? null
 
       const [summaryNote, transcriptNote] = await Promise.all([
         this.dealNotes.upsertNote(
@@ -233,7 +237,7 @@ export class MeetingsService {
     }
   }
 
-  async retryIngest(id: string) {
+  async retryIngest(id: string, options: MeetingIngestOptions = {}) {
     const meeting = await this.findOne(id)
     const rawPayload = meeting.rawPayload
 
@@ -247,7 +251,7 @@ export class MeetingsService {
     }
 
     await this.updateMeeting(id, { retryCount: meeting.retryCount + 1 })
-    return this.ingest(rawPayload as PassiveMeetingIngestBody)
+    return this.ingest(rawPayload as PassiveMeetingIngestBody, options)
   }
 
   async deleteMeeting(id: string) {
@@ -256,7 +260,7 @@ export class MeetingsService {
     return { ok: true }
   }
 
-  async assignDeal(id: string, dealId: string) {
+  async assignDeal(id: string, dealId: string, options: MeetingIngestOptions = {}) {
     const meeting = await this.findOne(id)
     const deal = await this.dealsService.findOne(dealId)
     if (!deal) throw new NotFoundException(`Deal ${dealId} not found`)
@@ -273,7 +277,7 @@ export class MeetingsService {
       dealId,
     } as PassiveMeetingIngestBody
 
-    return this.ingest(rawPayload)
+    return this.ingest(rawPayload, options)
   }
 
   private async findExistingBySourceMeetingId(sourceMeetingId: string) {

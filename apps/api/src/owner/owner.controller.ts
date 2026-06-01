@@ -272,8 +272,12 @@ export class OwnerController {
   /** POST /api/owner/meetings/:id/retry-ingest — Retry CRM artifact ingest */
   @Post('meetings/:id/retry-ingest')
   @HttpCode(HttpStatus.OK)
-  async retryMeetingIngest(@Param('id') id: string) {
-    return this.meetings.retryIngest(id)
+  async retryMeetingIngest(
+    @Param('id') id: string,
+    @Headers() headers: Record<string, string | string[] | undefined>,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
+    return this.meetings.retryIngest(id, { authorId: performedBy ?? null })
   }
 
   /** POST /api/owner/meetings/:id/assign-deal — Assign a meeting to a deal */
@@ -282,9 +286,11 @@ export class OwnerController {
   async assignMeetingDeal(
     @Param('id') id: string,
     @Body() body: { dealId: string },
+    @Headers() headers: Record<string, string | string[] | undefined>,
   ) {
     if (!body.dealId) throw new BadRequestException('dealId is required')
-    return this.meetings.assignDeal(id, body.dealId)
+    const { performedBy } = this.resolvePerformer(headers)
+    return this.meetings.assignDeal(id, body.dealId, { authorId: performedBy ?? null })
   }
 
   /** GET /api/owner/meeting-resolver/candidates — Find candidate deals/brands/contacts */
