@@ -19,12 +19,23 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
     authorized({ auth: session, request: { nextUrl } }) {
       const isLoggedIn = !!session?.user
       const isOnboarded = session?.user?.isOnboarded ?? false
+      const status = session?.user?.status ?? 'active'
       const path = nextUrl.pathname
 
       // Unauthenticated users → login (except /login itself)
       if (!isLoggedIn) {
         if (path === '/login') return true
         return Response.redirect(new URL('/login', nextUrl))
+      }
+
+      if (status === 'pending') {
+        if (path === '/onboarding') return true
+        return Response.redirect(new URL('/onboarding', nextUrl))
+      }
+
+      if (status === 'rejected') {
+        if (path === '/pending-approval') return true
+        return Response.redirect(new URL('/pending-approval', nextUrl))
       }
 
       // Authenticated but not onboarded → onboarding page only
@@ -34,7 +45,7 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
       }
 
       // Fully onboarded → redirect away from login/onboarding
-      if (path === '/login' || path === '/onboarding') {
+      if (path === '/login' || path === '/onboarding' || path === '/pending-approval') {
         return Response.redirect(new URL('/', nextUrl))
       }
 
@@ -66,6 +77,7 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
               // preserves the original DB record id.
               token.id = data.id
               token.role = data.role
+              token.status = data.status ?? 'active'
               token.isOnboarded = data.isOnboarded ?? false
               token.firstName = data.firstName ?? null
               token.lastName = data.lastName ?? null
@@ -92,6 +104,7 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
           if (res.ok) {
             const data = await res.json()
             token.role = data.role
+            token.status = data.status ?? 'active'
             token.isOnboarded = data.isOnboarded ?? false
             token.firstName = data.firstName ?? null
             token.lastName = data.lastName ?? null
@@ -113,6 +126,7 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
       if (token?.role) {
         ;(session.user as any).role = token.role
       }
+      ;(session.user as any).status = token.status ?? 'active'
       ;(session.user as any).isOnboarded = token.isOnboarded ?? false
       ;(session.user as any).firstName = token.firstName ?? null
       ;(session.user as any).lastName = token.lastName ?? null
