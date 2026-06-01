@@ -56,10 +56,7 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ])
 
-    // If GET/HEAD and no explicit @Roles(), allow all authenticated users
-    if (!requiredRoles && ['GET', 'HEAD'].includes(method)) return true
-
-    // For mutations (or @Roles()-decorated reads), resolve user role from DB
+    // For mutations, @Roles()-decorated reads, and status checks, resolve user role from DB
     const userId = request.headers['x-user-id'] as string | undefined
     if (!userId) {
       // No user context: anonymous reads are allowed only for routes without explicit role requirements.
@@ -67,19 +64,31 @@ export class RolesGuard implements CanActivate {
     }
 
     const [user] = await this.db
-      .select({ role: users.role })
+      .select({ role: users.role, status: users.status, isActive: users.isActive })
       .from(users)
       .where(eq(users.id, userId))
 
     if (!user) {
-      throw new ForbiddenException('You do not have permission to make CRM changes.')
+      throw new ForbiddenException('You do not have permission to access the CRM.')
+    }
+
+    const statusExempt = url.includes('/users/me') || url.includes('/users/sync')
+    if (!statusExempt && (user.status !== 'active' || !user.isActive)) {
+      throw new ForbiddenException(
+        user.status === 'pending'
+          ? 'Your account is pending approval.'
+          : 'Your account is not active.',
+      )
     }
 
     // If @Roles() is set, check against those
     if (requiredRoles) {
       if (requiredRoles.includes(user.role)) return true
-      throw new ForbiddenException('You do not have permission to make CRM changes.')
+      throw new ForbiddenException('You do not have permission to access this page.')
     }
+
+    // If GET/HEAD and no explicit @Roles(), allow active authenticated users
+    if (['GET', 'HEAD'].includes(method)) return true
 
     // Default: mutations require SALES
     if (user.role === 'SALES') return true
