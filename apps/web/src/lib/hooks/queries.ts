@@ -7,7 +7,6 @@
 // - No direct fetch() calls — always use api.get() from lib/api.ts
 
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
-import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type {
@@ -202,6 +201,16 @@ export function useGetUsers(
   return useQuery<ApiUser[]>({
     queryKey: queryKeys.users.all,
     queryFn: () => api.get<ApiUser[]>('/users'),
+    ...options,
+  })
+}
+
+export function useGetExternalUsers(
+  options?: Partial<UseQueryOptions<ApiUser[]>>,
+) {
+  return useQuery<ApiUser[]>({
+    queryKey: queryKeys.users.external,
+    queryFn: () => api.get<ApiUser[]>('/users/external'),
     ...options,
   })
 }
@@ -462,15 +471,12 @@ export function useGetTiers(
 export function useGetNotifications(
   options?: Partial<UseQueryOptions<ApiNotification[]>>,
 ) {
-  const { data: session } = useSession()
   return useQuery<ApiNotification[]>({
     queryKey: queryKeys.notifications.all,
     queryFn: () => api.get<ApiNotification[]>('/notifications'),
-    refetchInterval: 30_000,
-    // Skip the call entirely if the session has no user id.
-    // When x-user-id header is absent the NestJS service returns [] defensively,
-    // but skipping the call is cleaner and avoids unnecessary network round-trips.
-    enabled: !!session?.user?.id,
+    refetchInterval: false,
+    // Notifications are disabled while the feature is being stabilized.
+    enabled: false,
     ...options,
   })
 }
