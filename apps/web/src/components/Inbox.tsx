@@ -8,7 +8,6 @@ import {
   isSameDay, parseDisplayName, replySubject,
 } from '@/lib/utils'
 import type { GmailMessage, GmailThread, FilterTab, InboxChannel } from '@/lib/types'
-import { API_BASE } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { Avatar } from './Avatar'
@@ -834,7 +833,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
       {/* Connect banner */}
       {needsReconnect && (
         <ConnectBanner
-          connectUrl={`${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Finbox`}
+          connectUrl="/api/backend/auth/google-calendar/connect?returnTo=%2Finbox"
         />
       )}
 

@@ -9,8 +9,8 @@ import { CalendarEventsService, CreateEventDto, UpdateEventDto } from './calenda
 /**
  * CalendarController — Google Calendar integration endpoints.
  *
- * Auth: uses req.headers['x-user-id'] for user identity.
- * TODO: replace with real JWT middleware once auth is wired.
+ * Auth: normal CRM routes receive x-user-id from the trusted Next.js API bridge.
+ * The OAuth callback is public but verifies its signed state before writing tokens.
  */
 @Controller()
 export class CalendarController {
@@ -24,25 +24,22 @@ export class CalendarController {
   // ─── OAuth Flow ──────────────────────────────────────────────────────────
 
   /**
-   * GET /api/auth/google-calendar/connect?userId=<userId>
+   * GET /api/auth/google-calendar/connect
    * Redirects AM to Google OAuth consent screen.
-   * userId is passed as a query param and encoded into the OAuth state so the
-   * callback can identify the user even after the browser redirect through Google.
+   * The trusted bridge injects x-user-id, which is signed into OAuth state so the
+   * callback can identify the user after the browser redirect through Google.
    */
   @Get('auth/google-calendar/connect')
   connect(
-    @Query('userId') userId: string,
     @Query('returnTo') returnTo: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    // Accept userId from query param (browser link) or x-user-id header (API call)
-    const uid = userId || (req.headers['x-user-id'] as string)
-    if (!uid) {
-      return res.status(400).json({ error: 'Missing userId — make sure you are logged in before connecting' })
+    const userId = req.headers['x-user-id'] as string | undefined
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing trusted CRM session user' })
     }
-    // returnTo defaults to /calendar; /inbox passes /inbox so the callback redirects there
-    const url = this.connections.getAuthUrl(uid, returnTo || '/calendar')
+    const url = this.connections.getAuthUrl(userId, returnTo || '/calendar')
     res.redirect(url)
   }
 
@@ -60,11 +57,19 @@ export class CalendarController {
   ) {
     const webUrl = process.env.WEB_BASE_URL ?? 'http://localhost:3000'
 
-    // Decode state early so we can redirect to the right page even on error.
-    // State format: "userId|returnTo" — returnTo defaults to /calendar.
-    const { userId, returnTo } = state
-      ? this.connections.decodeState(state)
-      : { userId: '', returnTo: '/calendar' }
+    let userId = ''
+    let returnTo = '/calendar'
+
+    if (state) {
+      try {
+        const decoded = this.connections.decodeState(state)
+        userId = decoded.userId
+        returnTo = decoded.returnTo
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Invalid OAuth state'
+        return res.redirect(`${webUrl}/calendar?oauth_error=${encodeURIComponent(message)}`)
+      }
+    }
 
     const errorRedirect = (msg: string) =>
       res.redirect(`${webUrl}${returnTo}?oauth_error=${encodeURIComponent(msg)}`)

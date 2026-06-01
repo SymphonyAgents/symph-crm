@@ -67,12 +67,13 @@ export class UsersService {
 
     if (existing) {
       const isInternal = isInternalEmail(email)
-      const isApprovedPartner = existing.role === 'PARTNER' && existing.status === 'active'
+      const isRemovedOrRejected = existing.status === 'rejected' || !!existing.deletedAt || !existing.isActive
+      const isApprovedExternal = !isInternal && !isRemovedOrRejected && existing.role === 'PARTNER' && existing.status === 'active'
       const role = isInternal ? incomingRole : 'PARTNER'
-      const status = isInternal || isApprovedPartner
-        ? 'active'
-        : existing.status === 'rejected'
-          ? 'rejected'
+      const status = isRemovedOrRejected
+        ? 'rejected'
+        : isInternal || isApprovedExternal
+          ? 'active'
           : 'pending'
       const [updated] = await this.db
         .update(users)
@@ -81,8 +82,8 @@ export class UsersService {
           image: data.image ?? null,
           role,
           status,
-          isActive: status !== 'rejected',
-          isOnboarded: isInternal ? existing.isOnboarded : isApprovedPartner,
+          isActive: status === 'active' || status === 'pending',
+          isOnboarded: isInternal ? existing.isOnboarded : isApprovedExternal,
           currentTeam: isInternal ? existing.currentTeam : null,
           deletedAt: status === 'pending' ? null : existing.deletedAt,
           updatedAt: new Date(),
@@ -237,7 +238,7 @@ export class UsersService {
 
     const [updated] = await this.db
       .update(users)
-      .set({ status: 'active', isActive: true, isOnboarded: true, updatedAt: new Date() })
+      .set({ role: 'PARTNER', status: 'active', isActive: true, isOnboarded: true, deletedAt: null, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning()
 
@@ -276,7 +277,7 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found')
     const email = user.email ?? ''
     if (isInternalEmail(email)) throw new BadRequestException('Internal user roles are managed by the internal allowlist')
-    if (!['BUILD', 'PARTNER'].includes(role)) throw new BadRequestException('External users can only be BUILD or PARTNER')
+    if (role !== 'PARTNER') throw new BadRequestException('External users can only be PARTNER')
 
     const [updated] = await this.db
       .update(users)
@@ -301,7 +302,7 @@ export class UsersService {
 
     const [updated] = await this.db
       .update(users)
-      .set({ isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .set({ status: 'rejected', isActive: false, deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning()
 

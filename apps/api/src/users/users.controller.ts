@@ -50,7 +50,7 @@ export class UsersController {
   @Roles('SALES')
   updateExternalUserRole(
     @Param('id') id: string,
-    @Body() body: { role: 'BUILD' | 'PARTNER' },
+    @Body() body: { role: 'PARTNER' },
     @Headers('x-user-id') userId?: string,
   ) {
     return this.usersService.updateExternalUserRole(id, body.role, userId)

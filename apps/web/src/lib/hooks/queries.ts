@@ -501,7 +501,7 @@ export function useGetChatSessions(
 ) {
   return useQuery<ApiChatSession[]>({
     queryKey: queryKeys.chatSessions.byUser(userId ?? ''),
-    queryFn: () => api.get<ApiChatSession[]>('/chat/sessions', { userId: userId! }),
+    queryFn: () => api.get<ApiChatSession[]>('/chat/sessions'),
     enabled: !!userId,
     refetchInterval: 30_000,
     ...options,

@@ -8,7 +8,8 @@
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\"",
-    "test:wiki-frontmatter": "node scripts/wiki-frontmatter-regression.js"
+    "test:wiki-frontmatter": "node scripts/wiki-frontmatter-regression.js",
+    "test:auth-guard": "node scripts/auth-guard-regression.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

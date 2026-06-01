@@ -6,9 +6,8 @@ import { Check, ShieldCheck, UserRoundCog, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useUser } from '@/lib/auth-context'
 import { useGetExternalUsers } from '@/lib/hooks/queries'
-import { useApproveExternalUser, useRejectExternalUser, useRemoveExternalUser, useUpdateExternalUserRole } from '@/lib/hooks/mutations'
+import { useApproveExternalUser, useRejectExternalUser, useRemoveExternalUser } from '@/lib/hooks/mutations'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
@@ -63,7 +62,6 @@ function UserActions({
   onReject: () => void
   onRemove: () => void
 }) {
-  const updateRole = useUpdateExternalUserRole()
   const isPending = user.status === 'pending'
 
   return (
@@ -91,19 +89,6 @@ function UserActions({
         </>
       ) : (
         <>
-          <Select
-            value={(user.role === 'BUILD' || user.role === 'PARTNER') ? user.role : 'PARTNER'}
-            onValueChange={role => updateRole.mutate({ id: user.id, role: role as 'BUILD' | 'PARTNER' })}
-            disabled={updateRole.isPending}
-          >
-            <SelectTrigger size="sm" className="w-[132px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PARTNER">Partner</SelectItem>
-              <SelectItem value="BUILD">Build</SelectItem>
-            </SelectContent>
-          </Select>
           <Button size="sm" variant="outline" onClick={onRemove}>
             Remove
           </Button>

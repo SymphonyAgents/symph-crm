@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { cn, toDateKey, formatTime, getWeekStart, monthRange, weekRange } from '@/lib/utils'
 import type { ApiCalendarEvent, ApiTeamDemoEvent, CalendarStatus, CreateEventForm, CalendarView } from '@/lib/types'
 import {
-  API_BASE, MONTHS, MONTHS_SHORT, DAYS,
+  MONTHS, MONTHS_SHORT, DAYS,
   EVENT_TYPE_COLORS, EVENT_TYPE_BADGE, EVENT_TYPE_HEX, TIME_SLOTS, HOURS, HOUR_PX,
 } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
@@ -849,7 +849,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
               <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
             </div>
             <a
-              href={`${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Fcalendar`}
+              href="/api/backend/auth/google-calendar/connect?returnTo=%2Fcalendar"
               className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-ssm font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
               Connect

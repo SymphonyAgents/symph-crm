@@ -1,9 +1,15 @@
 import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 
-// NEXT_PUBLIC_API_URL includes the /api prefix (e.g. https://...run.app/api)
-// API_URL is the bare base URL without /api — don't use it for endpoint calls
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? process.env.API_URL ?? 'http://localhost:3001/api'
+// API_URL is the bare backend URL in Cloud Run. NEXT_PUBLIC_API_URL includes /api.
+// Normalize both forms so server-side auth callbacks always call NestJS /api endpoints.
+function resolveApiUrl() {
+  const raw = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+  const normalized = raw.replace(/\/+$/, '')
+  return normalized.endsWith('/api') ? normalized : `${normalized}/api`
+}
+
+const API_URL = resolveApiUrl()
 
 export const { handlers, signIn, signOut, auth, unstable_update: update } = NextAuth({
   providers: [
@@ -62,7 +68,10 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
           try {
             const res = await fetch(`${API_URL}/users/sync`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
+              },
               body: JSON.stringify({
                 id: user.id,
                 email: user.email,
@@ -100,7 +109,12 @@ export const { handlers, signIn, signOut, auth, unstable_update: update } = Next
       // --- Session update: re-fetch user to pick up onboarding changes ---
       if (trigger === 'update' && sessionUpdate?.refreshUser && token.id) {
         try {
-          const res = await fetch(`${API_URL}/users/${token.id}`)
+          const res = await fetch(`${API_URL}/users/${token.id}`, {
+            headers: {
+              ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
+              'x-user-id': String(token.id),
+            },
+          })
           if (res.ok) {
             const data = await res.json()
             token.role = data.role

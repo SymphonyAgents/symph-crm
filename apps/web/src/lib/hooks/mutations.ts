@@ -812,10 +812,10 @@ export function useRejectExternalUser(
 }
 
 export function useUpdateExternalUserRole(
-  options?: UseMutationOptions<void, Error, { id: string; role: 'BUILD' | 'PARTNER' }>,
+  options?: UseMutationOptions<void, Error, { id: string; role: 'PARTNER' }>,
 ) {
   const qc = useQueryClient()
-  return useMutation<void, Error, { id: string; role: 'BUILD' | 'PARTNER' }>({
+  return useMutation<void, Error, { id: string; role: 'PARTNER' }>({
     mutationFn: ({ id, role }) => api.patch<void>(`/users/external/${id}/role`, { role }),
     ...withToast('Role updated', {
       ...options,

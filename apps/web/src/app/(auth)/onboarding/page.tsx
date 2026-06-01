@@ -38,7 +38,7 @@ export default function OnboardingPage() {
     setError(null)
 
     startTransition(async () => {
-      const result = await completeOnboardingAction(userId, currentTeam)
+      const result = await completeOnboardingAction(currentTeam)
       if (result?.error) {
         setError(result.error)
       }

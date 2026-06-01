@@ -8,8 +8,6 @@
  * Request body:
  * {
  *   content: string
- *   userId?: string
- *   userName?: string
  *   sessionId?: string
  *   workspaceId?: string
  *   dealId?: string
@@ -25,6 +23,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/auth'
 
 const GATEWAY_URL = (process.env.ARIA_GATEWAY_URL ?? 'https://aria-gateway.symph.co').replace(
   /\/+$/,
@@ -45,10 +44,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ARIA_API_TOKEN not configured' }, { status: 500 })
   }
 
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const userName = session.user?.name ?? session.user?.email ?? 'CRM user'
+
   let body: {
     content?: string
-    userId?: string
-    userName?: string
     sessionId?: string
     workspaceId?: string
     dealId?: string
@@ -61,7 +65,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { content, userId, userName, sessionId, workspaceId, dealId, attachment } = body
+  const { content, sessionId, workspaceId, dealId, attachment } = body
 
   if (!content) {
     return NextResponse.json({ error: 'content is required' }, { status: 400 })
@@ -77,7 +81,11 @@ export async function POST(req: NextRequest) {
       try {
         const parseRes = await fetch(`${NESTJS_API_BASE}/chat/parse-file`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': userId,
+            ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
+          },
           body: JSON.stringify({
             base64: attachment.base64,
             mimeType: attachment.mimeType,
@@ -331,9 +339,9 @@ export async function POST(req: NextRequest) {
                   headers: {
                     'Content-Type': 'application/json',
                     'x-user-id': userId,
+                    ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
                   },
                   body: JSON.stringify({
-                    userId,
                     assistantMessage: fullAssistantText,
                   }),
                 }).catch((err) => {

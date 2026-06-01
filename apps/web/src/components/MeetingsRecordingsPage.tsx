@@ -408,12 +408,8 @@ function RecordingsTab() {
       form.append('file', blob, `recording.${ext}`)
       form.append('title', title.trim() || `Recording ${new Date().toLocaleString('en-PH')}`)
       form.append('duration', String(dur))
-      const sessionRes = await fetch('/api/auth/session')
-      const session = await sessionRes.json()
-      const userId: string = session?.user?.id ?? ''
-      const res = await fetch('/api/recordings/upload', {
+      const res = await fetch('/api/backend/recordings/upload', {
         method: 'POST',
-        headers: userId ? { 'x-user-id': userId } : {},
         body: form,
       })
       if (!res.ok) {

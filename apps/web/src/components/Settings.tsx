@@ -6,7 +6,6 @@ import { useSession } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar } from './Avatar'
 import { api } from '@/lib/api'
-import { API_BASE } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { useGetCalendarStatus } from '@/lib/hooks/queries'
 import { cn } from '@/lib/utils'
@@ -111,7 +110,7 @@ export function Settings() {
     }
   }
 
-  const connectUrl = `${API_BASE}/auth/google-calendar/connect?userId=${encodeURIComponent(userId ?? '')}&returnTo=%2Fsettings`
+  const connectUrl = '/api/backend/auth/google-calendar/connect?returnTo=%2Fsettings'
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">

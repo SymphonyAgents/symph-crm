@@ -6,4 +6,5 @@ SET
 WHERE status = 'pending'
   AND role = 'PARTNER'
   AND email IS NOT NULL
-  AND lower(email) NOT LIKE '%@symph.co';
+  AND lower(email) NOT LIKE '%@symph.co'
+  AND deleted_at IS NULL;

@@ -56,9 +56,5 @@ export function useUser(): UserShape {
 }
 
 export function useApiHeaders() {
-  const { userId } = useUser()
-  return {
-    'Content-Type': 'application/json',
-    ...(userId ? { 'x-user-id': userId } : {}),
-  }
+  return { 'Content-Type': 'application/json' }
 }

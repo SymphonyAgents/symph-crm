@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Inject, Logger, NotFoundException } from '@nestjs/common'
 import { eq } from 'drizzle-orm'
 import { google, type calendar_v3, type Auth } from 'googleapis'
 import { userCalendarConnections, calendarEvents } from '@symph-crm/database'
@@ -6,8 +6,10 @@ import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { CalendarCryptoService } from './calendar-crypto.service'
 import { ConfigService } from '@nestjs/config'
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto'
 
 const SYNC_WINDOW_DAYS = 30
+const ALLOWED_RETURN_PATHS = new Set(['/calendar', '/inbox', '/settings'])
 
 @Injectable()
 export class CalendarConnectionsService {
@@ -28,17 +30,16 @@ export class CalendarConnectionsService {
   }
 
   /**
-   * Step 1 — generate the OAuth2 consent URL.
-   * State encodes both userId and returnTo as "userId|returnTo" so the callback
-   * can identify the user AND redirect back to the correct page (Inbox or Calendar).
-   * Google echoes the state param back verbatim — headers are lost in the redirect.
+   * Step 1: generate the OAuth2 consent URL.
+   * State is signed because Google calls the callback without CRM session headers.
+   * The user id comes from the trusted Next.js bridge, never from browser query input.
    */
   getAuthUrl(userId: string, returnTo = '/calendar'): string {
     const oauth2 = this.getOAuth2Client()
     return oauth2.generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent', // force refresh_token on every connect
-      state: `${userId}|${returnTo}`,  // decoded in handleCallback
+      state: this.encodeState(userId, returnTo),
       scope: [
         'openid',
         'email',   // required: userinfo.get() needs email scope to return the address
@@ -50,16 +51,60 @@ export class CalendarConnectionsService {
   }
 
   /**
-   * Decode the OAuth state param: "userId|returnTo" → { userId, returnTo }.
-   * Backwards-compatible: if no pipe, treats entire string as userId.
+   * Decode and verify OAuth state. Unsigned legacy states are rejected because the
+   * callback is public and must not trust caller-controlled user ids.
    */
   decodeState(state: string): { userId: string; returnTo: string } {
-    const pipeIdx = state.indexOf('|')
-    if (pipeIdx === -1) return { userId: state, returnTo: '/calendar' }
-    return {
-      userId: state.slice(0, pipeIdx),
-      returnTo: state.slice(pipeIdx + 1) || '/calendar',
+    const parts = state.split('.')
+    if (parts.length !== 2) throw new BadRequestException('Invalid OAuth state')
+
+    const [payloadEncoded, signature] = parts
+    const expectedSignature = this.signState(payloadEncoded)
+    if (!this.safeEqual(signature, expectedSignature)) {
+      throw new BadRequestException('Invalid OAuth state signature')
     }
+
+    let payload: { userId?: unknown; returnTo?: unknown }
+    try {
+      payload = JSON.parse(Buffer.from(payloadEncoded, 'base64url').toString('utf8')) as {
+        userId?: unknown
+        returnTo?: unknown
+      }
+    } catch {
+      throw new BadRequestException('Invalid OAuth state payload')
+    }
+
+    if (typeof payload.userId !== 'string' || !payload.userId) {
+      throw new BadRequestException('Invalid OAuth state user')
+    }
+
+    const returnTo = typeof payload.returnTo === 'string' && ALLOWED_RETURN_PATHS.has(payload.returnTo)
+      ? payload.returnTo
+      : '/calendar'
+
+    return { userId: payload.userId, returnTo }
+  }
+
+  private encodeState(userId: string, returnTo: string): string {
+    const safeReturnTo = ALLOWED_RETURN_PATHS.has(returnTo) ? returnTo : '/calendar'
+    const payload = Buffer.from(JSON.stringify({
+      userId,
+      returnTo: safeReturnTo,
+      nonce: randomBytes(16).toString('base64url'),
+    })).toString('base64url')
+    return `${payload}.${this.signState(payload)}`
+  }
+
+  private signState(payload: string): string {
+    const secret = this.config.get<string>('INTERNAL_SECRET') ?? this.config.get<string>('CALENDAR_ENCRYPTION_KEY')
+    if (!secret) throw new Error('INTERNAL_SECRET or CALENDAR_ENCRYPTION_KEY is required')
+    return createHmac('sha256', secret).update(payload).digest('base64url')
+  }
+
+  private safeEqual(actual: string, expected: string): boolean {
+    const actualBuffer = Buffer.from(actual)
+    const expectedBuffer = Buffer.from(expected)
+    return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
   }
 
   /**

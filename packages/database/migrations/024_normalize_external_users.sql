@@ -9,5 +9,5 @@ SET
 WHERE email IS NOT NULL
   AND lower(email) NOT LIKE '%@symph.co'
   AND deleted_at IS NULL
-  AND status <> 'rejected'
-  AND NOT (role = 'PARTNER' AND status = 'active');
+  AND status = 'active'
+  AND role = 'BUILD';

@@ -1,20 +1,33 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { update } from '@/auth'
+import { auth, update } from '@/auth'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'
+function resolveApiUrl() {
+  const raw = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+  const normalized = raw.replace(/\/+$/, '')
+  return normalized.endsWith('/api') ? normalized : `${normalized}/api`
+}
+
+const API_URL = resolveApiUrl()
 
 export async function completeOnboardingAction(
-  userId: string,
   currentTeam: string,
 ): Promise<{ error: string } | never> {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) return { error: 'Your session expired. Please sign in again.' }
+
   // 1. Persist the team selection in the DB via the NestJS API
   let res: Response
   try {
     res = await fetch(`${API_URL}/users/onboarding`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id': userId,
+        ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
+      },
       body: JSON.stringify({ id: userId, currentTeam }),
     })
   } catch {

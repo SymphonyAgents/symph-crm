@@ -1,0 +1,63 @@
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+
+const root = path.join(__dirname, '..')
+const rolesGuard = fs.readFileSync(path.join(root, 'src', 'auth', 'roles.guard.ts'), 'utf8')
+const usersService = fs.readFileSync(path.join(root, 'src', 'users', 'users.service.ts'), 'utf8')
+const apiClient = fs.readFileSync(path.join(root, '..', 'web', 'src', 'lib', 'api.ts'), 'utf8')
+const authConfig = fs.readFileSync(path.join(root, '..', 'web', 'src', 'auth.ts'), 'utf8')
+const backendProxy = fs.readFileSync(path.join(root, '..', 'web', 'src', 'app', 'api', 'backend', '[...path]', 'route.ts'), 'utf8')
+const calendarController = fs.readFileSync(path.join(root, 'src', 'calendar', 'calendar.controller.ts'), 'utf8')
+const calendarConnections = fs.readFileSync(path.join(root, 'src', 'calendar', 'calendar-connections.service.ts'), 'utf8')
+const calendarPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'Calendar.tsx'), 'utf8')
+const inboxPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'Inbox.tsx'), 'utf8')
+const settingsPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'Settings.tsx'), 'utf8')
+const chatController = fs.readFileSync(path.join(root, 'src', 'chat', 'chat.controller.ts'), 'utf8')
+const chatPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'Chat.tsx'), 'utf8')
+const recordingsPage = fs.readFileSync(path.join(root, '..', 'web', 'src', 'components', 'MeetingsRecordingsPage.tsx'), 'utf8')
+const authContext = fs.readFileSync(path.join(root, '..', 'web', 'src', 'lib', 'auth-context.tsx'), 'utf8')
+
+assert.match(rolesGuard, /getPathname\(request\.url \|\| ''\)/, 'RolesGuard derives an exact pathname before route matching')
+assert.doesNotMatch(rolesGuard, /url\.includes/, 'RolesGuard must not use substring URL bypasses')
+assert.match(rolesGuard, /hasTrustedBridgeSecret\(request\)/, 'RolesGuard requires the trusted Next.js API bridge secret')
+assert.match(rolesGuard, /SESSIONLESS_CALLBACK_PATHS = new Set\(\['\/api\/auth\/google-calendar\/callback', '\/auth\/google-calendar\/callback'\]\)/, 'Only the signed Google OAuth callback bypasses the session bridge')
+assert.match(rolesGuard, /TRUSTED_BRIDGE_PATHS = new Set\(\['\/api\/users\/sync', '\/users\/sync'/, 'Trusted bridge path checks cover prefixed and unprefixed NestJS URLs')
+assert.match(rolesGuard, /SESSION_SCOPED_READ_ROLES = new Set\(\['SALES', 'BUILD'\]\)/, 'Default CRM reads are limited to internal roles')
+assert.doesNotMatch(rolesGuard, /return !requiredRoles && \['GET', 'HEAD'\]/, 'Anonymous default GET access must stay disabled')
+assert.match(rolesGuard, /user\.deletedAt/, 'Deleted users are denied by the guard')
+
+assert.match(apiClient, /const API_BASE = '\/api\/backend'/, 'Browser API client must call the Next.js backend bridge')
+assert.doesNotMatch(apiClient, /'x-user-id'/, 'Browser API client must not send caller-controlled x-user-id')
+assert.match(authConfig, /normalized\.endsWith\('\/api'\)/, 'NextAuth server callbacks normalize bare API_URL to /api endpoint base')
+assert.match(backendProxy, /normalized\.endsWith\('\/api'\)/, 'Backend bridge normalizes bare API_URL to /api endpoint base')
+assert.match(backendProxy, /const session = await auth\(\)/, 'Backend bridge resolves the NextAuth session server-side')
+assert.match(backendProxy, /headers\.set\('x-user-id', userId\)/, 'Backend bridge injects the trusted user id')
+assert.match(backendProxy, /headers\.set\('x-internal-secret', internalSecret\)/, 'Backend bridge injects the internal secret')
+assert.match(backendProxy, /redirect: 'manual'/, 'Backend bridge preserves upstream OAuth redirects')
+
+assert.doesNotMatch(calendarController, /@Query\('userId'\)/, 'Calendar OAuth connect must not accept caller-controlled userId')
+assert.match(calendarController, /req\.headers\['x-user-id'\]/, 'Calendar OAuth connect uses the trusted bridge user id')
+assert.match(calendarConnections, /createHmac\('sha256'/, 'Calendar OAuth state is signed')
+assert.match(calendarConnections, /timingSafeEqual/, 'Calendar OAuth state signature is compared safely')
+assert.doesNotMatch(calendarConnections, /state: `\$\{userId\}\|\$\{returnTo\}`/, 'Calendar OAuth state must not be unsigned userId pipe returnTo')
+assert.doesNotMatch(`${calendarPage}
+${inboxPage}
+${settingsPage}`, /userId=\$\{encodeURIComponent/, 'Calendar connect links must not include caller-controlled userId')
+assert.match(`${calendarPage}
+${inboxPage}
+${settingsPage}`, /\/api\/backend\/auth\/google-calendar\/connect/, 'Calendar connect links route through the trusted bridge')
+assert.doesNotMatch(`${chatPage}
+${recordingsPage}
+${authContext}`, /'x-user-id': userId|userId: userId|userId, userMessage/, 'Browser code must not send caller-controlled x-user-id for CRM routes')
+assert.match(chatPage, /\/api\/backend\/chat\/sessions\//, 'Chat message persistence routes through the trusted bridge')
+assert.match(recordingsPage, /\/api\/backend\/recordings\/upload/, 'Recording upload routes through the trusted bridge')
+assert.match(chatController, /this\.requireUserId\(req\)/, 'Chat controller derives user identity from trusted request headers')
+assert.match(fs.readFileSync(path.join(root, '..', 'web', 'src', 'app', 'api', 'chat', 'aria', 'route.ts'), 'utf8'), /`\$\{NESTJS_API_BASE\}\/chat\/parse-file`[\s\S]*'x-user-id': userId[\s\S]*'x-internal-secret': process\.env\.INTERNAL_SECRET/, 'Server-side Aria attachment parsing uses trusted CRM headers')
+assert.doesNotMatch(chatController, /listSessions\(@Query\('userId'\)/, 'Chat session listing must not trust query userId')
+
+assert.match(usersService, /isRemovedOrRejected = existing\.status === 'rejected' \|\| !!existing\.deletedAt \|\| !existing\.isActive/, 'Sync preserves removed or rejected external users')
+assert.match(usersService, /role !== 'PARTNER'/, 'External user role mutation is limited to partner role')
+assert.match(usersService, /\.set\(\{ status: 'rejected', isActive: false, deletedAt: new Date\(\), updatedAt: new Date\(\) \}\)/, 'Removing external users durably rejects them')
+
+console.log('auth guard regression checks passed')
