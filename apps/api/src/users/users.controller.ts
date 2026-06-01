@@ -1,26 +1,16 @@
-import { Controller, Post, Patch, Get, Body, Param } from '@nestjs/common'
+import { Controller, Post, Patch, Delete, Get, Body, Param, Headers } from '@nestjs/common'
+import { Roles } from '../auth/roles.guard'
 import { UsersService } from './users.service'
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  /**
-   * POST /api/users/sync
-   * Called by NextAuth jwt callback on every first sign-in.
-   * Upserts the Google OAuth user into public.users and returns full user record
-   * (including role and isOnboarded) so the JWT can be enriched.
-   */
   @Post('sync')
   sync(@Body() body: { id: string; email: string; name?: string; image?: string }) {
     return this.usersService.sync(body)
   }
 
-  /**
-   * PATCH /api/users/onboarding
-   * Complete onboarding by selecting the user's current team.
-   * Flips isOnboarded to true. Name comes from Google OAuth.
-   */
   @Patch('onboarding')
   completeOnboarding(
     @Body()
@@ -30,6 +20,46 @@ export class UsersController {
     },
   ) {
     return this.usersService.completeOnboarding(body.id, { currentTeam: body.currentTeam })
+  }
+
+  @Get('me')
+  findMe(@Headers('x-user-id') userId?: string) {
+    if (!userId) return null
+    return this.usersService.findOne(userId)
+  }
+
+  @Get('external')
+  @Roles('SALES')
+  findExternalUsers() {
+    return this.usersService.findExternalUsers()
+  }
+
+  @Patch('external/:id/approve')
+  @Roles('SALES')
+  approveExternalUser(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+    return this.usersService.approveExternalUser(id, userId)
+  }
+
+  @Patch('external/:id/reject')
+  @Roles('SALES')
+  rejectExternalUser(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+    return this.usersService.rejectExternalUser(id, userId)
+  }
+
+  @Patch('external/:id/role')
+  @Roles('SALES')
+  updateExternalUserRole(
+    @Param('id') id: string,
+    @Body() body: { role: 'BUILD' | 'PARTNER' },
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.usersService.updateExternalUserRole(id, body.role, userId)
+  }
+
+  @Delete('external/:id')
+  @Roles('SALES')
+  removeExternalUser(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+    return this.usersService.removeExternalUser(id, userId)
   }
 
   @Get()
