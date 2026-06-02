@@ -86,6 +86,14 @@ export const queryKeys = {
     inbox: ['gmail', 'inbox'] as const,
     user: ['gmail', 'user'] as const,
   },
+  partnerGroups: {
+    all: ['partner-groups'] as const,
+    detail: (id: string) => ['partner-groups', id] as const,
+  },
+  partnerDealGroups: {
+    all: ['partner-deal-groups'] as const,
+    detail: (id: string) => ['partner-deal-groups', id] as const,
+  },
   users: {
     all: ['users'] as const,
     external: ['users', 'external'] as const,

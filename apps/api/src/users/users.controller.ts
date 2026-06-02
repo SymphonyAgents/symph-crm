@@ -1,6 +1,10 @@
-import { Controller, Post, Patch, Delete, Get, Body, Param, Headers } from '@nestjs/common'
+import { Controller, Post, Patch, Delete, Get, Body, Param } from '@nestjs/common'
+import { CurrentUserId } from '../auth/current-user.decorator'
 import { Roles } from '../auth/roles.guard'
+import { CrmUserRole } from '@symph-crm/shared'
 import { UsersService } from './users.service'
+
+const SESSION_USER_ROLES = [CrmUserRole.Sales, CrmUserRole.Build, CrmUserRole.Partner]
 
 @Controller('users')
 export class UsersController {
@@ -12,6 +16,7 @@ export class UsersController {
   }
 
   @Patch('onboarding')
+  @Roles(...SESSION_USER_ROLES)
   completeOnboarding(
     @Body()
     body: {
@@ -23,42 +28,47 @@ export class UsersController {
   }
 
   @Get('me')
-  findMe(@Headers('x-user-id') userId?: string) {
+  @Roles(...SESSION_USER_ROLES)
+  findMe(@CurrentUserId() userId?: string) {
     if (!userId) return null
     return this.usersService.findOne(userId)
   }
 
   @Get('external')
-  @Roles('SALES')
+  @Roles(CrmUserRole.Sales)
   findExternalUsers() {
     return this.usersService.findExternalUsers()
   }
 
   @Patch('external/:id/approve')
-  @Roles('SALES')
-  approveExternalUser(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
-    return this.usersService.approveExternalUser(id, userId)
+  @Roles(CrmUserRole.Sales)
+  approveExternalUser(
+    @Param('id') id: string,
+    @Body() body: { partnerGroupIds?: string[]; partnerDealGroupIds?: string[] },
+    @CurrentUserId() userId?: string,
+  ) {
+    return this.usersService.approveExternalUser(id, userId, body.partnerGroupIds ?? [], body.partnerDealGroupIds ?? [])
   }
 
   @Patch('external/:id/reject')
-  @Roles('SALES')
-  rejectExternalUser(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  @Roles(CrmUserRole.Sales)
+  rejectExternalUser(@Param('id') id: string, @CurrentUserId() userId?: string) {
     return this.usersService.rejectExternalUser(id, userId)
   }
 
   @Patch('external/:id/role')
-  @Roles('SALES')
+  @Roles(CrmUserRole.Sales)
   updateExternalUserRole(
     @Param('id') id: string,
-    @Body() body: { role: 'PARTNER' },
-    @Headers('x-user-id') userId?: string,
+    @Body() body: { role: CrmUserRole.Partner },
+    @CurrentUserId() userId?: string,
   ) {
     return this.usersService.updateExternalUserRole(id, body.role, userId)
   }
 
   @Delete('external/:id')
-  @Roles('SALES')
-  removeExternalUser(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  @Roles(CrmUserRole.Sales)
+  removeExternalUser(@Param('id') id: string, @CurrentUserId() userId?: string) {
     return this.usersService.removeExternalUser(id, userId)
   }
 

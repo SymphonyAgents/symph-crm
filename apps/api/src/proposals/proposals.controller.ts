@@ -5,25 +5,42 @@ import {
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
+import { CurrentUser, CurrentUserId, type CrmRequestUser } from '../auth/current-user.decorator'
 import { ProposalsService } from './proposals.service'
 import { CreateProposalDto } from './dto/create-proposal.dto'
 import { SaveVersionDto } from './dto/save-version.dto'
 import { UpdateProposalDto } from './dto/update-proposal.dto'
 import { CreateShareLinkDto } from './dto/create-share-link.dto'
+import { DealsService } from '../deals/deals.service'
+import { Roles } from '../auth/roles.guard'
+import { CrmUserRole } from '@symph-crm/shared'
+
+const PROPOSAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build, CrmUserRole.Partner]
 
 @Controller()
 export class ProposalsController {
-  constructor(private readonly proposals: ProposalsService) {}
+  constructor(
+    private readonly proposals: ProposalsService,
+    private readonly deals: DealsService,
+  ) {}
+
+  private async assertCanReadProposal(id: string, user?: CrmRequestUser) {
+    const dealId = await this.proposals.getProposalDealId(id)
+    if (dealId) await this.deals.assertCanReadDeal(dealId, { userId: user?.id, role: user?.role })
+  }
 
   // Workspace-wide list — joins deal + brand for the index page.
   @Get('proposals')
+  @Roles(CrmUserRole.Sales)
   listAll(@Headers('x-workspace-id') workspaceId?: string) {
     return this.proposals.listAll(workspaceId)
   }
 
   // List proposals for a deal (metadata only, one entry per chain).
   @Get('deals/:dealId/proposals')
-  list(@Param('dealId') dealId: string) {
+  @Roles(...PROPOSAL_READ_ROLES)
+  async list(@Param('dealId') dealId: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.deals.assertCanReadDeal(dealId, { userId: user?.id, role: user?.role })
     return this.proposals.listByDeal(dealId)
   }
 
@@ -32,16 +49,18 @@ export class ProposalsController {
   create(
     @Param('dealId') dealId: string,
     @Body() dto: CreateProposalDto,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
     @Headers('x-workspace-id') workspaceId?: string,
   ) {
-    if (!userId) throw new BadRequestException('x-user-id header required')
+    if (!userId) throw new BadRequestException('Authenticated user required')
     return this.proposals.create(dealId, dto, userId, workspaceId)
   }
 
   // Head + current version html.
   @Get('proposals/:id')
-  getHead(@Param('id') id: string) {
+  @Roles(...PROPOSAL_READ_ROLES)
+  async getHead(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadProposal(id, user)
     return this.proposals.getHead(id)
   }
 
@@ -50,7 +69,7 @@ export class ProposalsController {
   updateMeta(
     @Param('id') id: string,
     @Body() dto: UpdateProposalDto,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.proposals.updateMeta(id, dto, userId)
   }
@@ -63,14 +82,16 @@ export class ProposalsController {
   uploadSignedPdf(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File | undefined,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     if (!file) throw new BadRequestException('file is required')
     return this.proposals.uploadSignedPdf(id, file, userId)
   }
 
   @Get('proposals/:id/signed-pdf')
-  getSignedPdfUrl(@Param('id') id: string) {
+  @Roles(...PROPOSAL_READ_ROLES)
+  async getSignedPdfUrl(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadProposal(id, user)
     return this.proposals.getSignedPdfUrl(id)
   }
 
@@ -79,14 +100,16 @@ export class ProposalsController {
   @HttpCode(204)
   async remove(
     @Param('id') id: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     await this.proposals.softDelete(id, userId)
   }
 
   // List all versions (no html).
   @Get('proposals/:id/versions')
-  listVersions(@Param('id') id: string) {
+  @Roles(...PROPOSAL_READ_ROLES)
+  async listVersions(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadProposal(id, user)
     return this.proposals.listVersions(id)
   }
 
@@ -95,18 +118,21 @@ export class ProposalsController {
   saveVersion(
     @Param('id') id: string,
     @Body() dto: SaveVersionDto,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
-    if (!userId) throw new BadRequestException('x-user-id header required')
+    if (!userId) throw new BadRequestException('Authenticated user required')
     return this.proposals.saveVersion(id, dto, userId)
   }
 
   // Get one version with html.
   @Get('proposals/:id/versions/:versionId')
-  getVersion(
+  @Roles(...PROPOSAL_READ_ROLES)
+  async getVersion(
     @Param('id') id: string,
     @Param('versionId') versionId: string,
+    @CurrentUser() user?: CrmRequestUser,
   ) {
+    await this.assertCanReadProposal(id, user)
     return this.proposals.getVersion(id, versionId)
   }
 
@@ -115,15 +141,17 @@ export class ProposalsController {
   createShareLink(
     @Param('id') id: string,
     @Body() dto: CreateShareLinkDto,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
-    if (!userId) throw new BadRequestException('x-user-id header required')
+    if (!userId) throw new BadRequestException('Authenticated user required')
     return this.proposals.createShareLink(id, dto, userId)
   }
 
   // List active share links for a proposal.
   @Get('proposals/:id/shares')
-  listShareLinks(@Param('id') id: string) {
+  @Roles(...PROPOSAL_READ_ROLES)
+  async listShareLinks(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadProposal(id, user)
     return this.proposals.listShareLinks(id)
   }
 
@@ -132,7 +160,7 @@ export class ProposalsController {
   @HttpCode(204)
   async revokeShareLink(
     @Param('linkId') linkId: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     await this.proposals.revokeShareLink(linkId, userId)
   }

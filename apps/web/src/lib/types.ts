@@ -1,3 +1,5 @@
+import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
+
 // ─── API Entity Types ─────────────────────────────────────────────────────────
 //
 // Canonical types for all API responses. Components import from here —
@@ -11,28 +13,28 @@ export type ApiDeal = {
   title: string
   stage: string
   value: string | null
-  /** One-time setup/onboarding fee */
+  
   oneTimeFee: string | null
-  /** Monthly recurring revenue */
+  
   mrr: string | null
-  /** Contract duration in months, used with mrr to auto-compute value */
+  
   contractLength: number | null
-  /** Per-month revenue overrides: { "2026-05": 500000, "2026-06": 300000 } */
+  
   monthlyRevenue: Record<string, number> | null
   servicesTags: string[] | null
   outreachCategory: string | null
   pricingModel: string | null
   monthlyRecurring: string | null
   assignedTo: string | null
-  /** Optional secondary AM (single user) */
+  
   subAccountManagerId: string | null
-  /** User IDs of builders/engineers assigned (any role) */
+  
   builders: string[] | null
-  /** Catalog row this deal points at — NOT NULL since the 011 backfill. */
+  
   catalogItemId: string | null
-  /** Catalog row name, joined by deals.service (e.g. "HireAI", "The Agency", "GWS"). */
+  
   catalogItemName: string | null
-  /** Catalog row's product_type — drives the pipeline tabs (internal | service | reseller | partnership). */
+  
   catalogItemType: ProductType | null
   lastActivityAt: string | null
   deletedAt: string | null
@@ -43,21 +45,23 @@ export type ApiDeal = {
   closedReason: string | null
   createdAt: string
   updatedAt?: string
-  /** Number of documents attached to this deal (injected by deals.service findAll) */
+  
   documentCount?: number
-  /** Display name of the user who created this deal (injected by deals.service findAll) */
+  
   createdByName?: string | null
-  /** Display name of the company/brand attached to this deal (injected by deals.service findAll) */
+  
   brandName?: string | null
-  /** Pipeline type: 'agency' (default) | 'reseller' */
+  
+  partnerGroupIds?: string[]
+  
   dealType: string
-  /** Reseller: what Symph pays the vendor (GWS/GCP/Josys) */
+  
   costPrice: string | null
-  /** Reseller: gross margin % (0-100). value = costPrice / (1 - marginPercent/100) */
+  
   marginPercent: string | null
 }
 
-/** Extended deal returned by /deals/:id — includes relations */
+
 export type ApiDealDetail = ApiDeal & {
   closeDate: string | null
   probability: number | null
@@ -84,8 +88,48 @@ export type ApiCompanyDetail = ApiCompany & {
   hqLocation: string | null
   logoUrl: string | null
   createdAt: string
-  /** User ID who created this company/brand — returned by the API */
+  
   createdBy?: string | null
+}
+
+// ── Partner Groups ───────────────────────────────────────────────────────────
+
+export type ApiPartnerGroupMember = {
+  id: string
+  name: string | null
+  email: string | null
+}
+
+export type ApiPartnerGroup = {
+  id: string
+  workspaceId: string | null
+  name: string
+  slug: string
+  description: string | null
+  isActive: boolean
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+  members: ApiPartnerGroupMember[]
+}
+
+export type ApiPartnerDealGroupMember = {
+  id: string
+  name: string | null
+  email: string | null
+}
+
+export type ApiPartnerDealGroup = {
+  id: string
+  workspaceId: string | null
+  name: string
+  slug: string
+  description: string | null
+  isActive: boolean
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+  members: ApiPartnerDealGroupMember[]
 }
 
 // ── Users ────────────────────────────────────────────────────────────────────
@@ -95,8 +139,8 @@ export type ApiUser = {
   name: string
   email: string
   image?: string | null
-  role?: 'SALES' | 'BUILD' | 'PARTNER'
-  status?: 'active' | 'pending' | 'rejected'
+  role?: CrmUserRole
+  status?: CrmUserStatus
   isActive?: boolean
   isOnboarded?: boolean
   firstName?: string | null
@@ -146,9 +190,9 @@ export type ApiDocument = {
   dealId?: string | null
   version?: number | null
   parentId?: string | null
-  /** Storage bucket path — used to distinguish notes (/notes/) from resources (/resources/) */
+  
   storagePath?: string
-  /** Classification tags set on upload (e.g. ['resources', 'pdf'] or ['notes', 'markdown']) */
+  
   tags?: string[] | null
 }
 
@@ -185,7 +229,7 @@ export type ApiProposalListItem = {
   updatedAt: string
 }
 
-/** Workspace-wide list row — adds deal + brand context joined server-side. */
+
 export type ApiProposalSummary = ApiProposalListItem & {
   dealTitle: string | null
   brandId: string | null
@@ -200,7 +244,7 @@ export type ApiProposalVersion = {
   wordCount: number | null
   authorId: string
   createdAt: string
-  /** Present only when fetched as a detail/single-version endpoint. */
+  
   html?: string
 }
 
@@ -312,7 +356,7 @@ export type ApiCalendarEvent = {
   attendeeEmails: string[]
   dealId: string | null
   eventType: 'demo' | 'discovery_call' | 'followup' | 'general'
-  /** True if the current user is the organizer. Non-owned events render as outlines. */
+  
   isOwner: boolean
 }
 
@@ -407,7 +451,7 @@ export type InboxChannel = 'all' | 'email' | 'messenger' | 'instagram' | 'whatsa
 
 // ── Deal Notes (NFS flat) ──────────────────────────────────────────────────
 
-/** Flat NFS note returned by GET /deals/:id/notes/flat */
+
 export type NfsDealNote = {
   id: string
   title: string
