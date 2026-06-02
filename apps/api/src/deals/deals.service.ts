@@ -1,11 +1,18 @@
-import { BadRequestException, Injectable, Inject, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { eq, desc, and, ilike, gte, lte, inArray, isNull, count, sql, isNotNull } from 'drizzle-orm'
-import { deals, documents, users, amRoster, pipelineStages, catalogItems, companies } from '@symph-crm/database'
+import { CrmUserRole } from '@symph-crm/shared'
+import { deals, documents, users, amRoster, pipelineStages, catalogItems, companies, dealPartnerGroups, partnerGroupMembers, partnerGroups, workspaces, dealPartnerDealGroups, partnerDealGroupMembers, partnerDealGroups } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { cleanDealTitleForStorage, normalizeDealTitleForSearch } from './deal-title-normalization.util'
 import { DealNotesService } from './deal-notes.service'
+import { PartnerGroupsService } from '../partner-groups/partner-groups.service'
+
+export type DealRequestContext = {
+  userId?: string
+  role?: CrmUserRole
+}
 
 export type DealsFilterParams = {
   companyId?: string
@@ -21,16 +28,30 @@ export type DealsFilterParams = {
 
 const TRASH_RETENTION_DAYS = 30
 
+type DealWithMetadata = typeof deals.$inferSelect & {
+  stage?: string | null
+  stageLabel?: string | null
+  stageColor?: string | null
+  documentCount?: number
+  createdByName?: string | null
+  brandName?: string | null
+  catalogItemName?: string | null
+  catalogItemType?: string | null
+  partnerGroupIds?: string[]
+}
+
 export type CreateDealData = Omit<typeof deals.$inferInsert, 'stageId' | 'dealTitleNormalized'> & {
   stage?: string | null
   stageId?: string | null
   pricingModel?: unknown
   tierId?: unknown
+  partnerGroupIds?: unknown
 }
 
 export type UpdateDealData = Omit<Partial<typeof deals.$inferInsert>, 'dealTitleNormalized'> & {
   pricingModel?: unknown
   dealTitleNormalized?: unknown
+  partnerGroupIds?: unknown
 }
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
@@ -52,11 +73,124 @@ export class DealsService {
     @Inject(DB) private db: Database,
     private auditLogs: AuditLogsService,
     private dealNotes: DealNotesService,
+    private partnerGroupsService: PartnerGroupsService,
   ) {}
 
-  async findAll(params?: DealsFilterParams) {
+  private async getDefaultWorkspaceId(): Promise<string | null> {
+    const [workspace] = await this.db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.slug, 'symph'))
+      .limit(1)
+    if (workspace) return workspace.id
+
+    const [firstWorkspace] = await this.db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .orderBy(desc(workspaces.createdAt))
+      .limit(1)
+    return firstWorkspace?.id ?? null
+  }
+
+  private async getDealPartnerGroupIds(dealId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ groupId: dealPartnerGroups.groupId })
+      .from(dealPartnerGroups)
+      .where(eq(dealPartnerGroups.dealId, dealId))
+    return rows.map(row => row.groupId)
+  }
+
+  private async getVisibleDealIdsForPartner(userId: string): Promise<string[]> {
+    const [legacyRows, partnerDealRows] = await Promise.all([
+      this.db
+        .select({ dealId: dealPartnerGroups.dealId })
+        .from(dealPartnerGroups)
+        .innerJoin(partnerGroups, eq(partnerGroups.id, dealPartnerGroups.groupId))
+        .innerJoin(partnerGroupMembers, eq(partnerGroupMembers.groupId, dealPartnerGroups.groupId))
+        .innerJoin(deals, eq(deals.id, dealPartnerGroups.dealId))
+        .where(and(
+          eq(partnerGroupMembers.userId, userId),
+          eq(partnerGroups.isActive, true),
+          eq(partnerGroups.workspaceId, dealPartnerGroups.workspaceId),
+          eq(partnerGroupMembers.workspaceId, dealPartnerGroups.workspaceId),
+          isNull(deals.deletedAt),
+        )),
+      this.db
+        .select({ dealId: dealPartnerDealGroups.dealId })
+        .from(dealPartnerDealGroups)
+        .innerJoin(partnerDealGroups, eq(partnerDealGroups.id, dealPartnerDealGroups.groupId))
+        .innerJoin(partnerDealGroupMembers, eq(partnerDealGroupMembers.groupId, dealPartnerDealGroups.groupId))
+        .innerJoin(deals, eq(deals.id, dealPartnerDealGroups.dealId))
+        .where(and(
+          eq(partnerDealGroupMembers.userId, userId),
+          eq(partnerDealGroups.isActive, true),
+          eq(partnerDealGroups.workspaceId, dealPartnerDealGroups.workspaceId),
+          eq(partnerDealGroupMembers.workspaceId, dealPartnerDealGroups.workspaceId),
+          isNull(deals.deletedAt),
+        )),
+    ])
+
+    return [...new Set([...legacyRows, ...partnerDealRows].map(row => row.dealId))]
+  }
+
+  async assertCanReadDeal(dealId: string, context: DealRequestContext = {}): Promise<void> {
+    if (context.role !== CrmUserRole.Partner) return
+    if (!context.userId) throw new ForbiddenException('You do not have permission to access this deal.')
+
+    const [legacyAccess, partnerDealAccess] = await Promise.all([
+      this.db
+        .select({ dealId: dealPartnerGroups.dealId })
+        .from(dealPartnerGroups)
+        .innerJoin(partnerGroups, eq(partnerGroups.id, dealPartnerGroups.groupId))
+        .innerJoin(partnerGroupMembers, eq(partnerGroupMembers.groupId, dealPartnerGroups.groupId))
+        .innerJoin(deals, eq(deals.id, dealPartnerGroups.dealId))
+        .where(and(
+          eq(dealPartnerGroups.dealId, dealId),
+          eq(partnerGroupMembers.userId, context.userId),
+          eq(partnerGroups.isActive, true),
+          eq(partnerGroups.workspaceId, dealPartnerGroups.workspaceId),
+          eq(partnerGroupMembers.workspaceId, dealPartnerGroups.workspaceId),
+          isNull(deals.deletedAt),
+        ))
+        .limit(1),
+      this.db
+        .select({ dealId: dealPartnerDealGroups.dealId })
+        .from(dealPartnerDealGroups)
+        .innerJoin(partnerDealGroups, eq(partnerDealGroups.id, dealPartnerDealGroups.groupId))
+        .innerJoin(partnerDealGroupMembers, eq(partnerDealGroupMembers.groupId, dealPartnerDealGroups.groupId))
+        .innerJoin(deals, eq(deals.id, dealPartnerDealGroups.dealId))
+        .where(and(
+          eq(dealPartnerDealGroups.dealId, dealId),
+          eq(partnerDealGroupMembers.userId, context.userId),
+          eq(partnerDealGroups.isActive, true),
+          eq(partnerDealGroups.workspaceId, dealPartnerDealGroups.workspaceId),
+          eq(partnerDealGroupMembers.workspaceId, dealPartnerDealGroups.workspaceId),
+          isNull(deals.deletedAt),
+        ))
+        .limit(1),
+    ])
+
+    if (!legacyAccess[0] && !partnerDealAccess[0]) throw new ForbiddenException('You do not have permission to access this deal.')
+  }
+
+  private assertPartnerGroupIds(value: unknown): string[] | undefined {
+    if (value === undefined) return undefined
+    if (!Array.isArray(value) || !value.every(item => typeof item === 'string')) {
+      throw new BadRequestException('partnerGroupIds must be an array of group ids')
+    }
+    return [...new Set(value)]
+  }
+
+  async findAll(params?: DealsFilterParams, context: DealRequestContext = {}) {
     const limit = params?.limit ?? 200
     const conditions = []
+
+    if (context.role === CrmUserRole.Partner) {
+      if (!context.userId) return []
+      const visibleDealIds = await this.getVisibleDealIdsForPartner(context.userId)
+      if (visibleDealIds.length === 0) return []
+      conditions.push(inArray(deals.id, visibleDealIds as [string, ...string[]]))
+    }
 
     if (params?.deletedOnly) conditions.push(isNotNull(deals.deletedAt))
     else if (!params?.includeDeleted) conditions.push(isNull(deals.deletedAt))
@@ -134,7 +268,7 @@ export class DealsService {
     const userNameMap = new Map(userRows.map(u => [u.id, u.name]))
     const productMap = new Map(productRows.map(p => [p.id, p]))
 
-    return rawDeals.map(d => {
+    const mappedDeals = rawDeals.map(d => {
       const stageMeta = d.stageId ? stageMap.get(d.stageId) : undefined
       const catalog = d.catalogItemId ? productMap.get(d.catalogItemId) : undefined
       return {
@@ -150,6 +284,8 @@ export class DealsService {
         catalogItemType: catalog?.productType ?? null,
       }
     })
+
+    return context.role === CrmUserRole.Partner ? mappedDeals.map(deal => this.toPartnerDeal(deal)) : mappedDeals
   }
 
   async findByCompany(companyId: string) {
@@ -160,12 +296,13 @@ export class DealsService {
       .orderBy(desc(deals.createdAt))
   }
 
-  async findOne(id: string, options?: { includeDeleted?: boolean }) {
+  async findOne(id: string, options?: { includeDeleted?: boolean } & DealRequestContext) {
+    await this.assertCanReadDeal(id, options)
     const conditions = [eq(deals.id, id)]
     if (!options?.includeDeleted) conditions.push(isNull(deals.deletedAt))
     const [deal] = await this.db.select().from(deals).where(and(...conditions))
     if (!deal) return undefined
-    const [stageMap, productRows] = await Promise.all([
+    const [stageMap, productRows, partnerGroupIds] = await Promise.all([
       resolveStages(this.db, deal.stageId ? [deal.stageId] : []),
       deal.catalogItemId
         ? this.db.select({ id: catalogItems.id, name: catalogItems.name, productType: catalogItems.productType })
@@ -173,15 +310,51 @@ export class DealsService {
             .where(eq(catalogItems.id, deal.catalogItemId))
             .limit(1)
         : Promise.resolve([]),
+      this.getDealPartnerGroupIds(id),
     ])
     const stageMeta = deal.stageId ? stageMap.get(deal.stageId) : undefined
-    return {
+    const mappedDeal = {
       ...deal,
       stage: stageMeta?.slug ?? null,
       stageLabel: stageMeta?.label ?? null,
       stageColor: stageMeta?.color ?? null,
       catalogItemName: productRows[0]?.name ?? null,
       catalogItemType: productRows[0]?.productType ?? null,
+      partnerGroupIds,
+    }
+
+    return options?.role === CrmUserRole.Partner ? this.toPartnerDeal(mappedDeal) : mappedDeal
+  }
+
+  private toPartnerDeal(deal: DealWithMetadata): DealWithMetadata {
+    return {
+      ...deal,
+      dealTitleNormalized: null,
+      oneTimeFee: null,
+      mrr: null,
+      contractLength: null,
+      monthlyRevenue: null,
+      probability: null,
+      lossReason: null,
+      competitiveNotes: null,
+      assignedTo: null,
+      subAccountManagerId: null,
+      builders: [],
+      createdBy: null,
+      createdByName: null,
+      amRosterId: null,
+      buildAssignedTo: null,
+      costPrice: null,
+      marginPercent: null,
+      demoLink: null,
+      proposalLink: null,
+      clientBrandColor: null,
+      isFlagged: null,
+      flagReason: null,
+      deletedBy: null,
+      deleteAfter: null,
+      partnerGroupIds: [],
+      documentCount: 0,
     }
   }
 
@@ -226,7 +399,8 @@ export class DealsService {
 
   async create(data: CreateDealData, performedBy?: string) {
     // Strip fields that no longer exist in the schema
-    const { stage, pricingModel, tierId, ...cleanData } = data as any
+    const { stage, pricingModel, tierId, partnerGroupIds, ...cleanData } = data as any
+    const nextPartnerGroupIds = this.assertPartnerGroupIds(partnerGroupIds)
 
     if (typeof cleanData.title !== 'string') throw new BadRequestException('Deal title is required')
     cleanData.title = cleanDealTitleForStorage(cleanData.title)
@@ -286,7 +460,15 @@ export class DealsService {
       catalogItemId = agency.id
     }
 
+    if (!cleanData.workspaceId) {
+      cleanData.workspaceId = await this.getDefaultWorkspaceId()
+    }
+
     const [deal] = await this.db.insert(deals).values({ ...cleanData, stageId, catalogItemId }).returning()
+
+    if (nextPartnerGroupIds) {
+      await this.partnerGroupsService.replaceDealGroups(deal.id, nextPartnerGroupIds, performedBy)
+    }
 
     // Auto-add assigned user to AM roster
     if (deal.assignedTo) {
@@ -308,7 +490,8 @@ export class DealsService {
   async update(id: string, data: UpdateDealData, performedBy?: string) {
     await this.assertActiveDeal(id)
     // Strip any dropped columns that FE might still send
-    const { pricingModel, ...cleanData } = data as any
+    const { pricingModel, partnerGroupIds, ...cleanData } = data as any
+    const nextPartnerGroupIds = this.assertPartnerGroupIds(partnerGroupIds)
     delete cleanData.dealTitleNormalized
 
     if (typeof cleanData.title === 'string') {
@@ -370,7 +553,13 @@ export class DealsService {
       }
     }
 
-    const [deal] = await this.db.update(deals).set(cleanData).where(eq(deals.id, id)).returning()
+    const [deal] = Object.keys(cleanData).length > 0
+      ? await this.db.update(deals).set(cleanData).where(eq(deals.id, id)).returning()
+      : await this.db.select().from(deals).where(eq(deals.id, id)).limit(1)
+
+    if (nextPartnerGroupIds) {
+      await this.partnerGroupsService.replaceDealGroups(id, nextPartnerGroupIds, performedBy)
+    }
 
     // Auto-add assigned user to AM roster when assignedTo changes
     if (data.assignedTo && deal) {

@@ -3,7 +3,8 @@
 ## Architecture
 
 - **NestJS 11** with global module pattern. All modules registered in `app.module.ts`.
-- **Drizzle ORM v0.39** with `postgres-js` driver. Schema lives in shared `packages/database`.
+- **Drizzle ORM v0.45** with `postgres-js` driver. Schema lives in shared `packages/database`.
+- Shared cross-app contracts and enums live in `packages/shared`.
 - **Database injection**: Use `@Inject(DB) private db: Database` (symbol from `database.module.ts`). Database is a `@Global()` module — no need to import `DatabaseModule` in feature modules.
 - **Database type**: Import `Database` from `../database/database.types` (it's `ReturnType<typeof drizzle<typeof schema>>`).
 
@@ -21,6 +22,12 @@ src/{feature}/
 Register every new module in `app.module.ts` imports array.
 
 ## Conventions
+
+### Shared Contracts, Enums & Types
+- Before adding any new enum, status union, role value, route constant, cookie name, or cross-app string literal, check `packages/shared/src/` first.
+- Put reusable frontend/backend enums and constants in `packages/shared`, then import from `@symph-crm/shared` in both apps.
+- Do not duplicate role/status/token/cookie literals in feature files. Use shared enums such as `CrmUserRole`, `CrmUserStatus`, `CrmAuthTokenType`, `CrmAuthCookieName`, and `HttpMethod`.
+- Backend-only route groupings may live in a local constants file, but values that the frontend also needs belong in `packages/shared`.
 
 ### Schema & Types
 - Import schema tables from `@symph-crm/database` (e.g., `import { deals } from '@symph-crm/database'`).
@@ -68,7 +75,7 @@ Register every new module in `app.module.ts` imports array.
 - Do NOT use Prisma, TypeORM, or raw SQL queries.
 - Do NOT put business logic in controllers.
 - Do NOT create API routes in the Next.js app (`apps/web/src/app/api/`). All API routes go through NestJS.
-- Do NOT import from `apps/web` in the API. The only shared package is `@symph-crm/database`.
+- Do NOT import from `apps/web` in the API. Shared backend/frontend contracts must come from `@symph-crm/database` or `@symph-crm/shared`.
 - Do NOT use `any` type. Use Drizzle's inferred types or define explicit interfaces.
 - Do NOT commit `.env` files or credentials.
 - Do NOT bypass workspace scoping — every data query must include workspace context.

@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
+import { StatusPill, type StatusPillTone } from '@/components/ui/status-pill'
 import type { ApiProposalStatus, ApiProposalSummary, ApiProposalType, ApiProposalVersion } from '@/lib/types'
 
 function FileIcon({ size = 28, className }: { size?: number; className?: string }) {
@@ -85,10 +86,10 @@ const STATUS_LABELS: Record<ApiProposalStatus, string> = {
   signed: 'Signed',
 }
 
-const STATUS_CLASSES: Record<ApiProposalStatus, string> = {
-  draft: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-300',
-  sent: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
-  signed: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+const STATUS_TONES: Record<ApiProposalStatus, StatusPillTone> = {
+  draft: 'neutral',
+  sent: 'amber',
+  signed: 'emerald',
 }
 
 function ProposalActionsMenu({
@@ -234,16 +235,16 @@ function ProposalRow({
       {showStatusControls && (
         <TableCell className="w-[118px] py-3" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-end gap-1.5">
-            {p.signedPdfFileName && <span className="inline-flex h-5 items-center rounded-md bg-emerald-50 px-2 text-xxs font-semibold leading-none text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">PDF</span>}
+            {p.signedPdfFileName && <StatusPill tone="emerald">PDF</StatusPill>}
             <Select value={p.status} onValueChange={(value) => onStatusChange(value as ApiProposalStatus)} disabled={isStatusPending}>
               <SelectTrigger
                 aria-label="Proposal status"
                 size="sm"
                 className="h-7 w-auto gap-1 border-transparent bg-transparent p-0 text-xs font-semibold shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3"
               >
-                <span className={cn('inline-flex h-7 items-center rounded-md px-2 leading-none', STATUS_CLASSES[p.status])}>
+                <StatusPill tone={STATUS_TONES[p.status]}>
                   <SelectValue />
-                </span>
+                </StatusPill>
               </SelectTrigger>
               <SelectContent align="start" className="min-w-[92px] rounded-md">
                 <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>

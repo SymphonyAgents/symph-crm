@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
+import { BACKEND_API_URL } from '@/lib/backend-url'
 import { useGetDocumentContent, useGetDocumentPreview } from '@/lib/hooks/queries'
 import { useUpdateDocument } from '@/lib/hooks/mutations'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -507,7 +508,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
             ) : isPdf ? (
               /* PDF viewer — rendered inline via the /file?inline=1 endpoint */
               <iframe
-                src={`/api/documents/${doc.id}/file?inline=1`}
+                src={`${BACKEND_API_URL}/documents/${doc.id}/file?inline=1`}
                 title={doc.title}
                 className="w-full flex-1 border-0"
               />

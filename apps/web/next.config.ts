@@ -11,7 +11,7 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ['@symph-crm/database'],
+  transpilePackages: ['@symph-crm/database', '@symph-crm/shared'],
   async headers() {
     // In dev, the browser hits http://localhost:4000 directly (apps/web/src/lib/api.ts
     // hardcodes that base). It must be allowed in connect-src or the browser blocks
@@ -45,26 +45,10 @@ const nextConfig: NextConfig = {
     // build time) AND as a Cloud Run env var (for the standalone runtime).
     const apiUrl = process.env.API_URL || 'http://localhost:4000'
     return [
-      // Google Calendar integration routes live in NestJS under /api/auth/google-calendar/*.
-      // Must come BEFORE the NextAuth catch-all rule below — otherwise /api/auth/google-calendar/*
-      // matches /api/auth/:path* first and hits the NextAuth handler (returning 400 Bad Request).
-      {
-        source: '/api/auth/google-calendar/:path*',
-        destination: `${apiUrl}/api/auth/google-calendar/:path*`,
-      },
-      // The trusted backend bridge must stay inside Next.js so it can validate
-      // NextAuth and inject server-side CRM headers before calling NestJS.
-      {
-        source: '/api/backend/:path*',
-        destination: '/api/backend/:path*',
-      },
-      // NextAuth routes (/api/auth/*) must NOT be proxied to the NestJS backend.
-      // They are handled by the Next.js route handler at app/api/auth/[...nextauth]/route.ts.
-      // Self-referential rewrites in Next.js are non-recursive, they resolve to the
-      // file system route rather than looping.
+      // Backend-owned auth lives in NestJS. Keep this before the generic /api/* proxy.
       {
         source: '/api/auth/:path*',
-        destination: '/api/auth/:path*',
+        destination: `${apiUrl}/api/auth/:path*`,
       },
       // All other /api/* routes are proxied to the NestJS backend.
       {

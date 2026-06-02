@@ -2,6 +2,7 @@
 
 import { Menu, Search, MessageSquare } from 'lucide-react'
 import { NotificationBell } from './NotificationBell'
+import { useUser } from '@/lib/hooks/use-user'
 
 type TopbarProps = {
   onMenuToggle?: () => void
@@ -10,6 +11,8 @@ type TopbarProps = {
 }
 
 export function Topbar({ onMenuToggle, onChatSessionsToggle }: TopbarProps) {
+  const { isPartner, isLoading } = useUser()
+
   return (
     <div className="h-[44px] shrink-0 border-b border-black/[.06] dark:border-white/[.08] flex items-center px-4 gap-3 bg-white dark:bg-[#1e1e21]">
       {/* Hamburger — mobile only */}
@@ -22,19 +25,23 @@ export function Topbar({ onMenuToggle, onChatSessionsToggle }: TopbarProps) {
 
       <div className="flex-1" />
 
-      {/* Cmd+K search trigger */}
-      <button
-        className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] rounded-lg px-3 py-[5px] w-[220px] md:w-[260px] text-left transition-colors duration-150 hover:bg-slate-200 dark:bg-white/[.1]/70 cursor-pointer"
-        onClick={() => {/* TODO: open cmd+k modal */}}
-      >
-        <Search size={13} strokeWidth={1.4} className="text-slate-400 shrink-0" />
-        <span className="text-xs text-slate-400 flex-1">Search or jump to...</span>
-        <kbd className="hidden sm:inline text-atom font-medium text-slate-400 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded px-1.5 py-px">
-          Cmd K
-        </kbd>
-      </button>
+      {!isLoading && !isPartner && (
+        <>
+          {/* Cmd+K search trigger */}
+          <button
+            className="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] rounded-lg px-3 py-[5px] w-[220px] md:w-[260px] text-left transition-colors duration-150 hover:bg-slate-200 dark:bg-white/[.1]/70 cursor-pointer"
+            onClick={() => {/* TODO: open cmd+k modal */}}
+          >
+            <Search size={13} strokeWidth={1.4} className="text-slate-400 shrink-0" />
+            <span className="text-xs text-slate-400 flex-1">Search or jump to...</span>
+            <kbd className="hidden sm:inline text-atom font-medium text-slate-400 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded px-1.5 py-px">
+              Cmd K
+            </kbd>
+          </button>
 
-      <NotificationBell />
+          <NotificationBell />
+        </>
+      )}
 
       {/* Chat sessions toggle — mobile only, shown on /chat page */}
       {onChatSessionsToggle && (

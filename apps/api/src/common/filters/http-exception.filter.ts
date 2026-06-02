@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common'
 import { randomUUID } from 'crypto'
 import type { Request, Response } from 'express'
+import type { CrmAuthenticatedRequest } from '../../auth/current-user.decorator'
 
 type ErrorResponseBody = {
   statusCode?: number
@@ -21,7 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp()
-    const request = ctx.getRequest<Request>()
+    const request = ctx.getRequest<CrmAuthenticatedRequest>()
     const response = ctx.getResponse<Response>()
 
     const requestId = this.resolveRequestId(request)
@@ -34,9 +35,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const safeMessage = this.resolveMessage(responseBody, status)
     const errorName = exception instanceof Error ? exception.name : 'UnknownError'
     const stack = exception instanceof Error ? exception.stack : undefined
-    const userId = typeof request.headers['x-user-id'] === 'string'
-      ? request.headers['x-user-id']
-      : undefined
+    const userId = request.crmUser?.id
 
     response.setHeader('x-request-id', requestId)
 

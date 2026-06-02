@@ -1,9 +1,11 @@
-import { Body, Controller, Delete, Get, Headers, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, BadRequestException } from '@nestjs/common'
+import { CurrentUserId } from '../auth/current-user.decorator'
 import { Roles } from '../auth/roles.guard'
+import { CrmUserRole } from '@symph-crm/shared'
 import { MeetingsService } from './meetings.service'
 
 @Controller('meetings')
-@Roles('SALES')
+@Roles(CrmUserRole.Sales)
 export class MeetingsController {
   constructor(private readonly meetings: MeetingsService) {}
 
@@ -31,7 +33,7 @@ export class MeetingsController {
   @HttpCode(HttpStatus.OK)
   async retryIngest(
     @Param('id') id: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.meetings.retryIngest(id, { authorId: userId ?? null })
   }
@@ -47,7 +49,7 @@ export class MeetingsController {
   async assignDeal(
     @Param('id') id: string,
     @Body() body: { dealId: string },
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     if (!body.dealId) throw new BadRequestException('dealId is required')
     return this.meetings.assignDeal(id, body.dealId, { authorId: userId ?? null })

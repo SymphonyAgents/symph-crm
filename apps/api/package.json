@@ -8,8 +8,7 @@
     "start": "node dist/main",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\"",
-    "test:wiki-frontmatter": "node scripts/wiki-frontmatter-regression.js",
-    "test:auth-guard": "node scripts/auth-guard-regression.js"
+    "test:wiki-frontmatter": "node scripts/wiki-frontmatter-regression.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",
@@ -18,6 +17,7 @@
     "@nestjs/platform-express": "^11.0.0",
     "@supabase/supabase-js": "^2.49.0",
     "@symph-crm/database": "workspace:*",
+    "@symph-crm/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "googleapis": "^171.4.0",
     "groq-sdk": "^0.9.0",

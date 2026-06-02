@@ -3,6 +3,8 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
+import { CrmUserRole } from '@symph-crm/shared'
+import { BACKEND_API_URL } from '@/lib/backend-url'
 import { queryKeys } from '@/lib/query-keys'
 import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useCirclebackUpload } from '@/lib/hooks/mutations'
 import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal } from '@/lib/hooks/queries'
@@ -824,7 +826,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         // NFS files: download directly via the /file endpoint (Content-Disposition: attachment)
         const filename = doc.storagePath?.split('/').pop() ?? doc.title
         const a = document.createElement('a')
-        a.href = `/api/documents/${doc.id}/file`
+        a.href = `${BACKEND_API_URL}/documents/${doc.id}/file`
         a.download = filename
         document.body.appendChild(a)
         a.click()
@@ -936,7 +938,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       )}
 
       {/* Document viewer modal */}
-      {showEditDeal && deal && (
+      {showEditDeal && deal && isSales && (
         <EditDealModal deal={deal} onClose={() => setShowEditDeal(false)} />
       )}
 
@@ -1019,7 +1021,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         <DocumentViewerModal
           doc={viewingDoc}
           onClose={() => setViewingDoc(null)}
-          onDelete={() => handleDeleteDoc(viewingDoc)}
+          onDelete={isSales ? () => handleDeleteDoc(viewingDoc) : undefined}
           onDownload={'category' in viewingDoc ? undefined : () => handleDownloadDoc(viewingDoc as ApiDocument)}
           initialContent={'category' in viewingDoc ? (viewingDoc as NfsDealNote).content : undefined}
         />
@@ -1241,16 +1243,18 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-snug -mt-1 line-clamp-2">
             {formatDealTitle(deal.title)}
           </h1>
-          <button
-            onClick={() => setShowEditDeal(true)}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
-            title="Edit deal"
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </button>
+          {isSales && (
+            <button
+              onClick={() => setShowEditDeal(true)}
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
+              title="Edit deal"
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          )}
           {isSales && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
@@ -1292,7 +1296,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
         {/* Action row: Advance + More */}
         <div className="flex items-center gap-2 mt-1">
-          {nextStage ? (
+          {isSales && nextStage ? (
             <button
               onClick={() => setShowAdvanceConfirm(true)}
               disabled={patchStage.isPending}
@@ -1341,16 +1345,18 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
                   {formatDealTitle(deal.title)}
                 </h1>
-                <button
-                  onClick={() => setShowEditDeal(true)}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
-                  title="Edit deal"
-                >
-                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                </button>
+                {isSales && (
+                  <button
+                    onClick={() => setShowEditDeal(true)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
+                    title="Edit deal"
+                  >
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                  </button>
+                )}
                 {isSales && (
                   <button
                     onClick={() => setShowDeleteConfirm(true)}
@@ -1381,7 +1387,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             >
               {stageLabel}
             </span>
-            {nextStage && (
+            {isSales && nextStage && (
               <button
                 onClick={() => setShowAdvanceConfirm(true)}
                 disabled={patchStage.isPending}
@@ -2412,28 +2418,30 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                           </div>
                         </div>
                         {/* Edit + delete actions */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => setEditingContact(person)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
-                            title="Edit contact"
-                          >
-                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={() => setDeletingContact(person)}
-                            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                            title="Remove contact"
-                          >
-                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                        </div>
+                        {isSales && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditingContact(person)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors"
+                              title="Edit contact"
+                            >
+                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setDeletingContact(person)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                              title="Remove contact"
+                            >
+                              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Contact info sections */}
@@ -2657,7 +2665,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             </CommandItem>
                           )}
                           {users
-                            .filter(u => u.role === 'SALES')
+                            .filter(u => u.role === CrmUserRole.Sales)
                             .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
                             .map(u => (
                               <CommandItem
@@ -2683,7 +2691,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           <SidebarSection title="Sub Account Manager">
             <SubAmPicker
               value={deal.subAccountManagerId ?? null}
-              users={users.filter(u => u.role === 'SALES')}
+              users={users.filter(u => u.role === CrmUserRole.Sales)}
               onChange={(uid) => {
                 updateDeal.mutate({ id: dealId, data: { subAccountManagerId: uid } }, {
                   onSettled: () => {

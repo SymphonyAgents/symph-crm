@@ -250,24 +250,28 @@ function BrandMobileCard({
             </div>
           )}
         </div>
-        {row.company.id !== '__unassigned__' && (
+        {row.company.id !== '__unassigned__' && (onEditBrand || onDeleteBrand) && (
           <div className="flex items-center gap-1 -mr-1 -mt-1" onClick={e => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => onEditBrand?.(row.company)}
-              className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
-              title="Edit brand"
-            >
-              <Pencil size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeleteBrand?.(row.company)}
-              className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-              title="Delete brand"
-            >
-              <Trash2 size={15} />
-            </button>
+            {onEditBrand && (
+              <button
+                type="button"
+                onClick={() => onEditBrand(row.company)}
+                className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                title="Edit brand"
+              >
+                <Pencil size={15} />
+              </button>
+            )}
+            {onDeleteBrand && (
+              <button
+                type="button"
+                onClick={() => onDeleteBrand(row.company)}
+                className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                title="Delete brand"
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -470,23 +474,27 @@ function BrandsDataTable({
       header: () => null,
       cell: ({ row }) => {
         const r = row.original
-        if (r.company.id === '__unassigned__') return null
+        if (r.company.id === '__unassigned__' || (!onEditBrand && !onDeleteBrand)) return null
         return (
           <div className="flex items-center justify-end gap-1">
-            <button
-              onClick={e => { e.stopPropagation(); onEditBrand?.(r.company) }}
-              className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
-              title="Edit brand"
-            >
-              <Pencil size={13} />
-            </button>
-            <button
-              onClick={e => { e.stopPropagation(); onDeleteBrand?.(r.company) }}
-              className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-              title="Delete brand"
-            >
-              <Trash2 size={13} />
-            </button>
+            {onEditBrand && (
+              <button
+                onClick={e => { e.stopPropagation(); onEditBrand(r.company) }}
+                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                title="Edit brand"
+              >
+                <Pencil size={13} />
+              </button>
+            )}
+            {onDeleteBrand && (
+              <button
+                onClick={e => { e.stopPropagation(); onDeleteBrand(r.company) }}
+                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                title="Delete brand"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
         )
       },
@@ -531,16 +539,16 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const [editingBrand, setEditingBrand] = useState<ApiCompanyDetail | null>(null)
   const [deletingBrand, setDeletingBrand] = useState<ApiCompanyDetail | null>(null)
   const [editForm, setEditForm] = useState({ name: '', industry: '', domain: '', website: '', hqLocation: '' })
-  const { isSales } = useUser()
+  const { isSales, isPartner } = useUser()
 
   // Cmd/Ctrl+F focuses the search input (matches Pipeline behavior).
   useSearchHotkey({ inputRef: searchInputRef })
 
   const qc = useQueryClient()
 
-  const { data: companies = [], isLoading: loadingCompanies } = useGetCompanies()
-  const { data: deals = [], isLoading: loadingDeals } = useGetDeals({ dealType: 'agency' })
-  const { data: users = [] } = useGetUsers()
+  const { data: companies = [], isLoading: loadingCompanies } = useGetCompanies({ enabled: !isPartner })
+  const { data: deals = [], isLoading: loadingDeals } = useGetDeals(isPartner ? undefined : { dealType: 'agency' })
+  const { data: users = [] } = useGetUsers({ enabled: !isPartner })
 
   // Edit/delete mutations
   const updateCompany = useUpdateCompany({
@@ -571,7 +579,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
     }
   }, [editingBrand?.id])
 
-  const isLoading = loadingCompanies || loadingDeals
+  const isLoading = loadingDeals || (!isPartner && loadingCompanies)
 
   // Map userId → display name for Created By column
   const userNameMap = useMemo(() => {
@@ -587,12 +595,6 @@ export function Deals({ onOpenDeal }: DealsProps) {
     return m
   }, [users])
 
-  const companyMap = useMemo(() => {
-    const m = new Map<string, ApiCompanyDetail>()
-    for (const c of companies) m.set(c.id, c)
-    return m
-  }, [companies])
-
   const groups: BrandGroup[] = useMemo(() => {
     const dealsByCompany = new Map<string, ApiDeal[]>()
     for (const d of deals) {
@@ -603,6 +605,30 @@ export function Deals({ onOpenDeal }: DealsProps) {
     }
 
     const result: BrandGroup[] = []
+
+    if (isPartner) {
+      for (const [companyId, cDeals] of dealsByCompany.entries()) {
+        const firstDeal = cDeals[0]
+        const companyName = companyId === '__unassigned__' ? 'No Brand' : (firstDeal?.brandName ?? 'No Brand')
+        result.push({
+          company: {
+            id: companyId,
+            name: companyName,
+            domain: null,
+            industry: null,
+            website: null,
+            hqLocation: null,
+            logoUrl: null,
+            createdAt: '',
+          },
+          color: getBrandColor(companyName),
+          deals: cDeals,
+          totalValue: totalNumericValue(cDeals),
+          activeCount: cDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)).length,
+        })
+      }
+      return result.sort((a, b) => b.totalValue - a.totalValue)
+    }
 
     // Add all companies (even those with no deals)
     for (const company of companies) {
@@ -638,7 +664,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
     }
 
     return result.sort((a, b) => b.totalValue - a.totalValue)
-  }, [deals, companyMap])
+  }, [companies, deals, isPartner])
 
   // ── DataTable brand rows ─────────────────────────────────────────────────
   const brandTableRows = useMemo<BrandTableRow[]>(() => {
@@ -882,11 +908,13 @@ export function Deals({ onOpenDeal }: DealsProps) {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
           <div>
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white">Brands</div>
+            <div className="text-ssm font-semibold text-slate-900 dark:text-white">{isPartner ? 'Deals' : 'Brands'}</div>
             <div className="text-xxs text-slate-400 mt-0.5">
               {isLoading
                 ? 'Loading…'
-                : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' pipeline' : 'No pipeline value'}`
+                : isPartner
+                  ? `${totalDeals} tagged deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' active value' : 'No active value'}`
+                  : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' pipeline' : 'No pipeline value'}`
               }
             </div>
           </div>
@@ -902,7 +930,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Search brands…"
+                placeholder={isPartner ? 'Search deals…' : 'Search brands…'}
                 className="border border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.03] rounded-lg text-ssm text-slate-900 dark:text-white w-full placeholder:text-slate-400 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none pl-8 pr-7 py-[5px] min-h-11 sm:min-h-0 sm:h-auto shadow-none"
               />
               {search && (
@@ -952,17 +980,17 @@ export function Deals({ onOpenDeal }: DealsProps) {
         )}
 
         {/* Empty state */}
-        {!isLoading && companies.length === 0 && (
+        {!isLoading && totalDeals === 0 && (
           <div className="flex-1 flex items-center justify-center">
             <EmptyState
-              title="No deals yet"
-              description="Create a brand and add your first deal to start tracking your pipeline"
+              title={isPartner ? 'No tagged deals yet' : 'No deals yet'}
+              description={isPartner ? 'Deals shared with your partner deal groups will appear here.' : 'Create a brand and add your first deal to start tracking your pipeline'}
             />
           </div>
         )}
 
         {/* Table view */}
-        {!isLoading && companies.length > 0 && (
+        {!isLoading && (isPartner ? totalDeals > 0 : companies.length > 0) && (
           <>
             <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
               {filteredTableRows.length > 0 ? (
@@ -971,13 +999,13 @@ export function Deals({ onOpenDeal }: DealsProps) {
                     key={row.company.id}
                     row={row}
                     onOpen={() => setSelectedBrand(row.company)}
-                    onEditBrand={setEditingBrand}
-                    onDeleteBrand={setDeletingBrand}
+                    onEditBrand={isSales ? setEditingBrand : undefined}
+                    onDeleteBrand={isSales ? setDeletingBrand : undefined}
                   />
                 ))
               ) : (
                 <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-black/[.08] dark:border-white/[.08] text-sm text-slate-400">
-                  No brands found
+                  {isPartner ? 'No deals found' : 'No brands found'}
                 </div>
               )}
             </div>
@@ -988,8 +1016,8 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   onRowClick={(row) => setSelectedBrand(row.company)}
                   search={search}
                   selectedBrandId={selectedBrand?.id}
-                  onEditBrand={setEditingBrand}
-                  onDeleteBrand={setDeletingBrand}
+                  onEditBrand={isSales ? setEditingBrand : undefined}
+                  onDeleteBrand={isSales ? setDeletingBrand : undefined}
                 />
               </div>
             </div>

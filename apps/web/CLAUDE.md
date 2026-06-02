@@ -333,7 +333,7 @@ const drag = d3.drag<SVGGElement, GraphNode>()
 - Strip ALL email cruft: no footers, no signatures, no quoted-reply sections (`>>>` markers), no metadata headers
 - Render only the actual message bodies in a clean chat-like display
 - Use a formatter utility that extracts messages from email threads before rendering
-- Reply box and ComposeWindow must always send `x-user-id` header
+- Reply box and ComposeWindow must rely on backend-owned CRM auth cookies; do not send caller-controlled user identity headers
 
 ---
 

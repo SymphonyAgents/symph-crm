@@ -16,6 +16,7 @@ import {
   BadRequestException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { CrmUserRole } from '@symph-crm/shared'
 import { InternalService } from './internal.service'
 import { InternalGuard } from './internal.guard'
 import { CalendarConnectionsService } from '../calendar/calendar-connections.service'
@@ -916,7 +917,7 @@ export class InternalController {
       // performedBy was a non-UUID string (e.g. 'aria') or undefined.
       // Look up the first SALES user as fallback, or use admin account.
       const allUsers = await this.users.findAll()
-      const fallback = allUsers.find((u: any) => u.role === 'SALES') ?? allUsers[0]
+      const fallback = allUsers.find((u: any) => u.role === CrmUserRole.Sales) ?? allUsers[0]
       authorId = fallback?.id ?? 'admin-001'
     }
 

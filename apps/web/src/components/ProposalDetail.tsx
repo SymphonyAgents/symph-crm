@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
+import { StatusPill, type StatusPillTone } from '@/components/ui/status-pill'
 import type { ApiProposalStatus, ApiProposalVersion } from '@/lib/types'
 
 function ChevronLeftIcon({ size = 14 }: { size?: number }) {
@@ -75,10 +76,10 @@ function downloadHtmlFile(title: string, html: string) {
   URL.revokeObjectURL(url)
 }
 
-const STATUS_CLASSES: Record<ApiProposalStatus, string> = {
-  draft: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-300',
-  sent: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
-  signed: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
+const STATUS_TONES: Record<ApiProposalStatus, StatusPillTone> = {
+  draft: 'neutral',
+  sent: 'amber',
+  signed: 'emerald',
 }
 
 function ProposalActionsMenu({
@@ -415,9 +416,9 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
                     size="sm"
                     className="h-7 w-auto gap-1 border-transparent bg-transparent p-0 text-xs font-semibold shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3"
                   >
-                    <span className={cn('inline-flex h-7 items-center rounded-md px-2 leading-none', STATUS_CLASSES[data.status])}>
+                    <StatusPill tone={STATUS_TONES[data.status]}>
                       <SelectValue />
-                    </span>
+                    </StatusPill>
                   </SelectTrigger>
                   <SelectContent align="start" className="min-w-[92px] rounded-md">
                     <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>

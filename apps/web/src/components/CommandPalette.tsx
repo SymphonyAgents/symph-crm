@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search } from 'lucide-react'
+import { CrmUserRole } from '@symph-crm/shared'
 import { cn } from '@/lib/utils'
+import { useUser } from '@/lib/hooks/use-user'
 
 type CommandItem = {
   id: string
@@ -12,7 +14,7 @@ type CommandItem = {
   section: string
 }
 
-const ROUTES: CommandItem[] = [
+const INTERNAL_ROUTES: CommandItem[] = [
   { id: 'chat', label: 'Chat', path: '/chat', section: 'Pages' },
   { id: 'dashboard', label: 'Dashboard', path: '/', section: 'Pages' },
   { id: 'pipeline', label: 'Pipeline', path: '/pipeline', section: 'Pages' },
@@ -21,16 +23,23 @@ const ROUTES: CommandItem[] = [
   { id: 'proposals', label: 'Proposals', path: '/proposals', section: 'Pages' },
 ]
 
+const PARTNER_ROUTES: CommandItem[] = [
+  { id: 'deals', label: 'Deals', path: '/deals', section: 'Pages' },
+  { id: 'commissions', label: 'Commissions', path: '/commissions', section: 'Pages' },
+]
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  const { role, isLoading } = useUser()
+  const routes = role === CrmUserRole.Partner ? PARTNER_ROUTES : INTERNAL_ROUTES
 
   const filtered = query.trim()
-    ? ROUTES.filter(r => r.label.toLowerCase().includes(query.toLowerCase()))
-    : ROUTES
+    ? routes.filter(r => r.label.toLowerCase().includes(query.toLowerCase()))
+    : routes
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -70,7 +79,7 @@ export function CommandPalette() {
     }
   }
 
-  if (!open) return null
+  if (!open || isLoading) return null
 
   return (
     <div

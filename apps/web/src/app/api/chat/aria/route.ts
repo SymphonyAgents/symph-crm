@@ -23,17 +23,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
 
 const GATEWAY_URL = (process.env.ARIA_GATEWAY_URL ?? 'https://aria-gateway.symph.co').replace(
   /\/+$/,
   '',
 )
-const INTERNAL_BASE = 'https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api/internal'
-// Must NOT use NEXT_PUBLIC_ here — NEXT_PUBLIC vars are baked at build time
-// as `http://localhost:3001/api` (Dockerfile ARG default) and the save call
-// would silently fail. Use a server-only env var or the hardcoded fallback.
-const NESTJS_API_BASE = (process.env.INTERNAL_API_URL ?? 'https://symph-crm-api-t5wb3mrt7q-as.a.run.app/api').replace(/\/+$/, '')
+function resolveServerApiBase(): string {
+  const raw = process.env.INTERNAL_API_URL ?? process.env.API_URL ?? 'http://localhost:4000/api'
+  const normalized = raw.replace(/\/+$/, '')
+  return normalized.endsWith('/api') ? normalized : `${normalized}/api`
+}
+
+const NESTJS_API_BASE = resolveServerApiBase()
+const INTERNAL_BASE = `${NESTJS_API_BASE}/internal`
 // Default workspace used when the client doesn't pass one explicitly.
 // Matches the single workspace seeded in the CRM DB.
 const DEFAULT_WORKSPACE_ID = '60f84f03-283e-4c1a-8c88-b8330dc71d32'
@@ -44,8 +46,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ARIA_API_TOKEN not configured' }, { status: 500 })
   }
 
-  const session = await auth()
-  const userId = session?.user?.id
+  const cookieHeader = req.headers.get('cookie') ?? ''
+  const sessionRes = await fetch(`${NESTJS_API_BASE}/auth/session`, {
+    headers: cookieHeader ? { cookie: cookieHeader } : {},
+    cache: 'no-store',
+  })
+  if (!sessionRes.ok) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const session = await sessionRes.json() as { user?: { id?: string; name?: string | null; email?: string | null } | null }
+  const userId = session.user?.id
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -83,8 +93,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-user-id': userId,
-            ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
+            ...(cookieHeader ? { cookie: cookieHeader } : {}),
           },
           body: JSON.stringify({
             base64: attachment.base64,
@@ -333,13 +342,11 @@ export async function POST(req: NextRequest) {
                 const fullAssistantText = assembledTextParts.join('')
                 // Fire-and-forget: persist the assistant reply.
                 // The user message was already saved at request start — only the assistant half remains.
-                // x-user-id is required by the global RolesGuard for all POST mutations.
                 fetch(`${NESTJS_API_BASE}/chat/sessions/${sessionId}/messages/assistant`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'x-user-id': userId,
-                    ...(process.env.INTERNAL_SECRET ? { 'x-internal-secret': process.env.INTERNAL_SECRET } : {}),
+                    ...(cookieHeader ? { cookie: cookieHeader } : {}),
                   },
                   body: JSON.stringify({
                     assistantMessage: fullAssistantText,

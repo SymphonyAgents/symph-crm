@@ -1,12 +1,7 @@
 import posthog from 'posthog-js'
+import { BACKEND_API_URL } from '@/lib/backend-url'
 
-// In dev: calls localhost:4000 directly (no rewrite in dev mode).
-// In production: /api/* is proxied by Next.js to the NestJS Cloud Run service
-// via the rewrites() config in next.config.ts — no NEXT_PUBLIC_ var needed.
-const API_BASE = '/api/backend'
-
-// The browser talks only to the Next.js API bridge. The bridge validates
-// the NextAuth session server-side and injects trusted API headers.
+const API_BASE = BACKEND_API_URL
 
 // ─── Core fetcher ─────────────────────────────────────────────────────────────
 
@@ -38,6 +33,7 @@ async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
   const isFormData = init?.body instanceof FormData
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
+    credentials: 'include',
     headers: {
       // Don't set Content-Type for FormData — browser sets multipart/form-data + boundary
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
