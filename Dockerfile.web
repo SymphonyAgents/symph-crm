@@ -21,6 +21,7 @@ ENV NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 # Copy workspace manifests for layer caching
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/database/package.json ./packages/database/
+COPY packages/shared/package.json ./packages/shared/
 COPY apps/web/package.json ./apps/web/
 
 # Install all dependencies
