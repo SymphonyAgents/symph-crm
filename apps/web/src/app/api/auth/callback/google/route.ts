@@ -4,7 +4,7 @@ import { BACKEND_API_URL } from '@/lib/backend-url'
 // OAuth compatibility shim only. Google redirects to the old web callback path,
 // then this route forwards the signed callback params to the backend auth owner.
 export function GET(request: NextRequest) {
-  const target = new URL(`${BACKEND_API_URL}/auth/google/callback`, request.nextUrl.origin)
+  const target = new URL(`${BACKEND_API_URL}/auth/google/callback`, process.env.NEXT_PUBLIC_APP_URL ?? request.url)
   request.nextUrl.searchParams.forEach((value, key) => {
     target.searchParams.set(key, value)
   })
