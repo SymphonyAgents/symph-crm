@@ -6,6 +6,7 @@ WORKDIR /app
 # Copy workspace manifests first for layer caching
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/database/package.json ./packages/database/
+COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
 
 # Install all dependencies (needed to resolve workspace packages)
