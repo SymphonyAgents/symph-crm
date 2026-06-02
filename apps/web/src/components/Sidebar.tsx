@@ -119,13 +119,13 @@ function LogoutConfirmModal({
         <div className="flex gap-2.5 mt-4">
           <button
             onClick={onCancel}
-            className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+            className="flex-1 h-11 sm:h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-8 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
+            className="flex-1 h-11 sm:h-8 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
           >
             Sign out
           </button>
@@ -218,7 +218,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
                       onMouseEnter={() => setHoveredPath(item.path)}
                       onMouseLeave={() => setHoveredPath(null)}
                       className={cn(
-                        'relative flex items-center gap-[9px] px-[10px] py-[6px] rounded text-ssm w-full text-left transition-colors duration-150',
+                        'relative flex items-center gap-[9px] px-[10px] py-3 md:py-[6px] rounded text-ssm w-full text-left transition-colors duration-150',
                         active
                           ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary dark:text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
                           : 'font-medium',
@@ -266,7 +266,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
                   href="/settings"
                   onClick={() => onClose?.()}
                   className={cn(
-                    'relative flex items-center gap-[9px] px-[10px] py-[6px] rounded text-ssm w-full transition-colors duration-150',
+                    'relative flex items-center gap-[9px] px-[10px] py-3 md:py-[6px] rounded text-ssm w-full transition-colors duration-150',
                     isActive('/settings', pathname)
                       ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
                       : 'font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] hover:text-slate-900 dark:hover:text-white',
@@ -284,7 +284,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
               href="/settings"
               onClick={() => onClose?.()}
               className={cn(
-                'relative flex items-center gap-[9px] px-[10px] py-[6px] rounded text-ssm w-full transition-colors duration-150',
+                'relative flex items-center gap-[9px] px-[10px] py-3 md:py-[6px] rounded text-ssm w-full transition-colors duration-150',
                 isActive('/settings', pathname)
                   ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
                   : 'font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] hover:text-slate-900 dark:hover:text-white',
@@ -307,7 +307,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    className="w-full flex items-center gap-2 px-[10px] py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors md:justify-center md:px-0"
+                    className="w-full flex items-center gap-2 px-[10px] py-3 md:py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors md:justify-center md:px-0"
                   >
                     {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} className="shrink-0" /> : <Moon size={14} strokeWidth={1.4} className="shrink-0" />}
                     <span className="md:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
@@ -320,7 +320,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
             ) : (
               <button
                 onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="w-full flex items-center gap-2 px-[10px] py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="w-full flex items-center gap-2 px-[10px] py-3 md:py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
               >
                 {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} className="shrink-0" /> : <Moon size={14} strokeWidth={1.4} className="shrink-0" />}
                 <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>

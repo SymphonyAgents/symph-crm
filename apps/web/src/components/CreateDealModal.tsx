@@ -79,7 +79,7 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           placeholder="e.g. Jollibee HRIS Implementation"
-          className="h-9 text-ssm"
+          className="h-11 sm:h-9 text-ssm"
           required
         />
         {showSuggestions && (
@@ -130,7 +130,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
 
   return (
     <Select value={value || '__none__'} onValueChange={v => onValueChange(v === '__none__' ? '' : v)}>
-      <SelectTrigger className="h-9 text-ssm">
+      <SelectTrigger className="h-11 sm:h-9 text-ssm">
         <SelectValue placeholder="Select service" />
       </SelectTrigger>
       <SelectContent>
@@ -241,7 +241,7 @@ function BuilderMultiSelect({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 flex-wrap min-h-9 w-full px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left"
+          className="flex items-center gap-1.5 flex-wrap min-h-11 sm:min-h-9 w-full px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left"
         >
           {selectedUsers.length === 0 ? (
             <span className="text-ssm text-slate-400 px-1">—</span>
@@ -404,7 +404,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -454,7 +454,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
               <Select value={catalogItemId} onValueChange={setCatalogItemId}>
-                <SelectTrigger className="h-9 text-ssm">
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder={catalogItems.length === 0 ? 'No products yet, add via /products' : 'Select product...'} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
@@ -472,7 +472,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           <div className="flex flex-col gap-1.5">
             <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Account Manager</label>
             <Select value={assignedToId} onValueChange={setAssignedToId}>
-              <SelectTrigger className="h-9 text-ssm">
+              <SelectTrigger className="h-11 sm:h-9 text-ssm">
                 <SelectValue placeholder="Assign to me (default)" />
               </SelectTrigger>
               <SelectContent className="max-h-[280px]">
@@ -486,11 +486,11 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           </div>
 
           {/* Sub Account Manager + Builders */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Sub AM <span className="text-slate-400">(optional)</span></label>
               <Select value={subAccountManagerId} onValueChange={setSubAccountManagerId}>
-                <SelectTrigger className="h-9 text-ssm">
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder=", " />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
@@ -513,7 +513,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           </div>
 
           {/* Stage + Outreach */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Stage</label>
               <Combobox
@@ -526,7 +526,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Outreach</label>
               <Select value={outreachCategory} onValueChange={setOutreachCategory}>
-                <SelectTrigger className="h-9 text-ssm">
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
@@ -539,7 +539,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           </div>
 
           {/* Value + Pricing Model */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
               <Input
@@ -552,13 +552,13 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
                   setValue(parts.join('.'))
                 }}
                 placeholder="e.g. 250,000"
-                className="h-9 text-ssm"
+                className="h-11 sm:h-9 text-ssm"
               />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Pricing Model</label>
               <Select value={pricingModel} onValueChange={setPricingModel}>
-                <SelectTrigger className="h-9 text-ssm">
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent>
@@ -637,14 +637,14 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending || !canSubmit}
-              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+              className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               <>{isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Create Deal</>

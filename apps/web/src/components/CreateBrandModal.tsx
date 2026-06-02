@@ -61,7 +61,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -80,12 +80,12 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="e.g. Jollibee, BPI, SM Group"
-              className="h-9 text-ssm"
+              className="h-11 sm:h-9 text-ssm"
               required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Industry</label>
               <Combobox
@@ -102,19 +102,19 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
                 placeholder="e.g. jollibee.com.ph"
-                className="h-9 text-ssm"
+                className="h-11 sm:h-9 text-ssm"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Website</label>
               <Input
                 value={website}
                 onChange={e => setWebsite(e.target.value)}
                 placeholder="https://..."
-                className="h-9 text-ssm"
+                className="h-11 sm:h-9 text-ssm"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -123,7 +123,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
                 value={hqLocation}
                 onChange={e => setHqLocation(e.target.value)}
                 placeholder="e.g. Manila, PH"
-                className="h-9 text-ssm"
+                className="h-11 sm:h-9 text-ssm"
               />
             </div>
           </div>
@@ -138,14 +138,14 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim()}
-              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+              className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               <>{isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Create Brand</>

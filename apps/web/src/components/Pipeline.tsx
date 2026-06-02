@@ -170,7 +170,7 @@ function CardActionsMenu({
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o); setShowAssign(false); setShowAdvanceTo(false); setShowMoveTo(false) }}
-        className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+        className="w-10 h-10 sm:w-6 sm:h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
       >
         <MoreHorizontal size={14} />
       </button>
@@ -1317,7 +1317,7 @@ export function Pipeline({
       <div className="flex flex-col flex-1 overflow-hidden md:hidden">
         {/* Mobile header */}
         <div className="px-4 pt-3 pb-2.5 shrink-0">
-          <div className="flex items-center justify-between mb-2.5">
+          <div className="flex flex-col gap-2.5 mb-2.5">
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-bold text-slate-900 dark:text-white">Deals</h1>
               {!isLoading && (
@@ -1326,7 +1326,7 @@ export function Pipeline({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {searchOpen ? (
                 <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[160px]">
                   <Search size={13} className="text-slate-400 shrink-0" />
@@ -1345,7 +1345,7 @@ export function Pipeline({
               ) : (
                 <button
                   onClick={() => setSearchOpen(true)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
+                  className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
                 >
                   <Search size={14} />
                 </button>
@@ -1354,13 +1354,13 @@ export function Pipeline({
                 <>
                   <button
                     onClick={() => setShowCreateBrand(true)}
-                    className="h-8 rounded-lg px-2.5 text-xs font-medium text-slate-700 dark:text-slate-300 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
+                    className="h-11 rounded-lg px-3 text-xs font-medium text-slate-700 dark:text-slate-300 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
                   >
                     + Brand
                   </button>
                   <button
                     onClick={() => setShowCreateDeal(true)}
-                    className="h-8 rounded-lg px-2.5 text-xs font-medium text-white"
+                    className="h-11 rounded-lg px-3 text-xs font-medium text-white"
                     style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                   >
                     + Deal
@@ -1386,7 +1386,7 @@ export function Pipeline({
             <button
               onClick={() => setMobileStageFilter(null)}
               className={cn(
-                'rounded-full text-xxs font-semibold px-3 py-1 whitespace-nowrap shrink-0 transition-colors duration-150',
+                'rounded-full text-xxs font-semibold px-3.5 py-2.5 whitespace-nowrap shrink-0 transition-colors duration-150',
                 mobileStageFilter === null
                   ? 'bg-primary text-white'
                   : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
@@ -1401,7 +1401,7 @@ export function Pipeline({
                   key={col.id}
                   onClick={() => setMobileStageFilter(col.id)}
                   className={cn(
-                    'rounded-full text-xxs font-semibold px-3 py-1 whitespace-nowrap shrink-0 transition-colors duration-150 flex items-center gap-1.5',
+                    'rounded-full text-xxs font-semibold px-3.5 py-2.5 whitespace-nowrap shrink-0 transition-colors duration-150 flex items-center gap-1.5',
                     mobileStageFilter === col.id
                       ? 'bg-primary text-white'
                       : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'

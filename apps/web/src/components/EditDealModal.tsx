@@ -69,7 +69,7 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
           placeholder="e.g. Jollibee HRIS Implementation"
-          className="h-9 text-ssm"
+          className="h-11 sm:h-9 text-ssm"
           required
         />
         {showSuggestions && (
@@ -106,7 +106,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
   }, [catalog])
   return (
     <Select value={value || '__none__'} onValueChange={v => onValueChange(v === '__none__' ? '' : v)}>
-      <SelectTrigger className="h-9 text-ssm">
+      <SelectTrigger className="h-11 sm:h-9 text-ssm">
         <SelectValue placeholder="Select service" />
       </SelectTrigger>
       <SelectContent>
@@ -328,7 +328,7 @@ export function EditDealModal({ deal, onClose }: Props) {
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -372,7 +372,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                 value={catalogItemId || '__none__'}
                 onValueChange={v => setCatalogItemId(v === '__none__' ? '' : v)}
               >
-                <SelectTrigger className="h-9 text-ssm">
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
@@ -386,7 +386,7 @@ export function EditDealModal({ deal, onClose }: Props) {
           )}
 
           {/* Stage + Outreach */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Stage</label>
               <Combobox
@@ -399,7 +399,7 @@ export function EditDealModal({ deal, onClose }: Props) {
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Outreach</label>
               <Select value={outreachCategory || '__none__'} onValueChange={v => setOutreachCategory(v === '__none__' ? '' : v)}>
-                <SelectTrigger className="h-9 text-ssm">
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder="---" />
                 </SelectTrigger>
                 <SelectContent>
@@ -416,14 +416,14 @@ export function EditDealModal({ deal, onClose }: Props) {
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-white/[.08] p-3 bg-slate-50/50 dark:bg-white/[.02]">
             <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider">Revenue</div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">One-Time Fee (PHP)</label>
                 <Input
                   value={oneTimeFee}
                   onChange={e => setOneTimeFee(formatValueDisplay(e.target.value))}
                   placeholder="e.g. 1,214,000"
-                  className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -434,12 +434,12 @@ export function EditDealModal({ deal, onClose }: Props) {
                   value={mrr}
                   onChange={e => setMrr(formatValueDisplay(e.target.value))}
                   placeholder="e.g. 50,000"
-                  className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
                 <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
                   Contract Length <span className="text-slate-400 normal-case font-normal">months</span>
@@ -451,14 +451,14 @@ export function EditDealModal({ deal, onClose }: Props) {
                   value={contractLength}
                   onChange={e => setContractLength(e.target.value)}
                   placeholder="e.g. 12"
-                  className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
                   Total Value <span className="text-slate-400 normal-case font-normal">computed</span>
                 </label>
-                <div className="h-9 flex items-center px-3 rounded-lg border border-slate-200 dark:border-white/[.06] bg-slate-100 dark:bg-white/[.04] text-ssm tabular-nums text-slate-600 dark:text-slate-400">
+                <div className="h-11 sm:h-9 flex items-center px-3 rounded-lg border border-slate-200 dark:border-white/[.06] bg-slate-100 dark:bg-white/[.04] text-ssm tabular-nums text-slate-600 dark:text-slate-400">
                   {(() => {
                     const otf = parseFloat(oneTimeFee.replace(/,/g, '')) || 0
                     const mrrVal = parseFloat(mrr.replace(/,/g, '')) || 0
@@ -477,14 +477,14 @@ export function EditDealModal({ deal, onClose }: Props) {
             <div className="flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800/40 p-3 bg-blue-50/40 dark:bg-blue-950/20">
               <div className="text-xxs font-semibold text-blue-500 uppercase tracking-wider">Reseller Pricing</div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Cost Price (PHP)</label>
                   <Input
                     value={costPrice}
                     onChange={e => setCostPrice(e.target.value)}
                     placeholder="e.g. 500,000"
-                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -499,7 +499,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                     value={marginPercent}
                     onChange={e => setMarginPercent(e.target.value)}
                     placeholder="e.g. 15"
-                    className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -532,7 +532,7 @@ export function EditDealModal({ deal, onClose }: Props) {
           )}
 
           {/* Probability */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Probability (%)</label>
               <Input
@@ -542,7 +542,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                 value={probability}
                 onChange={e => setProbability(e.target.value)}
                 placeholder="e.g. 75"
-                className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
               />
             </div>
           </div>
@@ -556,7 +556,7 @@ export function EditDealModal({ deal, onClose }: Props) {
               type="date"
               value={closeDate}
               onChange={e => setCloseDate(e.target.value)}
-              className="h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+              className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
             />
           </div>
 
@@ -566,7 +566,7 @@ export function EditDealModal({ deal, onClose }: Props) {
               Sub Account Manager <span className="text-slate-400">(optional)</span>
             </label>
             <Select value={subAccountManagerId || '__none__'} onValueChange={v => setSubAccountManagerId(v === '__none__' ? '' : v)}>
-              <SelectTrigger className="h-9 text-ssm">
+              <SelectTrigger className="h-11 sm:h-9 text-ssm">
                 <SelectValue placeholder="Unassigned" />
               </SelectTrigger>
               <SelectContent className="max-h-[280px]">
@@ -609,7 +609,7 @@ export function EditDealModal({ deal, onClose }: Props) {
               )}
             </div>
             <Select value="" onValueChange={(uid) => { if (uid && !builders.includes(uid)) setBuilders([...builders, uid]) }}>
-              <SelectTrigger className="h-9 text-ssm">
+              <SelectTrigger className="h-11 sm:h-9 text-ssm">
                 <SelectValue placeholder="Add builder..." />
               </SelectTrigger>
               <SelectContent className="max-h-[280px]">
@@ -632,14 +632,14 @@ export function EditDealModal({ deal, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending || !canSubmit}
-              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+              className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               <>{isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Save Changes</>

@@ -155,6 +155,27 @@ function SegmentedProgressBar({ currentStage }: { currentStage: string }) {
   )
 }
 
+function MobileStageProgress({ currentStage }: { currentStage: string }) {
+  const isLost = currentStage === 'closed_lost'
+  const currentStageConfig = PROGRESS_STAGES.find(stage => stage.id === currentStage)
+  const label = isLost ? 'Lost' : currentStageConfig?.label ?? STAGE_LABELS[currentStage] ?? currentStage
+
+  return (
+    <div className="mt-4 sm:hidden">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <span className="text-xxs font-semibold uppercase tracking-[0.08em] text-slate-400">Stage</span>
+        <span className={cn(
+          'text-xs font-semibold truncate',
+          isLost ? 'text-red-500' : 'text-primary'
+        )}>
+          {label}
+        </span>
+      </div>
+      <SegmentedProgressBar currentStage={currentStage} />
+    </div>
+  )
+}
+
 function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
@@ -1382,8 +1403,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           </div>
         </div>
 
-        {/* Stage progress — desktop only */}
-        <StageProgress currentStage={deal.stage} />
+        <MobileStageProgress currentStage={deal.stage} />
+        <div className="hidden sm:block">
+          <StageProgress currentStage={deal.stage} />
+        </div>
       </div>
 
       {/* ── Body: left content + right sidebar ─────────── */}

@@ -105,7 +105,7 @@ function BrandDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
@@ -205,6 +205,113 @@ function LastActivityCell({ iso }: { iso: string | null }) {
       <span className="text-xs text-slate-600 dark:text-slate-400 tabular-nums">
         {diffDays === 0 ? 'Today' : diffDays === 1 ? '1 day ago' : `${diffDays} days ago`}
       </span>
+    </div>
+  )
+}
+
+function BrandMobileCard({
+  row,
+  onOpen,
+  onEditBrand,
+  onDeleteBrand,
+}: {
+  row: BrandTableRow
+  onOpen: () => void
+  onEditBrand?: (brand: ApiCompanyDetail) => void
+  onDeleteBrand?: (brand: ApiCompanyDetail) => void
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+      className="w-full text-left rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.99] transition-transform cursor-pointer"
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+          style={{ background: `${row.color}18`, color: row.color }}
+        >
+          {getInitials(row.company.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+            {toPascalCase(row.company.name)}
+          </div>
+          {(row.company.industry || row.company.domain) && (
+            <div className="text-xs text-slate-400 truncate mt-0.5">
+              {row.company.industry || row.company.domain}
+            </div>
+          )}
+        </div>
+        {row.company.id !== '__unassigned__' && (
+          <div className="flex items-center gap-1 -mr-1 -mt-1" onClick={e => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => onEditBrand?.(row.company)}
+              className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              title="Edit brand"
+            >
+              <Pencil size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDeleteBrand?.(row.company)}
+              className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              title="Delete brand"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mt-4">
+        <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
+          <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Value</div>
+          <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1 truncate">
+            {row.totalValue > 0 ? formatDealValue(String(row.totalValue)) : 'P0.00'}
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
+          <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Deals</div>
+          <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1">
+            {row.dealCount}
+          </div>
+        </div>
+        <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
+          <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Files</div>
+          <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1">
+            {row.documentCount}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 mt-4">
+        <div className="flex flex-wrap gap-1.5 min-w-0">
+          {row.stageSummary.length > 0 ? row.stageSummary.slice(0, 2).map(stage => (
+            <span
+              key={stage.id}
+              className="inline-block px-2 py-1 rounded-full text-xxs font-medium whitespace-nowrap dark:brightness-150"
+              style={{ background: stage.bg, color: stage.color }}
+            >
+              {stage.label}
+            </span>
+          )) : (
+            <span className="text-xs text-slate-400">No active stages</span>
+          )}
+          {row.stageSummary.length > 2 && (
+            <span className="text-xxs text-slate-400 py-1">+{row.stageSummary.length - 2}</span>
+          )}
+        </div>
+        <LastActivityCell iso={row.lastActivityAt} />
+      </div>
     </div>
   )
 }
@@ -368,14 +475,14 @@ function BrandsDataTable({
           <div className="flex items-center justify-end gap-1">
             <button
               onClick={e => { e.stopPropagation(); onEditBrand?.(r.company) }}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
               title="Edit brand"
             >
               <Pencil size={13} />
             </button>
             <button
               onClick={e => { e.stopPropagation(); onDeleteBrand?.(r.company) }}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
               title="Delete brand"
             >
               <Trash2 size={13} />
@@ -628,7 +735,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
               </div>
               <button
                 onClick={() => setEditingBrand(null)}
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                   <path d="M18 6 6 18M6 6l12 12" />
@@ -662,12 +769,12 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   value={editForm.name}
                   onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Jollibee, BPI, SM Group"
-                  className="h-9 text-ssm"
+                  className="h-11 sm:h-9 text-ssm"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Industry</label>
                   <Combobox
@@ -684,19 +791,19 @@ export function Deals({ onOpenDeal }: DealsProps) {
                     value={editForm.domain}
                     onChange={e => setEditForm(f => ({ ...f, domain: e.target.value }))}
                     placeholder="e.g. jollibee.com.ph"
-                    className="h-9 text-ssm"
+                    className="h-11 sm:h-9 text-ssm"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Website</label>
                   <Input
                     value={editForm.website}
                     onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))}
                     placeholder="https://..."
-                    className="h-9 text-ssm"
+                    className="h-11 sm:h-9 text-ssm"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -705,7 +812,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                     value={editForm.hqLocation}
                     onChange={e => setEditForm(f => ({ ...f, hqLocation: e.target.value }))}
                     placeholder="e.g. Manila, PH"
-                    className="h-9 text-ssm"
+                    className="h-11 sm:h-9 text-ssm"
                   />
                 </div>
               </div>
@@ -720,14 +827,14 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 <button
                   type="button"
                   onClick={() => setEditingBrand(null)}
-                  className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+                  className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updateCompany.isPending || !editForm.name.trim()}
-                  className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+                  className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                 >
                   <>{updateCompany.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Save Changes</>
@@ -755,14 +862,14 @@ export function Deals({ onOpenDeal }: DealsProps) {
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setDeletingBrand(null)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-11 sm:h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteCompany.mutate(deletingBrand.id)}
                 disabled={deleteCompany.isPending}
-                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
+                className="flex-1 h-11 sm:h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
               >
                 <>{deleteCompany.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Delete</>
               </button>
@@ -784,9 +891,9 @@ export function Deals({ onOpenDeal }: DealsProps) {
             </div>
           </div>
 
-          <div className="sm:ml-auto flex flex-wrap gap-2 items-center">
+          <div className="sm:ml-auto flex flex-wrap gap-2 items-center w-full sm:w-auto">
             {/* Search */}
-            <div className="relative flex-1 sm:flex-none sm:w-[200px] min-w-[140px]">
+            <div className="relative flex-1 sm:flex-none sm:w-[200px] min-w-[160px]">
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
                 <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
@@ -796,7 +903,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search brands…"
-                className="border border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.03] rounded-lg text-ssm text-slate-900 dark:text-white w-full placeholder:text-slate-400 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none pl-8 pr-7 py-[5px] h-auto shadow-none"
+                className="border border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.03] rounded-lg text-ssm text-slate-900 dark:text-white w-full placeholder:text-slate-400 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none pl-8 pr-7 py-[5px] min-h-11 sm:min-h-0 sm:h-auto shadow-none"
               />
               {search && (
                 <button
@@ -813,7 +920,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
               <>
                 <button
                   onClick={() => setShowCreateBrand(true)}
-                  className="h-[30px] px-3 rounded-lg border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors flex items-center gap-1.5"
+                  className="h-11 sm:h-[30px] px-3 rounded-lg border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors flex items-center gap-1.5"
                 >
                   <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                     <path d="M12 5v14M5 12h14" />
@@ -824,7 +931,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 {/* New Deal */}
                 <button
                   onClick={() => setShowCreateDeal(true)}
-                  className="h-[30px] px-3 rounded-lg text-xs font-medium text-white transition-colors flex items-center gap-1.5"
+                  className="h-11 sm:h-[30px] px-3 rounded-lg text-xs font-medium text-white transition-colors flex items-center gap-1.5"
                   style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                 >
                   <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
@@ -856,18 +963,37 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
         {/* Table view */}
         {!isLoading && companies.length > 0 && (
-          <div className="flex-1 overflow-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            <div className="min-w-[860px]">
-              <BrandsDataTable
-                rows={filteredTableRows}
-                onRowClick={(row) => setSelectedBrand(row.company)}
-                search={search}
-                selectedBrandId={selectedBrand?.id}
-                onEditBrand={setEditingBrand}
-                onDeleteBrand={setDeletingBrand}
-              />
+          <>
+            <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
+              {filteredTableRows.length > 0 ? (
+                filteredTableRows.map(row => (
+                  <BrandMobileCard
+                    key={row.company.id}
+                    row={row}
+                    onOpen={() => setSelectedBrand(row.company)}
+                    onEditBrand={setEditingBrand}
+                    onDeleteBrand={setDeletingBrand}
+                  />
+                ))
+              ) : (
+                <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-black/[.08] dark:border-white/[.08] text-sm text-slate-400">
+                  No brands found
+                </div>
+              )}
             </div>
-          </div>
+            <div className="hidden md:block flex-1 overflow-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+              <div className="min-w-[860px]">
+                <BrandsDataTable
+                  rows={filteredTableRows}
+                  onRowClick={(row) => setSelectedBrand(row.company)}
+                  search={search}
+                  selectedBrandId={selectedBrand?.id}
+                  onEditBrand={setEditingBrand}
+                  onDeleteBrand={setDeletingBrand}
+                />
+              </div>
+            </div>
+          </>
         )}
 
       </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useCallback, useEffect, Suspense } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect, Suspense, type CSSProperties } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useGetCompanies, useGetDeals } from '@/lib/hooks/queries'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
@@ -14,6 +14,10 @@ const SIDEBAR_MIN = 220
 const SIDEBAR_MAX = 480
 const SIDEBAR_DEFAULT = 320
 const STORAGE_KEY = 'wiki-sidebar-width'
+
+const sidebarStyle = (width: number): CSSProperties => ({
+  '--wiki-sidebar-width': `${width}px`,
+} as CSSProperties)
 
 function useSidebarWidth() {
   const [width, setWidth] = useState(SIDEBAR_DEFAULT)
@@ -176,10 +180,10 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Wiki sidebar — persistent across views and navigations, resizable */}
       <div
         className={cn(
-          'md:flex md:shrink-0 md:h-full h-full w-full',
+          'md:flex md:shrink-0 md:h-full h-full w-full md:w-[var(--wiki-sidebar-width)] md:max-w-[480px] md:min-w-[220px]',
           effectivePane === 'sidebar' || mobilePane === 'sidebar' ? 'flex' : 'hidden md:flex',
         )}
-        style={{ width: sidebarWidth, maxWidth: SIDEBAR_MAX, minWidth: SIDEBAR_MIN }}
+        style={sidebarStyle(sidebarWidth)}
       >
         <WikiSidebar
           companies={companies}
