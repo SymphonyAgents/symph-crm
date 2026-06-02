@@ -1,16 +1,11 @@
 'use client'
 
-import { SessionProvider } from 'next-auth/react'
 import { AuthUserProvider } from '@/lib/auth-context'
 
-/**
- * Auth layout — purely client-side, mirrors (dashboard)/layout.tsx.
- * Login/onboarding pages also benefit from synchronous `useUser()` reads.
- */
+// Auth layout mirrors (dashboard)/layout.tsx so login/onboarding pages
+// read the same backend-owned auth session.
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
-      <AuthUserProvider>{children}</AuthUserProvider>
-    </SessionProvider>
+    <AuthUserProvider>{children}</AuthUserProvider>
   )
 }

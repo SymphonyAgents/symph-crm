@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import {
   Select,
   SelectContent,
@@ -10,7 +10,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { completeOnboardingAction } from './actions'
+import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
+import { api } from '@/lib/api'
+import { useUser } from '@/lib/hooks/use-user'
 
 const TEAM_OPTIONS = [
   { value: 'Agents',    label: 'Agents' },
@@ -21,16 +23,14 @@ const TEAM_OPTIONS = [
 ]
 
 export default function OnboardingPage() {
-  const { data: session } = useSession()
+  const router = useRouter()
+  const { user, userId, refreshUser } = useUser()
   const [isPending, startTransition] = useTransition()
-
-  const [currentTeam, setCurrentTeam] = useState('')
+  const [currentTeam, setCurrentTeam] = useState(user?.currentTeam ?? '')
   const [error, setError] = useState<string | null>(null)
 
-  const userId = session?.user?.id
-  const displayName = session?.user?.name ?? session?.user?.email ?? ''
-  const isPartnerPending = (session?.user as { role?: string; status?: string } | undefined)?.role === 'PARTNER'
-    && (session?.user as { status?: string } | undefined)?.status === 'pending'
+  const displayName = user?.name ?? user?.email ?? ''
+  const isPartnerPending = user?.role === CrmUserRole.Partner && user?.status === CrmUserStatus.Pending
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -38,9 +38,12 @@ export default function OnboardingPage() {
     setError(null)
 
     startTransition(async () => {
-      const result = await completeOnboardingAction(currentTeam)
-      if (result?.error) {
-        setError(result.error)
+      try {
+        await api.patch('/users/onboarding', { id: userId, currentTeam })
+        await refreshUser()
+        router.replace('/')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
       }
     })
   }
@@ -48,7 +51,6 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-dvh flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-[360px]">
-        {/* Logo */}
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
             className="w-9 h-9 rounded-lg flex items-center justify-center text-base font-extrabold text-white tracking-tight"
@@ -62,7 +64,6 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Card */}
         <div className="bg-card rounded-xl border border-border shadow-sm p-6">
           <div className="mb-6">
             <p className="text-ssm text-muted-foreground mb-0.5">Welcome,</p>
@@ -115,9 +116,11 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        <p className="text-xxs text-muted-foreground text-center mt-4">
-          Symph internal use only
-        </p>
+        {user?.role !== CrmUserRole.Partner && (
+          <p className="text-xxs text-muted-foreground text-center mt-4">
+            Symph internal use only
+          </p>
+        )}
       </div>
     </div>
   )

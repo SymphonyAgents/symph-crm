@@ -16,6 +16,7 @@ import {
   BadRequestException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
+import { CrmUserRole } from '@symph-crm/shared'
 import { OwnerGuard } from './owner.guard'
 import { DealsService } from '../deals/deals.service'
 import { DealNotesService } from '../deals/deal-notes.service'
@@ -788,7 +789,7 @@ export class OwnerController {
     let authorId = body.authorId ?? performedBy
     if (!authorId || !authorId.match(/^[0-9a-f-]{8,}$/i)) {
       const allUsers = await this.users.findAll()
-      const fallback = allUsers.find((u: any) => u.role === 'SALES') ?? allUsers[0]
+      const fallback = allUsers.find((u: any) => u.role === CrmUserRole.Sales) ?? allUsers[0]
       authorId = fallback?.id ?? 'admin-001'
     }
 

@@ -10,7 +10,6 @@ import {
   UploadedFile,
   BadRequestException,
   UnprocessableEntityException,
-  Req,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { memoryStorage } from 'multer'
@@ -18,13 +17,14 @@ import { ChatService, ChatMessageDto, AttachmentContext } from './chat.service'
 import { FileParserService } from '../file-parser/file-parser.service'
 import { VoiceService } from '../voice/voice.service'
 import { VoiceUploadService, TranscribeError } from '../voice/voice-upload.service'
+import { CurrentUserId } from '../auth/current-user.decorator'
 import { Roles } from '../auth/roles.guard'
-import type { Request } from 'express'
+import { CrmUserRole } from '@symph-crm/shared'
 
 // Chat is accessible to all authenticated CRM users regardless of role.
 // Without this, the global RolesGuard defaults mutations to SALES-only,
 // blocking BUILD users from creating sessions or sending messages.
-@Roles('SALES', 'BUILD')
+@Roles(CrmUserRole.Sales, CrmUserRole.Build)
 @Controller('chat')
 export class ChatController {
   constructor(
@@ -55,8 +55,7 @@ export class ChatController {
    * Text-only JSON endpoint — existing flow unchanged.
    */
   @Post('message')
-  sendMessage(@Req() req: Request, @Body() dto: ChatMessageDto) {
-    const userId = this.requireUserId(req)
+  sendMessage(@CurrentUserId() userId: string, @Body() dto: ChatMessageDto) {
     return this.chatService.sendMessage({ ...dto, userId })
   }
 
@@ -81,11 +80,10 @@ export class ChatController {
     }),
   )
   async uploadAndChat(
-    @Req() req: Request,
+    @CurrentUserId() userId: string,
     @UploadedFile() file: Express.Multer.File | undefined,
     @Body() body: ChatMessageDto,
   ) {
-    const userId = this.requireUserId(req)
     const trustedBody = { ...body, userId }
     let attachmentContext: AttachmentContext | undefined
 
@@ -161,8 +159,8 @@ export class ChatController {
    * List all chat sessions for a user, most recent first.
    */
   @Get('sessions')
-  listSessions(@Req() req: Request) {
-    return this.chatService.listSessions(this.requireUserId(req))
+  listSessions(@CurrentUserId() userId: string) {
+    return this.chatService.listSessions(userId)
   }
 
   /**
@@ -170,8 +168,8 @@ export class ChatController {
    * Create a new chat session.
    */
   @Post('sessions')
-  createSession(@Req() req: Request, @Body() body: { workspaceId: string; dealId?: string; title?: string }) {
-    return this.chatService.createSession({ ...body, userId: this.requireUserId(req) })
+  createSession(@CurrentUserId() userId: string, @Body() body: { workspaceId: string; dealId?: string; title?: string }) {
+    return this.chatService.createSession({ ...body, userId })
   }
 
   /**
@@ -190,10 +188,10 @@ export class ChatController {
   @Post('sessions/:sessionId/messages/user')
   saveUserMessage(
     @Param('sessionId') sessionId: string,
-    @Req() req: Request,
+    @CurrentUserId() userId: string,
     @Body() body: { userMessage: string },
   ) {
-    return this.chatService.saveUserMessage(sessionId, this.requireUserId(req), body.userMessage)
+    return this.chatService.saveUserMessage(sessionId, userId, body.userMessage)
   }
 
   /**
@@ -203,10 +201,10 @@ export class ChatController {
   @Post('sessions/:sessionId/messages/assistant')
   saveAssistantMessage(
     @Param('sessionId') sessionId: string,
-    @Req() req: Request,
+    @CurrentUserId() userId: string,
     @Body() body: { assistantMessage: string },
   ) {
-    return this.chatService.saveAssistantMessage(sessionId, this.requireUserId(req), body.assistantMessage)
+    return this.chatService.saveAssistantMessage(sessionId, userId, body.assistantMessage)
   }
 
   /**
@@ -217,22 +215,14 @@ export class ChatController {
   @Post('sessions/:sessionId/messages')
   saveMessages(
     @Param('sessionId') sessionId: string,
-    @Req() req: Request,
+    @CurrentUserId() userId: string,
     @Body() body: { userMessage: string; assistantMessage: string },
   ) {
-    return this.chatService.saveMessages(sessionId, this.requireUserId(req), body.userMessage, body.assistantMessage)
+    return this.chatService.saveMessages(sessionId, userId, body.userMessage, body.assistantMessage)
   }
 
   @Delete('sessions/:sessionId')
   deleteSession(@Param('sessionId') sessionId: string) {
     return this.chatService.deleteSession(sessionId)
-  }
-
-  private requireUserId(req: Request): string {
-    const userId = req.headers['x-user-id']
-    if (typeof userId !== 'string' || !userId) {
-      throw new BadRequestException('Trusted CRM session user is required')
-    }
-    return userId
   }
 }

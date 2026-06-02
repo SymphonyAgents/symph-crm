@@ -29,11 +29,9 @@ export class CalendarConnectionsService {
     )
   }
 
-  /**
-   * Step 1: generate the OAuth2 consent URL.
-   * State is signed because Google calls the callback without CRM session headers.
-   * The user id comes from the trusted Next.js bridge, never from browser query input.
-   */
+  // Step 1: generate the OAuth2 consent URL.
+  // State is signed because Google calls the callback without CRM session headers.
+  // The user id comes from the backend-authenticated CRM request, never from browser query input.
   getAuthUrl(userId: string, returnTo = '/calendar'): string {
     const oauth2 = this.getOAuth2Client()
     return oauth2.generateAuthUrl({

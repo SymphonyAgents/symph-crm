@@ -1,23 +1,28 @@
 import { Injectable, CanActivate, ExecutionContext, Inject, SetMetadata, ForbiddenException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import { ConfigService } from '@nestjs/config'
 import { eq } from 'drizzle-orm'
 import { users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
+import {
+  CrmUserRole,
+  CrmUserStatus,
+  isBypassPrefixPath,
+  isOptionsMethod,
+  isReadMethod,
+  MUTATION_ALLOWED_ROLES,
+  SESSION_SCOPED_READ_ROLES,
+  SESSIONLESS_AUTH_PATHS,
+  STATUS_EXEMPT_PATHS,
+} from './auth.constants'
+import { AuthTokenService } from './auth-token.service'
+import type { CrmAuthenticatedRequest } from './current-user.decorator'
 
-/**
- * Mark a route as requiring one of the listed roles.
- * When no @Roles() decorator is present, the guard falls back to
- * method-based rules: GET/HEAD require an internal role, mutations require SALES.
- */
+// Mark a route as requiring one of the listed roles.
+// When no @Roles() decorator is present, the guard falls back to
+// method-based rules: GET/HEAD require an internal role, mutations require SALES.
 export const ROLES_KEY = 'roles'
 export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles)
-
-const SESSIONLESS_CALLBACK_PATHS = new Set(['/api/auth/google-calendar/callback', '/auth/google-calendar/callback'])
-const TRUSTED_BRIDGE_PATHS = new Set(['/api/users/sync', '/users/sync', '/api/users/onboarding', '/users/onboarding'])
-const STATUS_EXEMPT_PATHS = new Set(['/api/users/me', '/users/me'])
-const SESSION_SCOPED_READ_ROLES = new Set(['SALES', 'BUILD'])
 
 function getPathname(url: string): string {
   try {
@@ -27,66 +32,48 @@ function getPathname(url: string): string {
   }
 }
 
-function hasPathPrefix(pathname: string, prefix: string): boolean {
-  return pathname === prefix.slice(0, -1) || pathname.startsWith(prefix)
-}
-
-/**
- * Global guard that enforces role-based access on every user-session request.
- *
- * Public, internal, and owner API families keep their own route guards. Normal CRM
- * routes must come through the trusted Next.js server bridge, which injects the
- * internal secret and the DB-backed user id from the authenticated session.
- */
+// Global guard that enforces role-based access on every user-session request.
+//
+// Public, internal, and owner API families keep their own route guards. Normal CRM
+// routes authenticate through backend-owned CRM auth cookies.
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
     private reflector: Reflector,
-    private config: ConfigService,
+    private tokens: AuthTokenService,
     @Inject(DB) private db: Database,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest()
+    const request = context.switchToHttp().getRequest<CrmAuthenticatedRequest>()
     const method = request.method as string
     const pathname = getPathname(request.url || '')
 
-    if (method === 'OPTIONS') return true
+    if (isOptionsMethod(method)) return true
 
     // Internal routes (/api/internal/*) have their own InternalGuard (X-Internal-Secret).
     // Owner routes (/api/owner/*) have their own OwnerGuard (x-api-key).
     // Public routes (/api/public/*) authenticate via opaque tokens validated downstream.
-    if (
-      hasPathPrefix(pathname, '/api/internal/')
-      || hasPathPrefix(pathname, '/internal/')
-      || hasPathPrefix(pathname, '/api/owner/')
-      || hasPathPrefix(pathname, '/owner/')
-      || hasPathPrefix(pathname, '/api/public/')
-      || hasPathPrefix(pathname, '/public/')
-    ) {
+    if (isBypassPrefixPath(pathname)) {
       return true
     }
 
-    if (SESSIONLESS_CALLBACK_PATHS.has(pathname)) return true
+    if (SESSIONLESS_AUTH_PATHS.has(pathname)) return true
 
-    if (!this.hasTrustedBridgeSecret(request)) {
-      throw new ForbiddenException('Invalid CRM session.')
-    }
-
-    if (TRUSTED_BRIDGE_PATHS.has(pathname)) return true
+    const backendUserId = this.resolveBackendSessionUserId(request)
 
     const requiredRoles = this.reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
     ])
 
-    const userId = this.firstHeader(request.headers['x-user-id'])
+    const userId = backendUserId
     if (!userId) {
       throw new ForbiddenException('You do not have permission to access the CRM.')
     }
 
     const [user] = await this.db
-      .select({ role: users.role, status: users.status, isActive: users.isActive, deletedAt: users.deletedAt })
+      .select({ role: users.role, status: users.status, isActive: users.isActive, deletedAt: users.deletedAt, email: users.email })
       .from(users)
       .where(eq(users.id, userId))
 
@@ -94,9 +81,17 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('You do not have permission to access the CRM.')
     }
 
-    if (!STATUS_EXEMPT_PATHS.has(pathname) && (user.status !== 'active' || !user.isActive)) {
+    request.crmUser = {
+      id: userId,
+      email: user.email,
+      role: user.role as CrmUserRole,
+      status: user.status as CrmUserStatus,
+      isActive: user.isActive,
+    }
+
+    if (!STATUS_EXEMPT_PATHS.has(pathname) && (user.status !== CrmUserStatus.Active || !user.isActive)) {
       throw new ForbiddenException(
-        user.status === 'pending'
+        user.status === CrmUserStatus.Pending
           ? 'Your account is pending approval.'
           : 'Your account is not active.',
       )
@@ -107,23 +102,27 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('You do not have permission to access this page.')
     }
 
-    if (['GET', 'HEAD'].includes(method)) {
-      if (SESSION_SCOPED_READ_ROLES.has(user.role)) return true
+    if (isReadMethod(method)) {
+      if (SESSION_SCOPED_READ_ROLES.has(user.role as CrmUserRole)) return true
       throw new ForbiddenException('You do not have permission to access this CRM data.')
     }
 
-    if (user.role === 'SALES') return true
+    if (MUTATION_ALLOWED_ROLES.has(user.role as CrmUserRole)) return true
     throw new ForbiddenException('You do not have permission to make CRM changes.')
   }
 
-  private hasTrustedBridgeSecret(request: { headers: Record<string, string | string[] | undefined> }): boolean {
-    const expected = this.config.get<string>('INTERNAL_SECRET')?.trim()
-    if (!expected && process.env.NODE_ENV !== 'production') return true
-    if (!expected) return false
-    return this.firstHeader(request.headers['x-internal-secret'])?.trim() === expected
-  }
+  private resolveBackendSessionUserId(request: CrmAuthenticatedRequest): string | null {
+    try {
+      const accessPayload = this.tokens.getAccessPayload(request)
+      if (accessPayload) return accessPayload.sub
+    } catch {
+      // Fall back to refresh token below.
+    }
 
-  private firstHeader(value: string | string[] | undefined): string | undefined {
-    return Array.isArray(value) ? value[0] : value
+    try {
+      return this.tokens.getRefreshPayload(request)?.sub ?? null
+    } catch {
+      return null
+    }
   }
 }

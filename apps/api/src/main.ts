@@ -9,7 +9,10 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule)
   app.useBodyParser('json', { limit: REQUEST_BODY_LIMIT })
   app.useBodyParser('urlencoded', { extended: true, limit: REQUEST_BODY_LIMIT })
-  app.enableCors({ origin: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' })
+  app.enableCors({
+    origin: process.env.NEXT_PUBLIC_APP_URL || process.env.WEB_BASE_URL || 'http://localhost:3000',
+    credentials: true,
+  })
   app.useGlobalFilters(new HttpExceptionFilter())
   app.setGlobalPrefix('api')
   await app.listen(4000)
