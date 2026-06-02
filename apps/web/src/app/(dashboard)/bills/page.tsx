@@ -11,6 +11,7 @@ import { Pencil, Trash2 } from 'lucide-react'
 import type { ApiDeal, ApiBilling } from '@/lib/types'
 import { BillingSection } from '@/components/BillingSection'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { StatusPill } from '@/components/ui/status-pill'
 import { api } from '@/lib/api'
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
@@ -81,9 +82,7 @@ function BillRow({
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-          {BILLING_TYPE_LABELS[billing.billingType] ?? billing.billingType}
-        </span>
+        <StatusPill tone="primary">{BILLING_TYPE_LABELS[billing.billingType] ?? billing.billingType}</StatusPill>
       </td>
       <td className="px-4 py-3 text-xs font-medium text-slate-800 dark:text-white tabular-nums text-right">
         {formatPeso(billing.amount)}

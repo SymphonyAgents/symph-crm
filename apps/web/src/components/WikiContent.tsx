@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { BACKEND_API_URL } from '@/lib/backend-url'
 import { getBrandColor, getInitials, formatDealValue, totalNumericValue } from '@/lib/utils'
 import { STAGE_COLORS, STAGE_LABELS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal, ApiDocument, DealNoteFile } from '@/lib/types'
@@ -416,7 +417,7 @@ function ResourceInline({ doc }: { doc: ApiDocument }) {
           </h1>
         </div>
         <iframe
-          src={`/api/documents/${doc.id}/file?inline=1`}
+          src={`${BACKEND_API_URL}/documents/${doc.id}/file?inline=1`}
           title={filename}
           className="w-full flex-1 border-0 bg-white dark:bg-[#1a1a1d]"
         />
@@ -500,7 +501,7 @@ function FallbackInline({ doc }: { doc: ApiDocument }) {
         </div>
       </div>
       <a
-        href={`/api/documents/${doc.id}/file`}
+        href={`${BACKEND_API_URL}/documents/${doc.id}/file`}
         download={filename}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
       >

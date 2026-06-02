@@ -18,6 +18,7 @@ import { DataTable, SortableHeader, DataTableSkeleton } from '@/components/ui/da
 import { Combobox } from '@/components/ui/combobox'
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
 import { Input } from '@/components/ui/input'
+import { StatusPill } from '@/components/ui/status-pill'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import type { ApiCatalogItem, ProductType } from '@/lib/types'
 
@@ -128,17 +129,7 @@ export default function CatalogPage() {
       header: 'Status',
       cell: ({ row }) => {
         const active = row.original.isActive
-        return (
-          <span className={cn(
-            'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xxs font-medium',
-            active
-              ? 'bg-[rgba(22,163,74,0.08)] text-[#16a34a]'
-              : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400',
-          )}>
-            <span className={cn('w-1.5 h-1.5 rounded-full', active ? 'bg-[#16a34a]' : 'bg-slate-400')} />
-            {active ? 'Active' : 'Inactive'}
-          </span>
-        )
+        return <StatusPill tone={active ? 'emerald' : 'neutral'}>{active ? 'Active' : 'Inactive'}</StatusPill>
       },
     },
     {

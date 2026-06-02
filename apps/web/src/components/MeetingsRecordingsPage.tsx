@@ -408,14 +408,7 @@ function RecordingsTab() {
       form.append('file', blob, `recording.${ext}`)
       form.append('title', title.trim() || `Recording ${new Date().toLocaleString('en-PH')}`)
       form.append('duration', String(dur))
-      const res = await fetch('/api/backend/recordings/upload', {
-        method: 'POST',
-        body: form,
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({})) as { message?: string }
-        throw new Error(err.message || `Upload failed: ${res.status}`)
-      }
+      await api.upload('/recordings/upload', form)
       await qc.invalidateQueries({ queryKey: queryKeys.recordings.all })
       recorder.reset()
       setTitle('')
