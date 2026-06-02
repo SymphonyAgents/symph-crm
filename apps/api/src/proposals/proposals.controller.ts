@@ -15,7 +15,7 @@ import { DealsService } from '../deals/deals.service'
 import { Roles } from '../auth/roles.guard'
 import { CrmUserRole } from '@symph-crm/shared'
 
-const PROPOSAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build, CrmUserRole.Partner]
+const PROPOSAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build]
 
 @Controller()
 export class ProposalsController {

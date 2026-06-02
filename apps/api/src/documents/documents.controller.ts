@@ -14,7 +14,7 @@ import { CrmUserRole } from '@symph-crm/shared'
 import { DealsService } from '../deals/deals.service'
 import { Roles } from '../auth/roles.guard'
 
-const DOCUMENT_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build, CrmUserRole.Partner]
+const DOCUMENT_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build]
 
 @Controller('documents')
 export class DocumentsController {

@@ -113,14 +113,7 @@ export class RolesGuard implements CanActivate {
 
   private resolveBackendSessionUserId(request: CrmAuthenticatedRequest): string | null {
     try {
-      const accessPayload = this.tokens.getAccessPayload(request)
-      if (accessPayload) return accessPayload.sub
-    } catch {
-      // Fall back to refresh token below.
-    }
-
-    try {
-      return this.tokens.getRefreshPayload(request)?.sub ?? null
+      return this.tokens.getAccessPayload(request)?.sub ?? null
     } catch {
       return null
     }

@@ -39,7 +39,7 @@ export default function OnboardingPage() {
 
     startTransition(async () => {
       try {
-        await api.patch('/users/onboarding', { id: userId, currentTeam })
+        await api.patch('/users/onboarding', { currentTeam })
         await refreshUser()
         router.replace('/')
       } catch (err) {

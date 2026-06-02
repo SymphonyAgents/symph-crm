@@ -20,11 +20,12 @@ export class UsersController {
   completeOnboarding(
     @Body()
     body: {
-      id: string
       currentTeam: string
     },
+    @CurrentUserId() userId?: string,
   ) {
-    return this.usersService.completeOnboarding(body.id, { currentTeam: body.currentTeam })
+    if (!userId) return null
+    return this.usersService.completeOnboarding(userId, { currentTeam: body.currentTeam })
   }
 
   @Get('me')

@@ -7,6 +7,7 @@ import { DealNotesService } from './deal-notes.service'
 import { SaveDealNoteDto } from './dto/save-deal-note.dto'
 
 const DEAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build, CrmUserRole.Partner]
+const INTERNAL_DEAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build]
 
 @Controller('deals')
 export class DealsController {
@@ -39,14 +40,14 @@ export class DealsController {
   }
 
   @Get(':id/notes/flat')
-  @Roles(...DEAL_READ_ROLES)
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
   async getDealNotesFlat(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
     await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.getNotesFlat(id)
   }
 
   @Get(':id/notes')
-  @Roles(...DEAL_READ_ROLES)
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
   async getDealNotes(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
     await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.getNotes(id)
@@ -107,21 +108,21 @@ export class DealsController {
   }
 
   @Get(':id/summaries')
-  @Roles(...DEAL_READ_ROLES)
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
   async listSummaries(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
     await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.listSummaries(id)
   }
 
   @Get(':id/summaries/check')
-  @Roles(...DEAL_READ_ROLES)
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
   async checkNewNotes(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
     await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.hasNewNotesSinceLastSummary(id)
   }
 
   @Get(':id/summaries/:filename')
-  @Roles(...DEAL_READ_ROLES)
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
   async readSummary(@Param('id') id: string, @Param('filename') filename: string, @CurrentUser() user?: CrmRequestUser) {
     await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.readSummary(id, filename)
