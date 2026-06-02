@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useSession, signOut } from 'next-auth/react'
 import { useTheme } from 'next-themes'
 import { Avatar } from './Avatar'
+import { api } from '@/lib/api'
+import { useUser } from '@/lib/hooks/use-user'
 import { cn } from '@/lib/utils'
+import { CrmUserRole } from '@symph-crm/shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   MessageCircle,
@@ -58,7 +60,19 @@ type NavSection = {
   items: NavItem[]
 }
 
-function getNavSections(dormantCount: number): NavSection[] {
+function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] {
+  if (role === CrmUserRole.Partner) {
+    return [
+      {
+        title: 'Main',
+        items: [
+          { path: '/deals', label: 'Deals', icon: BookOpen },
+          { path: '/commissions', label: 'Commissions', icon: Receipt },
+        ],
+      },
+    ]
+  }
+
   return [
     {
       title: 'Main',
@@ -68,15 +82,20 @@ function getNavSections(dormantCount: number): NavSection[] {
         { path: '/pipeline', label: 'Pipeline', icon: Columns3, ...(dormantCount > 0 ? { badge: dormantCount, badgeColor: '#f59e0b' } : {}) },
         { path: '/deals', label: 'Brands', icon: BookOpen },
         { path: '/wiki', label: 'Wiki', icon: BookMarked },
-        { path: '/inbox', label: 'Inbox', icon: Mail },
-        { path: '/meetings', label: 'Meetings', icon: Mic },
       ],
     },
     {
-      title: 'Tools',
+      title: 'Engagement',
+      items: [
+        { path: '/inbox', label: 'Inbox', icon: Mail },
+        { path: '/meetings', label: 'Meetings', icon: Mic },
+        { path: '/proposals', label: 'Proposals', icon: FileText },
+      ],
+    },
+    {
+      title: 'Business',
       items: [
         { path: '/revenue', label: 'Revenue', icon: TrendingUp },
-        { path: '/proposals', label: 'Proposals', icon: FileText },
         { path: '/bills', label: 'Bills', icon: Receipt },
         { path: '/catalog', label: 'Catalog', icon: Package },
       ],
@@ -84,7 +103,7 @@ function getNavSections(dormantCount: number): NavSection[] {
     {
       title: 'System',
       items: [
-        { path: '/users', label: 'Users', icon: Users },
+        { path: '/users', label: 'Partnerships', icon: Users },
         { path: '/audit-logs', label: 'Logs', icon: ClipboardList },
       ],
     },
@@ -140,17 +159,17 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-  const { data: session } = useSession()
+  const { user, role, isLoading, isPartner } = useUser()
   const [hoveredPath, setHoveredPath] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const user = session?.user
-  const navSections = getNavSections(0)
+  const navSections = isLoading ? [] : getNavSections(0, role)
 
   async function handleSignOut() {
     setShowLogoutConfirm(false)
     setSigningOut(true)
-    await signOut({ callbackUrl: '/login' })
+    await api.post('/auth/logout', {})
+    window.location.href = '/login'
   }
 
   return (
@@ -258,7 +277,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
         </nav>
 
         {/* Settings — pinned bottom, outside nav sections */}
-        <div className={cn('mt-auto pt-1', collapsed ? 'md:px-1.5 px-2' : 'px-2')}>
+        {!isLoading && !isPartner && <div className={cn('mt-auto pt-1', collapsed ? 'md:px-1.5 px-2' : 'px-2')}>
           {collapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -294,7 +313,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
               <span className="flex-1">Settings</span>
             </Link>
           )}
-        </div>
+        </div>}
 
         {/* Theme toggle */}
         {mounted && (

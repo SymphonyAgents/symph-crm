@@ -91,6 +91,16 @@ export class ProposalsService {
     return `proposal:${dealId}:${normalizedTitle}`
   }
 
+  async getProposalDealId(proposalId: string): Promise<string | null> {
+    const [proposal] = await this.db
+      .select({ dealId: proposals.dealId })
+      .from(proposals)
+      .where(and(eq(proposals.id, proposalId), isNull(proposals.deletedAt)))
+      .limit(1)
+    if (!proposal) throw new NotFoundException(`Proposal ${proposalId} not found`)
+    return proposal.dealId
+  }
+
   // ── List / read ───────────────────────────────────────────────────────────
 
   /**

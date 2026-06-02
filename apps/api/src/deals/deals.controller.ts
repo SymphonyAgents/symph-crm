@@ -1,7 +1,13 @@
-import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, Headers } from '@nestjs/common'
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query } from '@nestjs/common'
+import { CurrentUser, CurrentUserId, type CrmRequestUser } from '../auth/current-user.decorator'
+import { Roles } from '../auth/roles.guard'
+import { CrmUserRole } from '@symph-crm/shared'
 import { CreateDealData, DealsService, UpdateDealData } from './deals.service'
 import { DealNotesService } from './deal-notes.service'
 import { SaveDealNoteDto } from './dto/save-deal-note.dto'
+
+const DEAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build, CrmUserRole.Partner]
+const INTERNAL_DEAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build]
 
 @Controller('deals')
 export class DealsController {
@@ -11,6 +17,7 @@ export class DealsController {
   ) {}
 
   @Get()
+  @Roles(...DEAL_READ_ROLES)
   findAll(
     @Query('stage') stage?: string,
     @Query('companyId') companyId?: string,
@@ -19,6 +26,7 @@ export class DealsController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('dealType') dealType?: string,
+    @CurrentUser() user?: CrmRequestUser,
   ) {
     return this.dealsService.findAll({
       stage,
@@ -28,34 +36,40 @@ export class DealsController {
       from,
       to,
       dealType,
-    })
+    }, { userId: user?.id, role: user?.role })
   }
 
   @Get(':id/notes/flat')
-  getDealNotesFlat(@Param('id') id: string) {
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
+  async getDealNotesFlat(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.getNotesFlat(id)
   }
 
   @Get(':id/notes')
-  getDealNotes(@Param('id') id: string) {
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
+  async getDealNotes(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.getNotes(id)
   }
 
   @Get('trash')
+  @Roles(CrmUserRole.Sales)
   listTrash() {
     return this.dealsService.listTrash()
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.dealsService.findOne(id)
+  @Roles(...DEAL_READ_ROLES)
+  findOne(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    return this.dealsService.findOne(id, { userId: user?.id, role: user?.role })
   }
 
   @Post(':id/notes')
   saveDealNote(
     @Param('id') id: string,
     @Body() body: SaveDealNoteDto,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     const authorId = body.authorId || userId || null
     return this.dealNotesService.saveNote(id, body.type, body.title, body.content, authorId)
@@ -64,7 +78,7 @@ export class DealsController {
   @Post()
   create(
     @Body() data: CreateDealData,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     // Auto-set createdBy and assignedTo from request context
     const enriched = {
@@ -79,7 +93,7 @@ export class DealsController {
   update(
     @Param('id') id: string,
     @Body() data: UpdateDealData,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.dealsService.update(id, data, userId)
   }
@@ -88,30 +102,36 @@ export class DealsController {
   patchStage(
     @Param('id') id: string,
     @Body() body: { stage: string },
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.dealsService.updateStage(id, body.stage, userId)
   }
 
   @Get(':id/summaries')
-  listSummaries(@Param('id') id: string) {
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
+  async listSummaries(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.listSummaries(id)
   }
 
   @Get(':id/summaries/check')
-  checkNewNotes(@Param('id') id: string) {
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
+  async checkNewNotes(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.hasNewNotesSinceLastSummary(id)
   }
 
   @Get(':id/summaries/:filename')
-  readSummary(@Param('id') id: string, @Param('filename') filename: string) {
+  @Roles(...INTERNAL_DEAL_READ_ROLES)
+  async readSummary(@Param('id') id: string, @Param('filename') filename: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.dealsService.assertCanReadDeal(id, { userId: user?.id, role: user?.role })
     return this.dealNotesService.readSummary(id, filename)
   }
 
   @Post(':id/summaries/generate')
   generateSummary(
     @Param('id') id: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.dealNotesService.triggerSummaryGeneration(id, userId)
   }
@@ -119,7 +139,7 @@ export class DealsController {
   @Post(':id/summaries')
   writeSummary(
     @Param('id') id: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
     @Body() body?: { summary: string; nextSteps: string[]; notesIncluded: number },
   ) {
     return this.dealNotesService.writeSummary(
@@ -136,23 +156,23 @@ export class DealsController {
     @Param('id') id: string,
     @Param('category') category: string,
     @Param('filename') filename: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.dealNotesService.deleteNote(id, category, filename, userId)
   }
 
   @Post(':id/restore')
-  restore(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  restore(@Param('id') id: string, @CurrentUserId() userId?: string) {
     return this.dealsService.restore(id, userId)
   }
 
   @Delete(':id/permanent')
-  deletePermanently(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  deletePermanently(@Param('id') id: string, @CurrentUserId() userId?: string) {
     return this.dealsService.deletePermanently(id, userId)
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Headers('x-user-id') userId?: string) {
+  remove(@Param('id') id: string, @CurrentUserId() userId?: string) {
     return this.dealsService.remove(id, userId)
   }
 }

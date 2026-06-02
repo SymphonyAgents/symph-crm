@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { CrmUserRole } from '@symph-crm/shared'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -12,14 +13,14 @@ import {
 } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
 import { UserOption } from '@/components/UserOption'
+import { PartnerGroupMultiSelect } from '@/components/PartnerGroupMultiSelect'
 import { useUpdateDeal, useAssignDealBrand, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
+import { useGetCompanies, useGetUsers, useGetCatalogItems, useGetPartnerGroups } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
-import { cn } from '@/lib/utils'
 import type { ApiDealDetail, ApiCatalogItem } from '@/lib/types'
 
 type Props = {
@@ -171,7 +172,8 @@ export function EditDealModal({ deal, onClose }: Props) {
   const { data: companies = [] } = useGetCompanies()
   const { data: allUsers = [] } = useGetUsers()
   const { data: catalogItems = [] } = useGetCatalogItems(true)
-  const salesUsers = useMemo(() => allUsers.filter(u => u.role === 'SALES'), [allUsers])
+  const { data: partnerGroups = [] } = useGetPartnerGroups()
+  const salesUsers = useMemo(() => allUsers.filter(u => u.role === CrmUserRole.Sales), [allUsers])
   const qc = useQueryClient()
 
   // ── Form state, pre-populated from deal ──────────────────────────────────
@@ -182,6 +184,9 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatValueDisplay(deal.oneTimeFee) : '')
   const [mrr, setMrr] = useState(deal.mrr ? formatValueDisplay(deal.mrr) : '')
   const [contractLength, setContractLength] = useState(deal.contractLength ? String(deal.contractLength) : '')
+  const [probability, setProbability] = useState(
+    deal.probability != null ? String(deal.probability) : ''
+  )
   // Reseller-specific fields
   const isReseller = deal.dealType === 'reseller'
   const [costPrice, setCostPrice] = useState(deal.costPrice ? String(deal.costPrice) : '')
@@ -191,11 +196,9 @@ export function EditDealModal({ deal, onClose }: Props) {
     (deal.servicesTags && deal.servicesTags.length > 0) ? deal.servicesTags[0] : ''
   )
   const [closeDate, setCloseDate] = useState(deal.closeDate ? deal.closeDate.slice(0, 10) : '')
-  const [probability, setProbability] = useState(
-    deal.probability != null ? String(deal.probability) : ''
-  )
   const [subAccountManagerId, setSubAccountManagerId] = useState(deal.subAccountManagerId ?? '')
   const [builders, setBuilders] = useState<string[]>(deal.builders ?? [])
+  const [partnerGroupIds, setPartnerGroupIds] = useState<string[]>(deal.partnerGroupIds ?? [])
   const [catalogItemId, setCatalogItemId] = useState(deal.catalogItemId ?? '')
 
   const updateDeal = useUpdateDeal({
@@ -246,6 +249,9 @@ export function EditDealModal({ deal, onClose }: Props) {
     const cleanContractLength = contractLength ? parseInt(contractLength, 10) || null : null
     if (cleanContractLength !== (deal.contractLength ?? null)) changes.contractLength = cleanContractLength
 
+    const newProb = probability ? Number(probability) : null
+    if (newProb !== deal.probability) changes.probability = newProb
+
     if ((outreachCategory || null) !== (deal.outreachCategory || null)) {
       changes.outreachCategory = outreachCategory || null
     }
@@ -260,15 +266,17 @@ export function EditDealModal({ deal, onClose }: Props) {
     const oldCloseDate = deal.closeDate ? deal.closeDate.slice(0, 10) : null
     if (newCloseDate !== oldCloseDate) changes.closeDate = newCloseDate
 
-    const newProb = probability ? Number(probability) : null
-    if (newProb !== deal.probability) changes.probability = newProb
-
     const newSubAm = subAccountManagerId || null
     if (newSubAm !== (deal.subAccountManagerId ?? null)) changes.subAccountManagerId = newSubAm
 
     const oldBuilders = deal.builders ?? []
     if (JSON.stringify(builders) !== JSON.stringify(oldBuilders)) {
       changes.builders = builders
+    }
+
+    const oldPartnerGroupIds = deal.partnerGroupIds ?? []
+    if (JSON.stringify([...partnerGroupIds].sort()) !== JSON.stringify([...oldPartnerGroupIds].sort())) {
+      changes.partnerGroupIds = partnerGroupIds
     }
 
     const newCatalogItemId = serviceType === 'internal_products' ? (catalogItemId || null) : null
@@ -384,6 +392,12 @@ export function EditDealModal({ deal, onClose }: Props) {
               </Select>
             </div>
           )}
+
+          <PartnerGroupMultiSelect
+            groups={partnerGroups.filter(group => group.isActive)}
+            selected={partnerGroupIds}
+            onChange={setPartnerGroupIds}
+          />
 
           {/* Stage + Outreach */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

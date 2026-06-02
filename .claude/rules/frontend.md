@@ -2,7 +2,7 @@
 
 ## Architecture
 
-- **Next.js 15.2** with App Router + Turbopack, **React 19**, **TypeScript 5.7**.
+- **Next.js 15.5** with App Router + Turbopack, **React 19**, **TypeScript 5.7**.
 - **Tailwind v4** for styling. No CSS modules, no styled-components.
 - **TanStack React Query v5** for server state. Configured in `providers.tsx` with 60s staleTime, no refetch on window focus.
 - **Radix UI** primitives wrapped in custom components under `components/ui/`.
@@ -24,7 +24,7 @@ apps/web/src/
     {Feature}.tsx         # Feature components (Dashboard, Pipeline, Deals, DealDetail, etc.)
   lib/
     api.ts               # API client — typed fetch wrapper
-    constants.ts          # Types, stage definitions, static data
+    constants.ts          # Feature constants and frontend-only static data
     design-tokens.ts      # CSS custom properties / design system values
     utils.ts              # Shared utilities
 ```
@@ -173,9 +173,15 @@ When adding a new domain (e.g., "invoices"):
 - Responsive: mobile-first. Use `md:` and `lg:` breakpoints. Grid layouts: `grid grid-cols-1 lg:grid-cols-[2fr_1fr]`.
 - Fonts: Geist (sans) and Geist Mono (mono), loaded via `next/font/google` in root layout.
 
+### Shared Contracts, Enums & Types
+- Before adding any enum, status union, role value, route constant, cookie name, or cross-app string literal, check `packages/shared/src/` first.
+- Put reusable frontend/backend enums and constants in `packages/shared`, then import from `@symph-crm/shared` in both apps.
+- Do not duplicate role/status/token/cookie literals in components, hooks, or API clients. Use shared enums such as `CrmUserRole`, `CrmUserStatus`, `CrmAuthTokenType`, `CrmAuthCookieName`, and `HttpMethod`.
+- Keep frontend-only display constants in `lib/constants.ts`; move values to `packages/shared` when the backend also consumes them.
+
 ### Types
-- Define all shared types in `lib/constants.ts` (co-located with constants that use them).
-- Use Drizzle's inferred types from `@symph-crm/database` when available for API response typing.
+- Define frontend-only types near the feature or in `lib/constants.ts` when they are not shared with the backend.
+- Use shared contracts from `@symph-crm/shared` and Drizzle's inferred types from `@symph-crm/database` when available for API response typing.
 - Avoid `any`. Use `unknown` + type narrowing for dynamic data.
 
 ### Forms

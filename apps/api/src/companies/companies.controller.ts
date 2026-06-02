@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, Headers } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common'
+import { CurrentUserId } from '../auth/current-user.decorator'
 import { CompaniesService } from './companies.service'
 import { DealsService } from '../deals/deals.service'
 import { ContactsService } from '../contacts/contacts.service'
@@ -57,7 +58,7 @@ export class CompaniesController {
   @Post()
   create(
     @Body() data: typeof companies.$inferInsert,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     if (userId && !data.createdBy) data.createdBy = userId
     return this.companiesService.create(data, userId)
@@ -67,7 +68,7 @@ export class CompaniesController {
   update(
     @Param('id') id: string,
     @Body() data: Partial<typeof companies.$inferInsert>,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.companiesService.update(id, data, userId)
   }
@@ -75,7 +76,7 @@ export class CompaniesController {
   @Delete(':id')
   remove(
     @Param('id') id: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.companiesService.remove(id, userId)
   }

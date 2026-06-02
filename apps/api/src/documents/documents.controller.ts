@@ -1,14 +1,20 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Param, Body, Query, Headers,
-  UseInterceptors, UploadedFile, BadRequestException, HttpCode, Logger, NotFoundException, Res, StreamableFile,
+  Param, Body, Query,
+  UseInterceptors, UploadedFile, BadRequestException, HttpCode, Logger, NotFoundException, Res, StreamableFile, ForbiddenException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { CurrentUser, CurrentUserId, type CrmRequestUser } from '../auth/current-user.decorator'
 import { memoryStorage } from 'multer'
 import { DocumentsService } from './documents.service'
 import { FileParserService } from '../file-parser/file-parser.service'
 import { StorageService, ATTACHMENTS_BUCKET } from '../storage/storage.service'
 import { documents } from '@symph-crm/database'
+import { CrmUserRole } from '@symph-crm/shared'
+import { DealsService } from '../deals/deals.service'
+import { Roles } from '../auth/roles.guard'
+
+const DOCUMENT_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build]
 
 @Controller('documents')
 export class DocumentsController {
@@ -18,37 +24,59 @@ export class DocumentsController {
     private readonly documentsService: DocumentsService,
     private readonly fileParser: FileParserService,
     private readonly storage: StorageService,
+    private readonly dealsService: DealsService,
   ) {}
 
+  private async assertCanReadDocument(id: string, user?: CrmRequestUser) {
+    if (user?.role !== CrmUserRole.Partner) return
+    const doc = await this.documentsService.findOne(id)
+    if (!doc?.dealId) throw new ForbiddenException('You do not have permission to access this document.')
+    await this.dealsService.assertCanReadDeal(doc.dealId, { userId: user.id, role: user.role })
+  }
+
   @Get()
-  find(
+  @Roles(...DOCUMENT_READ_ROLES)
+  async find(
     @Query('dealId') dealId?: string,
     @Query('companyId') companyId?: string,
     @Query('type') type?: string,
+    @CurrentUser() user?: CrmRequestUser,
   ) {
-    if (dealId) return this.documentsService.findByDeal(dealId)
+    if (dealId) {
+      await this.dealsService.assertCanReadDeal(dealId, { userId: user?.id, role: user?.role })
+      return this.documentsService.findByDeal(dealId)
+    }
+    if (user?.role === CrmUserRole.Partner) throw new ForbiddenException('Partners can only access deal-scoped documents.')
     if (companyId) return this.documentsService.findByCompany(companyId)
     if (type) return this.documentsService.findByType(type as any)
     return []
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  @Roles(...DOCUMENT_READ_ROLES)
+  async findOne(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadDocument(id, user)
     return this.documentsService.findOne(id)
   }
 
   @Get(':id/content')
-  readContent(@Param('id') id: string) {
+  @Roles(...DOCUMENT_READ_ROLES)
+  async readContent(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadDocument(id, user)
     return this.documentsService.readContent(id).then(content => ({ content }))
   }
 
   @Get(':id/download')
-  downloadUrl(@Param('id') id: string) {
+  @Roles(...DOCUMENT_READ_ROLES)
+  async downloadUrl(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadDocument(id, user)
     return this.documentsService.getDownloadUrl(id)
   }
 
   @Get(':id/preview')
-  previewUrl(@Param('id') id: string) {
+  @Roles(...DOCUMENT_READ_ROLES)
+  async previewUrl(@Param('id') id: string, @CurrentUser() user?: CrmRequestUser) {
+    await this.assertCanReadDocument(id, user)
     return this.documentsService.getPreviewUrl(id)
   }
 
@@ -58,11 +86,14 @@ export class DocumentsController {
    * Returns the actual file content with appropriate Content-Type and Content-Disposition headers.
    */
   @Get(':id/file')
+  @Roles(...DOCUMENT_READ_ROLES)
   async serveFile(
     @Param('id') id: string,
     @Query('inline') inline: string | undefined,
     @Res({ passthrough: true }) res: any,
+    @CurrentUser() user?: CrmRequestUser,
   ) {
+    await this.assertCanReadDocument(id, user)
     const doc = await this.documentsService.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
 
@@ -113,7 +144,7 @@ export class DocumentsController {
       storagePath?: string
       content?: string
     },
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.documentsService.create(data, userId)
   }
@@ -140,7 +171,7 @@ export class DocumentsController {
     @Body('dealId') dealId: string,
     @Body('authorId') authorId: string,
     @Body('dealStage') dealStage?: string,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     if (!file) throw new BadRequestException('No file provided')
     if (!dealId) throw new BadRequestException('dealId is required')
@@ -228,7 +259,7 @@ export class DocumentsController {
   update(
     @Param('id') id: string,
     @Body() data: Partial<typeof documents.$inferInsert> & { content?: string },
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.documentsService.update(id, data, userId)
   }

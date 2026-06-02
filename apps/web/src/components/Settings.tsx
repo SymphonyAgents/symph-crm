@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useSession } from 'next-auth/react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar } from './Avatar'
 import { api } from '@/lib/api'
+import { BACKEND_API_URL } from '@/lib/backend-url'
+import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useGetCalendarStatus } from '@/lib/hooks/queries'
 import { cn } from '@/lib/utils'
@@ -64,13 +65,10 @@ function ComingSoonApp({
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export function Settings() {
-  const { data: session } = useSession()
+  const { user, userId } = useUser()
   const queryClient = useQueryClient()
-  const user = session?.user
-  const userId = (session?.user as { id?: string })?.id
 
-  // Only query after userId is resolved — prevents race condition where the hook
-  // fires before the session is loaded and returns connected: false (no x-user-id header).
+  // Only query after userId is resolved so calendar status waits for backend auth session hydration.
   const { data: calendarStatus, isLoading: statusLoading } = useGetCalendarStatus({ enabled: !!userId })
   const [disconnecting, setDisconnecting] = useState(false)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -110,7 +108,7 @@ export function Settings() {
     }
   }
 
-  const connectUrl = '/api/backend/auth/google-calendar/connect?returnTo=%2Fsettings'
+  const connectUrl = `${BACKEND_API_URL}/auth/google-calendar/connect?returnTo=%2Fsettings`
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">

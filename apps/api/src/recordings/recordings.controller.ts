@@ -1,8 +1,9 @@
 import {
-  Controller, Get, Post, Delete, Param, Body, Headers, Query,
+  Controller, Get, Post, Delete, Param, Body, Query,
   UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
+import { CurrentUserId } from '../auth/current-user.decorator'
 import { RecordingsService } from './recordings.service'
 
 const DEFAULT_WORKSPACE = '60f84f03-283e-4c1a-8c88-b8330dc71d32'
@@ -23,7 +24,7 @@ export class RecordingsController {
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: { title?: string; duration?: string },
-    @Headers('x-user-id') userId: string,
+    @CurrentUserId() userId: string,
   ) {
     if (!file) throw new BadRequestException('No audio file provided')
     return this.recordingsService.upload(userId, file, {
@@ -34,14 +35,14 @@ export class RecordingsController {
   }
 
   @Get()
-  findAll(@Headers('x-user-id') userId: string) {
+  findAll(@CurrentUserId() userId: string) {
     return this.recordingsService.findAll(userId)
   }
 
   @Delete(':id')
   remove(
     @Param('id') id: string,
-    @Headers('x-user-id') userId: string,
+    @CurrentUserId() userId: string,
   ) {
     return this.recordingsService.remove(id, userId)
   }
@@ -53,7 +54,7 @@ export class RecordingsController {
   async circlebackUpload(
     @UploadedFile() file: Express.Multer.File,
     @Body('dealId') dealId: string | undefined,
-    @Headers('x-user-id') userId: string,
+    @CurrentUserId() userId: string,
   ) {
     if (!file) throw new BadRequestException('No file provided')
     return this.recordingsService.circlebackUpload(userId, dealId, file)

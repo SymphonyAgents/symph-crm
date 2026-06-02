@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import imageCompression from 'browser-image-compression'
@@ -20,7 +19,9 @@ import { useGetChatSessions, useGetChatHistory } from '@/lib/hooks/queries'
 import { useCreateChatSession, useDeleteChatSession } from '@/lib/hooks/mutations'
 import { useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
+import { api } from '@/lib/api'
 import { useChatTyping } from '@/lib/chat-typing-context'
+import { useUser } from '@/lib/hooks/use-user'
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -538,7 +539,7 @@ function SessionSidebar({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function Chat({ dealId }: { dealId?: string }) {
-  const { data: session } = useSession()
+  const { user, userId: currentUserId } = useUser()
   const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -586,8 +587,8 @@ export function Chat({ dealId }: { dealId?: string }) {
   const sessionIdRef = useRef<string | undefined>(sessionId)
   useEffect(() => { sessionIdRef.current = sessionId }, [sessionId])
 
-  const userName = session?.user?.name?.split(' ')[0] || 'there'
-  const userId = (session?.user as { id?: string })?.id || 'anonymous'
+  const userName = user?.name?.split(' ')[0] || 'there'
+  const userId = currentUserId || 'anonymous'
 
   // Session management hooks
   const { data: chatSessions = [] } = useGetChatSessions(userId !== 'anonymous' ? userId : null)
@@ -911,11 +912,7 @@ export function Chat({ dealId }: { dealId?: string }) {
     // navigation (e.g. new-session redirect). Awaited to guarantee the
     // message is in the DB before history is fetched on the new page.
     try {
-      await fetch(`/api/backend/chat/sessions/${activeSessionId}/messages/user`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userMessage: text }),
-      })
+      await api.post(`/chat/sessions/${activeSessionId}/messages/user`, { userMessage: text })
     } catch (err) {
       console.error('[Chat] pre-save user message failed:', err)
       // Non-fatal: the Aria route also saves the user message as fallback

@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
+import { CrmUserRole } from '@symph-crm/shared'
 // Product/Tier inputs removed per Vins — not needed in create flow
 import { Input } from '@/components/ui/input'
 import {
@@ -16,8 +17,9 @@ import { Combobox } from '@/components/ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { UserOption } from '@/components/UserOption'
+import { PartnerGroupMultiSelect } from '@/components/PartnerGroupMultiSelect'
 import { useCreateDeal, useUploadDocumentFile, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
+import { useGetUsers, useGetCatalogItems, useGetPartnerGroups } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -309,12 +311,14 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
   const [assignedToId, setAssignedToId] = useState('')
   const [subAccountManagerId, setSubAccountManagerId] = useState('')
   const [builders, setBuilders] = useState<string[]>([])
+  const [partnerGroupIds, setPartnerGroupIds] = useState<string[]>([])
   const [catalogItemId, setCatalogItemId] = useState('')
   const qc = useQueryClient()
   const { userId } = useUser()
   const { data: allUsers = [] } = useGetUsers()
   const { data: catalogItems = [] } = useGetCatalogItems(true)
-  const salesUsers = useMemo(() => allUsers.filter((u: ApiUser) => u.role === 'SALES'), [allUsers])
+  const { data: partnerGroups = [] } = useGetPartnerGroups()
+  const salesUsers = useMemo(() => allUsers.filter((u: ApiUser) => u.role === CrmUserRole.Sales), [allUsers])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadFiles = useUploadDocumentFile()
@@ -377,6 +381,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
       assignedTo: assignedToId || userId,
       subAccountManagerId: subAccountManagerId || null,
       builders: builders.length > 0 ? builders : undefined,
+      partnerGroupIds,
       catalogItemId: serviceType === 'internal_products' ? (catalogItemId || null) : null,
       dealType: defaultDealType ?? 'agency',
     })
@@ -467,6 +472,12 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
               </Select>
             </div>
           )}
+
+          <PartnerGroupMultiSelect
+            groups={partnerGroups.filter(group => group.isActive)}
+            selected={partnerGroupIds}
+            onChange={setPartnerGroupIds}
+          />
 
           {/* Account Manager */}
           <div className="flex flex-col gap-1.5">

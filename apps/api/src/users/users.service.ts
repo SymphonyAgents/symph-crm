@@ -1,12 +1,15 @@
 import { BadRequestException, Injectable, Inject, NotFoundException } from '@nestjs/common'
 import { and, asc, eq, isNull, ne } from 'drizzle-orm'
 import { users } from '@symph-crm/database'
+import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
+import { PartnerGroupsService } from '../partner-groups/partner-groups.service'
+import { PartnerDealGroupsService } from '../partner-deal-groups/partner-deal-groups.service'
 
-type UserRole = 'SALES' | 'BUILD' | 'PARTNER'
-type UserStatus = 'active' | 'pending' | 'rejected'
+type UserRole = CrmUserRole
+type UserStatus = CrmUserStatus
 
 // Emails that are auto-assigned the SALES role on sign-in.
 // Non-Symph emails enter a pending PARTNER flow for Sales review.
@@ -42,13 +45,13 @@ function isInternalEmail(email: string) {
 
 function roleForEmail(email: string): UserRole {
   const normalizedEmail = normalizeEmail(email)
-  if (SALES_EMAILS.has(normalizedEmail)) return 'SALES'
-  if (isInternalEmail(normalizedEmail)) return 'BUILD'
-  return 'PARTNER'
+  if (SALES_EMAILS.has(normalizedEmail)) return CrmUserRole.Sales
+  if (isInternalEmail(normalizedEmail)) return CrmUserRole.Build
+  return CrmUserRole.Partner
 }
 
 function statusForEmail(email: string): UserStatus {
-  return isInternalEmail(email) ? 'active' : 'pending'
+  return isInternalEmail(email) ? CrmUserStatus.Active : CrmUserStatus.Pending
 }
 
 @Injectable()
@@ -56,6 +59,8 @@ export class UsersService {
   constructor(
     @Inject(DB) private db: Database,
     private auditLogs: AuditLogsService,
+    private partnerGroups: PartnerGroupsService,
+    private partnerDealGroups: PartnerDealGroupsService,
   ) {}
 
   async sync(data: { id: string; email: string; name?: string | null; image?: string | null }) {
@@ -67,14 +72,14 @@ export class UsersService {
 
     if (existing) {
       const isInternal = isInternalEmail(email)
-      const isRemovedOrRejected = existing.status === 'rejected' || !!existing.deletedAt || !existing.isActive
-      const isApprovedExternal = !isInternal && !isRemovedOrRejected && existing.role === 'PARTNER' && existing.status === 'active'
-      const role = isInternal ? incomingRole : 'PARTNER'
+      const isRemovedOrRejected = existing.status === CrmUserStatus.Rejected || !!existing.deletedAt || !existing.isActive
+      const isApprovedExternal = !isInternal && !isRemovedOrRejected && existing.role === CrmUserRole.Partner && existing.status === CrmUserStatus.Active
+      const role = isInternal ? incomingRole : CrmUserRole.Partner
       const status = isRemovedOrRejected
-        ? 'rejected'
+        ? CrmUserStatus.Rejected
         : isInternal || isApprovedExternal
-          ? 'active'
-          : 'pending'
+          ? CrmUserStatus.Active
+          : CrmUserStatus.Pending
       const [updated] = await this.db
         .update(users)
         .set({
@@ -82,10 +87,10 @@ export class UsersService {
           image: data.image ?? null,
           role,
           status,
-          isActive: status === 'active' || status === 'pending',
+          isActive: status === CrmUserStatus.Active || status === CrmUserStatus.Pending,
           isOnboarded: isInternal ? existing.isOnboarded : isApprovedExternal,
           currentTeam: isInternal ? existing.currentTeam : null,
-          deletedAt: status === 'pending' ? null : existing.deletedAt,
+          deletedAt: status === CrmUserStatus.Pending ? null : existing.deletedAt,
           updatedAt: new Date(),
         })
         .where(eq(users.email, email))
@@ -102,7 +107,7 @@ export class UsersService {
         image: data.image ?? null,
         role: incomingRole,
         status: incomingStatus,
-        isActive: incomingStatus !== 'rejected',
+        isActive: incomingStatus !== CrmUserStatus.Rejected,
       })
       .returning()
 
@@ -154,6 +159,25 @@ export class UsersService {
 
   async findOne(id: string) {
     const [user] = await this.db.select().from(users).where(and(eq(users.id, id), isNull(users.deletedAt)))
+    return user ?? null
+  }
+
+  async findSessionUser(id: string) {
+    const [user] = await this.db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        image: users.image,
+        role: users.role,
+        status: users.status,
+        isActive: users.isActive,
+        isOnboarded: users.isOnboarded,
+        currentTeam: users.currentTeam,
+      })
+      .from(users)
+      .where(and(eq(users.id, id), isNull(users.deletedAt)))
+      .limit(1)
     return user ?? null
   }
 
@@ -230,7 +254,7 @@ export class UsersService {
       .then(rows => rows.filter(user => user.email ? !isInternalEmail(user.email) : false))
   }
 
-  async approveExternalUser(id: string, performedBy?: string) {
+  async approveExternalUser(id: string, performedBy?: string, partnerGroupIds: string[] = [], partnerDealGroupIds: string[] = []) {
     const user = await this.findOne(id)
     if (!user) throw new NotFoundException('User not found')
     const email = user.email ?? ''
@@ -238,14 +262,23 @@ export class UsersService {
 
     const [updated] = await this.db
       .update(users)
-      .set({ role: 'PARTNER', status: 'active', isActive: true, isOnboarded: true, deletedAt: null, updatedAt: new Date() })
+      .set({ role: CrmUserRole.Partner, status: CrmUserStatus.Active, isActive: true, isOnboarded: true, deletedAt: null, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning()
+
+    if (partnerGroupIds.length > 0) {
+      await this.partnerGroups.addUserToGroups(id, partnerGroupIds, performedBy)
+    }
+    if (partnerDealGroupIds.length > 0) {
+      await this.partnerDealGroups.addUserToGroups(id, partnerDealGroupIds, performedBy)
+    }
 
     await this.logExternalUserChange('user_external_approved', id, performedBy, {
       email,
       previousStatus: user.status,
       status: updated.status,
+      partnerGroupIds,
+      partnerDealGroupIds,
     })
 
     return updated
@@ -259,7 +292,7 @@ export class UsersService {
 
     const [updated] = await this.db
       .update(users)
-      .set({ status: 'rejected', isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .set({ status: CrmUserStatus.Rejected, isActive: false, deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning()
 
@@ -277,7 +310,7 @@ export class UsersService {
     if (!user) throw new NotFoundException('User not found')
     const email = user.email ?? ''
     if (isInternalEmail(email)) throw new BadRequestException('Internal user roles are managed by the internal allowlist')
-    if (role !== 'PARTNER') throw new BadRequestException('External users can only be PARTNER')
+    if (role !== CrmUserRole.Partner) throw new BadRequestException('External users can only be PARTNER')
 
     const [updated] = await this.db
       .update(users)
@@ -302,7 +335,7 @@ export class UsersService {
 
     const [updated] = await this.db
       .update(users)
-      .set({ status: 'rejected', isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .set({ status: CrmUserStatus.Rejected, isActive: false, deletedAt: new Date(), updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning()
 

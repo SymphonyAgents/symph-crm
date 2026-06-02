@@ -43,6 +43,8 @@ import type {
   ApiMeeting,
   ApiMeetingDetail,
   ApiMeetingListItem,
+  ApiPartnerGroup,
+  ApiPartnerDealGroup,
 } from '@/lib/types'
 
 // ─── Companies ────────────────────────────────────────────────────────────────
@@ -189,6 +191,28 @@ export function useGetContactNotes(
     queryKey: queryKeys.contacts.notes(contactId ?? ''),
     queryFn: () => api.get<ContactNotesResponse>(`/contacts/${contactId}/notes`),
     enabled: !!contactId,
+    ...options,
+  })
+}
+
+// ─── Partner Groups ─────────────────────────────────────────────────────────
+
+export function useGetPartnerGroups(
+  options?: Partial<UseQueryOptions<ApiPartnerGroup[]>>,
+) {
+  return useQuery<ApiPartnerGroup[]>({
+    queryKey: queryKeys.partnerGroups.all,
+    queryFn: () => api.get<ApiPartnerGroup[]>('/partner-groups'),
+    ...options,
+  })
+}
+
+export function useGetPartnerDealGroups(
+  options?: Partial<UseQueryOptions<ApiPartnerDealGroup[]>>,
+) {
+  return useQuery<ApiPartnerDealGroup[]>({
+    queryKey: queryKeys.partnerDealGroups.all,
+    queryFn: () => api.get<ApiPartnerDealGroup[]>('/partner-deal-groups'),
     ...options,
   })
 }

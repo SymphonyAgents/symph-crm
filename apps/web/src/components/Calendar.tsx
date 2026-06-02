@@ -9,6 +9,7 @@ import {
   MONTHS, MONTHS_SHORT, DAYS,
   EVENT_TYPE_COLORS, EVENT_TYPE_BADGE, EVENT_TYPE_HEX, TIME_SLOTS, HOURS, HOUR_PX,
 } from '@/lib/constants'
+import { BACKEND_API_URL } from '@/lib/backend-url'
 import { queryKeys } from '@/lib/query-keys'
 import { useGetCalendarStatus, useGetCalendarEvents, useGetTeamDemos } from '@/lib/hooks/queries'
 import { useCreateCalendarEvent } from '@/lib/hooks/mutations'
@@ -849,7 +850,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
               <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Sync your events and schedule demos directly from the CRM.</p>
             </div>
             <a
-              href="/api/backend/auth/google-calendar/connect?returnTo=%2Fcalendar"
+              href={`${BACKEND_API_URL}/auth/google-calendar/connect?returnTo=%2Fcalendar`}
               className="ml-4 shrink-0 px-4 py-2 bg-blue-600 text-white text-ssm font-medium rounded-lg hover:bg-blue-700 transition-colors"
             >
               Connect
