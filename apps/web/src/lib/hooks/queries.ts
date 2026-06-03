@@ -217,6 +217,16 @@ export function useGetPartnerDealGroups(
   })
 }
 
+export function useGetMyPartnerDealGroups(
+  options?: Partial<UseQueryOptions<ApiPartnerDealGroup[]>>,
+) {
+  return useQuery<ApiPartnerDealGroup[]>({
+    queryKey: queryKeys.partnerDealGroups.me,
+    queryFn: () => api.get<ApiPartnerDealGroup[]>('/partner-deal-groups/me'),
+    ...options,
+  })
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 
 export function useGetUsers(

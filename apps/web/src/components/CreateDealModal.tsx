@@ -19,14 +19,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { UserOption } from '@/components/UserOption'
 import { PartnerGroupMultiSelect } from '@/components/PartnerGroupMultiSelect'
 import { useCreateDeal, useUploadDocumentFile, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetUsers, useGetCatalogItems, useGetPartnerGroups } from '@/lib/hooks/queries'
+import { useGetUsers, useGetCatalogItems, useGetPartnerDealGroups } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
-import { cn } from '@/lib/utils'
+import { cn, formatNumberWithCommas } from '@/lib/utils'
 import type { ApiCompanyDetail, ApiCatalogItem, ApiUser } from '@/lib/types'
 
 type Props = {
@@ -311,13 +311,13 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
   const [assignedToId, setAssignedToId] = useState('')
   const [subAccountManagerId, setSubAccountManagerId] = useState('')
   const [builders, setBuilders] = useState<string[]>([])
-  const [partnerGroupIds, setPartnerGroupIds] = useState<string[]>([])
+  const [partnerDealGroupIds, setPartnerDealGroupIds] = useState<string[]>([])
   const [catalogItemId, setCatalogItemId] = useState('')
   const qc = useQueryClient()
   const { userId } = useUser()
   const { data: allUsers = [] } = useGetUsers()
-  const { data: catalogItems = [] } = useGetCatalogItems(true)
-  const { data: partnerGroups = [] } = useGetPartnerGroups()
+  const { data: catalogItems = [] } = useGetCatalogItems({ activeOnly: true, type: 'internal' })
+  const { data: partnerDealGroups = [] } = useGetPartnerDealGroups()
   const salesUsers = useMemo(() => allUsers.filter((u: ApiUser) => u.role === CrmUserRole.Sales), [allUsers])
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -381,7 +381,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
       assignedTo: assignedToId || userId,
       subAccountManagerId: subAccountManagerId || null,
       builders: builders.length > 0 ? builders : undefined,
-      partnerGroupIds,
+      partnerDealGroupIds,
       catalogItemId: serviceType === 'internal_products' ? (catalogItemId || null) : null,
       dealType: defaultDealType ?? 'agency',
     })
@@ -474,9 +474,9 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           )}
 
           <PartnerGroupMultiSelect
-            groups={partnerGroups.filter(group => group.isActive)}
-            selected={partnerGroupIds}
-            onChange={setPartnerGroupIds}
+            groups={partnerDealGroups.filter(group => group.isActive)}
+            selected={partnerDealGroupIds}
+            onChange={setPartnerDealGroupIds}
           />
 
           {/* Account Manager */}
@@ -555,13 +555,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
               <Input
                 value={value}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9.]/g, '')
-                  // Format with commas for display, strip on submit
-                  const parts = raw.split('.')
-                  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-                  setValue(parts.join('.'))
-                }}
+                onChange={e => setValue(formatNumberWithCommas(e.target.value))}
                 placeholder="e.g. 250,000"
                 className="h-11 sm:h-9 text-ssm"
               />

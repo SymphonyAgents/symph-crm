@@ -106,6 +106,11 @@ export async function middleware(request: NextRequest) {
     return passThroughSetCookie(session.response, response)
   }
 
+  if (user.role === CrmUserRole.Partner && pathname === '/') {
+    response = redirectTo(request, '/deals')
+    return passThroughSetCookie(session.response, response)
+  }
+
   if (user.role === CrmUserRole.Partner && !isPartnerAllowedPath(pathname)) {
     response = notFoundRewrite(request)
     return passThroughSetCookie(session.response, response)

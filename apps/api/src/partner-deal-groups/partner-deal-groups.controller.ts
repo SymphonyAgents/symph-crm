@@ -14,6 +14,13 @@ export class PartnerDealGroupsController {
     return this.partnerDealGroups.findAll()
   }
 
+  @Get('me')
+  @Roles(CrmUserRole.Sales, CrmUserRole.Partner)
+  findMine(@CurrentUserId() userId?: string) {
+    if (!userId) return []
+    return this.partnerDealGroups.findForUser(userId)
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.partnerDealGroups.findOne(id)

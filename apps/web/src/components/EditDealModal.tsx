@@ -15,12 +15,13 @@ import { Combobox } from '@/components/ui/combobox'
 import { UserOption } from '@/components/UserOption'
 import { PartnerGroupMultiSelect } from '@/components/PartnerGroupMultiSelect'
 import { useUpdateDeal, useAssignDealBrand, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetCompanies, useGetUsers, useGetCatalogItems, useGetPartnerGroups } from '@/lib/hooks/queries'
+import { useGetCompanies, useGetUsers, useGetCatalogItems, useGetPartnerDealGroups } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
+import { formatNumberWithCommas } from '@/lib/utils'
 import type { ApiDealDetail, ApiCatalogItem } from '@/lib/types'
 
 type Props = {
@@ -155,14 +156,6 @@ function CatalogRowLabel({ item }: { item: ApiCatalogItem }) {
   )
 }
 
-/** Format a number string with commas for display */
-function formatValueDisplay(raw: string): string {
-  const clean = raw.replace(/[^0-9.]/g, '')
-  const parts = clean.split('.')
-  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-  return parts.join('.')
-}
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const isUuid = (s: string) => UUID_RE.test(s)
 
@@ -171,8 +164,8 @@ export function EditDealModal({ deal, onClose }: Props) {
 
   const { data: companies = [] } = useGetCompanies()
   const { data: allUsers = [] } = useGetUsers()
-  const { data: catalogItems = [] } = useGetCatalogItems(true)
-  const { data: partnerGroups = [] } = useGetPartnerGroups()
+  const { data: catalogItems = [] } = useGetCatalogItems({ activeOnly: true, type: 'internal' })
+  const { data: partnerDealGroups = [] } = useGetPartnerDealGroups()
   const salesUsers = useMemo(() => allUsers.filter(u => u.role === CrmUserRole.Sales), [allUsers])
   const qc = useQueryClient()
 
@@ -180,16 +173,13 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [title, setTitle] = useState(deal.title)
   const [companyId, setCompanyId] = useState(deal.companyId ?? '')
   const [stage, setStage] = useState(deal.stage)
-  const [value, setValue] = useState(deal.value ? formatValueDisplay(deal.value) : '')
-  const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatValueDisplay(deal.oneTimeFee) : '')
-  const [mrr, setMrr] = useState(deal.mrr ? formatValueDisplay(deal.mrr) : '')
+  const [value, setValue] = useState(deal.value ? formatNumberWithCommas(deal.value) : '')
+  const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatNumberWithCommas(deal.oneTimeFee) : '')
+  const [mrr, setMrr] = useState(deal.mrr ? formatNumberWithCommas(deal.mrr) : '')
   const [contractLength, setContractLength] = useState(deal.contractLength ? String(deal.contractLength) : '')
-  const [probability, setProbability] = useState(
-    deal.probability != null ? String(deal.probability) : ''
-  )
   // Reseller-specific fields
   const isReseller = deal.dealType === 'reseller'
-  const [costPrice, setCostPrice] = useState(deal.costPrice ? String(deal.costPrice) : '')
+  const [costPrice, setCostPrice] = useState(deal.costPrice ? formatNumberWithCommas(String(deal.costPrice)) : '')
   const [marginPercent, setMarginPercent] = useState(deal.marginPercent ? String(deal.marginPercent) : '')
   const [outreachCategory, setOutreachCategory] = useState(deal.outreachCategory ?? '')
   const [serviceType, setServiceType] = useState(
@@ -198,7 +188,7 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [closeDate, setCloseDate] = useState(deal.closeDate ? deal.closeDate.slice(0, 10) : '')
   const [subAccountManagerId, setSubAccountManagerId] = useState(deal.subAccountManagerId ?? '')
   const [builders, setBuilders] = useState<string[]>(deal.builders ?? [])
-  const [partnerGroupIds, setPartnerGroupIds] = useState<string[]>(deal.partnerGroupIds ?? [])
+  const [partnerDealGroupIds, setPartnerDealGroupIds] = useState<string[]>(deal.partnerDealGroupIds ?? [])
   const [catalogItemId, setCatalogItemId] = useState(deal.catalogItemId ?? '')
 
   const updateDeal = useUpdateDeal({
@@ -249,9 +239,6 @@ export function EditDealModal({ deal, onClose }: Props) {
     const cleanContractLength = contractLength ? parseInt(contractLength, 10) || null : null
     if (cleanContractLength !== (deal.contractLength ?? null)) changes.contractLength = cleanContractLength
 
-    const newProb = probability ? Number(probability) : null
-    if (newProb !== deal.probability) changes.probability = newProb
-
     if ((outreachCategory || null) !== (deal.outreachCategory || null)) {
       changes.outreachCategory = outreachCategory || null
     }
@@ -274,9 +261,9 @@ export function EditDealModal({ deal, onClose }: Props) {
       changes.builders = builders
     }
 
-    const oldPartnerGroupIds = deal.partnerGroupIds ?? []
-    if (JSON.stringify([...partnerGroupIds].sort()) !== JSON.stringify([...oldPartnerGroupIds].sort())) {
-      changes.partnerGroupIds = partnerGroupIds
+    const oldPartnerDealGroupIds = deal.partnerDealGroupIds ?? []
+    if (JSON.stringify([...partnerDealGroupIds].sort()) !== JSON.stringify([...oldPartnerDealGroupIds].sort())) {
+      changes.partnerDealGroupIds = partnerDealGroupIds
     }
 
     const newCatalogItemId = serviceType === 'internal_products' ? (catalogItemId || null) : null
@@ -394,9 +381,9 @@ export function EditDealModal({ deal, onClose }: Props) {
           )}
 
           <PartnerGroupMultiSelect
-            groups={partnerGroups.filter(group => group.isActive)}
-            selected={partnerGroupIds}
-            onChange={setPartnerGroupIds}
+            groups={partnerDealGroups.filter(group => group.isActive)}
+            selected={partnerDealGroupIds}
+            onChange={setPartnerDealGroupIds}
           />
 
           {/* Stage + Outreach */}
@@ -435,7 +422,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                 <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">One-Time Fee (PHP)</label>
                 <Input
                   value={oneTimeFee}
-                  onChange={e => setOneTimeFee(formatValueDisplay(e.target.value))}
+                  onChange={e => setOneTimeFee(formatNumberWithCommas(e.target.value))}
                   placeholder="e.g. 1,214,000"
                   className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                 />
@@ -446,7 +433,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                 </label>
                 <Input
                   value={mrr}
-                  onChange={e => setMrr(formatValueDisplay(e.target.value))}
+                  onChange={e => setMrr(formatNumberWithCommas(e.target.value))}
                   placeholder="e.g. 50,000"
                   className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                 />
@@ -496,7 +483,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                   <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Cost Price (PHP)</label>
                   <Input
                     value={costPrice}
-                    onChange={e => setCostPrice(e.target.value)}
+                    onChange={e => setCostPrice(formatNumberWithCommas(e.target.value))}
                     placeholder="e.g. 500,000"
                     className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
                   />
@@ -544,22 +531,6 @@ export function EditDealModal({ deal, onClose }: Props) {
               })()}
             </div>
           )}
-
-          {/* Probability */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Probability (%)</label>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                value={probability}
-                onChange={e => setProbability(e.target.value)}
-                placeholder="e.g. 75"
-                className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
-              />
-            </div>
-          </div>
 
           {/* Close Date */}
           <div className="flex flex-col gap-1.5">

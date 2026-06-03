@@ -17,7 +17,6 @@ const TABS: { id: CatalogTabId; value: CatalogTabValue; label: string }[] = [
   { id: 'internal',    value: 'internal',    label: 'Products' },
   { id: 'service',     value: 'service',     label: 'Services' },
   { id: 'reseller',    value: 'reseller',    label: 'Reseller' },
-  { id: 'partnership', value: 'partnership', label: 'Partnership' },
 ]
 
 // counts is keyed by ProductType for the named tabs; `all` is the All tab.
@@ -58,7 +57,6 @@ export function tabValueFromSlug(slug: string | null | undefined): CatalogTabVal
     case 'products':    return 'internal'
     case 'services':    return 'service'
     case 'reseller':    return 'reseller'
-    case 'partnership': return 'partnership'
     default:            return null
   }
 }
@@ -68,7 +66,6 @@ export function tabSlugFromValue(value: CatalogTabValue): string {
     case 'internal':    return 'products'
     case 'service':     return 'services'
     case 'reseller':    return 'reseller'
-    case 'partnership': return 'partnership'
     default:            return 'all'
   }
 }

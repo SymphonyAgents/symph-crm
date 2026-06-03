@@ -43,6 +43,15 @@ export function formatCurrencyFull(v: string | null | undefined): string {
   return `\u20B1${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
+export function formatNumberWithCommas(raw: string): string {
+  const cleaned = raw.replace(/,/g, '').replace(/[^0-9.]/g, '')
+  const parts = cleaned.split('.')
+  const intPart = parts[0]
+  const decimalPart = parts.slice(1).join('')
+  const formattedInt = intPart ? Number(intPart).toLocaleString('en-PH') : ''
+  return parts.length > 1 ? `${formattedInt}.${decimalPart}` : formattedInt
+}
+
 /** Compact deal value display — "P1.2M" or "—" for null */
 export function formatDealValue(v: string | null): string {
   if (!v) return '—'

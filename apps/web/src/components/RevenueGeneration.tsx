@@ -1015,7 +1015,7 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
   const { data: rawDeals = [], isLoading } = useGetDeals()
   const isFiltered = !!catalogProductType || !!catalogItemId
   const allDeals = useMemo(() => {
-    let result = rawDeals
+    let result = rawDeals.filter(deal => deal.catalogItemType !== 'partnership')
     if (catalogProductType) result = result.filter(d => d.catalogItemType === catalogProductType)
     if (catalogItemId) result = result.filter(d => d.catalogItemId === catalogItemId)
     return result

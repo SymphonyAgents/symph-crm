@@ -90,6 +90,7 @@ function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] 
         { path: '/inbox', label: 'Inbox', icon: Mail },
         { path: '/meetings', label: 'Meetings', icon: Mic },
         { path: '/proposals', label: 'Proposals', icon: FileText },
+        { path: '/users', label: 'Partnerships', icon: Users },
       ],
     },
     {
@@ -103,7 +104,6 @@ function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] 
     {
       title: 'System',
       items: [
-        { path: '/users', label: 'Partnerships', icon: Users },
         { path: '/audit-logs', label: 'Logs', icon: ClipboardList },
       ],
     },

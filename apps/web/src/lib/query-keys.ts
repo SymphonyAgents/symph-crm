@@ -92,6 +92,7 @@ export const queryKeys = {
   },
   partnerDealGroups: {
     all: ['partner-deal-groups'] as const,
+    me: ['partner-deal-groups', 'me'] as const,
     detail: (id: string) => ['partner-deal-groups', id] as const,
   },
   users: {

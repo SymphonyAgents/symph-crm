@@ -3,11 +3,11 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { CrmUserRole } from '@symph-crm/shared'
+import { CrmUserRole, PartnerCommissionStatus } from '@symph-crm/shared'
 import { BACKEND_API_URL } from '@/lib/backend-url'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useCirclebackUpload } from '@/lib/hooks/mutations'
-import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal } from '@/lib/hooks/queries'
+import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useCirclebackUpload, useUpdatePartnerDealCommission } from '@/lib/hooks/mutations'
+import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal, useGetPartnerDealGroups } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
@@ -20,15 +20,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { toast } from 'sonner'
 import {
-  cn, formatCurrencyFull, timeAgo, formatDate,
+  cn, formatCurrencyFull, formatNumberWithCommas, timeAgo, formatDate,
   getDaysInStage, getBrandColor, getInitials, getStageProgressIndex, formatServiceType, formatDealTitle, toPascalCase,
 } from '@/lib/utils'
 import { getMimeLabel, supportsWordCount, isImage } from '@/lib/utils/document-utils'
 import { api } from '@/lib/api'
-import type { ApiDealDetail, ApiCompanyDetail, ApiDocument, NfsDealNote } from '@/lib/types'
+import type { ApiDealDetail, ApiCompanyDetail, ApiDocument, ApiPartnerDealCommission, NfsDealNote } from '@/lib/types'
 import {
   STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
   PROGRESS_STAGES, ACTIVITY_LABELS, DOC_TYPE_LABELS, ACCEPTED_FILE_TYPES,
@@ -422,15 +423,21 @@ type DealDetailProps = {
 
 type TabId = 'notes' | 'resources' | 'proposals' | 'timeline' | 'people' | 'billing'
 const VALID_TABS = new Set<TabId>(['notes', 'resources', 'proposals', 'timeline', 'people', 'billing'])
+const PARTNER_VISIBLE_TABS = new Set<TabId>(['timeline', 'people'])
 
 export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: DealDetailProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const queryClient = useQueryClient()
+  const { userId, isSales, isPartner } = useUser()
 
-  // Derive activeTab from URL — fall back to 'notes' for unknown values
+  // Derive activeTab from URL. Partners only see Timeline and People.
   const rawTab = searchParams.get('tab') ?? ''
-  const activeTab: TabId = VALID_TABS.has(rawTab as TabId) ? (rawTab as TabId) : 'notes'
+  const requestedTab = VALID_TABS.has(rawTab as TabId) ? (rawTab as TabId) : null
+  const activeTab: TabId = isPartner
+    ? (requestedTab && PARTNER_VISIBLE_TABS.has(requestedTab) ? requestedTab : 'timeline')
+    : (requestedTab ?? 'notes')
 
   // Sync tab to URL without adding a browser history entry
   const setActiveTab = useCallback((tab: TabId) => {
@@ -476,11 +483,16 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const [cbCorrelationKey, setCbCorrelationKey] = useState<string | null>(null)
   const [cbUploadDocId, setCbUploadDocId] = useState<string | null>(null)
   const [cbPushStatus, setCbPushStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>('idle')
+  const [editingCommissionGroupId, setEditingCommissionGroupId] = useState<string | null>(null)
+  const [commissionDraft, setCommissionDraft] = useState('')
+  const [commissionStatusDraft, setCommissionStatusDraft] = useState<PartnerCommissionStatus>(PartnerCommissionStatus.Pending)
+  const [commissionNotesDraft, setCommissionNotesDraft] = useState('')
 
-  const queryClient = useQueryClient()
-  const { userId, isSales } = useUser()
   const patchStage = usePatchDealStage()
   const updateDeal = useUpdateDeal()
+  const updateCommission = useUpdatePartnerDealCommission({
+    onSuccess: () => setEditingCommissionGroupId(null),
+  })
   const deleteDeal = useDeleteDeal({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
@@ -494,9 +506,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const { data: deal, isLoading, isError } = useGetDeal(dealId)
   const { data: company } = useGetCompany(deal?.companyId)
   const { data: activities = [], isLoading: loadingActivities } = useGetActivitiesByDeal(dealId, { enabled: !!deal })
-  const { data: nfsNotes = [], isLoading: loadingDocs, refetch: refetchDocs } = useGetDealNotesFlat(dealId, { enabled: !!deal })
-  const { data: documents = [], isLoading: loadingResourceDocs, refetch: refetchResourceDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal })
-  const { data: dealProposals = [], isLoading: loadingProposals } = useGetProposalsByDeal(dealId, { enabled: !!deal })
+  const { data: nfsNotes = [], isLoading: loadingDocs, refetch: refetchDocs } = useGetDealNotesFlat(dealId, { enabled: !!deal && !isPartner })
+  const { data: documents = [], isLoading: loadingResourceDocs, refetch: refetchResourceDocs } = useGetDocumentsByDeal(dealId, { enabled: !!deal && !isPartner })
+  const { data: dealProposals = [], isLoading: loadingProposals } = useGetProposalsByDeal(dealId, { enabled: !!deal && !isPartner })
+  const { data: partnerDealGroups = [] } = useGetPartnerDealGroups({ enabled: !!deal && isSales })
   // ── Summary: auto-generate + poll, no manual button ───────────────────
   // Temporarily hidden per Vins: the DealDetail auto-summary feature is paused until reprioritized.
   // Keeping the original hook flow commented here makes the feature easy to restore without running
@@ -580,6 +593,31 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
     ? (userNameMap.get(deal.assignedTo) ?? deal.assignedTo)
     : null
   const amUser = deal?.assignedTo ? users.find(u => u.id === deal.assignedTo) : null
+  const partnerDealGroupMap = useMemo(() => new Map(partnerDealGroups.map(group => [group.id, group])), [partnerDealGroups])
+  const partnerCommissionMap = useMemo(() => {
+    const map = new Map<string, ApiPartnerDealCommission>()
+    for (const commission of deal?.partnerCommissions ?? []) map.set(commission.partnerDealGroupId, commission)
+    return map
+  }, [deal?.partnerCommissions])
+
+  function openCommissionDialog(groupId: string) {
+    const commission = partnerCommissionMap.get(groupId)
+    setEditingCommissionGroupId(groupId)
+    setCommissionDraft(commission?.commissionAmount ? formatNumberWithCommas(commission.commissionAmount) : '')
+    setCommissionStatusDraft(commission?.commissionStatus ?? PartnerCommissionStatus.Pending)
+    setCommissionNotesDraft(commission?.notes ?? '')
+  }
+
+  function saveCommission() {
+    if (!editingCommissionGroupId) return
+    updateCommission.mutate({
+      dealId,
+      partnerDealGroupId: editingCommissionGroupId,
+      commissionAmount: commissionDraft.trim() || null,
+      commissionStatus: commissionStatusDraft,
+      notes: commissionNotesDraft.trim() || null,
+    })
+  }
 
   // ── Notes vs Resources split ─────────────────────────────────────────────
   // Notes: NFS flat notes from GET /deals/:id/notes/flat
@@ -940,6 +978,60 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       {/* Document viewer modal */}
       {showEditDeal && deal && isSales && (
         <EditDealModal deal={deal} onClose={() => setShowEditDeal(false)} />
+      )}
+
+      {editingCommissionGroupId && (
+        <Dialog open onOpenChange={open => { if (!open) setEditingCommissionGroupId(null) }}>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
+            <DialogHeader className="px-4">
+              <div>
+                <DialogTitle>Edit partner commission</DialogTitle>
+                <DialogDescription>
+                  Set commission for {partnerDealGroupMap.get(editingCommissionGroupId)?.name ?? 'this partner group'}.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="space-y-3 p-4">
+              <div className="space-y-1.5">
+                <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Commission amount</label>
+                <Input
+                  value={commissionDraft}
+                  onChange={event => setCommissionDraft(formatNumberWithCommas(event.target.value))}
+                  placeholder="0.00"
+                  inputMode="decimal"
+                  className="h-11 sm:h-9 text-ssm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Notes</label>
+                <Input
+                  value={commissionNotesDraft}
+                  onChange={event => setCommissionNotesDraft(event.target.value)}
+                  placeholder="Optional internal note"
+                  className="h-11 sm:h-9 text-ssm"
+                />
+              </div>
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setEditingCommissionGroupId(null)}
+                  className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveCommission}
+                  disabled={updateCommission.isPending}
+                  className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-semibold text-white transition-colors hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {updateCommission.isPending && <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                  Save commission
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
 
       {/* Edit contact modal */}
@@ -1431,7 +1523,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 { id: 'timeline', label: 'Timeline', count: activities.length },
                 { id: 'people' as const, label: 'People', count: contactCount },
                 { id: 'billing' as const, label: 'Billing', count: null },
-              ] as const).map(tab => (
+              ] as const).filter(tab => !isPartner || PARTNER_VISIBLE_TABS.has(tab.id)).map(tab => (
                 <button
                   key={tab.id}
                   onClick={() => { setActiveTab(tab.id); setDocSearch('') }}
@@ -2523,6 +2615,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         <div className="w-full sm:w-[260px] sm:shrink-0 flex flex-col gap-3 px-4 sm:px-0 pt-4 sm:pt-0">
 
           {/* Deal Info */}
+          {!isPartner && (
           <SidebarSection title="Deal Info">
             <InfoRow
               label="Deal Size"
@@ -2573,11 +2666,40 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               </div>
             )}
           </SidebarSection>
+          )}
+
+          {!isPartner && isSales && (deal.partnerDealGroupIds ?? []).length > 0 && (
+            <SidebarSection title="Partner Commissions">
+              <div className="space-y-2">
+                {(deal.partnerDealGroupIds ?? []).map(groupId => {
+                  const group = partnerDealGroupMap.get(groupId)
+                  const commission = partnerCommissionMap.get(groupId)
+                  return (
+                    <div key={groupId} className="rounded-md border border-black/[.06] p-2 dark:border-white/[.08]">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-xxs font-semibold text-slate-700 dark:text-slate-200">{group?.name ?? 'Partner group'}</p>
+                          <p className="mt-0.5 text-atom text-slate-400">{commission?.commissionStatus ? toPascalCase(commission.commissionStatus) : 'No commission set'}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openCommissionDialog(groupId)}
+                          className="rounded-md px-2 py-1 text-xxs font-semibold text-primary transition-colors hover:bg-primary/10"
+                        >
+                          {commission?.commissionAmount ? formatCurrencyFull(commission.commissionAmount) : 'Set'}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </SidebarSection>
+          )}
 
           {/* Account Manager */}
           <SidebarSection title="Account Manager">
             <div className="relative">
-              {deal.stage === 'closed_lost' ? (
+              {deal.stage === 'closed_lost' || !isSales ? (
                 /* Locked: lost deals cannot have AM reassigned (won deals can) */
                 <div className="flex items-center gap-2.5 px-1 py-1 -mx-1 rounded-lg">
                   {amDisplayName ? (
@@ -2689,20 +2811,27 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
           {/* Sub Account Manager */}
           <SidebarSection title="Sub Account Manager">
-            <SubAmPicker
-              value={deal.subAccountManagerId ?? null}
-              users={users.filter(u => u.role === CrmUserRole.Sales)}
-              onChange={(uid) => {
-                updateDeal.mutate({ id: dealId, data: { subAccountManagerId: uid } }, {
-                  onSettled: () => {
-                    queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-                    queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-                  },
-                })
-              }}
-            />
+            {isSales ? (
+              <SubAmPicker
+                value={deal.subAccountManagerId ?? null}
+                users={users.filter(u => u.role === CrmUserRole.Sales)}
+                onChange={(uid) => {
+                  updateDeal.mutate({ id: dealId, data: { subAccountManagerId: uid } }, {
+                    onSettled: () => {
+                      queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
+                      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
+                    },
+                  })
+                }}
+              />
+            ) : (() => {
+              const subAmUser = deal.subAccountManagerId ? users.find(u => u.id === deal.subAccountManagerId) : null
+              return subAmUser ? <UserOption user={subAmUser} /> : <span className="text-ssm text-slate-400">Unassigned</span>
+            })()}
           </SidebarSection>
 
+          {!isPartner && (
+          <>
           {/* Builders */}
           <SidebarSection title="Builders">
             <div className="space-y-1.5">
@@ -2898,6 +3027,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <p className="text-xxs text-amber-600 dark:text-amber-400 mt-1.5">Due Mar 22, 2026</p>
             </div>
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>
