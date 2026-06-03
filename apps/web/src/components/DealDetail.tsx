@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { toast } from 'sonner'
 import {
-  cn, formatCurrencyFull, timeAgo, formatDate,
+  cn, formatCurrencyFull, formatNumberWithCommas, timeAgo, formatDate,
   getDaysInStage, getBrandColor, getInitials, getStageProgressIndex, formatServiceType, formatDealTitle, toPascalCase,
 } from '@/lib/utils'
 import { getMimeLabel, supportsWordCount, isImage } from '@/lib/utils/document-utils'
@@ -603,7 +603,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   function openCommissionDialog(groupId: string) {
     const commission = partnerCommissionMap.get(groupId)
     setEditingCommissionGroupId(groupId)
-    setCommissionDraft(commission?.commissionAmount ?? '')
+    setCommissionDraft(commission?.commissionAmount ? formatNumberWithCommas(commission.commissionAmount) : '')
     setCommissionStatusDraft(commission?.commissionStatus ?? PartnerCommissionStatus.Pending)
     setCommissionNotesDraft(commission?.notes ?? '')
   }
@@ -996,25 +996,11 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Commission amount</label>
                 <Input
                   value={commissionDraft}
-                  onChange={event => setCommissionDraft(event.target.value)}
+                  onChange={event => setCommissionDraft(formatNumberWithCommas(event.target.value))}
                   placeholder="0.00"
                   inputMode="decimal"
                   className="h-11 sm:h-9 text-ssm"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Status</label>
-                <Select value={commissionStatusDraft} onValueChange={value => setCommissionStatusDraft(value as PartnerCommissionStatus)}>
-                  <SelectTrigger className="h-11 sm:h-9 text-ssm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={PartnerCommissionStatus.Pending} className="text-ssm">Pending</SelectItem>
-                    <SelectItem value={PartnerCommissionStatus.Approved} className="text-ssm">Approved</SelectItem>
-                    <SelectItem value={PartnerCommissionStatus.Paid} className="text-ssm">Paid</SelectItem>
-                    <SelectItem value={PartnerCommissionStatus.Void} className="text-ssm">Void</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-1.5">
                 <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Notes</label>

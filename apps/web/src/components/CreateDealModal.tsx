@@ -26,7 +26,7 @@ import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
-import { cn } from '@/lib/utils'
+import { cn, formatNumberWithCommas } from '@/lib/utils'
 import type { ApiCompanyDetail, ApiCatalogItem, ApiUser } from '@/lib/types'
 
 type Props = {
@@ -555,13 +555,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
               <Input
                 value={value}
-                onChange={e => {
-                  const raw = e.target.value.replace(/[^0-9.]/g, '')
-                  // Format with commas for display, strip on submit
-                  const parts = raw.split('.')
-                  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-                  setValue(parts.join('.'))
-                }}
+                onChange={e => setValue(formatNumberWithCommas(e.target.value))}
                 placeholder="e.g. 250,000"
                 className="h-11 sm:h-9 text-ssm"
               />
