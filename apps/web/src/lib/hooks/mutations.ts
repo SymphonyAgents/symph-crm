@@ -8,7 +8,7 @@
 // - No direct fetch() calls — always use api.post/put/patch/delete from lib/api.ts
 
 import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query'
-import { CrmUserRole } from '@symph-crm/shared'
+import { CrmUserRole, PartnerCommissionStatus } from '@symph-crm/shared'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
@@ -93,6 +93,7 @@ export type CreateDealInput = {
   subAccountManagerId?: string | null
   builders?: string[]
   partnerGroupIds?: string[]
+  partnerDealGroupIds?: string[]
   catalogItemId?: string | null
   createdBy?: string | null
   closeDate?: string | null
@@ -107,6 +108,15 @@ export type CreateDealInput = {
 export type UpdateDealInput = Partial<Omit<CreateDealInput, 'companyId' | 'productId' | 'tierId'>> & {
   companyId?: string | null
   partnerGroupIds?: string[]
+  partnerDealGroupIds?: string[]
+}
+
+export type UpdatePartnerDealCommissionInput = {
+  dealId: string
+  partnerDealGroupId: string
+  commissionAmount: string | null
+  commissionStatus: PartnerCommissionStatus
+  notes?: string | null
 }
 
 export function useCreateDeal(
@@ -124,6 +134,25 @@ export function useUpdateDeal(
   return useMutation({
     mutationFn: ({ id, data }) => api.put(`/deals/${id}`, data),
     ...withToast('Deal updated', options),
+  })
+}
+
+export function useUpdatePartnerDealCommission(
+  options?: UseMutationOptions<unknown, Error, UpdatePartnerDealCommissionInput>,
+) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ dealId, partnerDealGroupId, ...data }: UpdatePartnerDealCommissionInput) => (
+      api.patch(`/deals/${dealId}/partner-commissions/${partnerDealGroupId}`, data)
+    ),
+    ...withToast('Commission updated', {
+      ...options,
+      onSuccess: (data, vars, ctx) => {
+        qc.invalidateQueries({ queryKey: queryKeys.deals.all })
+        qc.invalidateQueries({ queryKey: queryKeys.deals.detail(vars.dealId) })
+        ;(options?.onSuccess as any)?.(data, vars, ctx)
+      },
+    }),
   })
 }
 

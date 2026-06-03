@@ -2,11 +2,11 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useGetCompanies, useGetDeals, useGetUsers } from '@/lib/hooks/queries'
+import { useGetCompanies, useGetDeals, useGetMyPartnerDealGroups, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
 import { cn, getInitials, getBrandColor, formatDealValue, formatServiceType, totalNumericValue, formatDealTitle, toPascalCase } from '@/lib/utils'
 import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
-import type { ApiCompanyDetail, ApiDeal } from '@/lib/types'
+import type { ApiCompanyDetail, ApiDeal, ApiPartnerDealGroup } from '@/lib/types'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable, SortableHeader, DataTableSkeleton } from './ui/data-table'
 import { Avatar } from './Avatar'
@@ -206,6 +206,115 @@ function LastActivityCell({ iso }: { iso: string | null }) {
         {diffDays === 0 ? 'Today' : diffDays === 1 ? '1 day ago' : `${diffDays} days ago`}
       </span>
     </div>
+  )
+}
+
+type PartnerDealRow = {
+  deal: ApiDeal
+  groupNames: string[]
+  commissionAmount: string | null
+}
+
+function formatPartnerCommission(amount: string | null): string {
+  return amount ? formatDealValue(amount) : '—'
+}
+
+function getPartnerGroupTitle(groups: ApiPartnerDealGroup[]): string {
+  if (groups.length === 0) return 'Partner Deals'
+  if (groups.length === 1) return groups[0].name
+  return `${groups[0].name} + ${groups.length - 1} group${groups.length === 2 ? '' : 's'}`
+}
+
+function PartnerDealMobileCard({ row, onOpen }: { row: PartnerDealRow; onOpen: () => void }) {
+  const deal = row.deal
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+      className="w-full rounded-md border border-black/[.06] bg-white p-4 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform active:scale-[0.99] dark:border-white/[.08] dark:bg-[#1e1e21]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{formatDealTitle(deal.title)}</div>
+          <div className="mt-1 truncate text-xs text-slate-400">{row.groupNames.join(', ') || deal.brandName || 'Shared deal'}</div>
+        </div>
+        <StagePill stage={deal.stage} />
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+        <div>
+          <div className="text-xxs uppercase tracking-[0.05em] text-slate-400">Value</div>
+          <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-300">{formatDealValue(deal.value)}</div>
+        </div>
+        <div>
+          <div className="text-xxs uppercase tracking-[0.05em] text-slate-400">Commission</div>
+          <div className="mt-0.5 text-slate-600 dark:text-slate-400">{formatPartnerCommission(row.commissionAmount)}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PartnerDealsDataTable({ rows, search, onOpenDeal }: { rows: PartnerDealRow[]; search: string; onOpenDeal: (id: string) => void }) {
+  const columns = useMemo<ColumnDef<PartnerDealRow>[]>(() => [
+    {
+      accessorFn: row => row.deal.title,
+      id: 'deal',
+      header: ({ column }) => <SortableHeader column={column}>Deal</SortableHeader>,
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <div className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{formatDealTitle(row.original.deal.title)}</div>
+          <div className="mt-0.5 truncate text-xxs text-slate-400">{row.original.deal.brandName || 'No brand'}</div>
+        </div>
+      ),
+      size: 260,
+    },
+    {
+      accessorFn: row => row.groupNames.join(', '),
+      id: 'partnerGroup',
+      header: ({ column }) => <SortableHeader column={column}>Partner group</SortableHeader>,
+      cell: ({ row }) => (
+        <span className="text-ssm text-slate-600 dark:text-slate-300">{row.original.groupNames.join(', ') || 'Shared'}</span>
+      ),
+      size: 180,
+    },
+    {
+      accessorFn: row => Number(row.deal.value ?? 0),
+      id: 'value',
+      header: ({ column }) => <SortableHeader column={column}>Value</SortableHeader>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatDealValue(row.original.deal.value)}</span>,
+      size: 120,
+    },
+    {
+      accessorFn: row => Number(row.commissionAmount ?? 0),
+      id: 'commission',
+      header: ({ column }) => <SortableHeader column={column}>Commission</SortableHeader>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatPartnerCommission(row.original.commissionAmount)}</span>,
+      size: 140,
+    },
+    {
+      accessorFn: row => row.deal.stage,
+      id: 'stage',
+      header: ({ column }) => <SortableHeader column={column}>Stage</SortableHeader>,
+      cell: ({ row }) => <StagePill stage={row.original.deal.stage} />,
+      size: 120,
+    },
+  ], [])
+
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      globalFilter={search}
+      emptyMessage="No deals found"
+      onRowClick={(row) => onOpenDeal(row.deal.id)}
+    />
   )
 }
 
@@ -549,6 +658,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   const { data: companies = [], isLoading: loadingCompanies } = useGetCompanies({ enabled: !isPartner })
   const { data: deals = [], isLoading: loadingDeals } = useGetDeals(isPartner ? undefined : { dealType: 'agency' })
   const { data: users = [] } = useGetUsers({ enabled: !isPartner })
+  const { data: myPartnerDealGroups = [], isLoading: loadingPartnerDealGroups } = useGetMyPartnerDealGroups({ enabled: isPartner })
 
   // Edit/delete mutations
   const updateCompany = useUpdateCompany({
@@ -579,7 +689,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
     }
   }, [editingBrand?.id])
 
-  const isLoading = loadingDeals || (!isPartner && loadingCompanies)
+  const isLoading = loadingDeals || (!isPartner && loadingCompanies) || (isPartner && loadingPartnerDealGroups)
 
   // Map userId → display name for Created By column
   const userNameMap = useMemo(() => {
@@ -711,19 +821,49 @@ export function Deals({ onOpenDeal }: DealsProps) {
     )
   }, [brandTableRows, search])
 
+  const partnerGroupNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const group of myPartnerDealGroups) map.set(group.id, group.name)
+    return map
+  }, [myPartnerDealGroups])
+
+  const partnerDealRows = useMemo<PartnerDealRow[]>(() => {
+    return deals.map(deal => ({
+      deal,
+      groupNames: (deal.partnerDealGroupIds ?? [])
+        .map(groupId => partnerGroupNameMap.get(groupId))
+        .filter((name): name is string => !!name),
+      commissionAmount: deal.partnerCommissionAmount ?? null,
+    }))
+  }, [deals, partnerGroupNameMap])
+
+  const filteredPartnerDealRows = useMemo(() => {
+    if (!search.trim()) return partnerDealRows
+    const q = search.toLowerCase()
+    return partnerDealRows.filter(row =>
+      row.deal.title.toLowerCase().includes(q) ||
+      (row.deal.brandName ?? '').toLowerCase().includes(q) ||
+      row.groupNames.some(name => name.toLowerCase().includes(q)) ||
+      row.deal.stage.toLowerCase().includes(q),
+    )
+  }, [partnerDealRows, search])
+
   const totalDeals = deals.length
   const activePipeline = totalNumericValue(deals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)))
+  const partnerGroupTitle = getPartnerGroupTitle(myPartnerDealGroups)
 
   return (
     <>
-      <BrandSlideOver
-        brand={selectedBrand}
-        onClose={() => setSelectedBrand(null)}
-        onOpenDeal={(dealId) => {
-          setSelectedBrand(null)
-          onOpenDeal(dealId)
-        }}
-      />
+      {!isPartner && (
+        <BrandSlideOver
+          brand={selectedBrand}
+          onClose={() => setSelectedBrand(null)}
+          onOpenDeal={(dealId) => {
+            setSelectedBrand(null)
+            onOpenDeal(dealId)
+          }}
+        />
+      )}
       {showCreateBrand && (
         <CreateBrandModal
           onClose={() => setShowCreateBrand(false)}
@@ -908,12 +1048,12 @@ export function Deals({ onOpenDeal }: DealsProps) {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
           <div>
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white">{isPartner ? 'Deals' : 'Brands'}</div>
+            <div className="text-ssm font-semibold text-slate-900 dark:text-white">{isPartner ? partnerGroupTitle : 'Brands'}</div>
             <div className="text-xxs text-slate-400 mt-0.5">
               {isLoading
                 ? 'Loading…'
                 : isPartner
-                  ? `${totalDeals} tagged deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' active value' : 'No active value'}`
+                  ? `${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' active value' : 'No active value'}`
                   : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' pipeline' : 'No pipeline value'}`
               }
             </div>
@@ -990,7 +1130,36 @@ export function Deals({ onOpenDeal }: DealsProps) {
         )}
 
         {/* Table view */}
-        {!isLoading && (isPartner ? totalDeals > 0 : companies.length > 0) && (
+        {!isLoading && isPartner && totalDeals > 0 && (
+          <>
+            <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
+              {filteredPartnerDealRows.length > 0 ? (
+                filteredPartnerDealRows.map(row => (
+                  <PartnerDealMobileCard
+                    key={row.deal.id}
+                    row={row}
+                    onOpen={() => onOpenDeal(row.deal.id)}
+                  />
+                ))
+              ) : (
+                <div className="flex-1 flex items-center justify-center rounded-md border border-dashed border-black/[.08] text-sm text-slate-400 dark:border-white/[.08]">
+                  No deals found
+                </div>
+              )}
+            </div>
+            <div className="hidden md:block flex-1 overflow-auto rounded-md border border-black/[.06] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+              <div className="min-w-[760px]">
+                <PartnerDealsDataTable
+                  rows={partnerDealRows}
+                  search={search}
+                  onOpenDeal={onOpenDeal}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {!isLoading && !isPartner && companies.length > 0 && (
           <>
             <div className="md:hidden flex-1 overflow-y-auto flex flex-col gap-3 pb-4">
               {filteredTableRows.length > 0 ? (
@@ -1005,7 +1174,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 ))
               ) : (
                 <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-black/[.08] dark:border-white/[.08] text-sm text-slate-400">
-                  {isPartner ? 'No deals found' : 'No brands found'}
+                  No brands found
                 </div>
               )}
             </div>

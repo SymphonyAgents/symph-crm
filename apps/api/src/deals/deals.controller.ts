@@ -2,7 +2,8 @@ import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query } from '@
 import { CurrentUser, CurrentUserId, type CrmRequestUser } from '../auth/current-user.decorator'
 import { Roles } from '../auth/roles.guard'
 import { CrmUserRole } from '@symph-crm/shared'
-import { CreateDealData, DealsService, UpdateDealData } from './deals.service'
+import { DealsService } from './deals.service'
+import type { CreateDealData, UpdateDealData, UpsertPartnerDealCommissionData } from './deals.types'
 import { DealNotesService } from './deal-notes.service'
 import { SaveDealNoteDto } from './dto/save-deal-note.dto'
 
@@ -96,6 +97,17 @@ export class DealsController {
     @CurrentUserId() userId?: string,
   ) {
     return this.dealsService.update(id, data, userId)
+  }
+
+  @Patch(':id/partner-commissions/:partnerDealGroupId')
+  @Roles(CrmUserRole.Sales)
+  upsertPartnerDealCommission(
+    @Param('id') id: string,
+    @Param('partnerDealGroupId') partnerDealGroupId: string,
+    @Body() body: UpsertPartnerDealCommissionData,
+    @CurrentUserId() userId?: string,
+  ) {
+    return this.dealsService.upsertPartnerDealCommission(id, partnerDealGroupId, body, userId)
   }
 
   @Patch(':id/stage')

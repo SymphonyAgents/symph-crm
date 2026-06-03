@@ -1,4 +1,4 @@
-import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
+import { CrmUserRole, CrmUserStatus, PartnerCommissionStatus } from '@symph-crm/shared'
 
 // ─── API Entity Types ─────────────────────────────────────────────────────────
 //
@@ -54,6 +54,12 @@ export type ApiDeal = {
   
   partnerGroupIds?: string[]
   
+  partnerDealGroupIds?: string[]
+  
+  partnerCommissions?: ApiPartnerDealCommission[]
+  
+  partnerCommissionAmount?: string | null
+  
   dealType: string
   
   costPrice: string | null
@@ -61,6 +67,13 @@ export type ApiDeal = {
   marginPercent: string | null
 }
 
+
+export type ApiPartnerDealCommission = {
+  partnerDealGroupId: string
+  commissionAmount: string | null
+  commissionStatus: PartnerCommissionStatus
+  notes: string | null
+}
 
 export type ApiDealDetail = ApiDeal & {
   closeDate: string | null
