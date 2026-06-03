@@ -57,7 +57,7 @@ function passThroughSetCookie(source: Response, target: NextResponse): NextRespo
 
 async function fetchSession(request: NextRequest): Promise<{ response: Response; user: SessionUser | null } | null> {
   try {
-    const sessionUrl = new URL(`${BACKEND_API_URL}/auth/session`, request.nextUrl.origin)
+    const sessionUrl = new URL(`${BACKEND_API_URL}/auth/session`, process.env.NEXT_PUBLIC_APP_URL ?? request.url)
     const response = await fetch(sessionUrl, {
       headers: {
         cookie: request.headers.get('cookie') ?? '',
