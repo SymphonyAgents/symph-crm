@@ -15,7 +15,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { UserOption } from '@/components/UserOption'
 import { PartnerGroupMultiSelect } from '@/components/PartnerGroupMultiSelect'
 import { useUpdateDeal, useAssignDealBrand, useCreateCompany } from '@/lib/hooks/mutations'
-import { useGetCompanies, useGetUsers, useGetCatalogItems, useGetPartnerGroups } from '@/lib/hooks/queries'
+import { useGetCompanies, useGetUsers, useGetCatalogItems, useGetPartnerDealGroups } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
@@ -171,8 +171,8 @@ export function EditDealModal({ deal, onClose }: Props) {
 
   const { data: companies = [] } = useGetCompanies()
   const { data: allUsers = [] } = useGetUsers()
-  const { data: catalogItems = [] } = useGetCatalogItems(true)
-  const { data: partnerGroups = [] } = useGetPartnerGroups()
+  const { data: catalogItems = [] } = useGetCatalogItems({ activeOnly: true, type: 'internal' })
+  const { data: partnerDealGroups = [] } = useGetPartnerDealGroups()
   const salesUsers = useMemo(() => allUsers.filter(u => u.role === CrmUserRole.Sales), [allUsers])
   const qc = useQueryClient()
 
@@ -198,7 +198,7 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [closeDate, setCloseDate] = useState(deal.closeDate ? deal.closeDate.slice(0, 10) : '')
   const [subAccountManagerId, setSubAccountManagerId] = useState(deal.subAccountManagerId ?? '')
   const [builders, setBuilders] = useState<string[]>(deal.builders ?? [])
-  const [partnerGroupIds, setPartnerGroupIds] = useState<string[]>(deal.partnerGroupIds ?? [])
+  const [partnerDealGroupIds, setPartnerDealGroupIds] = useState<string[]>(deal.partnerDealGroupIds ?? [])
   const [catalogItemId, setCatalogItemId] = useState(deal.catalogItemId ?? '')
 
   const updateDeal = useUpdateDeal({
@@ -274,9 +274,9 @@ export function EditDealModal({ deal, onClose }: Props) {
       changes.builders = builders
     }
 
-    const oldPartnerGroupIds = deal.partnerGroupIds ?? []
-    if (JSON.stringify([...partnerGroupIds].sort()) !== JSON.stringify([...oldPartnerGroupIds].sort())) {
-      changes.partnerGroupIds = partnerGroupIds
+    const oldPartnerDealGroupIds = deal.partnerDealGroupIds ?? []
+    if (JSON.stringify([...partnerDealGroupIds].sort()) !== JSON.stringify([...oldPartnerDealGroupIds].sort())) {
+      changes.partnerDealGroupIds = partnerDealGroupIds
     }
 
     const newCatalogItemId = serviceType === 'internal_products' ? (catalogItemId || null) : null
@@ -394,9 +394,9 @@ export function EditDealModal({ deal, onClose }: Props) {
           )}
 
           <PartnerGroupMultiSelect
-            groups={partnerGroups.filter(group => group.isActive)}
-            selected={partnerGroupIds}
-            onChange={setPartnerGroupIds}
+            groups={partnerDealGroups.filter(group => group.isActive)}
+            selected={partnerDealGroupIds}
+            onChange={setPartnerDealGroupIds}
           />
 
           {/* Stage + Outreach */}

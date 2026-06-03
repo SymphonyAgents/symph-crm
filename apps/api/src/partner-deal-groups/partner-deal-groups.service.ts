@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
-import { partnerDealGroupMembers, partnerDealGroups, users } from '@symph-crm/database'
+import { dealPartnerDealGroups, deals, partnerDealGroupMembers, partnerDealGroups, users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
@@ -56,6 +56,32 @@ export class PartnerDealGroupsService {
       .from(partnerDealGroups)
       .leftJoin(partnerDealGroupMembers, eq(partnerDealGroupMembers.groupId, partnerDealGroups.id))
       .leftJoin(users, eq(users.id, partnerDealGroupMembers.userId))
+      .orderBy(asc(partnerDealGroups.name))
+
+    const byId = new Map<string, typeof partnerDealGroups.$inferSelect & { members: { id: string; name: string | null; email: string | null }[] }>()
+    for (const row of rows) {
+      const existing = byId.get(row.group.id) ?? { ...row.group, members: [] }
+      if (row.memberUserId) existing.members.push({ id: row.memberUserId, name: row.memberName, email: row.memberEmail })
+      byId.set(row.group.id, existing)
+    }
+    return [...byId.values()]
+  }
+
+  async findForUser(userId: string) {
+    const rows = await this.db
+      .select({
+        group: partnerDealGroups,
+        memberUserId: partnerDealGroupMembers.userId,
+        memberName: users.name,
+        memberEmail: users.email,
+      })
+      .from(partnerDealGroupMembers)
+      .innerJoin(partnerDealGroups, eq(partnerDealGroups.id, partnerDealGroupMembers.groupId))
+      .leftJoin(users, eq(users.id, partnerDealGroupMembers.userId))
+      .where(and(
+        eq(partnerDealGroupMembers.userId, userId),
+        eq(partnerDealGroups.isActive, true),
+      ))
       .orderBy(asc(partnerDealGroups.name))
 
     const byId = new Map<string, typeof partnerDealGroups.$inferSelect & { members: { id: string; name: string | null; email: string | null }[] }>()
@@ -151,6 +177,40 @@ export class PartnerDealGroupsService {
     }).catch(() => {})
 
     return this.findOne(id)
+  }
+
+  async replaceDealGroups(dealId: string, groupIds: string[], performedBy?: string) {
+    const uniqueGroupIds = normalizeStringArray(groupIds, 'partnerDealGroupIds') ?? []
+    const [deal] = await this.db
+      .select({ workspaceId: deals.workspaceId })
+      .from(deals)
+      .where(eq(deals.id, dealId))
+      .limit(1)
+    if (!deal) throw new NotFoundException('Deal not found')
+
+    if (uniqueGroupIds.length > 0) {
+      const groups = await this.db
+        .select({ id: partnerDealGroups.id, workspaceId: partnerDealGroups.workspaceId })
+        .from(partnerDealGroups)
+        .where(and(inArray(partnerDealGroups.id, uniqueGroupIds as [string, ...string[]]), eq(partnerDealGroups.isActive, true)))
+      const validIds = new Set(
+        groups
+          .filter(group => group.workspaceId === deal.workspaceId)
+          .map(group => group.id),
+      )
+      const invalidIds = uniqueGroupIds.filter(id => !validIds.has(id))
+      if (invalidIds.length > 0) throw new BadRequestException('partnerDealGroupIds must contain active partner deal groups in the deal workspace only')
+    }
+
+    await this.db.delete(dealPartnerDealGroups).where(eq(dealPartnerDealGroups.dealId, dealId))
+    if (uniqueGroupIds.length === 0) return
+
+    await this.db.insert(dealPartnerDealGroups).values(uniqueGroupIds.map(groupId => ({
+      workspaceId: deal.workspaceId,
+      dealId,
+      groupId,
+      createdBy: performedBy ?? null,
+    })))
   }
 
   async addUserToGroups(userId: string, groupIds: string[], performedBy?: string) {

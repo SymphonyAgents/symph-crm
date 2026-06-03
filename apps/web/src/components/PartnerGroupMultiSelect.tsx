@@ -5,10 +5,10 @@ import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
-import type { ApiPartnerGroup } from '@/lib/types'
+import type { ApiPartnerDealGroup, ApiPartnerGroup } from '@/lib/types'
 
 type PartnerGroupMultiSelectProps = {
-  groups: ApiPartnerGroup[]
+  groups: Array<ApiPartnerGroup | ApiPartnerDealGroup>
   selected: string[]
   onChange: (next: string[]) => void
 }

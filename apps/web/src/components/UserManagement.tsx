@@ -106,11 +106,15 @@ function UserActions({
           </button>
         </>
       ) : (
-        <>
-          <Button size="sm" variant="outline" onClick={onRemove}>
-            Remove
-          </Button>
-        </>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${user.email}`}
+          title="Remove"
+          className="flex size-7 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 transition-colors hover:bg-red-100 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/15"
+        >
+          <Trash2 size={14} strokeWidth={2} />
+        </button>
       )}
     </div>
   )
@@ -233,24 +237,45 @@ type PartnerDealGroupDialogState = {
   group?: ApiPartnerDealGroup
 }
 
-function makeSlug(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-}
-
-function PartnerDealGroupDialog({ state, onClose }: { state: PartnerDealGroupDialogState; onClose: () => void }) {
+function PartnerDealGroupDialog({
+  state,
+  approvedUsers,
+  assignedMemberIds,
+  onClose,
+}: {
+  state: PartnerDealGroupDialogState
+  approvedUsers: ApiUser[]
+  assignedMemberIds: Set<string>
+  onClose: () => void
+}) {
   const [name, setName] = useState(state.group?.name ?? '')
-  const [slug, setSlug] = useState(state.group?.slug ?? '')
   const [description, setDescription] = useState(state.group?.description ?? '')
+  const [memberUserIds, setMemberUserIds] = useState<string[]>(state.group?.members.map(member => member.id) ?? [])
   const createGroup = useCreatePartnerDealGroup({ onSuccess: onClose })
   const updateGroup = useUpdatePartnerDealGroup({ onSuccess: onClose })
   const isEdit = state.mode === 'edit'
   const isPending = createGroup.isPending || updateGroup.isPending
   const normalizedName = name.trim()
-  const normalizedSlug = slug.trim() || makeSlug(name)
+  const availableUsers = useMemo(() => {
+    const selected = new Set(memberUserIds)
+    return approvedUsers
+      .filter(user => user.role === CrmUserRole.Partner)
+      .filter(user => !selected.has(user.id))
+      .filter(user => !assignedMemberIds.has(user.id))
+      .sort((a, b) => getDisplayName(a).localeCompare(getDisplayName(b)))
+  }, [approvedUsers, assignedMemberIds, memberUserIds])
+
+  function removeMember(userId: string) {
+    setMemberUserIds(current => current.filter(id => id !== userId))
+  }
+
+  function addMember(userId: string) {
+    setMemberUserIds(current => current.includes(userId) ? current : [...current, userId])
+  }
 
   function submit() {
     if (!normalizedName) return
-    const input = { name: normalizedName, slug: normalizedSlug, description: description.trim() || null }
+    const input = { name: normalizedName, description: description.trim() || null, memberUserIds }
     if (isEdit && state.group) updateGroup.mutate({ id: state.group.id, input })
     else createGroup.mutate(input)
   }
@@ -270,12 +295,59 @@ function PartnerDealGroupDialog({ state, onClose }: { state: PartnerDealGroupDia
             <Input value={name} onChange={event => setName(event.target.value)} placeholder="CPS" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Slug</label>
-            <Input value={slug} onChange={event => setSlug(event.target.value)} placeholder={makeSlug(name) || 'cps'} />
-          </div>
-          <div className="space-y-1.5">
             <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Description</label>
             <Textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="Optional notes for Sales" />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Members</label>
+            {memberUserIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {memberUserIds.map(userId => {
+                  const user = approvedUsers.find(item => item.id === userId)
+                  const label = user ? getDisplayName(user) : userId
+                  return (
+                    <span
+                      key={userId}
+                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-xxs font-medium text-slate-700 dark:bg-white/[.06] dark:text-slate-200"
+                    >
+                      {label}
+                      <button
+                        type="button"
+                        onClick={() => removeMember(userId)}
+                        className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-red-600 dark:hover:bg-white/[.08] dark:hover:text-red-300"
+                        aria-label={`Remove ${label}`}
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  )
+                })}
+              </div>
+            )}
+            <Command className="rounded-md border border-black/[.06] dark:border-white/[.08]">
+              <CommandInput placeholder="Search approved partners..." className="text-ssm" />
+              <CommandList className="h-[min(180px,28dvh)] max-h-[180px] overflow-y-auto">
+                <CommandEmpty>{availableUsers.length === 0 ? 'No approved partners available.' : 'No partners found.'}</CommandEmpty>
+                <CommandGroup>
+                  {availableUsers.map(user => (
+                    <CommandItem
+                      key={user.id}
+                      value={`${getDisplayName(user)} ${user.email}`}
+                      onSelect={() => addMember(user.id)}
+                      className="text-ssm"
+                    >
+                      <div className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-atom font-semibold text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                        {getDisplayName(user).slice(0, 1).toUpperCase()}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-slate-900 dark:text-white">{getDisplayName(user)}</div>
+                        <div className="truncate text-xxs text-slate-400">{user.email}</div>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
           </div>
           <div className="flex gap-2.5 pt-1">
             <button
@@ -339,15 +411,31 @@ function ArchivePartnerDealGroupDialog({ group, loading, onCancel, onConfirm }: 
   )
 }
 
-function PartnerDealGroupsPanel() {
+function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] }) {
   const { data: groups = [], isLoading } = useGetPartnerDealGroups()
   const [dialogState, setDialogState] = useState<PartnerDealGroupDialogState | null>(null)
   const [archiveTarget, setArchiveTarget] = useState<ApiPartnerDealGroup | null>(null)
+  const [removeMemberTarget, setRemoveMemberTarget] = useState<{ group: ApiPartnerDealGroup; member: ApiPartnerDealGroup['members'][number] } | null>(null)
   const archiveGroup = useArchivePartnerDealGroup({ onSuccess: () => setArchiveTarget(null) })
+  const updateGroup = useUpdatePartnerDealGroup({ onSuccess: () => setRemoveMemberTarget(null) })
+
+  function removeMember(group: ApiPartnerDealGroup, userId: string) {
+    updateGroup.mutate({
+      id: group.id,
+      input: { memberUserIds: group.members.filter(member => member.id !== userId).map(member => member.id) },
+    })
+  }
 
   return (
     <>
-      {dialogState && <PartnerDealGroupDialog state={dialogState} onClose={() => setDialogState(null)} />}
+      {dialogState && (
+        <PartnerDealGroupDialog
+          state={dialogState}
+          approvedUsers={approvedUsers}
+          assignedMemberIds={new Set(groups.flatMap(group => group.members.map(member => member.id)))}
+          onClose={() => setDialogState(null)}
+        />
+      )}
       {archiveTarget && (
         <ArchivePartnerDealGroupDialog
           group={archiveTarget}
@@ -355,6 +443,41 @@ function PartnerDealGroupsPanel() {
           onCancel={() => setArchiveTarget(null)}
           onConfirm={() => archiveGroup.mutate(archiveTarget.id)}
         />
+      )}
+      {removeMemberTarget && (
+        <Dialog open onOpenChange={open => { if (!open) setRemoveMemberTarget(null) }}>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm">
+            <DialogHeader className="px-4">
+              <div>
+                <DialogTitle>Remove group member?</DialogTitle>
+                <DialogDescription>This partner will lose access to deals shared only through this group.</DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="p-4">
+              <p className="text-ssm leading-relaxed text-slate-600 dark:text-slate-400">
+                Remove <span className="font-semibold text-slate-900 dark:text-white">{removeMemberTarget.member.name ?? removeMemberTarget.member.email}</span> from <span className="font-semibold text-slate-900 dark:text-white">{removeMemberTarget.group.name}</span>?
+              </p>
+              <div className="mt-4 flex gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setRemoveMemberTarget(null)}
+                  className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeMember(removeMemberTarget.group, removeMemberTarget.member.id)}
+                  disabled={updateGroup.isPending}
+                  className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-red-600 text-xs font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                >
+                  {updateGroup.isPending && <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
+                  Remove
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
       <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
         <div className="flex flex-col gap-3 border-b border-black/[.06] px-4 py-3 dark:border-white/[.08] sm:flex-row sm:items-center sm:justify-between">
@@ -397,7 +520,7 @@ function PartnerDealGroupsPanel() {
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{group.name}</p>
-                          <p className="truncate text-xs text-slate-500 dark:text-slate-400">{group.slug}</p>
+                          {group.description && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{group.description}</p>}
                         </div>
                       </div>
                     </TableCell>
@@ -406,12 +529,27 @@ function PartnerDealGroupsPanel() {
                         <span className="text-xs text-slate-400">No members</span>
                       ) : (
                         <div className="flex max-w-md flex-wrap gap-1.5">
-                          {group.members.slice(0, 3).map(member => (
-                            <StatusPill key={member.id} tone="neutral">{member.name ?? member.email}</StatusPill>
-                          ))}
-                          {group.members.length > 3 && (
-                            <StatusPill tone="neutral">+{group.members.length - 3} more</StatusPill>
-                          )}
+                          {group.members.map(member => {
+                            const label = member.name ?? member.email ?? member.id
+                            return (
+                              <span
+                                key={member.id}
+                                className="inline-flex items-center gap-1 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-xxs font-medium text-slate-700 dark:bg-white/[.06] dark:text-slate-200"
+                              >
+                                {label}
+                                <button
+                                  type="button"
+                                  onClick={() => setRemoveMemberTarget({ group, member })}
+                                  disabled={updateGroup.isPending}
+                                  className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-red-600 disabled:opacity-50 dark:hover:bg-white/[.08] dark:hover:text-red-300"
+                                  aria-label={`Remove ${label} from ${group.name}`}
+                                  title="Remove member"
+                                >
+                                  <X size={10} />
+                                </button>
+                              </span>
+                            )
+                          })}
                         </div>
                       )}
                     </TableCell>
@@ -535,7 +673,7 @@ export function UserManagement() {
         <TabFilter items={tabItems} value={tab} onChange={setTab} className="self-start" />
 
         {tab === 'groups' ? (
-          <PartnerDealGroupsPanel />
+          <PartnerDealGroupsPanel approvedUsers={activeUsers.filter(user => user.role === CrmUserRole.Partner)} />
         ) : (
           <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
             <div className="overflow-x-auto p-2">
