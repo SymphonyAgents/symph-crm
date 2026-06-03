@@ -29,7 +29,6 @@ const TABS: { id: TabId; label: string; addCta: string; emptyText: string }[] = 
   { id: 'internal',    label: 'Products',    addCta: '+ New Product',     emptyText: 'No products yet' },
   { id: 'service',     label: 'Services',    addCta: '+ New Service',     emptyText: 'No services yet' },
   { id: 'reseller',    label: 'Resellers',   addCta: '+ New Reseller',    emptyText: 'No resellers yet' },
-  { id: 'partnership', label: 'Partnerships', addCta: '+ New Partnership', emptyText: 'No partnerships yet' },
 ]
 
 function formatDate(d: string): string {
@@ -69,12 +68,21 @@ export default function CatalogPage() {
   const qc = useQueryClient()
   const [tab, setTab] = useState<TabId>('all')
   const { data: items = [], isLoading } = useGetCatalogItems(tab === 'all' ? {} : { type: tab })
+  const { data: allItems = [] } = useGetCatalogItems({})
   const [editing, setEditing] = useState<ApiCatalogItem | null>(null)
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState<ApiCatalogItem | null>(null)
 
   const tabMeta = TABS.find(t => t.id === tab)!
-  const tabItems = useMemo<TabFilterItem<TabId>[]>(() => TABS.map(t => ({ id: t.id, label: t.label })), [])
+  const tabCounts = useMemo(() => {
+    return allItems.reduce<Record<TabId, number>>((acc, item) => {
+      if (item.productType === 'partnership') return acc
+      acc.all += 1
+      acc[item.productType] += 1
+      return acc
+    }, { all: 0, internal: 0, service: 0, reseller: 0, partnership: 0 })
+  }, [allItems])
+  const tabItems = useMemo<TabFilterItem<TabId>[]>(() => TABS.map(t => ({ id: t.id, label: t.label, count: tabCounts[t.id] })), [tabCounts])
 
   const updateProduct = useUpdateCatalogItem({
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all }),

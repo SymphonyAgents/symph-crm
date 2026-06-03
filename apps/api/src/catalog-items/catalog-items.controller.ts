@@ -26,7 +26,7 @@ export class CatalogItemsController {
   ) {
     return this.service.findAll({
       activeOnly: active === 'true',
-      type: type && ['internal', 'service', 'reseller', 'partnership'].includes(type) ? type : undefined,
+      type: type && ['internal', 'service', 'reseller'].includes(type) ? type : undefined,
     })
   }
 

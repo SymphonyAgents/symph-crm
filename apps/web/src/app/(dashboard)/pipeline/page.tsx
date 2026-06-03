@@ -23,7 +23,8 @@ function PipelineInner() {
   const itemId = searchParams.get('item') // catalog_items.id when drilled into a specific row
 
   // Cached deal fetch — Pipeline.tsx hits the same queryKey, no duplicate request.
-  const { data: allDeals = [], isLoading } = useGetDeals()
+  const { data: rawDeals = [], isLoading } = useGetDeals()
+  const allDeals = useMemo(() => rawDeals.filter(deal => deal.catalogItemType !== 'partnership'), [rawDeals])
   // Catalog rows for the active product_type — only fetched when needed.
   const showSubTabs = tabValue === 'internal' || tabValue === 'service' || tabValue === 'reseller'
   const { data: catalogRows = [] } = useGetCatalogItems(
@@ -32,7 +33,7 @@ function PipelineInner() {
 
   // Per-tab counts (all deals, not just active — matches the tab label semantic "how many deals exist here").
   const counts: CatalogTabCounts = useMemo(() => {
-    const c: CatalogTabCounts = { all: allDeals.length, internal: 0, service: 0, reseller: 0, partnership: 0 }
+    const c: CatalogTabCounts = { all: allDeals.length, internal: 0, service: 0, reseller: 0 }
     for (const d of allDeals) {
       if (d.catalogItemType && d.catalogItemType in c) {
         c[d.catalogItemType as keyof CatalogTabCounts] = (c[d.catalogItemType as keyof CatalogTabCounts] ?? 0) + 1

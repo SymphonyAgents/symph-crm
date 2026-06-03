@@ -22,14 +22,15 @@ function RevenueInner() {
   const itemId = searchParams.get('item')
 
   // Cached deal fetch — RevenueGeneration hits the same queryKey, no duplicate request.
-  const { data: allDeals = [] } = useGetDeals()
+  const { data: rawDeals = [] } = useGetDeals()
+  const allDeals = useMemo(() => rawDeals.filter(deal => deal.catalogItemType !== 'partnership'), [rawDeals])
   const showSubTabs = tabValue === 'internal' || tabValue === 'service' || tabValue === 'reseller'
   const { data: catalogRows = [] } = useGetCatalogItems(
     showSubTabs ? { activeOnly: true, type: tabValue } : false,
   )
 
   const counts: CatalogTabCounts = useMemo(() => {
-    const c: CatalogTabCounts = { all: allDeals.length, internal: 0, service: 0, reseller: 0, partnership: 0 }
+    const c: CatalogTabCounts = { all: allDeals.length, internal: 0, service: 0, reseller: 0 }
     for (const d of allDeals) {
       if (d.catalogItemType && d.catalogItemType in c) {
         c[d.catalogItemType as keyof CatalogTabCounts] = (c[d.catalogItemType as keyof CatalogTabCounts] ?? 0) + 1
