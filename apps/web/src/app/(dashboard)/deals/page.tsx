@@ -5,5 +5,5 @@ import { Deals } from '@/components/Deals'
 
 export default function DealsPage() {
   const router = useRouter()
-  return <Deals onOpenDeal={(id) => router.push(`/deals/${id}?from=brands`)} />
+  return <Deals onOpenDeal={(id) => router.push(`/deals/${id}?from=deals`)} />
 }
