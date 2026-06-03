@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, notInArray } from 'drizzle-orm'
 import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
-import { dealPartnerDealGroups, deals, partnerDealGroupMembers, partnerDealGroups, users } from '@symph-crm/database'
+import { dealPartnerDealGroups, deals, partnerDealCommissions, partnerDealGroupMembers, partnerDealGroups, users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
@@ -202,15 +202,26 @@ export class PartnerDealGroupsService {
       if (invalidIds.length > 0) throw new BadRequestException('partnerDealGroupIds must contain active partner deal groups in the deal workspace only')
     }
 
-    await this.db.delete(dealPartnerDealGroups).where(eq(dealPartnerDealGroups.dealId, dealId))
-    if (uniqueGroupIds.length === 0) return
+    await this.db.transaction(async tx => {
+      await tx.delete(partnerDealCommissions).where(
+        uniqueGroupIds.length > 0
+          ? and(
+              eq(partnerDealCommissions.dealId, dealId),
+              notInArray(partnerDealCommissions.partnerDealGroupId, uniqueGroupIds as [string, ...string[]]),
+            )
+          : eq(partnerDealCommissions.dealId, dealId),
+      )
 
-    await this.db.insert(dealPartnerDealGroups).values(uniqueGroupIds.map(groupId => ({
-      workspaceId: deal.workspaceId,
-      dealId,
-      groupId,
-      createdBy: performedBy ?? null,
-    })))
+      await tx.delete(dealPartnerDealGroups).where(eq(dealPartnerDealGroups.dealId, dealId))
+      if (uniqueGroupIds.length === 0) return
+
+      await tx.insert(dealPartnerDealGroups).values(uniqueGroupIds.map(groupId => ({
+        workspaceId: deal.workspaceId,
+        dealId,
+        groupId,
+        createdBy: performedBy ?? null,
+      })))
+    })
   }
 
   async addUserToGroups(userId: string, groupIds: string[], performedBy?: string) {

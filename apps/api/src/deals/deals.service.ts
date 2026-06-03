@@ -214,6 +214,10 @@ export class DealsService {
         notes: partnerDealCommissions.notes,
       })
       .from(partnerDealCommissions)
+      .innerJoin(dealPartnerDealGroups, and(
+        eq(dealPartnerDealGroups.dealId, partnerDealCommissions.dealId),
+        eq(dealPartnerDealGroups.groupId, partnerDealCommissions.partnerDealGroupId),
+      ))
       .where(inArray(partnerDealCommissions.dealId, dealIds as [string, ...string[]]))
 
     const map = new Map<string, PartnerDealCommissionDto[]>()
