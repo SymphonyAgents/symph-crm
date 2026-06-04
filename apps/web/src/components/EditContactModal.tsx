@@ -75,11 +75,11 @@ export function EditContactModal({ contact, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
+        className="bg-card rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-card z-10">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-white">Edit Contact</div>
             <div className="text-xs text-slate-400 mt-0.5">Update contact details</div>

@@ -68,7 +68,7 @@ export function MeetingAttendeesPopover({ attendees }: { attendees: ApiMeetingAt
           <span className="tabular-nums">{visibleAttendees.length}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-md bg-white p-2 shadow-lg ring-1 ring-black/10 dark:bg-[#1e1e21] dark:ring-white/10">
+      <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-md bg-white p-2 shadow-lg ring-1 ring-black/10 dark:bg-card dark:ring-white/10">
         <div className="px-1.5 pb-2 pt-1 text-atom font-semibold uppercase tracking-[0.06em] text-slate-400 dark:text-slate-500">
           Attendees
         </div>

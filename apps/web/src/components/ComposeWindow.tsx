@@ -204,7 +204,7 @@ export function ComposeWindow({
         // Mobile: full viewport overlay
         'inset-0',
         // Desktop: floating bottom-right widget
-        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-lg sm:shadow-[0_8px_40px_rgba(0,0,0,0.28)] sm:border sm:border-black/[.08] sm:dark:border-white/[.08]',
+        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-lg sm:shadow-lg sm:border sm:border-black/[.08] sm:dark:border-white/[.08]',
       )}
       onKeyDown={handleKeyDown}
     >

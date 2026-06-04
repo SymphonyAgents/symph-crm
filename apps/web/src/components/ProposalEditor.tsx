@@ -232,7 +232,7 @@ export default function ProposalEditor({ documentId, dealId, clientBrandColor, i
 
       {/* Editor body */}
       <div
-        className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21]"
+        className="flex-1 overflow-y-auto bg-card"
         style={{ '--proposal-accent': clientBrandColor || '#000000' } as React.CSSProperties}
       >
         <EditorContent editor={editor} />

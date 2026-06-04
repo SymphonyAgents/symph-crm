@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useTheme } from 'next-themes'
 import { Avatar } from './Avatar'
 import { api } from '@/lib/api'
 import { useUser } from '@/lib/hooks/use-user'
@@ -22,8 +21,6 @@ import {
   Receipt,
   Package,
   Settings,
-  Sun,
-  Moon,
   BookMarked,
   Mic,
   Users,
@@ -128,7 +125,7 @@ function LogoutConfirmModal({
       onClick={onCancel}
     >
       <div
-        className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+        className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         <p className="text-sm font-semibold text-slate-900 dark:text-white">Sign out of Symph CRM?</p>
@@ -156,9 +153,6 @@ function LogoutConfirmModal({
 
 export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
   const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
   const { user, role, isLoading, isPartner } = useUser()
   const [hoveredPath, setHoveredPath] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
@@ -191,7 +185,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
 
       <TooltipProvider delayDuration={0}>
       <aside className={cn(
-        'shrink-0 bg-white dark:bg-[#1e1e21] border-r border-black/[.06] dark:border-white/[.08] flex flex-col h-full overflow-hidden',
+        'shrink-0 bg-card border-r border-black/[.06] dark:border-white/[.08] flex flex-col h-full overflow-hidden',
         'fixed inset-y-0 left-0 z-30 md:relative md:z-auto',
         'transition-all duration-200',
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -315,38 +309,6 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
           )}
         </div>}
 
-        {/* Theme toggle */}
-        {mounted && (
-          <div className={cn(
-            'py-2 border-t border-black/[.06] dark:border-white/[.08]',
-            collapsed ? 'md:px-1.5 px-[14px]' : 'px-[14px]'
-          )}>
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    className="w-full flex items-center gap-2 px-[10px] py-3 md:py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors md:justify-center md:px-0"
-                  >
-                    {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} className="shrink-0" /> : <Moon size={14} strokeWidth={1.4} className="shrink-0" />}
-                    <span className="md:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="hidden md:block">
-                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="w-full flex items-center gap-2 px-[10px] py-3 md:py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
-              >
-                {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} className="shrink-0" /> : <Moon size={14} strokeWidth={1.4} className="shrink-0" />}
-                <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-              </button>
-            )}
-          </div>
-        )}
 
         {/* User profile */}
         <div className={cn(

@@ -479,7 +479,7 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
           </DialogContent>
         </Dialog>
       )}
-      <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+      <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
         <div className="flex flex-col gap-3 border-b border-black/[.06] px-4 py-3 dark:border-white/[.08] sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Partner deal groups</p>
@@ -643,7 +643,7 @@ export function UserManagement() {
   if (!userLoading && !isSales) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-sm rounded-md border border-black/[.06] bg-white p-6 text-center shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+        <div className="max-w-sm rounded-md border border-black/[.06] bg-white p-6 text-center shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
           <ShieldCheck size={24} className="mx-auto text-slate-400" />
           <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">Sales access required</p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
@@ -675,7 +675,7 @@ export function UserManagement() {
         {tab === 'groups' ? (
           <PartnerDealGroupsPanel approvedUsers={activeUsers.filter(user => user.role === CrmUserRole.Partner)} />
         ) : (
-          <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+          <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
             <div className="overflow-x-auto p-2">
               {isLoading ? (
               <DataTableSkeleton className="p-1.5 space-y-2" />

@@ -33,8 +33,8 @@ export default function SignedProposalPdfPage({ params }: { params: Promise<{ id
   }, [id])
 
   return (
-    <div className="flex min-h-[60dvh] items-center justify-center bg-slate-50 px-6 text-center dark:bg-[#0f0f12]">
-      <div className="max-w-sm rounded-md border border-black/[.06] bg-white p-6 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1c1c1f]">
+    <div className="flex min-h-[60dvh] items-center justify-center bg-slate-50 px-6 text-center dark:bg-background">
+      <div className="max-w-sm rounded-md border border-black/[.06] bg-white p-6 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
         {error ? (
           <>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Signed PDF unavailable</p>

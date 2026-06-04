@@ -75,7 +75,7 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
           required
         />
         {showSuggestions && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-1 max-h-[200px] overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-card shadow-lg py-1 max-h-[200px] overflow-y-auto">
             {suggestions.map((s, i) => (
               <button
                 key={`${s.acronym}-${s.category}-${i}`}
@@ -312,11 +312,11 @@ export function EditDealModal({ deal, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
+        className="bg-card rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-card z-10">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-white">Edit Deal</div>
             <div className="text-xs text-slate-400 mt-0.5">Update deal details</div>
@@ -424,7 +424,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                   value={oneTimeFee}
                   onChange={e => setOneTimeFee(formatNumberWithCommas(e.target.value))}
                   placeholder="e.g. 1,214,000"
-                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-secondary text-slate-900 dark:text-white"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -435,7 +435,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                   value={mrr}
                   onChange={e => setMrr(formatNumberWithCommas(e.target.value))}
                   placeholder="e.g. 50,000"
-                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-secondary text-slate-900 dark:text-white"
                 />
               </div>
             </div>
@@ -452,7 +452,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                   value={contractLength}
                   onChange={e => setContractLength(e.target.value)}
                   placeholder="e.g. 12"
-                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-secondary text-slate-900 dark:text-white"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -485,7 +485,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                     value={costPrice}
                     onChange={e => setCostPrice(formatNumberWithCommas(e.target.value))}
                     placeholder="e.g. 500,000"
-                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-secondary text-slate-900 dark:text-white"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -500,7 +500,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                     value={marginPercent}
                     onChange={e => setMarginPercent(e.target.value)}
                     placeholder="e.g. 15"
-                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-secondary text-slate-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -541,7 +541,7 @@ export function EditDealModal({ deal, onClose }: Props) {
               type="date"
               value={closeDate}
               onChange={e => setCloseDate(e.target.value)}
-              className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+              className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-secondary text-slate-900 dark:text-white"
             />
           </div>
 

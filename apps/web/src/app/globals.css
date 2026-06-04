@@ -2,28 +2,44 @@
 @plugin "@tailwindcss/typography";
 @plugin "tailwindcss-animate";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark *, .midnight *));
 
 :root {
-  --background: oklch(97% 0.003 250);           /* ~#f3f4f6 — slightly off-white */
-  --foreground: oklch(14.08% 0.0044 285.8);     /* #09090b */
-  --card: oklch(100% 0 0);
-  --card-foreground: oklch(14.08% 0.0044 285.8);
-  --popover: oklch(100% 0 0);
-  --popover-foreground: oklch(14.08% 0.0044 285.8);
-  --primary: oklch(48.79% 0.2432 264.5);        /* #1547e6 */
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #2f80ff;
   --primary-foreground: #ffffff;
-  --secondary: oklch(96.72% 0 0);               /* #f4f4f4 */
-  --secondary-foreground: oklch(14.08% 0.0044 285.8);
-  --muted: oklch(96.72% 0 0);                   /* #f4f4f4 */
-  --muted-foreground: oklch(55.6% 0 0);
-  --accent: oklch(96.72% 0 0);                  /* #f4f4f4 */
-  --accent-foreground: oklch(14.08% 0.0044 285.8);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(91.94% 0 0);                  /* #e4e4e6 */
-  --input: oklch(91.94% 0 0);
-  --ring: oklch(48.79% 0.2432 264.5);           /* matches primary */
+  --secondary: #f4f4f5;
+  --secondary-foreground: #09090b;
+  --muted: #f4f4f5;
+  --muted-foreground: #52525b;
+  --accent: #f4f4f5;
+  --accent-foreground: #09090b;
+  --destructive: #dc2626;
+  --border: rgba(0, 0, 0, 0.07);
+  --input: rgba(0, 0, 0, 0.12);
+  --ring: #2f80ff;
   --radius: 0.5rem;
+
+  --surface-alt: #fafafa;
+  --surface-hover: #f4f4f5;
+  --surface-active: #e9e9ec;
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --border-focus: rgba(0, 0, 0, 0.20);
+  --text-muted: #52525b;
+  --text-faint: #a1a1aa;
+  --text-ghost: #d4d4d8;
+  --row-hover: rgba(0, 0, 0, 0.025);
+  --overlay: rgba(15, 15, 20, 0.40);
+  --shadow-sm: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-md-token: 0 1px 2px rgba(17, 24, 39, 0.04), 0 4px 12px rgba(17, 24, 39, 0.06);
+  --shadow-lg-token: 0 8px 24px rgba(17, 24, 39, 0.10), 0 2px 6px rgba(17, 24, 39, 0.06);
+  --scroll: rgba(0, 0, 0, 0.15);
+  --scroll-hover: rgba(0, 0, 0, 0.30);
 
   /* Stage accent colors — light mode (saturated, for light surfaces) */
   --stage-lead: #94a3b8;
@@ -40,29 +56,41 @@
 }
 
 .dark {
-  --background: oklch(20% 0.003 285.8);          /* ~#191a1c — softer contrast */
-  --foreground: oklch(98.51% 0 0);              /* #fafafa */
-  --card: oklch(21% 0.003 285.8);               /* ~#1c1c1f — slightly lighter than bg */
-  --card-foreground: oklch(98.51% 0 0);
-  --popover: oklch(17% 0.004 285.8);
-  --popover-foreground: oklch(98.51% 0 0);
-  /* Primary in dark mode: lighter + less saturated so text/borders read on dark surfaces
-     without the neon/electric look of the saturated light-mode blue.
-     This value (~#6b9af4) works for text, borders, underlines, AND button backgrounds
-     with white text at ~3.5:1 contrast (AA large/UI threshold). */
-  --primary: oklch(60% 0.14 258);
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --card: #101013;
+  --card-foreground: #f4f4f5;
+  --popover: #101013;
+  --popover-foreground: #f4f4f5;
+  --primary: #2f80ff;
   --primary-foreground: #ffffff;
-  --secondary: oklch(27.35% 0.0037 286.0);      /* #272729 */
-  --secondary-foreground: oklch(98.51% 0 0);
-  --muted: oklch(27.35% 0.0037 286.0);          /* #272729 */
-  --muted-foreground: oklch(70% 0 0);
-  --accent: oklch(27.35% 0.0037 286.0);         /* #272729 */
-  --accent-foreground: oklch(98.51% 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(30.60% 0.0036 286.0);         /* #2f2f31 */
-  --input: oklch(30.60% 0.0036 286.0);
-  --ring: oklch(60% 0.14 258);                  /* matches dark primary */
+  --secondary: #141418;
+  --secondary-foreground: #f4f4f5;
+  --muted: #141418;
+  --muted-foreground: #a1a1aa;
+  --accent: #141418;
+  --accent-foreground: #f4f4f5;
+  --destructive: #ef4444;
+  --border: rgba(255, 255, 255, 0.06);
+  --input: rgba(255, 255, 255, 0.10);
+  --ring: #2f80ff;
   --radius: 0.5rem;
+
+  --surface-alt: #141418;
+  --surface-hover: #16161a;
+  --surface-active: #1d1d22;
+  --border-strong: rgba(255, 255, 255, 0.10);
+  --border-focus: rgba(255, 255, 255, 0.22);
+  --text-muted: #a1a1aa;
+  --text-faint: #71717a;
+  --text-ghost: #3f3f46;
+  --row-hover: rgba(255, 255, 255, 0.025);
+  --overlay: rgba(0, 0, 0, 0.65);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md-token: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg-token: 0 12px 32px rgba(0, 0, 0, 0.6), 0 4px 10px rgba(0, 0, 0, 0.4);
+  --scroll: rgba(255, 255, 255, 0.10);
+  --scroll-hover: rgba(255, 255, 255, 0.20);
 
   /* Stage accent colors — dark mode (Tailwind 400-level — vivid on dark surfaces) */
   --stage-lead: #94a3b8;           /* slate-400 — neutral, unchanged */
@@ -76,6 +104,74 @@
   --stage-followup: #fbbf24;
   --stage-closed_won: #4ade80;     /* green-400 */
   --stage-closed_lost: #f87171;    /* red-400 */
+}
+
+.midnight {
+  --background: #0a0d14;
+  --foreground: #e8ecf3;
+  --card: #11151f;
+  --card-foreground: #e8ecf3;
+  --popover: #11151f;
+  --popover-foreground: #e8ecf3;
+  --primary: #60a5fa;
+  --primary-foreground: #061527;
+  --secondary: #151a26;
+  --secondary-foreground: #e8ecf3;
+  --muted: #151a26;
+  --muted-foreground: #9aa3b3;
+  --accent: #151a26;
+  --accent-foreground: #e8ecf3;
+  --destructive: #f87171;
+  --border: rgba(150, 170, 210, 0.07);
+  --input: rgba(150, 170, 210, 0.12);
+  --ring: #60a5fa;
+  --radius: 0.5rem;
+
+  --surface-alt: #151a26;
+  --surface-hover: #181d2a;
+  --surface-active: #1f2535;
+  --border-strong: rgba(150, 170, 210, 0.12);
+  --border-focus: rgba(150, 170, 210, 0.25);
+  --text-muted: #9aa3b3;
+  --text-faint: #6b7488;
+  --text-ghost: #3d4458;
+  --row-hover: rgba(150, 170, 210, 0.04);
+  --overlay: rgba(0, 3, 10, 0.70);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md-token: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.6);
+  --shadow-lg-token: 0 12px 32px rgba(0, 0, 0, 0.7), 0 4px 10px rgba(0, 0, 0, 0.5);
+  --scroll: rgba(150, 170, 210, 0.12);
+  --scroll-hover: rgba(150, 170, 210, 0.22);
+
+  --stage-lead: #9aa3b3;
+  --stage-discovery: #60a5fa;
+  --stage-assessment: #c4b5fd;
+  --stage-qualified: #38bdf8;
+  --stage-demo: #fcd34d;
+  --stage-proposal: #fcd34d;
+  --stage-proposal_demo: #fcd34d;
+  --stage-negotiation: #fde047;
+  --stage-followup: #fde047;
+  --stage-closed_won: #6ee7b7;
+  --stage-closed_lost: #fca5a5;
+}
+
+.accent-green {
+  --primary: #3ecf8e;
+  --primary-foreground: #062b1a;
+  --ring: #3ecf8e;
+}
+
+.accent-blue {
+  --primary: #2f80ff;
+  --primary-foreground: #ffffff;
+  --ring: #2f80ff;
+}
+
+.accent-violet {
+  --primary: #7c5cff;
+  --primary-foreground: #ffffff;
+  --ring: #7c5cff;
 }
 
 @theme inline {
@@ -99,6 +195,13 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-surface-alt: var(--surface-alt);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-border-strong: var(--border-strong);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-text-ghost: var(--text-ghost);
 
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -140,8 +243,8 @@
   --text-sbase--line-height: calc(1.375 / 0.9375);
 
   /* Shadows */
-  --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.06);
-  --shadow-md: 0 2px 4px rgba(17, 24, 39, 0.04), 0 4px 8px rgba(17, 24, 39, 0.06);
+  --shadow-card: var(--shadow-sm, 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.06));
+  --shadow-md: var(--shadow-md-token, 0 2px 4px rgba(17, 24, 39, 0.04), 0 4px 8px rgba(17, 24, 39, 0.06));
 
   /* Layout */
   --sidebar-width: 216px;
@@ -151,12 +254,12 @@
 /* Thin scrollbar */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgb(148 163 184 / 0.5) transparent;
+  scrollbar-color: var(--scroll) transparent;
 }
 *::-webkit-scrollbar { width: 6px; height: 6px; }
 *::-webkit-scrollbar-track { background: transparent; }
-*::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.5); border-radius: 3px; }
-.dark *::-webkit-scrollbar-thumb { background: rgb(100 116 139 / 0.6); }
+*::-webkit-scrollbar-thumb { background: var(--scroll); border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--scroll-hover); }
 
 /* Hide scrollbar for horizontal pill rows */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }

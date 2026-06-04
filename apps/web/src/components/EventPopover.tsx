@@ -306,7 +306,7 @@ export function EventPopover({
 
       {/* Floating panel */}
       <div
-        className="fixed z-50 rounded-xl bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] shadow-2xl overflow-hidden flex flex-col"
+        className="fixed z-50 rounded-xl bg-card border border-black/[.08] dark:border-white/[.08] shadow-2xl overflow-hidden flex flex-col"
         style={{ left, top, width: PANEL_W }}
         onClick={e => e.stopPropagation()}
       >

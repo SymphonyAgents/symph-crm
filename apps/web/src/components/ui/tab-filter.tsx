@@ -28,7 +28,7 @@ export function TabFilter<T extends string>({ items, value, onChange, className 
             className={cn(
               'inline-flex h-7 items-center rounded px-2.5 text-xxs font-semibold transition-colors active:scale-[0.96]',
               active
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-[#242428] dark:text-white'
+                ? 'bg-white text-slate-900 shadow-sm dark:bg-secondary dark:text-white'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200',
             )}
           >

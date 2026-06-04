@@ -67,7 +67,7 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
           </button>
         </div>
         <div className="flex-1 min-h-0 overflow-auto p-4 md:px-6 pb-6">
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+          <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
             <DataTableSkeleton />
           </div>
         </div>
@@ -79,7 +79,7 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-1 min-h-0 overflow-auto p-4 md:px-6 pb-6">
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
+          <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
             <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
             <p className="text-ssm font-semibold text-slate-900 dark:text-white">Meeting not found</p>
             <button onClick={onBack} className="text-xs font-semibold text-primary mt-2">Back to Meetings</button>
@@ -101,7 +101,7 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
       </div>
 
       <div className="flex-1 min-h-0 overflow-auto p-4 md:px-6 pb-6">
-        <section className="relative bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-visible">
+        <section className="relative bg-card border border-black/[.06] dark:border-white/[.08] rounded-md overflow-visible">
           <span className={cn('absolute right-0 -top-10 border rounded-md px-1.5 py-0.5 text-atom font-semibold capitalize', statusTone(detail.status))}>
             {detail.status}
           </span>

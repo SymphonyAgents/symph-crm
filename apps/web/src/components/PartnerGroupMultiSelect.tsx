@@ -52,7 +52,7 @@ export function PartnerGroupMultiSelect({ groups, selected, onChange }: PartnerG
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-9 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-left text-ssm text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:bg-[#2a2d31] dark:text-slate-200 dark:hover:bg-white/[.06]"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-left text-ssm text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:bg-secondary dark:text-slate-200 dark:hover:bg-white/[.06]"
           >
             <span className={cn('truncate', selected.length === 0 && 'text-slate-400')}>
               {selected.length === 0 ? 'Select partner groups...' : `${selected.length} group${selected.length === 1 ? '' : 's'} selected`}

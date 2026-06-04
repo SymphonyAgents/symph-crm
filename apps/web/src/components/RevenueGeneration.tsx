@@ -142,7 +142,7 @@ function EditableMonthCell({
           onChange={e => setDraft(e.target.value)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="w-full h-7 px-2 text-right text-ssm tabular-nums rounded border border-primary/30 bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary/40"
+          className="w-full h-7 px-2 text-right text-ssm tabular-nums rounded border border-primary/30 bg-white dark:bg-secondary text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary/40"
         />
       </td>
     )
@@ -257,7 +257,7 @@ function RevenueBillingModal({
       <DialogPortal>
         <DialogOverlay className="z-40 bg-black/45" />
         <DialogPrimitive.Content
-          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0 data-[state=closed]:duration-100 data-[state=closed]:ease-in"
+          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-card rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0 data-[state=closed]:duration-100 data-[state=closed]:ease-in"
           onOpenAutoFocus={event => event.preventDefault()}
         >
           <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
@@ -413,7 +413,7 @@ function ResellerMetricCard({
   }[tone]
 
   return (
-    <div className="rounded-md border border-black/[.06] bg-white p-4 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+    <div className="rounded-md border border-black/[.06] bg-white p-4 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
       <div className="mb-2 flex items-start justify-between gap-3">
         <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
         <div className={cn('flex h-8 w-8 items-center justify-center rounded-md', iconClass)}>
@@ -611,7 +611,7 @@ function ResellerTableTabs({
             'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors active:scale-[0.98]',
             value === tab.value
               ? 'bg-primary/10 text-primary'
-              : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-[#1e1e21] dark:text-slate-300 dark:hover:bg-white/[.04]',
+              : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-card dark:text-slate-300 dark:hover:bg-white/[.04]',
           )}
         >
           {tab.label}
@@ -643,7 +643,7 @@ function ResellerMonthlyRevenueSection({
         <table className="w-full min-w-[1120px] border-collapse text-left">
           <thead>
             <tr className="border-b border-black/[.06] bg-slate-50 dark:border-white/[.08] dark:bg-white/[.02]">
-              <th className="sticky left-0 z-10 w-[320px] bg-slate-50 px-4 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:bg-[#1a1a1d]">Deal</th>
+              <th className="sticky left-0 z-10 w-[320px] bg-slate-50 px-4 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:bg-card">Deal</th>
               <th className="w-[110px] px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500">Product</th>
               <th className="w-[90px] px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500">Stage</th>
               <th className="w-[120px] px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500">Billing</th>
@@ -661,7 +661,7 @@ function ResellerMonthlyRevenueSection({
               const products = getResellerProducts(deal)
               return (
                 <tr key={deal.id} className={index % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-                  <td className="sticky left-0 z-10 bg-white px-4 py-2.5 dark:bg-[#1e1e21]">
+                  <td className="sticky left-0 z-10 bg-white px-4 py-2.5 dark:bg-card">
                     <Link
                       href={`/deals/${deal.id}?from=revenue`}
                       className="flex items-center gap-1 text-ssm font-medium text-slate-800 transition-colors hover:text-primary dark:text-slate-200 dark:hover:text-primary"
@@ -737,7 +737,7 @@ function ProjectRevenueSection({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Project / Deal</th>
+              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-card z-10">Project / Deal</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Owner</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Stage</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[100px]">Value</th>
@@ -756,7 +756,7 @@ function ProjectRevenueSection({
                 const v = numVal(deal.value)
                 return (
                   <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-                    <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
+                    <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
                       <Link
                         href={`/deals/${deal.id}?from=revenue`}
                         className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
@@ -835,7 +835,7 @@ function StartupRevenueSection({
 
     return (
       <tr className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-        <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
+        <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
           <Link
             href={`/deals/${deal.id}?from=revenue`}
             className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
@@ -884,7 +884,7 @@ function StartupRevenueSection({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
+              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-card z-10">Client</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Owner</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Stage</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[112px] whitespace-nowrap">One-Time</th>
@@ -947,7 +947,7 @@ function ExistingClientsSection({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
+              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-card z-10">Client</th>
               <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[110px]">MRR</th>
               <MonthHeaders />
             </tr>
@@ -961,7 +961,7 @@ function ExistingClientsSection({
                 const displayName = deal.title.replace(' - Existing Client', '')
                 return (
                   <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-                    <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
+                    <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
                       <Link
                         href={`/deals/${deal.id}?from=revenue`}
                         className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
@@ -1228,7 +1228,7 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
         <table className="w-full border-collapse">
           <tbody>
             <tr>
-              <td className="px-4 py-3 text-sm font-bold text-white dark:text-white w-[260px] sticky left-0 bg-slate-800 dark:bg-[#2a2d31] z-10">
+              <td className="px-4 py-3 text-sm font-bold text-white dark:text-white w-[260px] sticky left-0 bg-slate-800 dark:bg-secondary z-10">
                 TOTAL REVENUE
               </td>
               {/* spacer cols to align with table above */}

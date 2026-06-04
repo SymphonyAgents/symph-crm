@@ -91,7 +91,7 @@ function EventDetailPanel({
       onClick={onClose}
     >
       <div
-        className="w-full sm:w-[380px] bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+        className="w-full sm:w-[380px] bg-card rounded-lg shadow-xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Colored header strip */}
@@ -212,7 +212,7 @@ function CreateEventModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl w-full max-w-md mx-4 p-6 animate-in zoom-in-95 duration-150"
+        className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 p-6 animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -404,7 +404,7 @@ function WeekView({
 
   return (
     // h-full so it expands to fill the flex container on desktop
-    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21] flex flex-col h-full">
+    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-card flex flex-col h-full">
       {/* Day headers — fixed, never scrolls */}
       <div
         className="grid border-b border-black/[.06] dark:border-white/[.08] shrink-0"
@@ -594,7 +594,7 @@ function TeamDemosPanel({
   const grouped = useMemo(() => groupDemosByDay(demos), [demos])
 
   return (
-    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden flex flex-col">
+    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-card overflow-hidden flex flex-col">
       <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] shrink-0 flex items-center justify-between">
         <p className="text-ssm font-semibold text-slate-900 dark:text-white">Team Demos</p>
         <Badge variant="muted" className="text-xxs font-medium">
@@ -900,7 +900,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                     className={cn(
                       'h-[26px] px-2.5 rounded-lg text-xs font-medium transition-all',
                       view === v
-                        ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm'
+                        ? 'bg-card text-slate-900 dark:text-white shadow-sm'
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300',
                     )}
                   >
@@ -940,7 +940,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
           {/* Month view — natural height, scroll on mobile */}
           {view === 'month' && (
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21]">
+              <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-card">
                 <div className="grid grid-cols-7 border-b border-black/[.06] dark:border-white/[.08]">
                   {DAYS.map(d => (
                     <div key={d} className="py-2.5 text-center text-atom font-semibold text-slate-400 uppercase tracking-wide">{d}</div>
@@ -1051,7 +1051,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
         <div className="flex flex-col gap-4 min-h-0 overflow-y-auto">
 
         {/* Upcoming */}
-        <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden flex flex-col">
+        <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-card overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
             <p className="text-ssm font-semibold text-slate-900 dark:text-white">Upcoming</p>
           </div>

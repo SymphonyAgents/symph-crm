@@ -12,7 +12,7 @@ function ThemedToaster() {
   return (
     <Toaster
       position="bottom-right"
-      theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+      theme={resolvedTheme === 'dark' || resolvedTheme === 'midnight' ? 'dark' : 'light'}
       toastOptions={{
         style: {
           fontSize: '13px',
@@ -20,10 +20,10 @@ function ThemedToaster() {
         },
         classNames: {
           toast: 'border border-black/[.08] dark:border-white/[.1] shadow-lg',
-          success: 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white',
-          error: 'bg-white dark:bg-[#1e1e21] text-red-600 dark:text-red-400',
-          info: 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white',
-          warning: 'bg-white dark:bg-[#1e1e21] text-amber-600 dark:text-amber-400',
+          success: 'bg-card text-slate-900 dark:text-white',
+          error: 'bg-card text-red-600 dark:text-red-400',
+          info: 'bg-card text-slate-900 dark:text-white',
+          warning: 'bg-card text-amber-600 dark:text-amber-400',
           description: 'text-slate-500 dark:text-slate-400',
         },
       }}
@@ -46,10 +46,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <PostHogProvider>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="light" themes={['light', 'dark', 'midnight']} disableTransitionOnChange>
         <ProgressProvider
           height="2px"
-          color="#1547e6"
+          color="var(--primary)"
           options={{ showSpinner: false }}
           shallowRouting
         >

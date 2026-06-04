@@ -135,7 +135,7 @@ export function Settings() {
       {/* ── Profile ─────────────────────────────────────────────────────────── */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-slate-400 mb-3">Profile</h2>
-        <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4 flex items-center gap-4">
+        <div className="bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] p-4 flex items-center gap-4">
           {user?.image ? (
             <img src={user.image} alt="" className="w-14 h-14 rounded-full shrink-0 ring-2 ring-black/[.06] dark:ring-white/[.08]" />
           ) : (
@@ -158,7 +158,7 @@ export function Settings() {
       {/* System */}
       <section>
         <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-slate-400 mb-3">System</h2>
-        <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
+        <div className="bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
           <Link href="/settings/trash" className="flex items-center gap-4 group">
             <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/[.08] border border-red-100 dark:border-red-500/20 flex items-center justify-center shrink-0">
               <Trash2 size={18} className="text-red-500" />
@@ -178,7 +178,7 @@ export function Settings() {
         <div className="space-y-2">
 
           {/* Google */}
-          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
+          <div className="bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] flex items-center justify-center shrink-0 shadow-sm">
                 <GoogleIcon size={20} />

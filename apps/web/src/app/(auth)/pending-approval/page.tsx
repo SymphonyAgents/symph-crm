@@ -2,8 +2,8 @@ import Link from 'next/link'
 
 export default function PendingApprovalPage() {
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 dark:bg-[#121214] dark:text-white">
-      <div className="mx-auto mt-20 max-w-md rounded-md border border-black/[.06] bg-white p-6 text-center shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+    <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-900 dark:bg-background dark:text-white">
+      <div className="mx-auto mt-20 max-w-md rounded-md border border-black/[.06] bg-white p-6 text-center shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
         <p className="text-base font-semibold">Account pending approval</p>
         <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
           A Sales user needs to approve your account before you can access the partner portal.

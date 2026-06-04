@@ -15,7 +15,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
   const { toggle: toggleChatSidebar } = useChatSidebar()
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#f3f4f6] dark:bg-[#191a1c]">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

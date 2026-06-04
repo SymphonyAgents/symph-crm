@@ -193,7 +193,7 @@ function AuditTab() {
           <button
             type="button"
             onClick={openChangeLog}
-            className="h-8 px-3 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold bg-[rgba(108,99,255,0.10)] text-primary hover:bg-[rgba(108,99,255,0.16)] dark:bg-[rgba(108,99,255,0.16)] dark:hover:bg-[rgba(108,99,255,0.22)] transition-colors"
+            className="h-8 px-3 rounded-lg inline-flex items-center gap-1.5 text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/15 dark:bg-primary/15 dark:hover:bg-primary/20 transition-colors"
           >
             <Sparkles size={13} />
             View change logs
@@ -270,7 +270,7 @@ function AuditTab() {
       </div>
 
       {/* DataTable */}
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <div className="flex-1 overflow-y-auto bg-card border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)]">
         {isLoading ? (
           <DataTableSkeleton />
         ) : (

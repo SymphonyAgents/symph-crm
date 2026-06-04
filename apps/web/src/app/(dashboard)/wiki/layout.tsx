@@ -216,7 +216,7 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Content area */}
       <div className={cn(
         'md:flex md:flex-1 md:h-full md:min-w-0 flex-col',
-        'bg-white dark:bg-[#161618]',
+        'bg-card',
         'h-full w-full',
         mobilePane === 'content' || view === 'graph' ? 'flex' : 'hidden md:flex',
       )}>
@@ -239,7 +239,7 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
                   value={graphSearch}
                   onChange={e => setGraphSearch(e.target.value)}
                   placeholder="Search nodes..."
-                  className="w-[240px] h-8 pl-8 pr-3 text-xs rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white/90 dark:bg-[#1e1e21]/90 backdrop-blur-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/30 shadow-sm transition-colors"
+                  className="w-[240px] h-8 pl-8 pr-3 text-xs rounded-lg border border-black/[.08] dark:border-white/[.1] bg-card/90 backdrop-blur-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/30 shadow-sm transition-colors"
                 />
                 {graphSearch && (
                   <button

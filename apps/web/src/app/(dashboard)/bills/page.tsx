@@ -99,7 +99,7 @@ function BillRow({
         {billing.billingType === 'milestone' && totalMilestones > 0
           ? (
             <span className="tabular-nums">
-              <span className="text-[#16a34a] font-medium">{paidCount}</span>
+              <span className="text-success font-medium">{paidCount}</span>
               <span className="text-slate-400">/{totalMilestones} paid</span>
             </span>
           )
@@ -178,7 +178,7 @@ export default function BillsPage() {
 
   return (
     <div className="p-4 md:px-6 pb-6">
-      <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[var(--shadow-card)] overflow-hidden">
         {isInitialLoading ? (
           <DataTableSkeleton />
         ) : wonDeals.length === 0 ? (
@@ -236,7 +236,7 @@ export default function BillsPage() {
             className="max-w-sm w-full max-h-[80vh] overflow-y-auto rounded-xl animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-white dark:bg-[#1e1e21] rounded-t-xl border border-black/[.06] dark:border-white/[.08] border-b-0">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-card rounded-t-xl border border-black/[.06] dark:border-white/[.08] border-b-0">
               <div>
                 <p className="text-ssm font-semibold text-slate-900 dark:text-white">Edit Billing</p>
                 <p className="text-xxs text-slate-400 truncate max-w-[240px]">{formatDealTitle(editTarget.dealTitle)}</p>
@@ -262,7 +262,7 @@ export default function BillsPage() {
           onClick={() => setDeleteTarget(null)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete billing record?</p>

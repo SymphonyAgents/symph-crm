@@ -188,7 +188,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
       onClick={isEditing ? undefined : onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1d21] shadow-2xl border border-black/[.08] dark:border-white/[.08] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150 w-screen h-screen rounded-none sm:w-[96vw] sm:h-[96vh] sm:rounded-xl"
+        className="bg-card shadow-2xl border border-black/[.08] dark:border-white/[.08] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150 w-screen h-screen rounded-none sm:w-[96vw] sm:h-[96vh] sm:rounded-xl"
         onClick={e => e.stopPropagation()}
         onKeyDown={e => {
           if (e.key === 'Escape') {
@@ -289,7 +289,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                     onClick={() => setViewMode('rendered')}
                     className={`h-[26px] px-3 rounded-md text-xxs font-medium transition-all ${
                       viewMode === 'rendered'
-                        ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm'
+                        ? 'bg-card text-slate-900 dark:text-white shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'
                     }`}
                   >
@@ -299,7 +299,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                     onClick={() => setViewMode('raw')}
                     className={`h-[26px] px-3 rounded-md text-xxs font-medium transition-all ${
                       viewMode === 'raw'
-                        ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm'
+                        ? 'bg-card text-slate-900 dark:text-white shadow-sm'
                         : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'
                     }`}
                   >

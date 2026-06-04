@@ -32,7 +32,7 @@ export default function WikiPage() {
         ].map(stat => (
           <div
             key={stat.label}
-            className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] px-3 py-3 text-center"
+            className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-card px-3 py-3 text-center"
           >
             <div className="text-base font-bold text-slate-900 dark:text-white tabular-nums">{stat.value}</div>
             <div className="text-xxs text-slate-400 mt-0.5">{stat.label}</div>

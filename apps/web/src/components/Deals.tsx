@@ -72,7 +72,7 @@ function BrandDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[90vw] max-w-[640px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
+        className="bg-card rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[90vw] max-w-[640px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal header */}
@@ -238,7 +238,7 @@ function PartnerDealMobileCard({ row, onOpen }: { row: PartnerDealRow; onOpen: (
           onOpen()
         }
       }}
-      className="w-full rounded-md border border-black/[.06] bg-white p-4 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform active:scale-[0.99] dark:border-white/[.08] dark:bg-[#1e1e21]"
+      className="w-full rounded-md border border-black/[.06] bg-white p-4 text-left shadow-[var(--shadow-card)] transition-transform active:scale-[0.99] dark:border-white/[.08] dark:bg-card"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -340,7 +340,7 @@ function BrandMobileCard({
           onOpen()
         }
       }}
-      className="w-full text-left rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.99] transition-transform cursor-pointer"
+      className="w-full text-left rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card p-4 shadow-[var(--shadow-card)] active:scale-[0.99] transition-transform cursor-pointer"
     >
       <div className="flex items-start gap-3">
         <div
@@ -891,7 +891,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
           onClick={() => setEditingBrand(null)}
         >
           <div
-            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+            className="bg-card rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
             onClick={e => e.stopPropagation()}
           >
             <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
@@ -1018,7 +1018,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
           onClick={() => setDeletingBrand(null)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete brand?</p>
@@ -1114,7 +1114,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
         {/* Loading */}
         {isLoading && (
-          <div className="flex-1 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <div className="flex-1 bg-card border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)]">
             <DataTableSkeleton />
           </div>
         )}
@@ -1147,7 +1147,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 </div>
               )}
             </div>
-            <div className="hidden md:block flex-1 overflow-auto rounded-md border border-black/[.06] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+            <div className="hidden md:block flex-1 overflow-auto rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
               <div className="min-w-[760px]">
                 <PartnerDealsDataTable
                   rows={partnerDealRows}
@@ -1178,7 +1178,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 </div>
               )}
             </div>
-            <div className="hidden md:block flex-1 overflow-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            <div className="hidden md:block flex-1 overflow-auto bg-card border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)]">
               <div className="min-w-[860px]">
                 <BrandsDataTable
                   rows={filteredTableRows}

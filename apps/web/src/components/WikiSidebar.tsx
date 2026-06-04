@@ -448,7 +448,7 @@ export function WikiSidebar({
   }
 
   return (
-    <div className="flex flex-col h-full w-full min-w-0 bg-white dark:bg-[#1a1a1d] border-r border-black/[.06] dark:border-white/[.06]">
+    <div className="flex flex-col h-full w-full min-w-0 bg-white dark:bg-card border-r border-black/[.06] dark:border-white/[.06]">
         {/* Header + view toggle */}
         <div className="px-3 pt-3 pb-2 shrink-0 border-b border-black/[.06] dark:border-white/[.06]">
           <div className="flex items-center justify-between mb-2.5">
@@ -464,7 +464,7 @@ export function WikiSidebar({
                       className={cn(
                         'h-6 w-6 rounded flex items-center justify-center transition-all',
                         view === 'list'
-                          ? 'bg-white dark:bg-[#2a2a2e] text-slate-900 dark:text-white shadow-sm'
+                          ? 'bg-white dark:bg-secondary text-slate-900 dark:text-white shadow-sm'
                           : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                       )}
                     >
@@ -485,7 +485,7 @@ export function WikiSidebar({
                       className={cn(
                         'h-6 w-6 rounded flex items-center justify-center transition-all',
                         view === 'graph'
-                          ? 'bg-white dark:bg-[#2a2a2e] text-slate-900 dark:text-white shadow-sm'
+                          ? 'bg-white dark:bg-secondary text-slate-900 dark:text-white shadow-sm'
                           : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                       )}
                     >

@@ -103,7 +103,7 @@ function StageProgress({ currentStage }: { currentStage: string }) {
                   i < currentIdx
                     ? 'w-2.5 h-2.5'
                     : i === currentIdx
-                    ? 'w-3 h-3 ring-2 ring-offset-1 dark:ring-offset-[#191a1c]'
+                    ? 'w-3 h-3 ring-2 ring-offset-1 dark:ring-offset-background'
                     : 'w-2.5 h-2.5 opacity-30'
                 )}
                 style={i === currentIdx
@@ -181,7 +181,7 @@ function MobileStageProgress({ currentStage }: { currentStage: string }) {
 
 function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
+    <div className="bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[var(--shadow-card)] p-3">
       <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">{title}</p>
       {children}
     </div>
@@ -211,7 +211,7 @@ function SubAmPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left text-ssm"
+          className="flex items-center gap-2 w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-card hover:border-primary/40 transition-colors text-left text-ssm"
         >
           {selectedUser ? (
             <UserOption user={selectedUser} />
@@ -277,7 +277,7 @@ function BuilderPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center justify-between w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left text-ssm text-slate-400"
+          className="flex items-center justify-between w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-card hover:border-primary/40 transition-colors text-left text-ssm text-slate-400"
         >
           Add builder…
           <Plus size={13} className="text-slate-400 shrink-0" />
@@ -332,7 +332,7 @@ function QuickActionRow({
       className={cn(
         'flex items-center gap-2.5 w-full px-2 py-2 text-ssm rounded-lg transition-colors text-left',
         variant === 'success'
-          ? 'text-[#16a34a] hover:bg-[rgba(22,163,74,0.06)]'
+          ? 'text-success hover:bg-success-dim'
           : variant === 'danger'
           ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-500/[.08]'
           : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]'
@@ -931,7 +931,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       {/* ── Delete confirmation modal ───────────────────────────────── */}
       {deletingDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setDeletingDoc(null)}>
-          <div className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[400px] p-4 animate-in fade-in-0 zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[400px] p-4 animate-in fade-in-0 zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
                 <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-red-500">
@@ -1046,7 +1046,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setDeletingContact(null)}
         >
           <div
-            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-slate-200 dark:border-white/[.08] w-full max-w-[360px] mx-4 p-5 animate-in zoom-in-95 fade-in-0 duration-200"
+            className="bg-card rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[360px] mx-4 p-5 animate-in zoom-in-95 fade-in-0 duration-200"
             onClick={e => e.stopPropagation()}
           >
             <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Remove contact?</div>
@@ -1082,7 +1082,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowDeleteConfirm(false)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4"
+            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card shadow-2xl p-4"
             onClick={e => e.stopPropagation()}
           >
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete deal?</p>
@@ -1131,7 +1131,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowAdvanceConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="w-full max-w-sm bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -1179,7 +1179,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowWonConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="w-full max-w-sm bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -1226,7 +1226,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowLostConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="w-full max-w-sm bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -1276,7 +1276,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             onClick={() => setRemovingBuilderId(null)}
           >
             <div
-              className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+              className="w-full max-w-sm bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
               onClick={e => e.stopPropagation()}
             >
               <p className="text-sbase font-bold text-slate-900 dark:text-white mb-1">Remove builder?</p>
@@ -1324,7 +1324,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       </button>
 
       {/* ── Mobile header (sm:hidden) ────────────────────────────────────────── */}
-      <div className="sm:hidden bg-white dark:bg-[#1e1e21] border-y border-black/[.06] dark:border-white/[.08] p-4 mb-0 flex flex-col gap-3">
+      <div className="sm:hidden bg-card border-y border-black/[.06] dark:border-white/[.08] p-4 mb-0 flex flex-col gap-3">
         {/* Company tag */}
         <p className="text-xxs font-semibold text-slate-400 uppercase tracking-wide leading-none truncate">
           {company?.name ?? 'No Brand'}
@@ -1418,7 +1418,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       </div>
 
       {/* ── Desktop header (hidden sm:block) ────────────────────────────────── */}
-      <div className="hidden sm:block bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3 mb-4">
+      <div className="hidden sm:block bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[var(--shadow-card)] p-3 mb-4">
         {/* Top row: brand info + value/advance */}
         <div className="flex sm:items-start sm:justify-between gap-3">
           {/* Left: Brand + deal info */}
@@ -1511,7 +1511,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       <div className="flex flex-col sm:flex-row sm:gap-4 sm:items-start">
 
         {/* Left: tabs + content */}
-        <div className="flex-1 min-w-0 bg-white dark:bg-[#1e1e21] sm:rounded-xl border-y sm:border border-black/[.06] dark:border-white/[.08] sm:shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="flex-1 min-w-0 bg-card sm:rounded-xl border-y sm:border border-black/[.06] dark:border-white/[.08] sm:shadow-[var(--shadow-card)] overflow-hidden">
           {/* Tab bar — includes filters + view toggle flushed right */}
           <div className="flex items-center border-b border-black/[.06] dark:border-white/[.08] gap-0 pr-2">
             {/* Tabs */}
@@ -1691,9 +1691,9 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <div className="p-4 border-b border-black/[.05] dark:border-white/[.06]">
                 <div
                   className={cn(
-                    'rounded-xl bg-white dark:bg-[#1e1e21] transition-all duration-150',
+                    'rounded-xl bg-card transition-all duration-150',
                     noteFocused
-                      ? 'border border-black/20 dark:border-white/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)] dark:shadow-none'
+                      ? 'border border-black/20 dark:border-white/20 shadow-[var(--shadow-card)] dark:shadow-none'
                       : 'border border-black/[.08] dark:border-white/[.08]',
                   )}
                 >
@@ -2071,7 +2071,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       <button
                         type="button"
                         onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white dark:bg-[#2a2c30] border border-black/[.12] dark:border-white/[.15] flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shadow-sm"
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white dark:bg-secondary border border-black/[.12] dark:border-white/[.15] flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shadow-sm"
                       >
                         <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -2396,7 +2396,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   Add Person
                 </button>
               ) : (
-                <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-3.5 space-y-2.5">
+                <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-card p-3.5 space-y-2.5">
                   <Input
                     autoFocus
                     type="text"
@@ -2484,7 +2484,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   return (
                     <div
                       key={person.id}
-                      className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
+                      className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-card p-4"
                     >
                       {/* Header: avatar + name + role + actions */}
                       <div className="flex items-center gap-3">
@@ -2631,7 +2631,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     className={cn(
                       'text-atom font-semibold px-2 py-0.5 rounded-full capitalize',
                       deal.outreachCategory === 'inbound'
-                        ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
+                        ? 'bg-success-dim text-success'
                         : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
                     )}
                   >
@@ -3019,7 +3019,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           )}
 
           {/* Next Step (static placeholder — will be dynamic later) */}
-          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
+          <div className="bg-card rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-[var(--shadow-card)] p-3">
             <p className="text-atom font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Next Step</p>
             <div className="bg-amber-50 dark:bg-amber-500/10 rounded-lg p-3 border border-amber-100 dark:border-amber-500/20">
               <p className="text-atom font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Action Required</p>

@@ -167,7 +167,7 @@ export function DealTrash() {
           </div>
         </div>
 
-        <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+        <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-card">
           {isLoading ? (
             <DataTableSkeleton className="p-3" />
           ) : deals.length === 0 ? (

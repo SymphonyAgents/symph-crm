@@ -155,11 +155,11 @@ function MeetingsTab() {
       </div>
 
       {isLoading ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+        <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
           <DataTableSkeleton />
         </div>
       ) : filteredMeetings.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
+        <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
           <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <div className="text-ssm font-semibold text-slate-900 dark:text-white">{search ? 'No meetings found' : 'No meetings yet'}</div>
           <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">
@@ -209,7 +209,7 @@ function MeetingRow({ meeting, deals, onDelete }: { meeting: ApiMeetingListItem;
   const primaryAttendee = meeting.attendeeDetails[0] ?? (meeting.attendees[0] ? { email: meeting.attendees[0], name: null, avatarUrl: null } : null)
 
   return (
-    <div className="w-full bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 transition-colors hover:border-slate-300 dark:hover:border-white/20">
+    <div className="w-full bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 transition-colors hover:border-slate-300 dark:hover:border-white/20">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <Link href={`/meetings/${meeting.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30">
           <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
@@ -411,7 +411,7 @@ function RecordingsTab() {
 
           {isIdle && (
             <button onClick={() => recorder.start()}
-              className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
+              className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
               <Mic size={14} strokeWidth={2} /> New Recording
             </button>
           )}
@@ -430,7 +430,7 @@ function RecordingsTab() {
                 <Mic size={13} strokeWidth={2} /> Resume
               </button>
               <button onClick={handleDone}
-                className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
+                className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
                 <Check size={13} strokeWidth={2.5} /> Done
               </button>
               <button onClick={handleCancel}
@@ -448,9 +448,9 @@ function RecordingsTab() {
         </div>
       </div>
 
-      <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-[rgba(108,99,255,0.08)] dark:bg-primary/[.12] flex items-center justify-center shrink-0">
-          <Upload size={14} strokeWidth={1.6} className="text-[#6c63ff] dark:text-primary" />
+      <div className="mb-4 bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/[.12] flex items-center justify-center shrink-0">
+          <Upload size={14} strokeWidth={1.6} className="text-primary" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-ssm font-semibold text-slate-900 dark:text-white">Import recording to Circleback</div>
@@ -474,7 +474,7 @@ function RecordingsTab() {
         <button
           onClick={() => cbFileInputRef.current?.click()}
           disabled={cbUploading || cbStatus === 'processing'}
-          className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           {cbStatus === 'uploading' || cbStatus === 'processing' ? (
             <>
@@ -490,7 +490,7 @@ function RecordingsTab() {
       </div>
 
       {(isRecording || isPaused) && (
-        <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3">
+        <div className="mb-4 bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3">
           <label className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Recording title</label>
           <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
             placeholder="Give this recording a name (optional)"
@@ -499,24 +499,24 @@ function RecordingsTab() {
       )}
 
       {recorder.error && (
-        <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 flex items-center gap-2">
+        <div className="mb-4 bg-card border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 flex items-center gap-2">
           <MicOff size={14} className="text-red-500 shrink-0" />
           <div className="text-xs text-red-600 dark:text-red-400">{recorder.error}</div>
         </div>
       )}
 
       {uploadError && (
-        <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 text-xs text-red-600 dark:text-red-400">
+        <div className="mb-4 bg-card border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 text-xs text-red-600 dark:text-red-400">
           {uploadError}
         </div>
       )}
 
       {isLoading ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+        <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
           <DataTableSkeleton />
         </div>
       ) : recordings.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
+        <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
           <Mic size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <div className="text-ssm font-semibold text-slate-900 dark:text-white">No recordings yet</div>
           <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">Hit Record to capture your first meeting.</div>
@@ -536,9 +536,9 @@ function RecordingRow({ recording, pendingDelete, onDelete }: {
   recording: ApiRecording; pendingDelete: boolean; onDelete: () => void
 }) {
   return (
-    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 flex items-center gap-3">
-      <div className="w-8 h-8 rounded-lg bg-[rgba(108,99,255,0.08)] dark:bg-primary/[.12] flex items-center justify-center shrink-0">
-        <Mic size={14} strokeWidth={1.6} className="text-[#6c63ff] dark:text-primary" />
+    <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 flex items-center gap-3">
+      <div className="w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/[.12] flex items-center justify-center shrink-0">
+        <Mic size={14} strokeWidth={1.6} className="text-primary" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{recording.title}</div>

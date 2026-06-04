@@ -211,7 +211,7 @@ function ProposalVersionsDialog({
           ) : (
             <div className="space-y-2">
               {versions.map((version) => (
-                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-[#1c1c1f] sm:flex-row sm:items-center sm:justify-between">
+                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-card sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">v{version.version}</span>
@@ -323,10 +323,10 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
 
   if (isLoading || isVersionLoading) {
     return (
-      <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0f0f12]">
-        <div className="shrink-0 bg-white dark:bg-[#1c1c1f] border-b border-black/[.06] dark:border-white/[.08] h-[57px]" />
+      <div className="h-full flex flex-col bg-background">
+        <div className="shrink-0 bg-card border-b border-black/[.06] dark:border-white/[.08] h-[57px]" />
         <div className="flex-1 min-h-0 p-4 md:p-6 max-w-[1400px] mx-auto w-full">
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
+          <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
             <DataTableSkeleton />
           </div>
         </div>
@@ -353,9 +353,9 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
   const activeVersion = selectedVersion ?? data.version
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-[#0f0f12]">
+    <div className="h-full flex flex-col overflow-hidden bg-background">
       {/* Sticky header */}
-      <div className="shrink-0 bg-white dark:bg-[#1c1c1f] border-b border-black/[.06] dark:border-white/[.08]">
+      <div className="shrink-0 bg-card border-b border-black/[.06] dark:border-white/[.08]">
         <div className="flex flex-col gap-3 px-4 py-3 md:mx-auto md:w-full md:max-w-[1400px] md:flex-row md:items-center md:px-6">
           <button
             onClick={onBack}
@@ -512,7 +512,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
       />
 
       {/* Full-width iframe */}
-      <div className="flex-1 min-h-0 bg-slate-100 dark:bg-[#0f0f12] relative">
+      <div className="flex-1 min-h-0 bg-muted relative">
         {isEditing && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-primary/90 text-white text-xxs font-medium px-3 py-1 rounded-full shadow-md pointer-events-none">
             Click any text to edit

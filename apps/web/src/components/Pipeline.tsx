@@ -103,7 +103,7 @@ function PipelineSubTabButton({
         'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98] shrink-0',
         active
           ? 'bg-primary/10 text-primary'
-          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+          : 'bg-card border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
       )}
     >
       {children}
@@ -175,7 +175,7 @@ function CardActionsMenu({
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 min-w-[180px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="absolute right-0 top-7 z-50 min-w-[180px] bg-card border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
           {/* Assign, locked for won/lost deals */}
           {isSales && isTerminal ? (
             <div
@@ -367,10 +367,10 @@ function DealCard({
       className={cn(
         'group rounded-lg p-3 cursor-pointer transition-colors duration-150',
         isWon
-          ? 'bg-[rgba(22,163,74,0.05)] dark:bg-[rgba(22,163,74,0.08)] border border-[rgba(22,163,74,0.22)]'
+          ? 'bg-success-dim border border-success/20'
           : isLost
-          ? 'bg-white dark:bg-[#222225] border border-[rgba(220,38,38,0.15)] opacity-70'
-          : 'bg-white dark:bg-[#222225] border border-black/[.08] dark:border-white/[.1]'
+          ? 'bg-white dark:bg-secondary border border-destructive/20 opacity-70'
+          : 'bg-white dark:bg-secondary border border-black/[.08] dark:border-white/[.1]'
       )}
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = colColor + '14' }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
@@ -399,7 +399,7 @@ function DealCard({
           <span className={cn(
             'text-atom font-semibold px-1.5 py-px rounded-full leading-tight',
             outreach === 'inbound'
-              ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
+              ? 'bg-success-dim text-success'
               : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
           )}>
             {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
@@ -544,7 +544,7 @@ function DroppableColumn({ col, children }: { col: (typeof KANBAN_STAGES)[number
       data-stage-id={col.id}
       className={cn(
         'w-[252px] shrink-0 flex flex-col rounded-lg transition-all duration-150 self-stretch',
-        'bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]',
+        'bg-surface-alt dark:bg-white/[.02]',
         isOver ? 'border-2 border-dashed' : 'border border-black/[.07] dark:border-white/[.08]',
       )}
       style={isOver ? { borderColor: col.color } : undefined}
@@ -600,7 +600,7 @@ function MobileActionSheet({
     <div className="fixed inset-0 z-50 md:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 animate-in fade-in-0 duration-200" />
       <div
-        className="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#1e1e21] rounded-t-xl max-h-[70vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-xl max-h-[70vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Context label */}
@@ -1109,7 +1109,7 @@ export function Pipeline({
           )}
           {/* Search */}
           {searchOpen ? (
-            <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[200px]">
+            <div className="flex items-center gap-1.5 bg-card border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[200px]">
               <Search size={13} className="text-slate-400 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -1129,7 +1129,7 @@ export function Pipeline({
           ) : (
             <button
               onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50) }}
-              className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5"
+              className="bg-card border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5"
               title="Search (Ctrl+F)"
             >
               <Search size={12} /> Search
@@ -1141,7 +1141,7 @@ export function Pipeline({
             <>
               <button
                 onClick={() => setShowCreateBrand(true)}
-                className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors flex items-center gap-1.5"
+                className="bg-card border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors flex items-center gap-1.5"
               >
                 + New Brand
               </button>
@@ -1160,7 +1160,7 @@ export function Pipeline({
             <button
               onClick={() => setAmDropdownOpen(o => !o)}
               className={cn(
-                'bg-white dark:bg-[#1e1e21] border rounded-lg px-3 py-[5px] text-xs font-medium hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
+                'bg-card border rounded-lg px-3 py-[5px] text-xs font-medium hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
                 amFilter
                   ? 'border-primary/30 text-primary'
                   : 'border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300'
@@ -1170,7 +1170,7 @@ export function Pipeline({
               <ChevronDown size={12} />
             </button>
             {amDropdownOpen && (
-              <div className="absolute right-0 top-9 z-50 min-w-[160px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
+              <div className="absolute right-0 top-9 z-50 min-w-[160px] bg-card border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
                 <button
                   onClick={() => { setAmFilter(null); setAmDropdownOpen(false) }}
                   className={cn(
@@ -1203,7 +1203,7 @@ export function Pipeline({
         {isLoading ? (
           <div className="flex gap-2.5 px-4 pb-4" style={{ minWidth: 'max-content' }}>
             {KANBAN_STAGES.map(col => (
-              <div key={col.id} className="w-[252px] shrink-0 flex flex-col rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]">
+              <div key={col.id} className="w-[252px] shrink-0 flex flex-col rounded-lg border border-black/[.07] dark:border-white/[.08] bg-surface-alt dark:bg-white/[.02]">
                 <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
                   <div className="flex items-center gap-2">
                     <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-slate-200 dark:bg-white/[.1]" />
@@ -1213,7 +1213,7 @@ export function Pipeline({
                 </div>
                 <div className="flex flex-col gap-2 p-2.5">
                   {[1, 2].map(i => (
-                    <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
+                    <div key={i} className="rounded-lg p-3.5 bg-card border border-black/[.06] dark:border-white/[.08] animate-pulse">
                       <div className="h-2.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
                       <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-1" />
                       <div className="h-3 w-3/4 bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
@@ -1245,7 +1245,7 @@ export function Pipeline({
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: col.color }} />
                       <span className="text-ssm font-semibold text-slate-700 dark:text-slate-300 flex-1 leading-none">{col.label}</span>
-                      <span className="bg-white dark:bg-[#1e1e21] border border-black/[.07] dark:border-white/[.08] text-slate-500 text-xxs font-semibold tabular-nums px-2 py-0.5 rounded-full">
+                      <span className="bg-card border border-black/[.07] dark:border-white/[.08] text-slate-500 text-xxs font-semibold tabular-nums px-2 py-0.5 rounded-full">
                         {col.deals.length}
                       </span>
                     </div>
@@ -1328,7 +1328,7 @@ export function Pipeline({
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {searchOpen ? (
-                <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[160px]">
+                <div className="flex items-center gap-1.5 bg-card border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[160px]">
                   <Search size={13} className="text-slate-400 shrink-0" />
                   <input
                     type="text"
@@ -1345,7 +1345,7 @@ export function Pipeline({
               ) : (
                 <button
                   onClick={() => setSearchOpen(true)}
-                  className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
+                  className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 border border-black/[.08] dark:border-white/[.08] bg-card"
                 >
                   <Search size={14} />
                 </button>
@@ -1354,7 +1354,7 @@ export function Pipeline({
                 <>
                   <button
                     onClick={() => setShowCreateBrand(true)}
-                    className="h-11 rounded-lg px-3 text-xs font-medium text-slate-700 dark:text-slate-300 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
+                    className="h-11 rounded-lg px-3 text-xs font-medium text-slate-700 dark:text-slate-300 border border-black/[.08] dark:border-white/[.08] bg-card"
                   >
                     + Brand
                   </button>
@@ -1421,7 +1421,7 @@ export function Pipeline({
           {isLoading ? (
             <div className="flex flex-col gap-2.5">
               {[1, 2, 3].map(i => (
-                <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
+                <div key={i} className="rounded-lg p-3.5 bg-card border border-black/[.06] dark:border-white/[.08] animate-pulse">
                   <div className="h-2.5 w-20 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
                   <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
                   <div className="h-3 w-16 bg-slate-100 dark:bg-white/[.06] rounded-full mb-3" />
@@ -1458,7 +1458,7 @@ export function Pipeline({
                   <div
                     key={d.id}
                     onClick={() => setMobileActionDeal(d)}
-                    className="rounded-lg p-3 bg-white dark:bg-[#222225] border border-black/[.08] dark:border-white/[.1] active:bg-slate-50 dark:active:bg-white/[.04] transition-colors cursor-pointer"
+                    className="rounded-lg p-3 bg-white dark:bg-secondary border border-black/[.08] dark:border-white/[.1] active:bg-slate-50 dark:active:bg-white/[.04] transition-colors cursor-pointer"
                   >
                     {/* Top: stage dot + brand + outreach pill + stage pill */}
                     <div className="flex items-center justify-between gap-2 mb-1">
@@ -1470,7 +1470,7 @@ export function Pipeline({
                         <span className={cn(
                           'text-atom font-semibold px-1.5 py-px rounded-full leading-tight shrink-0',
                           outreach === 'inbound'
-                            ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
+                            ? 'bg-success-dim text-success'
                             : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
                         )}>
                           {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
@@ -1582,7 +1582,7 @@ export function Pipeline({
           onClick={() => setDeleteConfirmDealId(null)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             <p className="text-sm font-semibold text-slate-900 dark:text-white">Move deal to trash?</p>
@@ -1616,7 +1616,7 @@ export function Pipeline({
             onClick={() => setMoveConfirm(null)}
           >
             <div
-              className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+              className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
               onClick={e => e.stopPropagation()}
             >
               {/* Stage transition indicator */}

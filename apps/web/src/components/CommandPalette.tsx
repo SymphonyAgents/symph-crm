@@ -87,7 +87,7 @@ export function CommandPalette() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg border border-black/[.06] dark:border-white/[.1] shadow-2xl w-full max-w-[480px] mx-4 overflow-hidden"
+        className="bg-card rounded-lg border border-black/[.06] dark:border-white/[.1] shadow-2xl w-full max-w-[480px] mx-4 overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}

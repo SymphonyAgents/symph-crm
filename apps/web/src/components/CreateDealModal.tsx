@@ -85,7 +85,7 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
           required
         />
         {showSuggestions && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-1 max-h-[280px] overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-card shadow-lg py-1 max-h-[280px] overflow-y-auto">
             {suggestions.map((s, i) => (
               <button
                 key={`${s.acronym}-${s.category}-${i}`}
@@ -243,7 +243,7 @@ function BuilderMultiSelect({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-1.5 flex-wrap min-h-11 sm:min-h-9 w-full px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left"
+          className="flex items-center gap-1.5 flex-wrap min-h-11 sm:min-h-9 w-full px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-card hover:border-primary/40 transition-colors text-left"
         >
           {selectedUsers.length === 0 ? (
             <span className="text-ssm text-slate-400 px-1">—</span>
@@ -398,11 +398,11 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
+        className="bg-card rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-card z-10">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-white">New Deal</div>
             <div className="text-xs text-slate-400 mt-0.5">Add a deal to your pipeline</div>
@@ -620,7 +620,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
                     <button
                       type="button"
                       onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white dark:bg-[#2a2c30] border border-black/[.1] dark:border-white/[.1] flex items-center justify-center text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white dark:bg-secondary border border-black/[.1] dark:border-white/[.1] flex items-center justify-center text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <svg width={6} height={6} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
                         <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>

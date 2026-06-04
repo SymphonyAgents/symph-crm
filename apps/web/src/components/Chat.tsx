@@ -412,7 +412,7 @@ function SessionSidebar({
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={closeMobile}
           />
-          <div className="fixed top-0 left-0 h-full w-[260px] z-50 flex flex-col bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08]">
+          <div className="fixed top-0 left-0 h-full w-[260px] z-50 flex flex-col bg-card border-r border-black/[.06] dark:border-white/[.08]">
             <div className="px-1.5 pt-3 pb-2 shrink-0 flex flex-col gap-1.5">
               <Link
                 href="/"
@@ -446,7 +446,7 @@ function SessionSidebar({
       {/* ── Desktop sidebar — always visible, relative in flex flow ────── */}
       <div
         className={cn(
-          'hidden lg:flex lg:relative shrink-0 h-full flex-col bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08] transition-all duration-200 ease-out',
+          'hidden lg:flex lg:relative shrink-0 h-full flex-col bg-card border-r border-black/[.06] dark:border-white/[.08] transition-all duration-200 ease-out',
           expanded ? 'lg:w-[260px]' : 'lg:w-[52px]',
         )}
       >
@@ -1088,11 +1088,11 @@ export function Chat({ dealId }: { dealId?: string }) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'relative rounded-lg bg-white dark:bg-[#1e1e21] transition-all duration-150',
+          'relative rounded-lg bg-card transition-all duration-150',
           dragOver
-            ? 'border-2 border-dashed border-primary shadow-[0_0_0_3px_rgba(var(--primary-rgb,99,102,241),0.15)]'
+            ? 'border-2 border-dashed border-primary shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_15%,transparent)]'
             : focused
-              ? 'border border-black/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)]'
+              ? 'border border-black/20 shadow-[var(--shadow-card)]'
               : 'border border-black/[.08] dark:border-white/[.08] shadow-[var(--shadow-card)]'
         )}
       >
@@ -1292,7 +1292,7 @@ export function Chat({ dealId }: { dealId?: string }) {
                   key={p.prompt}
                   type="button"
                   onClick={() => sendMessage(p.prompt)}
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
+                  className="px-3.5 py-2 rounded-lg bg-card border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
                 >
                   {p.label}
                 </button>

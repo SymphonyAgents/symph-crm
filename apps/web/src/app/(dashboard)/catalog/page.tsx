@@ -173,7 +173,7 @@ export default function CatalogPage() {
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setDeleting(p) }}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-[#dc2626] hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-destructive hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
               title="Delete"
             >
               <Trash2 size={13} />
@@ -199,7 +199,7 @@ export default function CatalogPage() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md shadow-[var(--shadow-card)]">
+      <div className="bg-card border border-black/[.06] dark:border-white/[.08] rounded-md shadow-[var(--shadow-card)]">
         {isLoading ? (
           <DataTableSkeleton />
         ) : (
@@ -313,10 +313,10 @@ function CatalogItemFormModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+        className="bg-card rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between bg-white dark:bg-[#1e1e21] rounded-t-lg">
+        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between bg-card rounded-t-lg">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-white">
               {item ? `Edit ${typeLabel}` : `New ${typeLabel}`}
@@ -363,7 +363,7 @@ function CatalogItemFormModal({
                   <button
                     type="button"
                     onClick={handleRemoveIcon}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-[#dc2626] hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-destructive hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                   >
                     <X size={13} />
                     Remove icon
@@ -458,7 +458,7 @@ function ConfirmDeleteModal({
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+        className="bg-card rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
         onClick={e => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
@@ -480,7 +480,7 @@ function ConfirmDeleteModal({
               type="button"
               onClick={onConfirm}
               disabled={isPending}
-              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white bg-[#dc2626] hover:bg-[#b91c1c] transition-colors active:scale-[0.98] disabled:opacity-50"
+              className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white bg-destructive hover:bg-destructive/90 transition-colors active:scale-[0.98] disabled:opacity-50"
             >
               {isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               Delete

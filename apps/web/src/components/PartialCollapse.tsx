@@ -86,7 +86,7 @@ export function PartialCollapse({
           onClick={toggle}
           className={cn(
             'mt-2 self-start flex items-center gap-1',
-            'text-[11px] font-semibold text-primary hover:text-[#5b52e8]',
+            'text-[11px] font-semibold text-primary hover:text-primary',
             'transition-colors duration-150',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded',
             'active:scale-[0.98]',

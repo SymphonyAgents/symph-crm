@@ -155,7 +155,7 @@ export function ChangelogDialog() {
     >
       <div
         className={cn(
-          'bg-white dark:bg-[#1e1e21] rounded-lg border border-black/[.06] dark:border-white/[.08]',
+          'bg-card rounded-lg border border-black/[.06] dark:border-white/[.08]',
           'shadow-lg',
           'w-full max-w-[520px] mx-4 max-h-[80vh]',
           'flex flex-col overflow-hidden',
@@ -164,15 +164,15 @@ export function ChangelogDialog() {
         onClick={e => e.stopPropagation()}
       >
         {/* Hero */}
-        <div className="relative px-5 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08] bg-gradient-to-b from-[rgba(108,99,255,0.06)] to-transparent dark:from-[rgba(108,99,255,0.08)] shrink-0">
+        <div className="relative px-5 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08] bg-gradient-to-b from-primary/10 to-transparent dark:from-primary/10 shrink-0">
           <button
             onClick={handleClose}
             className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
           >
             <X size={14} />
           </button>
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[rgba(108,99,255,0.1)] text-[#6c63ff] text-atom font-semibold uppercase tracking-[0.08em] mb-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff]" />
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-atom font-semibold uppercase tracking-[0.08em] mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
             Latest update
           </div>
           <div className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">What&rsquo;s new</div>

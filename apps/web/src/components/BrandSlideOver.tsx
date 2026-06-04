@@ -256,7 +256,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
       <div
         className={cn(
           'fixed right-0 top-0 h-full w-full sm:w-[380px] md:w-[420px] z-40',
-          'bg-white dark:bg-[#1e1e21] border-l border-black/[.06] dark:border-white/[.08]',
+          'bg-card border-l border-black/[.06] dark:border-white/[.08]',
           'shadow-2xl flex flex-col',
           'transition-transform duration-200 ease-out',
           isOpen ? 'translate-x-0' : 'translate-x-full',
@@ -409,7 +409,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                       Add Person
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-3.5 space-y-2.5">
+                    <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-card p-3.5 space-y-2.5">
                       <Input
                         autoFocus
                         type="text"
@@ -497,7 +497,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                       return (
                         <div
                           key={person.id}
-                          className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
+                          className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-card p-4"
                         >
                           {/* Header: avatar + name + role + timestamp */}
                           <div className="flex items-center gap-3">

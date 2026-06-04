@@ -113,7 +113,7 @@ function ChannelBadge({ channel }: { channel: Exclude<InboxChannel, 'all'> }) {
   if (!cfg) return null
   return (
     <span
-      className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-[1.5px] border-white dark:border-[#1e1e21]"
+      className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-[1.5px] border-white dark:border-card"
       style={{ background: cfg.color, color: '#fff' }}
     >
       <span style={{ transform: 'scale(0.72)', display: 'flex', alignItems: 'center' }}>
@@ -163,7 +163,7 @@ function ConversationRow({
         <div className="relative shrink-0 mt-0.5">
           <Avatar name={thread.contactName || thread.from} email={thread.contactEmail || thread.fromEmail} size={38} />
           {thread.unread && (
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white dark:border-[#1e1e21]" />
+            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary border-2 border-white dark:border-card" />
           )}
           <ChannelBadge channel={channel} />
         </div>
@@ -208,7 +208,7 @@ function ConversationRow({
         <>
           {/* Backdrop to close menu on outside click */}
           <div className="fixed inset-0 z-40" onClick={() => onMenuToggle(null)} />
-          <div className="absolute right-2 top-10 z-50 min-w-[170px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+          <div className="absolute right-2 top-10 z-50 min-w-[170px] bg-card border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -300,7 +300,7 @@ function ChatBubble({
             'text-left rounded-2xl px-4 py-3 max-w-full transition-all duration-150',
             isMine
               ? 'bg-primary text-white rounded-br-sm hover:bg-primary/90'
-              : 'bg-card border border-black/[.07] dark:border-white/[.07] text-slate-800 dark:text-slate-200 rounded-bl-sm hover:bg-secondary shadow-[0_1px_2px_rgba(17,24,39,0.06)]',
+              : 'bg-card border border-black/[.07] dark:border-white/[.07] text-slate-800 dark:text-slate-200 rounded-bl-sm hover:bg-secondary shadow-[var(--shadow-card)]',
           )}
         >
           {/* Message body — 16px desktop, 15px mobile for readability */}
@@ -488,7 +488,7 @@ function ThreadActionsMenu({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-50 min-w-[180px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="absolute right-0 top-9 z-50 min-w-[180px] bg-card border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
           <button
             onClick={() => {
               setOpen(false)
@@ -841,7 +841,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
       <div className="flex-1 flex overflow-hidden">
         {/* ── Left panel — conversation list ──────────────────────────────── */}
         <div className={cn(
-          'w-full sm:w-[420px] shrink-0 sm:border-r border-black/[.06] dark:border-white/[.06] flex-col h-full bg-white dark:bg-card',
+          'w-full sm:w-[420px] shrink-0 sm:border-r border-black/[.06] dark:border-white/[.06] flex-col h-full bg-card',
           mobileView === 'chat' ? 'hidden sm:flex' : 'flex',
         )}>
 
@@ -1065,7 +1065,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white dark:bg-card border border-black/[.06] dark:border-white/[.06] shadow-[0_1px_3px_rgba(17,24,39,0.06)] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-card border border-black/[.06] dark:border-white/[.06] shadow-[var(--shadow-card)] flex items-center justify-center">
                 <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" className="text-slate-300">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>

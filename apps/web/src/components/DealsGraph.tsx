@@ -488,7 +488,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
   }, [debouncedSearch])
 
   return (
-    <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#0d0e13] select-none">
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-background select-none">
       {/* Subtle dot grid */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -510,7 +510,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
           <svg ref={svgRef} className="w-full h-full" />
           {matchedNodeIds !== null && matchCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center bg-[#1a1d27]/90 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/[0.08]">
+              <div className="text-center bg-card/90 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/[0.08]">
                 <div className="text-ssm text-white/50">No matches for &ldquo;{debouncedSearch}&rdquo;</div>
                 <div className="text-xxs text-white/25 mt-1">Try a different search term</div>
               </div>
@@ -525,7 +525,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
           className="fixed z-50 pointer-events-none"
           style={{ left: tooltip.x + 14, top: tooltip.y - 10 }}
         >
-          <div className="bg-[#1a1d27] border border-white/10 rounded-lg px-3 py-2 shadow-2xl min-w-[140px]">
+          <div className="bg-card border border-white/10 rounded-lg px-3 py-2 shadow-2xl min-w-[140px]">
             <p className="text-xs font-semibold text-white/90 leading-snug max-w-[220px] break-words">
               {tooltip.node.label}
             </p>

@@ -117,7 +117,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
+      <div className="bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[var(--shadow-card)] p-4">
         <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>
         <div className="animate-pulse flex flex-col gap-3">
           {/* Type badge skeleton */}
@@ -148,7 +148,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
   const showSummary = billing && !isEditing
 
   return (
-    <div className={embedded ? "p-4 bg-white dark:bg-[#1e1e21] rounded-b-xl border border-black/[.06] dark:border-white/[.08]" : "bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4"}>
+    <div className={embedded ? "p-4 bg-card rounded-b-xl border border-black/[.06] dark:border-white/[.08]" : "bg-card rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[var(--shadow-card)] p-4"}>
       {!embedded && <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>}
 
       {showSummary ? (
@@ -196,10 +196,10 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                 {billing.milestones.map(m => (
                   <div key={m.id} className={cn(
                     'flex items-center gap-2 px-2.5 py-2 rounded-lg border',
-                    m.isPaid ? 'border-[rgba(22,163,74,0.2)] bg-[rgba(22,163,74,0.04)]' : 'border-black/[.06] dark:border-white/[.08]'
+                    m.isPaid ? 'border-success/20 bg-success-dim' : 'border-black/[.06] dark:border-white/[.08]'
                   )}>
                     <div className={cn('w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                      m.isPaid ? 'bg-[#16a34a] border-[#16a34a]' : 'border-slate-300 dark:border-slate-600'
+                      m.isPaid ? 'bg-success border-success' : 'border-slate-300 dark:border-slate-600'
                     )}>
                       {m.isPaid && <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
                     </div>
@@ -316,7 +316,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                       className={cn(
                         'flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors',
                         m.isPaid
-                          ? 'border-[rgba(22,163,74,0.2)] bg-[rgba(22,163,74,0.04)]'
+                          ? 'border-success/20 bg-success-dim'
                           : 'border-black/[.06] dark:border-white/[.08]'
                       )}
                     >
@@ -325,7 +325,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                         className={cn(
                           'w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors',
                           m.isPaid
-                            ? 'bg-[#16a34a] border-[#16a34a]'
+                            ? 'bg-success border-success'
                             : 'border-slate-300 dark:border-slate-600 hover:border-primary'
                         )}
                       >
