@@ -15,7 +15,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetDeals, useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { cn, formatPeso, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
+import { cn, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
+import { formatDealMoney, formatCurrencyBreakdown, hasMultipleCurrencies, sumMoneyByCurrency } from '@/lib/currency'
 import { formatDealName } from '@/lib/format-deal-name'
 import type { ApiDeal, ApiCompany, ApiUser } from '@/lib/types'
 import {
@@ -457,7 +458,7 @@ function DealCard({
       {/* Value + AM + doc indicator */}
       <div className="flex items-center justify-between pt-2 border-t border-black/[.05] dark:border-white/[.08]">
         <span className="text-sbase font-bold tabular-nums" style={{ color: colColor }}>
-          {formatPeso(parseFloat(deal.value || '0') || 0)}
+          {formatDealMoney(deal)}
         </span>
         <div className="flex items-center gap-2">
           {(deal.documentCount ?? 0) > 0 && (
@@ -1014,15 +1015,21 @@ export function Pipeline({
   }, [isLoading, searchParams, router])
 
   const activeDeals = filteredDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))
-  const totalValue = activeDeals.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
+  const activeTotals = sumMoneyByCurrency(activeDeals)
+  const mixedActiveTotals = hasMultipleCurrencies(activeTotals)
+  const activeTotalValue = Object.values(activeTotals).reduce((sum, total) => sum + total, 0)
 
-  const columnDeals = KANBAN_STAGES.map(col => ({
-    ...col,
-    deals: filteredDeals.filter(d => col.matches.includes(d.stage)),
-    total: filteredDeals
-      .filter(d => col.matches.includes(d.stage))
-      .reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0),
-  }))
+  const columnDeals = KANBAN_STAGES.map(col => {
+    const colDeals = filteredDeals.filter(d => col.matches.includes(d.stage))
+    const totals = sumMoneyByCurrency(colDeals)
+    return {
+      ...col,
+      deals: colDeals,
+      totals,
+      totalValue: Object.values(totals).reduce((sum, total) => sum + total, 0),
+      totalLabel: formatCurrencyBreakdown(totals),
+    }
+  })
 
   const activeDeal = activeDealId ? deals.find(d => d.id === activeDealId) ?? null : null
   const activeDealColColor = activeDeal
@@ -1250,12 +1257,12 @@ export function Pipeline({
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 pl-[18px]">
-                      <span className="text-xs tabular-nums font-medium" style={{ color: col.total > 0 ? col.color : undefined, opacity: col.total > 0 ? 1 : 0.4 }}>
-                        {formatPeso(col.total)}
+                      <span className="text-xs tabular-nums font-medium" style={{ color: col.totalValue > 0 ? col.color : undefined, opacity: col.totalValue > 0 ? 1 : 0.4 }}>
+                        {col.totalLabel}
                       </span>
-                      {totalValue > 0 && col.total > 0 && !CLOSED_STAGE_IDS.has(col.id) && (
+                      {!mixedActiveTotals && activeTotalValue > 0 && col.totalValue > 0 && !CLOSED_STAGE_IDS.has(col.id) && (
                         <span className="text-atom text-slate-400 tabular-nums">
-                          ({Math.round((col.total / totalValue) * 100)}%)
+                          ({Math.round((col.totalValue / activeTotalValue) * 100)}%)
                         </span>
                       )}
                     </div>
@@ -1537,7 +1544,7 @@ export function Pipeline({
                     {/* Divider + bottom row */}
                     <div className="flex items-center justify-between pt-2 border-t border-black/[.05] dark:border-white/[.08]">
                       <span className="text-sm font-bold tabular-nums" style={{ color: stageColor }}>
-                        {formatPeso(parseFloat(d.value || '0') || 0)}
+                        {formatDealMoney(d)}
                       </span>
                       <div className="flex items-center gap-1.5">
                         <Avatar name={amName} email={resolvedAm?.email ?? undefined} src={resolvedAm?.image ?? undefined} size={20} />

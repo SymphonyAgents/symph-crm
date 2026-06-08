@@ -7,8 +7,9 @@ import { useGetDeals, useGetCompanies } from '@/lib/hooks/queries'
 import { useDeleteBilling } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { cn, formatDealTitle, getInitials, getBrandColor, toPascalCase } from '@/lib/utils'
+import { formatMoney } from '@/lib/currency'
 import { Pencil, Trash2 } from 'lucide-react'
-import type { ApiDeal, ApiBilling } from '@/lib/types'
+import type { ApiDeal, ApiBilling, DealCurrency } from '@/lib/types'
 import { BillingSection } from '@/components/BillingSection'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { StatusPill } from '@/components/ui/status-pill'
@@ -20,11 +21,9 @@ const BILLING_TYPE_LABELS: Record<string, string> = {
   milestone: 'Milestone',
 }
 
-function formatPeso(value: string | number | null | undefined): string {
+function formatBillingMoney(value: string | number | null | undefined, currency: DealCurrency | null | undefined): string {
   if (value == null || value === '') return '--'
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(n)) return '--'
-  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(n)
+  return formatMoney(value, currency)
 }
 
 function formatDate(d: string | null): string {
@@ -85,10 +84,10 @@ function BillRow({
         <StatusPill tone="primary">{BILLING_TYPE_LABELS[billing.billingType] ?? billing.billingType}</StatusPill>
       </td>
       <td className="px-4 py-3 text-xs font-medium text-slate-800 dark:text-white tabular-nums text-right">
-        {formatPeso(billing.amount)}
+        {formatBillingMoney(billing.amount, deal.currency)}
       </td>
       <td className="px-4 py-3 text-xs text-slate-500 tabular-nums text-right">
-        {billing.monthlyDerived ? `${formatPeso(billing.monthlyDerived)}/mo` : '--'}
+        {billing.monthlyDerived ? `${formatBillingMoney(billing.monthlyDerived, deal.currency)}/mo` : '--'}
       </td>
       <td className="px-4 py-3 text-xs text-slate-500">
         {billing.contractStart || billing.contractEnd
@@ -131,7 +130,7 @@ export default function BillsPage() {
   const { data: deals = [], isLoading } = useGetDeals({ dealType: 'agency' })
   const { data: companies = [] } = useGetCompanies()
   const [deleteTarget, setDeleteTarget] = useState<{ dealId: string; dealTitle: string } | null>(null)
-  const [editTarget, setEditTarget] = useState<{ dealId: string; dealTitle: string } | null>(null)
+  const [editTarget, setEditTarget] = useState<{ dealId: string; dealTitle: string; currency: DealCurrency | null } | null>(null)
 
   const deleteBilling = useDeleteBilling({
     onSuccess: () => {
@@ -216,7 +215,7 @@ export default function BillsPage() {
                     billing={billingByDealId.get(deal.id)}
                     companyMap={companyMap}
                     onClick={() => router.push(`/deals/${deal.id}?from=bills`)}
-                    onEdit={() => setEditTarget({ dealId: deal.id, dealTitle: deal.title })}
+                    onEdit={() => setEditTarget({ dealId: deal.id, dealTitle: deal.title, currency: deal.currency })}
                     onDelete={() => setDeleteTarget({ dealId: deal.id, dealTitle: deal.title })}
                   />
                 ))}
@@ -250,7 +249,7 @@ export default function BillsPage() {
                 </svg>
               </button>
             </div>
-            <BillingSection dealId={editTarget.dealId} onSaved={() => setEditTarget(null)} initialEditing embedded />
+            <BillingSection dealId={editTarget.dealId} currency={editTarget.currency} onSaved={() => setEditTarget(null)} initialEditing embedded />
           </div>
         </div>
       )}

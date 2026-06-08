@@ -421,7 +421,7 @@ export class OwnerController {
       await this.deals.updateStage(id, stage, performedBy)
     }
 
-    const updatableFields = ['value', 'title', 'notes', 'assignedTo', 'companyId', 'catalogItemId', 'tierId'] as const
+    const updatableFields = ['value', 'currency', 'title', 'notes', 'assignedTo', 'companyId', 'catalogItemId', 'tierId'] as const
     const otherFields = Object.fromEntries(
       Object.entries(rest).filter(([k]) => (updatableFields as readonly string[]).includes(k)),
     )

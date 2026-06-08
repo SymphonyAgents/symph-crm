@@ -7,13 +7,16 @@ import { CrmUserRole, CrmUserStatus, PartnerCommissionStatus } from '@symph-crm/
 
 // ── Deals ────────────────────────────────────────────────────────────────────
 
+export type DealCurrency = 'PHP' | 'USD' | 'SGD'
+
 export type ApiDeal = {
   id: string
   companyId: string
   title: string
   stage: string
   value: string | null
-  
+  currency: DealCurrency | null
+  /** One-time setup/onboarding fee */
   oneTimeFee: string | null
   
   mrr: string | null

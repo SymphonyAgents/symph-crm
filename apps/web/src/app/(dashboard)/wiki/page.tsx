@@ -1,7 +1,7 @@
 'use client'
 
 import { useGetCompanies, useGetDeals } from '@/lib/hooks/queries'
-import { formatDealValue, totalNumericValue } from '@/lib/utils'
+import { formatCurrencyBreakdown, sumMoneyByCurrency } from '@/lib/currency'
 
 export default function WikiPage() {
   const { data: companies = [] } = useGetCompanies()
@@ -9,7 +9,7 @@ export default function WikiPage() {
 
   const openDeals = deals.filter(d => !['closed_won', 'closed_lost'].includes(d.stage))
   const closedWon = deals.filter(d => d.stage === 'closed_won')
-  const pipeline = totalNumericValue(openDeals)
+  const pipelineLabel = formatCurrencyBreakdown(sumMoneyByCurrency(openDeals))
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 text-center">
@@ -40,9 +40,9 @@ export default function WikiPage() {
         ))}
       </div>
 
-      {pipeline > 0 && (
+      {pipelineLabel !== 'No value' && (
         <p className="text-xxs text-slate-400 mt-3">
-          {formatDealValue(String(pipeline))} open pipeline
+          {pipelineLabel} open pipeline
         </p>
       )}
     </div>

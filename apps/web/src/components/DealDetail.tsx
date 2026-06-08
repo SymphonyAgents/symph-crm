@@ -24,9 +24,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { toast } from 'sonner'
 import {
-  cn, formatCurrencyFull, formatNumberWithCommas, timeAgo, formatDate,
+  cn, formatNumberWithCommas, timeAgo, formatDate,
   getDaysInStage, getBrandColor, getInitials, getStageProgressIndex, formatServiceType, formatDealTitle, toPascalCase,
 } from '@/lib/utils'
+import { formatDealMoneyFull, formatMoney } from '@/lib/currency'
 import { getMimeLabel, supportsWordCount, isImage } from '@/lib/utils/document-utils'
 import { api } from '@/lib/api'
 import type { ApiDealDetail, ApiCompanyDetail, ApiDocument, ApiPartnerDealCommission, NfsDealNote } from '@/lib/types'
@@ -1372,7 +1373,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           </span>
           <span className="text-slate-300 dark:text-slate-600">·</span>
           <span className="text-sbase font-bold tabular-nums text-primary">
-            {formatCurrencyFull(deal.value)}
+            {formatDealMoneyFull(deal)}
           </span>
         </div>
 
@@ -1468,7 +1469,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {/* Right: Value → stage → advance (stacked, right-aligned) */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <div className="text-2xl font-bold tabular-nums text-primary leading-tight">
-              {formatCurrencyFull(deal.value)}
+              {formatDealMoneyFull(deal)}
             </div>
             <span
               className="text-xxs font-semibold px-2 py-0.5 rounded-full"
@@ -2379,7 +2380,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           {/* ── Billing tab ───────────────────────────────────────────────── */}
           {activeTab === 'billing' && (
             <div className="p-4">
-              <BillingSection dealId={dealId} />
+              <BillingSection dealId={dealId} currency={deal.currency} />
             </div>
           )}
 
@@ -2620,7 +2621,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             <InfoRow
               label="Deal Size"
               value={
-                <span className="text-primary font-bold">{formatCurrencyFull(deal.value)}</span>
+                <span className="text-primary font-bold">{formatDealMoneyFull(deal)}</span>
               }
             />
             {deal.outreachCategory && (
@@ -2686,7 +2687,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                           onClick={() => openCommissionDialog(groupId)}
                           className="rounded-md px-2 py-1 text-xxs font-semibold text-primary transition-colors hover:bg-primary/10"
                         >
-                          {commission?.commissionAmount ? formatCurrencyFull(commission.commissionAmount) : 'Set'}
+                          {commission?.commissionAmount ? formatMoney(commission.commissionAmount, deal.currency) : 'Set'}
                         </button>
                       </div>
                     </div>
