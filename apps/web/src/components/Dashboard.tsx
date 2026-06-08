@@ -18,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { useGetUsers } from '@/lib/hooks/queries'
 import { queryKeys } from '@/lib/query-keys'
-import { formatCurrency, timeAgo, formatDealTitle } from '@/lib/utils'
+import { timeAgo, formatDealTitle } from '@/lib/utils'
+import { formatCurrencyBreakdown, formatMoneyShort, hasMultipleCurrencies, moneyValue, normalizeDealCurrency, sumMoneyByCurrency } from '@/lib/currency'
 import { api } from '@/lib/api'
 import { MONTHS } from '@/lib/constants'
 import type { ApiDeal, PipelineSummary } from '@/lib/types'
@@ -83,35 +84,44 @@ export function Dashboard() {
   const isLoading = loadingSummary || loadingDeals
   const isError = errorSummary || errorDeals
 
-  const totalPipeline = summary?.totalPipeline ?? 0
-  const activeDeals   = summary?.activeDeals ?? 0
+  const activePipelineDeals = deals.filter(d => !['closed_won', 'closed_lost'].includes(d.stage))
+  const activeTotals = sumMoneyByCurrency(activePipelineDeals)
+  const totalPipelineLabel = formatCurrencyBreakdown(activeTotals)
+  const activeDeals = activePipelineDeals.length
+  const mixedActiveTotals = hasMultipleCurrencies(activeTotals)
+  const singleActiveCurrency = Object.entries(activeTotals).find(([, total]) => total > 0)?.[0]
+  const singleActiveTotal = singleActiveCurrency ? activeTotals[normalizeDealCurrency(singleActiveCurrency)] : 0
+  const avgDealSizeLabel = activeDeals > 0 && !mixedActiveTotals
+    ? formatMoneyShort(singleActiveTotal / activeDeals, normalizeDealCurrency(singleActiveCurrency))
+    : 'By currency'
   // Derive win rate from deals data
   const wonDeals = deals.filter(d => d.stage === 'closed_won').length
   const lostDeals = deals.filter(d => d.stage === 'closed_lost').length
   const closedTotal = wonDeals + lostDeals
   const winRate = closedTotal > 0 ? Math.round((wonDeals / closedTotal) * 100) : 0
-  const avgDealSize   = summary?.avgDealSize ?? 0
 
   const topDeals = [...deals]
     .filter(d => d.value && !['closed_won', 'closed_lost'].includes(d.stage))
-    .sort((a, b) => parseFloat(b.value ?? '0') - parseFloat(a.value ?? '0'))
+    .sort((a, b) => mixedActiveTotals
+      ? formatDealTitle(a.title).localeCompare(formatDealTitle(b.title))
+      : parseFloat(b.value ?? '0') - parseFloat(a.value ?? '0'))
     .slice(0, 5)
 
-  // AM Leaderboard — group by assignedTo, resolve UUID to name
-  const amMap = new Map<string, { deals: number; value: number }>()
+  // AM Leaderboard: group by assignedTo, resolve UUID to name, and keep native currencies separate.
+  const amMap = new Map<string, { deals: number; totals: ReturnType<typeof sumMoneyByCurrency> }>()
   for (const d of deals) {
     const key = d.assignedTo || 'Unassigned'
-    const cur = amMap.get(key) || { deals: 0, value: 0 }
+    const cur = amMap.get(key) || { deals: 0, totals: sumMoneyByCurrency([]) }
     cur.deals++
-    cur.value += parseFloat(d.value || '0') || 0
+    cur.totals[normalizeDealCurrency(d.currency)] += moneyValue(d.value)
     amMap.set(key, cur)
   }
   const amEntries = Array.from(amMap.entries())
-    .sort((a, b) => b[1].value - a[1].value)
+    .sort((a, b) => b[1].deals - a[1].deals || a[0].localeCompare(b[0]))
     .map(([key, stats]) => ({
       name: key === 'Unassigned' ? 'Unassigned' : (userMap.get(key) ?? key),
       deals: `${stats.deals} deal${stats.deals !== 1 ? 's' : ''}`,
-      value: formatCurrency(stats.value),
+      value: formatCurrencyBreakdown(stats.totals),
       userId: key,
       image: users.find(u => u.id === key)?.image ?? undefined,
     }))
@@ -197,9 +207,9 @@ export function Dashboard() {
           <>
             <MetricCard
               label="Total Pipeline"
-              value={totalPipeline > 0 ? formatCurrency(totalPipeline) : 'P0.00'}
-              trend={totalPipeline > 0 ? `${activeDeals} active deals` : 'No deals yet'}
-              trendUp={totalPipeline > 0}
+              value={totalPipelineLabel}
+              trend={activeDeals > 0 ? `${activeDeals} active deals` : 'No deals yet'}
+              trendUp={activeDeals > 0}
               mono
             />
             <MetricCard
@@ -217,9 +227,9 @@ export function Dashboard() {
             />
             <MetricCard
               label="Avg Deal Size"
-              value={avgDealSize > 0 ? formatCurrency(avgDealSize) : 'P0.00'}
-              trend={avgDealSize > 0 ? 'Per deal' : 'No data yet'}
-              trendUp={avgDealSize > 0}
+              value={activeDeals > 0 ? avgDealSizeLabel : 'No data'}
+              trend={mixedActiveTotals ? 'Phase 2 conversion pending' : activeDeals > 0 ? 'Per deal' : 'No data yet'}
+              trendUp={activeDeals > 0 && !mixedActiveTotals}
               mono
             />
           </>

@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { cn, getInitials, getBrandColor, formatDealValue, timeAgo, totalNumericValue, formatDealTitle, toPascalCase, formatPeso } from '@/lib/utils'
+import { cn, getInitials, getBrandColor, timeAgo, formatDealTitle, toPascalCase } from '@/lib/utils'
+import { formatCurrencyBreakdown, formatDealMoney, sumMoneyByCurrency } from '@/lib/currency'
 import { STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies, useGetContactsByCompany } from '@/lib/hooks/queries'
 import { useAssignDealBrand, useCreateContact } from '@/lib/hooks/mutations'
@@ -195,8 +196,8 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
   // Stats
   const totalDeals = brandDeals.length
-  const openValue = useMemo(
-    () => totalNumericValue(brandDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage ?? ''))),
+  const openValueLabel = useMemo(
+    () => formatCurrencyBreakdown(sumMoneyByCurrency(brandDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage ?? '')))),
     [brandDeals],
   )
   // People: merge DB contacts + activity-derived contacts (DB is primary)
@@ -318,7 +319,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
             {/* Stat cards */}
             <div className="shrink-0 px-5 py-3 flex gap-2.5">
               <StatCard label="Total Deals" value={String(totalDeals)} />
-              <StatCard label="Open Value" value={openValue > 0 ? formatDealValue(String(openValue)) : formatPeso(0)} color={isUnassigned ? undefined : brandColor} />
+              <StatCard label="Open Value" value={openValueLabel} color={isUnassigned ? undefined : brandColor} />
             </div>
 
             {/* Tab switcher — hide People tab for unassigned */}
@@ -374,7 +375,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                               <span>&#183;</span>
                             </>
                           )}
-                          <span className="tabular-nums">{formatDealValue(deal.value)}</span>
+                          <span className="tabular-nums">{formatDealMoney(deal)}</span>
                           {deal.updatedAt && (
                             <>
                               <span>&#183;</span>

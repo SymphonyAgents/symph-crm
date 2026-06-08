@@ -21,6 +21,19 @@ import type {
 
 const TRASH_RETENTION_DAYS = 30
 const MONEY_SCALE = 100000
+const SUPPORTED_DEAL_CURRENCIES = ['PHP', 'USD', 'SGD'] as const
+
+type DealCurrency = typeof SUPPORTED_DEAL_CURRENCIES[number]
+
+function normalizeDealCurrency(value: unknown): DealCurrency {
+  if (value == null || value === '') return 'PHP'
+  if (typeof value !== 'string') throw new BadRequestException('Deal currency must be PHP, USD, or SGD')
+  const currency = value.trim().toUpperCase()
+  if (!SUPPORTED_DEAL_CURRENCIES.includes(currency as DealCurrency)) {
+    throw new BadRequestException('Deal currency must be PHP, USD, or SGD')
+  }
+  return currency as DealCurrency
+}
 
 /** Batch-resolve stageId UUIDs → slug/label/color in one query */
 async function resolveStages(
@@ -560,6 +573,7 @@ export class DealsService {
     cleanData.title = cleanDealTitleForStorage(cleanData.title)
     if (!cleanData.title) throw new BadRequestException('Deal title is required')
     cleanData.dealTitleNormalized = normalizeDealTitleForSearch(cleanData.title)
+    cleanData.currency = normalizeDealCurrency(cleanData.currency)
 
     // Resolve stage slug → stageId UUID if a slug was passed
     let stageId: string | null = cleanData.stageId ?? null
@@ -664,6 +678,10 @@ export class DealsService {
     // field so the column retains its current value instead of being nulled.
     if (cleanData.catalogItemId === null) {
       delete cleanData.catalogItemId
+    }
+
+    if ('currency' in cleanData) {
+      cleanData.currency = normalizeDealCurrency(cleanData.currency)
     }
 
     // Fetch current deal to determine dealType and fill in missing revenue fields

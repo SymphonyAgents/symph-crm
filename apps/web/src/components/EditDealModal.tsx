@@ -22,7 +22,8 @@ import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
 import { formatNumberWithCommas } from '@/lib/utils'
-import type { ApiDealDetail, ApiCatalogItem } from '@/lib/types'
+import { DEAL_CURRENCIES, formatMoney, normalizeDealCurrency } from '@/lib/currency'
+import type { ApiDealDetail, ApiCatalogItem, DealCurrency } from '@/lib/types'
 
 type Props = {
   deal: ApiDealDetail
@@ -174,6 +175,7 @@ export function EditDealModal({ deal, onClose }: Props) {
   const [companyId, setCompanyId] = useState(deal.companyId ?? '')
   const [stage, setStage] = useState(deal.stage)
   const [value, setValue] = useState(deal.value ? formatNumberWithCommas(deal.value) : '')
+  const [currency, setCurrency] = useState<DealCurrency>(normalizeDealCurrency(deal.currency))
   const [oneTimeFee, setOneTimeFee] = useState(deal.oneTimeFee ? formatNumberWithCommas(deal.oneTimeFee) : '')
   const [mrr, setMrr] = useState(deal.mrr ? formatNumberWithCommas(deal.mrr) : '')
   const [contractLength, setContractLength] = useState(deal.contractLength ? String(deal.contractLength) : '')
@@ -220,6 +222,7 @@ export function EditDealModal({ deal, onClose }: Props) {
 
     if (title.trim() !== deal.title) changes.title = title.trim()
     if (stage !== deal.stage) changes.stage = stage
+    if (currency !== normalizeDealCurrency(deal.currency)) changes.currency = currency
 
     const cleanValue = value.replace(/,/g, '').trim() || null
     if (cleanValue !== deal.value) changes.value = cleanValue
@@ -417,9 +420,23 @@ export function EditDealModal({ deal, onClose }: Props) {
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-white/[.08] p-3 bg-slate-50/50 dark:bg-white/[.02]">
             <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider">Revenue</div>
 
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Currency</label>
+              <Select value={currency} onValueChange={v => setCurrency(v as DealCurrency)}>
+                <SelectTrigger className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEAL_CURRENCIES.map(c => (
+                    <SelectItem key={c} value={c} className="text-ssm">{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">One-Time Fee (PHP)</label>
+                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">One-Time Fee ({currency})</label>
                 <Input
                   value={oneTimeFee}
                   onChange={e => setOneTimeFee(formatNumberWithCommas(e.target.value))}
@@ -429,7 +446,7 @@ export function EditDealModal({ deal, onClose }: Props) {
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
-                  MRR (PHP) <span className="text-slate-400 normal-case font-normal">monthly</span>
+                  MRR ({currency}) <span className="text-slate-400 normal-case font-normal">monthly</span>
                 </label>
                 <Input
                   value={mrr}
@@ -466,7 +483,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                     const len = parseInt(contractLength, 10) || 1
                     const computed = otf + mrrVal * len
                     if (computed === 0) return <span className="text-slate-400">auto</span>
-                    return `₱${computed.toLocaleString('en-PH')}`
+                    return formatMoney(computed, currency)
                   })()}
                 </div>
               </div>
@@ -480,7 +497,7 @@ export function EditDealModal({ deal, onClose }: Props) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Cost Price (PHP)</label>
+                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Cost Price ({currency})</label>
                   <Input
                     value={costPrice}
                     onChange={e => setCostPrice(formatNumberWithCommas(e.target.value))}
@@ -517,13 +534,13 @@ export function EditDealModal({ deal, onClose }: Props) {
                     <div>
                       <span className="text-slate-500">Billing price</span>
                       <span className="ml-2 font-bold text-slate-900 dark:text-white">
-                        ₱{billing.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                        {formatMoney(billing, currency)}
                       </span>
                     </div>
                     <div>
                       <span className="text-slate-500">Gross profit</span>
                       <span className="ml-2 font-semibold text-emerald-600 dark:text-emerald-400">
-                        ₱{profit.toLocaleString('en-PH', { maximumFractionDigits: 0 })}
+                        {formatMoney(profit, currency)}
                       </span>
                     </div>
                   </div>

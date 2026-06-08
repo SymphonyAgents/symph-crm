@@ -8,7 +8,7 @@ import { useGetTrashedDeals, useGetCompanies, useGetUsers } from '@/lib/hooks/qu
 import { useRestoreDeal, usePermanentlyDeleteDeal } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { formatDealName } from '@/lib/format-deal-name'
-import { formatPeso } from '@/lib/utils'
+import { formatDealMoney } from '@/lib/currency'
 import { Button } from '@/components/ui/button'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -35,13 +35,6 @@ function daysRemaining(value: string | null | undefined) {
   const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
   if (days <= 0) return 'Eligible now'
   return `${days} day${days === 1 ? '' : 's'} left`
-}
-
-function formatDealValue(value: string | null | undefined) {
-  if (!value) return '-'
-  const numeric = parseFloat(value)
-  if (!Number.isFinite(numeric) || numeric <= 0) return '-'
-  return formatPeso(numeric)
 }
 
 function TrashActionDialog({
@@ -189,7 +182,7 @@ export function DealTrash() {
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <p className="text-xxs font-semibold uppercase tracking-wide text-slate-400">Value</p>
-                          <p className="mt-0.5 text-slate-700 dark:text-slate-300">{formatDealValue(deal.value)}</p>
+                          <p className="mt-0.5 text-slate-700 dark:text-slate-300">{formatDealMoney(deal)}</p>
                         </div>
                         <div>
                           <p className="text-xxs font-semibold uppercase tracking-wide text-slate-400">Remaining</p>
@@ -252,7 +245,7 @@ export function DealTrash() {
                           <td className="px-4 py-3">
                             <DealInfo deal={deal} companyName={companyName} />
                           </td>
-                          <td className="px-4 py-3 tabular-nums">{formatDealValue(deal.value)}</td>
+                          <td className="px-4 py-3 tabular-nums">{formatDealMoney(deal)}</td>
                           <td className="px-4 py-3">
                             <div>{formatDate(deal.deletedAt)}</div>
                             {deal.deletedBy && <div className="mt-0.5 text-xxs text-slate-400">by {userMap.get(deal.deletedBy) ?? deal.deletedBy}</div>}

@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     '',
     '## Response guidelines',
     '- Be concise and action-oriented.',
-    '- Currency is PHP (Philippine Peso).',
+    '- Deals may use PHP, USD, or SGD. Preserve each deal\'s stored currency and do not combine mixed-currency totals without conversion.',
     '- Confirm what API call you made and what it returned.',
     '- If the API call fails or returns an error, share the exact error with the user.',
   )

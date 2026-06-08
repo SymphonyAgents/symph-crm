@@ -27,7 +27,8 @@ import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, PRICING_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
 import { cn, formatNumberWithCommas } from '@/lib/utils'
-import type { ApiCompanyDetail, ApiCatalogItem, ApiUser } from '@/lib/types'
+import { DEAL_CURRENCIES, DEFAULT_DEAL_CURRENCY } from '@/lib/currency'
+import type { ApiCompanyDetail, ApiCatalogItem, ApiUser, DealCurrency } from '@/lib/types'
 
 type Props = {
   companies?: ApiCompanyDetail[]
@@ -305,6 +306,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
   const [brandId, setBrandId] = useState('')         // companyId if selected from list
   const [stage, setStage] = useState('lead')
   const [value, setValue] = useState('')
+  const [currency, setCurrency] = useState<DealCurrency>(DEFAULT_DEAL_CURRENCY)
   const [outreachCategory, setOutreachCategory] = useState('')
   const [pricingModel, setPricingModel] = useState('')
   const [serviceType, setServiceType] = useState('')
@@ -374,6 +376,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
       tierId: null,
       stage,
       value: value.replace(/,/g, '').trim() || null,
+      currency,
       outreachCategory: outreachCategory || null,
       pricingModel: pricingModel || null,
       servicesTags: tags,
@@ -502,7 +505,7 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
               <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Sub AM <span className="text-slate-400">(optional)</span></label>
               <Select value={subAccountManagerId} onValueChange={setSubAccountManagerId}>
                 <SelectTrigger className="h-11 sm:h-9 text-ssm">
-                  <SelectValue placeholder=", " />
+                  <SelectValue placeholder="Select user" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[280px]">
                   {salesUsers.map(u => (
@@ -550,9 +553,22 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           </div>
 
           {/* Value + Pricing Model */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[0.7fr_1fr_1fr] gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Value (₱)</label>
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Currency</label>
+              <Select value={currency} onValueChange={v => setCurrency(v as DealCurrency)}>
+                <SelectTrigger className="h-11 sm:h-9 text-ssm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEAL_CURRENCIES.map(c => (
+                    <SelectItem key={c} value={c} className="text-ssm">{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Value ({currency})</label>
               <Input
                 value={value}
                 onChange={e => setValue(formatNumberWithCommas(e.target.value))}

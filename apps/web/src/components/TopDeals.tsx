@@ -1,17 +1,17 @@
 'use client'
 
-import { formatPeso, getInitials, getBrandColor } from '@/lib/utils'
+import { getInitials, getBrandColor } from '@/lib/utils'
+import { formatDealMoney } from '@/lib/currency'
 import { EmptyState } from './EmptyState'
 
 type TopDealsProps = {
-  deals: { id: string; title: string; value: string | null; stage: string | null; companyId: string; assignedTo: string | null }[]
+  deals: { id: string; title: string; value: string | null; currency: 'PHP' | 'USD' | 'SGD' | null; stage: string | null; companyId: string; assignedTo: string | null }[]
   onViewAll?: () => void
 }
 
 export function TopDeals({ deals, onViewAll }: TopDealsProps) {
-  const sorted = [...deals]
+  const sorted = deals
     .filter(d => !['closed_won', 'closed_lost'].includes(d.stage ?? ''))
-    .sort((a, b) => parseFloat(b.value ?? '0') - parseFloat(a.value ?? '0'))
     .slice(0, 5)
 
   return (
@@ -20,14 +20,13 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
         <EmptyState
           icon="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
           title="No active deals"
-          description="Active deals will appear here sorted by value"
+          description="Active deals will appear here with native currency values"
           compact
         />
       ) : (
         <div className="flex flex-col gap-0.5">
           {sorted.map(d => {
             const color = getBrandColor(d.companyId)
-            const value = d.value ? parseFloat(d.value) : 0
             return (
               <div
                 key={d.id}
@@ -47,7 +46,7 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-xs font-semibold text-slate-900 dark:text-white tabular-nums">
-                    {value > 0 ? formatPeso(value) : '—'}
+                    {formatDealMoney(d)}
                   </div>
                 </div>
               </div>

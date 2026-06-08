@@ -2,7 +2,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from './EmptyState'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrencyBreakdown, formatMoneyShort, hasMultipleCurrencies, moneyValue, normalizeDealCurrency, sumMoneyByCurrency } from '@/lib/currency'
 import { STAGE_LABELS, STAGE_COLORS } from '@/lib/constants'
 import { useGetPipelineSummary, useGetDeals, useGetUsers } from '@/lib/hooks/queries'
 import { StageFunnelChart } from './StageFunnelChart'
@@ -71,57 +71,71 @@ export function Reports() {
   const { data: users = [] } = useGetUsers()
   const userMap = new Map(users.map(u => [u.id, u.name || u.email]))
 
-  const closedWon = summary?.dealsByStage.find(s => s.stage === 'closed_won')
-  const closedLost = summary?.dealsByStage.find(s => s.stage === 'closed_lost')
+  const closedWonDeals = deals.filter(d => d.stage === 'closed_won')
+  const closedLostDeals = deals.filter(d => d.stage === 'closed_lost')
+  const activeDeals = deals.filter(d => !['closed_won', 'closed_lost'].includes(d.stage))
+  const activeTotals = sumMoneyByCurrency(activeDeals)
+  const mixedActiveTotals = hasMultipleCurrencies(activeTotals)
+  const singleActiveCurrency = Object.entries(activeTotals).find(([, total]) => total > 0)?.[0]
+  const singleActiveTotal = singleActiveCurrency ? activeTotals[normalizeDealCurrency(singleActiveCurrency)] : 0
+  const avgDealSizeLabel = activeDeals.length > 0 && !mixedActiveTotals
+    ? formatMoneyShort(singleActiveTotal / activeDeals.length, normalizeDealCurrency(singleActiveCurrency))
+    : 'By currency'
 
   const metrics = [
     {
       label: 'Total Closed Won',
-      value: formatCurrency(closedWon?.totalValue || 0),
-      trend: `${closedWon?.count || 0} deals`,
+      value: formatCurrencyBreakdown(sumMoneyByCurrency(closedWonDeals), { empty: 'No value' }),
+      trend: `${closedWonDeals.length} deals`,
       color: '#16a34a',
     },
     {
       label: 'Deals Won',
-      value: String(closedWon?.count || 0),
+      value: String(closedWonDeals.length),
       trend: `${summary?.winRate || 0}% win rate`,
       color: undefined,
     },
     {
       label: 'Deals Lost',
-      value: String(closedLost?.count || 0),
+      value: String(closedLostDeals.length),
       trend: `${summary?.totalDeals || 0} total deals`,
       color: '#dc2626',
     },
     {
       label: 'Avg Deal Size',
-      value: formatCurrency(summary?.avgDealSize || 0),
-      trend: `From ${summary?.activeDeals || 0} active`,
+      value: activeDeals.length > 0 ? avgDealSizeLabel : 'No data',
+      trend: mixedActiveTotals ? 'Phase 2 conversion pending' : `From ${activeDeals.length} active`,
       color: undefined,
     },
   ]
 
-  // Pipeline value by stage — only stages with deals
-  const activeStages = summary?.dealsByStage.filter(s => s.count > 0) ?? []
-  const maxStageValue = Math.max(...activeStages.map(s => s.totalValue), 1)
+  // Pipeline value by stage, grouped by native currency when needed.
+  // If the report spans multiple currencies, use deal counts for bar widths so the chart does not compare raw amounts across currencies.
+  const chartUsesDealCounts = hasMultipleCurrencies(sumMoneyByCurrency(deals))
+  const activeStages = (summary?.dealsByStage.filter(s => s.count > 0) ?? []).map(stage => {
+    const stageDeals = deals.filter(deal => deal.stage === stage.stage)
+    const totals = sumMoneyByCurrency(stageDeals)
+    return {
+      ...stage,
+      totalLabel: formatCurrencyBreakdown(totals),
+      chartValue: chartUsesDealCounts ? stage.count : Object.values(totals).reduce((sum, total) => sum + total, 0),
+    }
+  })
+  const maxStageValue = Math.max(...activeStages.map(s => s.chartValue), 1)
 
-  // Funnel — active (non-closed) stages only
-  const funnelStages = activeStages.filter(s => !['closed_won', 'closed_lost'].includes(s.stage))
-  const maxFunnelCount = Math.max(...funnelStages.map(s => s.count), 1)
-
-  // AM Performance — computed from deals, resolve UUIDs to names
-  const amMapRaw = new Map<string, { deals: number; value: number }>()
+  // AM Performance: computed from deals, resolve UUIDs to names, keep currencies separate.
+  const amMapRaw = new Map<string, { deals: number; totals: ReturnType<typeof sumMoneyByCurrency> }>()
   for (const d of deals) {
     const key = d.assignedTo || 'Unassigned'
-    const cur = amMapRaw.get(key) || { deals: 0, value: 0 }
+    const cur = amMapRaw.get(key) || { deals: 0, totals: sumMoneyByCurrency([]) }
     cur.deals++
-    cur.value += parseFloat(d.value || '0') || 0
+    cur.totals[normalizeDealCurrency(d.currency)] += moneyValue(d.value)
     amMapRaw.set(key, cur)
   }
   const amRows = Array.from(amMapRaw.entries())
-    .sort((a, b) => b[1].value - a[1].value)
+    .sort((a, b) => b[1].deals - a[1].deals || a[0].localeCompare(b[0]))
     .slice(0, 10)
-    .map(([key, stats]) => [key === 'Unassigned' ? 'Unassigned' : (userMap.get(key) ?? key), stats] as [string, { deals: number; value: number }])
+    .map(([key, stats]) => [key === 'Unassigned' ? 'Unassigned' : (userMap.get(key) ?? key), stats] as [string, { deals: number; totals: ReturnType<typeof sumMoneyByCurrency> }])
 
   return (
     <div className="p-4 md:p-5 max-w-[1200px]">
@@ -179,14 +193,14 @@ export function Reports() {
                       <div
                         className="h-full rounded transition-all duration-500"
                         style={{
-                          width: `${Math.max(2, Math.round((s.totalValue / maxStageValue) * 100))}%`,
+                          width: `${Math.max(2, Math.round((s.chartValue / maxStageValue) * 100))}%`,
                           background: STAGE_COLORS[s.stage] ?? '#94a3b8',
                           opacity: 0.85,
                         }}
                       />
                     </div>
                     <div className="w-[56px] shrink-0 text-xxs font-semibold tabular-nums text-right text-slate-700 dark:text-slate-300">
-                      {formatCurrency(s.totalValue)}
+                      {s.totalLabel}
                     </div>
                     <div className="w-[18px] shrink-0 text-atom font-medium text-center text-slate-400 tabular-nums">
                       {s.count}
@@ -231,7 +245,7 @@ export function Reports() {
                     <div className="text-xs font-semibold text-slate-900 dark:text-white">{name}</div>
                     <div className="text-atom text-slate-400">{stats.deals} deal{stats.deals !== 1 ? 's' : ''}</div>
                   </div>
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums">{formatCurrency(stats.value)}</div>
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums">{formatCurrencyBreakdown(stats.totals)}</div>
                 </div>
               ))}
             </div>

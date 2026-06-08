@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
-import type { ApiBilling, ApiBillingMilestone } from '@/lib/types'
+import { DEFAULT_DEAL_CURRENCY, formatMoney } from '@/lib/currency'
+import type { ApiBilling, ApiBillingMilestone, DealCurrency } from '@/lib/types'
 
 type BillingSectionProps = {
   dealId: string
@@ -22,6 +23,7 @@ type BillingSectionProps = {
   /** When true, strips the outer card border/shadow/rounded so the component
    *  embeds cleanly inside a parent modal without double chrome. */
   embedded?: boolean
+  currency?: DealCurrency | null
 }
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
@@ -30,11 +32,9 @@ const BILLING_TYPE_LABELS: Record<string, string> = {
   milestone: 'Milestone',
 }
 
-function formatPeso(value: string | number | null | undefined): string {
+function formatBillingMoney(value: string | number | null | undefined, currency: DealCurrency | null | undefined): string {
   if (value == null || value === '') return '--'
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  if (isNaN(n)) return '--'
-  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(n)
+  return formatMoney(value, currency)
 }
 
 function formatDate(d: string | null | undefined): string {
@@ -42,7 +42,7 @@ function formatDate(d: string | null | undefined): string {
   return new Date(d).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export function BillingSection({ dealId, onSaved, initialEditing = false, embedded = false }: BillingSectionProps) {
+export function BillingSection({ dealId, onSaved, initialEditing = false, embedded = false, currency = DEFAULT_DEAL_CURRENCY }: BillingSectionProps) {
   const queryClient = useQueryClient()
   const { data: billing, isLoading } = useGetBillingByDeal(dealId)
 
@@ -169,14 +169,14 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           {/* Amount */}
           <div className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
             <span className="text-xs text-slate-400">Amount</span>
-            <span className="text-xs font-bold text-slate-800 dark:text-white tabular-nums">{formatPeso(billing.amount)}</span>
+            <span className="text-xs font-bold text-slate-800 dark:text-white tabular-nums">{formatBillingMoney(billing.amount, currency)}</span>
           </div>
 
           {/* Monthly rate if annual */}
           {billing.monthlyDerived && (
             <div className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
               <span className="text-xs text-slate-400">Monthly Rate</span>
-              <span className="text-xs text-slate-500 tabular-nums">{formatPeso(billing.monthlyDerived)}/mo</span>
+              <span className="text-xs text-slate-500 tabular-nums">{formatBillingMoney(billing.monthlyDerived, currency)}/mo</span>
             </div>
           )}
 
@@ -206,7 +206,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                     <div className="flex-1 min-w-0">
                       <p className={cn('text-xxs font-medium truncate', m.isPaid ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-white')}>{m.name}</p>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-atom tabular-nums text-slate-500">{formatPeso(m.amount)}</span>
+                        <span className="text-atom tabular-nums text-slate-500">{formatBillingMoney(m.amount, currency)}</span>
                         {m.percentage && <span className="text-atom font-semibold px-1 py-0.5 rounded bg-primary/10 text-primary tabular-nums">{parseFloat(m.percentage).toFixed(0)}%</span>}
                       </div>
                     </div>
@@ -291,12 +291,12 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
               />
               {billingType === 'annual' && amount && (
                 <p className="text-atom text-slate-400 mt-1 tabular-nums">
-                  Monthly Rate: {formatPeso(parseFloat(amount.replace(/,/g, '')) / 12)}/mo
+                  Monthly Rate: {formatBillingMoney(parseFloat(amount.replace(/,/g, '')) / 12, currency)}/mo
                 </p>
               )}
               {billingType === 'monthly' && monthlyDerived && (
                 <p className="text-atom text-slate-400 mt-1 tabular-nums">
-                  {formatPeso(monthlyDerived)}/mo
+                  {formatBillingMoney(monthlyDerived, currency)}/mo
                 </p>
               )}
             </div>
@@ -343,7 +343,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                           {m.name}
                         </p>
                         <div className="flex items-center gap-1.5">
-                          <span className="text-atom tabular-nums text-slate-500">{formatPeso(m.amount)}</span>
+                          <span className="text-atom tabular-nums text-slate-500">{formatBillingMoney(m.amount, currency)}</span>
                           {m.percentage && (
                             <span className="text-atom font-semibold px-1 py-0.5 rounded bg-primary/10 text-primary tabular-nums">
                               {parseFloat(m.percentage).toFixed(0)}%
@@ -400,12 +400,12 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                 <div className="mt-2 pt-2 border-t border-black/[.04] dark:border-white/[.05]">
                   <div className="flex items-center justify-between">
                     <span className="text-atom text-slate-400">Total</span>
-                    <span className="text-xxs font-bold text-slate-800 dark:text-white tabular-nums">{formatPeso(billing.amount)}</span>
+                    <span className="text-xxs font-bold text-slate-800 dark:text-white tabular-nums">{formatBillingMoney(billing.amount, currency)}</span>
                   </div>
                   {billing.monthlyDerived && (
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-atom text-slate-400">Monthly equiv.</span>
-                      <span className="text-atom text-slate-500 tabular-nums">{formatPeso(billing.monthlyDerived)}/mo</span>
+                      <span className="text-atom text-slate-500 tabular-nums">{formatBillingMoney(billing.monthlyDerived, currency)}/mo</span>
                     </div>
                   )}
                 </div>

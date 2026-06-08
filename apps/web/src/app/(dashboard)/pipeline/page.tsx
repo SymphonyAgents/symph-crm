@@ -12,7 +12,7 @@ import {
 } from '@/components/CatalogTabs'
 import { useGetDeals, useGetCatalogItems } from '@/lib/hooks/queries'
 import { CLOSED_STAGE_IDS } from '@/lib/constants'
-import { formatPeso } from '@/lib/utils'
+import { formatCurrencyBreakdown, sumMoneyByCurrency } from '@/lib/currency'
 
 function PipelineInner() {
   const router = useRouter()
@@ -66,8 +66,8 @@ function PipelineInner() {
     if (tabValue) scoped = scoped.filter(d => d.catalogItemType === tabValue)
     if (activeItemId) scoped = scoped.filter(d => d.catalogItemId === activeItemId)
     const active = scoped.filter(d => !CLOSED_STAGE_IDS.has(d.stage ?? ''))
-    const total = active.reduce((s, d) => s + (parseFloat(d.value || '0') || 0), 0)
-    return { activeCount: active.length, total }
+    const totals = sumMoneyByCurrency(active)
+    return { activeCount: active.length, totalLabel: formatCurrencyBreakdown(totals) }
   }, [allDeals, tabValue, activeItemId])
 
   const onTabChange = useCallback(
@@ -104,8 +104,8 @@ function PipelineInner() {
           ) : (
             <span className="text-ssm font-medium text-slate-900 dark:text-white tabular-nums">
               {stats.activeCount} active deal{stats.activeCount !== 1 ? 's' : ''}
-              {stats.total > 0 && (
-                <> &middot; <span>{formatPeso(stats.total)}</span></>
+              {stats.totalLabel !== 'No value' && (
+                <> &middot; <span>{stats.totalLabel}</span></>
               )}
             </span>
           )}

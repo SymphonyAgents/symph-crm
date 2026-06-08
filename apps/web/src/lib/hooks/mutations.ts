@@ -12,7 +12,7 @@ import { CrmUserRole, PartnerCommissionStatus } from '@symph-crm/shared'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalStatus, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting, ApiPartnerDealGroup } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalStatus, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting, ApiPartnerDealGroup, DealCurrency } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +86,7 @@ export type CreateDealInput = {
   tierId?: string | null
   stage?: string
   value?: string | null
+  currency?: DealCurrency
   outreachCategory?: string | null
   pricingModel?: string | null
   servicesTags?: string[]

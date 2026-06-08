@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetCompanies, useGetDeals, useGetMyPartnerDealGroups, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
-import { cn, getInitials, getBrandColor, formatDealValue, formatServiceType, totalNumericValue, formatDealTitle, toPascalCase } from '@/lib/utils'
+import { cn, getInitials, getBrandColor, formatServiceType, formatDealTitle, toPascalCase } from '@/lib/utils'
+import { formatCurrencyBreakdown, formatDealMoney, formatMoney, sumMoneyByCurrency, type CurrencyTotals } from '@/lib/currency'
 import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal, ApiPartnerDealGroup } from '@/lib/types'
 import type { ColumnDef } from '@tanstack/react-table'
@@ -30,7 +31,8 @@ type BrandTableRow = {
   dealCount: number
   stageSummary: Array<{ id: string; label: string; bg: string; color: string }>
   documentCount: number
-  totalValue: number
+  totalLabel: string
+  totalSortValue: number
   createdByName: string | null
   createdByImage: string | null
   lastActivityAt: string | null
@@ -40,7 +42,9 @@ type BrandGroup = {
   company: ApiCompanyDetail
   color: string
   deals: ApiDeal[]
-  totalValue: number
+  totals: CurrencyTotals
+  totalLabel: string
+  totalSortValue: number
   activeCount: number
 }
 
@@ -124,7 +128,7 @@ function BrandDetailModal({
           <div className="text-xs">
             <span className="text-slate-400">Value:</span>{' '}
             <span className="font-semibold tabular-nums" style={{ color: group.color }}>
-              {group.totalValue > 0 ? formatDealValue(String(group.totalValue)) : 'P0.00'}
+              {group.totalLabel}
             </span>
           </div>
         </div>
@@ -170,7 +174,7 @@ function BrandDetailModal({
                   </div>
                   <StagePill stage={deal.stage} />
                   <div className="text-ssm font-medium text-slate-700 dark:text-slate-300 tabular-nums whitespace-nowrap">
-                    {formatDealValue(deal.value)}
+                    {formatDealMoney(deal)}
                   </div>
                 </div>
               )
@@ -215,8 +219,8 @@ type PartnerDealRow = {
   commissionAmount: string | null
 }
 
-function formatPartnerCommission(amount: string | null): string {
-  return amount ? formatDealValue(amount) : '—'
+function formatPartnerCommission(deal: ApiDeal, amount: string | null): string {
+  return amount ? formatMoney(amount, deal.currency) : '-'
 }
 
 function getPartnerGroupTitle(groups: ApiPartnerDealGroup[]): string {
@@ -250,11 +254,11 @@ function PartnerDealMobileCard({ row, onOpen }: { row: PartnerDealRow; onOpen: (
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
         <div>
           <div className="text-xxs uppercase tracking-[0.05em] text-slate-400">Value</div>
-          <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-300">{formatDealValue(deal.value)}</div>
+          <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-300">{formatDealMoney(deal)}</div>
         </div>
         <div>
           <div className="text-xxs uppercase tracking-[0.05em] text-slate-400">Commission</div>
-          <div className="mt-0.5 text-slate-600 dark:text-slate-400">{formatPartnerCommission(row.commissionAmount)}</div>
+          <div className="mt-0.5 text-slate-600 dark:text-slate-400">{formatPartnerCommission(deal, row.commissionAmount)}</div>
         </div>
       </div>
     </div>
@@ -285,17 +289,18 @@ function PartnerDealsDataTable({ rows, search, onOpenDeal }: { rows: PartnerDeal
       size: 180,
     },
     {
-      accessorFn: row => Number(row.deal.value ?? 0),
+      accessorKey: 'deal.value',
       id: 'value',
-      header: ({ column }) => <SortableHeader column={column}>Value</SortableHeader>,
-      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatDealValue(row.original.deal.value)}</span>,
+      header: () => <span>Value</span>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatDealMoney(row.original.deal)}</span>,
+      enableSorting: false,
       size: 120,
     },
     {
       accessorFn: row => Number(row.commissionAmount ?? 0),
       id: 'commission',
       header: ({ column }) => <SortableHeader column={column}>Commission</SortableHeader>,
-      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatPartnerCommission(row.original.commissionAmount)}</span>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatPartnerCommission(row.original.deal, row.original.commissionAmount)}</span>,
       size: 140,
     },
     {
@@ -389,7 +394,7 @@ function BrandMobileCard({
         <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
           <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Value</div>
           <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1 truncate">
-            {row.totalValue > 0 ? formatDealValue(String(row.totalValue)) : 'P0.00'}
+            {row.totalLabel}
           </div>
         </div>
         <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
@@ -478,16 +483,14 @@ function BrandsDataTable({
     // 2. Pipeline Value (after Brand)
     {
       id: 'totalValue',
-      accessorKey: 'totalValue',
-      header: ({ column }) => <SortableHeader column={column}>Value</SortableHeader>,
-      cell: ({ getValue }) => {
-        const v = getValue<number>()
-        return (
-          <span className="text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
-            {v > 0 ? formatDealValue(String(v)) : 'P0.00'}
-          </span>
-        )
-      },
+      accessorKey: 'totalLabel',
+      header: () => <span>Value</span>,
+      cell: ({ row }) => (
+        <span className="text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+          {row.original.totalLabel}
+        </span>
+      ),
+      enableSorting: false,
       size: 140,
     },
     // 3. # Deals
@@ -545,7 +548,7 @@ function BrandsDataTable({
             {n > 0 ? (
               <span className="text-xs font-semibold text-primary tabular-nums">{n}</span>
             ) : (
-              <span className="text-xs text-slate-300 dark:text-slate-600">—</span>
+              <span className="text-xs text-slate-300 dark:text-slate-600">-</span>
             )}
           </div>
         )
@@ -563,14 +566,14 @@ function BrandsDataTable({
     // 6. Created By (last)
     {
       id: 'createdBy',
-      accessorFn: r => r.createdByName ?? '—',
+      accessorFn: r => r.createdByName ?? '-',
       header: ({ column }) => <SortableHeader column={column}>Created By</SortableHeader>,
       cell: ({ row }) => {
-        const name = row.original.createdByName ?? '—'
+        const name = row.original.createdByName ?? '-'
         const image = row.original.createdByImage
         return (
           <div className="flex items-center gap-1.5">
-            {name !== '—' && <Avatar name={name} src={image ?? undefined} size={20} />}
+            {name !== '-' && <Avatar name={name} src={image ?? undefined} size={20} />}
             <span className="text-xs text-slate-700 dark:text-slate-300">{name}</span>
           </div>
         )
@@ -720,6 +723,8 @@ export function Deals({ onOpenDeal }: DealsProps) {
       for (const [companyId, cDeals] of dealsByCompany.entries()) {
         const firstDeal = cDeals[0]
         const companyName = companyId === '__unassigned__' ? 'No Brand' : (firstDeal?.brandName ?? 'No Brand')
+        const activeCompanyDeals = cDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))
+        const totals = sumMoneyByCurrency(activeCompanyDeals)
         result.push({
           company: {
             id: companyId,
@@ -733,28 +738,36 @@ export function Deals({ onOpenDeal }: DealsProps) {
           },
           color: getBrandColor(companyName),
           deals: cDeals,
-          totalValue: totalNumericValue(cDeals),
-          activeCount: cDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)).length,
+          totals,
+          totalLabel: formatCurrencyBreakdown(totals),
+          totalSortValue: activeCompanyDeals.length,
+          activeCount: activeCompanyDeals.length,
         })
       }
-      return result.sort((a, b) => b.totalValue - a.totalValue)
+      return result.sort((a, b) => b.activeCount - a.activeCount || a.company.name.localeCompare(b.company.name))
     }
 
     // Add all companies (even those with no deals)
     for (const company of companies) {
       const cDeals = dealsByCompany.get(company.id) || []
+      const activeCompanyDeals = cDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))
+      const totals = sumMoneyByCurrency(activeCompanyDeals)
       result.push({
         company,
         color: getBrandColor(company.name),
         deals: cDeals,
-        totalValue: totalNumericValue(cDeals),
-        activeCount: cDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)).length,
+        totals,
+        totalLabel: formatCurrencyBreakdown(totals),
+        totalSortValue: activeCompanyDeals.length,
+        activeCount: activeCompanyDeals.length,
       })
     }
 
     // Add "No Brand" group for deals without a company
     const unassignedDeals = dealsByCompany.get('__unassigned__')
     if (unassignedDeals && unassignedDeals.length > 0) {
+      const activeUnassignedDeals = unassignedDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))
+      const totals = sumMoneyByCurrency(activeUnassignedDeals)
       result.push({
         company: {
           id: '__unassigned__',
@@ -768,12 +781,14 @@ export function Deals({ onOpenDeal }: DealsProps) {
         },
         color: getBrandColor('No Brand'),
         deals: unassignedDeals,
-        totalValue: totalNumericValue(unassignedDeals),
-        activeCount: unassignedDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)).length,
+        totals,
+        totalLabel: formatCurrencyBreakdown(totals),
+        totalSortValue: activeUnassignedDeals.length,
+        activeCount: activeUnassignedDeals.length,
       })
     }
 
-    return result.sort((a, b) => b.totalValue - a.totalValue)
+    return result.sort((a, b) => b.activeCount - a.activeCount || a.company.name.localeCompare(b.company.name))
   }, [companies, deals, isPartner])
 
   // ── DataTable brand rows ─────────────────────────────────────────────────
@@ -804,7 +819,8 @@ export function Deals({ onOpenDeal }: DealsProps) {
         dealCount: g.deals.length,
         stageSummary,
         documentCount: g.deals.reduce((sum, d) => sum + (d.documentCount ?? 0), 0),
-        totalValue: g.totalValue,
+        totalLabel: g.totalLabel,
+        totalSortValue: g.totalSortValue,
         createdByName: g.company.createdBy ? (userNameMap.get(g.company.createdBy) ?? null) : null,
         createdByImage: g.company.createdBy ? (userImageMap.get(g.company.createdBy) ?? null) : null,
         lastActivityAt,
@@ -849,7 +865,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
   }, [partnerDealRows, search])
 
   const totalDeals = deals.length
-  const activePipeline = totalNumericValue(deals.filter(d => !CLOSED_STAGE_IDS.has(d.stage)))
+  const activePipelineLabel = formatCurrencyBreakdown(sumMoneyByCurrency(deals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))))
   const partnerGroupTitle = getPartnerGroupTitle(myPartnerDealGroups)
 
   return (
@@ -1053,8 +1069,8 @@ export function Deals({ onOpenDeal }: DealsProps) {
               {isLoading
                 ? 'Loading…'
                 : isPartner
-                  ? `${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' active value' : 'No active value'}`
-                  : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipeline > 0 ? formatDealValue(String(activePipeline)) + ' pipeline' : 'No pipeline value'}`
+                  ? `${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipelineLabel !== 'No value' ? activePipelineLabel + ' active value' : 'No active value'}`
+                  : `${groups.length} brand${groups.length !== 1 ? 's' : ''} · ${totalDeals} deal${totalDeals !== 1 ? 's' : ''} · ${activePipelineLabel !== 'No value' ? activePipelineLabel + ' pipeline' : 'No pipeline value'}`
               }
             </div>
           </div>
