@@ -418,20 +418,20 @@ export function EditDealModal({ deal, onClose }: Props) {
 
           {/* Revenue fields, all deal types */}
           <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-white/[.08] p-3 bg-slate-50/50 dark:bg-white/[.02]">
-            <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider">Revenue</div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Currency</label>
-              <Select value={currency} onValueChange={v => setCurrency(v as DealCurrency)}>
-                <SelectTrigger className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider">Revenue</div>
+              <label className="flex items-center gap-2 text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                Currency
+                <select
+                  value={currency}
+                  onChange={e => setCurrency(e.target.value as DealCurrency)}
+                  className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-ssm font-semibold text-slate-900 outline-none transition-colors focus:border-blue-500 dark:border-white/[.1] dark:bg-[#2a2d31] dark:text-white"
+                >
                   {DEAL_CURRENCIES.map(c => (
-                    <SelectItem key={c} value={c} className="text-ssm">{c}</SelectItem>
+                    <option key={c} value={c}>{c}</option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+              </label>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
