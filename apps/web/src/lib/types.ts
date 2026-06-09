@@ -623,10 +623,51 @@ export type ApiMeetingAttendee = {
   avatarUrl: string | null
 }
 
+export type ApiMeetingActionPackageStatus = 'needs_deal_review' | 'attached' | 'failed'
+
+export type ApiMeetingActionCitation = {
+  label: string
+  url?: string | null
+  storagePath?: string | null
+}
+
+export type ApiMeetingActionPackage = {
+  version: 1
+  status: ApiMeetingActionPackageStatus
+  generatedAt: string
+  generatedBy: string | null
+  confirmedDealId: string | null
+  suggestedDealIds: string[]
+  summary: string
+  actionItems: string[]
+  followUpDraftSubject: string
+  followUpDraftText: string
+  draftRecipients: string[]
+  citations: ApiMeetingActionCitation[]
+  actionNotePath?: string | null
+  draftGmailId?: string | null
+  reminderId?: string | null
+  lastError?: string | null
+}
+
+export type ApiMeetingActionResult = {
+  ok: boolean
+  status: ApiMeetingActionPackageStatus
+  meeting: ApiMeeting
+  actionPackage: ApiMeetingActionPackage
+  candidates?: {
+    deals: Array<{ id: string; title: string }>
+    companies: Array<{ id: string; name: string }>
+    contacts: Array<{ id: string; name: string | null; email: string | null }>
+    dealsByCompany: Array<{ id: string; title: string }>
+  }
+}
+
 export type ApiMeetingRawPayload = {
   summaryMarkdown?: string | null
   transcriptMarkdown?: string | null
   attendees?: Array<string | Partial<ApiMeetingAttendee> & { picture?: string | null; photoUrl?: string | null; image?: string | null }>
+  meetingActionPackage?: ApiMeetingActionPackage | null
   rawPayload?: {
     notes?: string | null
     transcript?: Array<{ speaker?: string; text?: string; timestamp?: number }>
@@ -643,6 +684,8 @@ export type ApiMeetingListItem = {
   status: ApiMeetingStatus
   lastError: string | null
   createdAt: string
+  actionPackageStatus?: ApiMeetingActionPackageStatus | null
+  draftGmailId?: string | null
 }
 
 export type ApiMeeting = ApiMeetingListItem & {
@@ -655,6 +698,7 @@ export type ApiMeeting = ApiMeetingListItem & {
   transcriptNotePath: string | null
   ingestedAt: string | null
   rawPayload: ApiMeetingRawPayload | null
+  actionPackage?: ApiMeetingActionPackage | null
   updatedAt: string
 }
 

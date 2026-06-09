@@ -29,6 +29,7 @@ import { RecordingsModule } from './recordings/recordings.module'
 import { MeetingsModule } from './meetings/meetings.module'
 import { PartnerGroupsModule } from './partner-groups/partner-groups.module'
 import { PartnerDealGroupsModule } from './partner-deal-groups/partner-deal-groups.module'
+import { InboundEmailModule } from './inbound-email/inbound-email.module'
 
 @Module({
   providers: [
@@ -64,6 +65,7 @@ import { PartnerDealGroupsModule } from './partner-deal-groups/partner-deal-grou
     MeetingsModule,
     PartnerGroupsModule,
     PartnerDealGroupsModule,
+    InboundEmailModule,
   ],
 })
 export class AppModule {}

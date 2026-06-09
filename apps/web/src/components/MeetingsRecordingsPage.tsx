@@ -227,6 +227,11 @@ function MeetingRow({ meeting, deals, onDelete }: { meeting: ApiMeetingListItem;
           <span className={cn('border rounded-md px-1.5 py-0.5 text-atom font-semibold capitalize', statusTone(meeting.status))}>
             {meeting.status}
           </span>
+          {meeting.actionPackageStatus && (
+            <span className="border border-primary/20 bg-primary/10 rounded-md px-1.5 py-0.5 text-atom font-semibold text-primary capitalize">
+              {meeting.actionPackageStatus.replaceAll('_', ' ')}
+            </span>
+          )}
           <span className="text-xxs text-slate-500 dark:text-slate-400 tabular-nums">
             {meeting.startedAt ? formatDate(meeting.startedAt) : formatDate(meeting.createdAt)}
           </span>

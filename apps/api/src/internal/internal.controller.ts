@@ -34,6 +34,10 @@ import { ensureDealNoteAuthorFrontmatter } from '../wiki/wiki-frontmatter'
 import { ProposalsService } from '../proposals/proposals.service'
 import type { ProposalStatus, ProposalType } from '@symph-crm/database'
 import { MeetingsService, type PassiveMeetingIngestBody } from '../meetings/meetings.service'
+import { MeetingActionsService } from '../meetings/meeting-actions.service'
+import type { CreateMeetingActionPackageBody } from '../meetings/meeting-actions.types'
+import { InboundEmailService, type EmailIngestBody } from '../inbound-email/inbound-email.service'
+import { FollowUpRemindersService, type FollowUpReminderStatus } from '../inbound-email/follow-up-reminders.service'
 
 /**
  * InternalController — endpoints called by Cloud Scheduler, GCP infrastructure,
@@ -150,6 +154,9 @@ export class InternalController {
     private readonly wiki: WikiService,
     private readonly proposals: ProposalsService,
     private readonly meetings: MeetingsService,
+    private readonly meetingActions: MeetingActionsService,
+    private readonly inboundEmail: InboundEmailService,
+    private readonly followUpReminders: FollowUpRemindersService,
   ) {
     this.baseUrl = (
       config.get<string>('WEB_BASE_URL') ?? 'https://crm.symph.co'
@@ -308,12 +315,97 @@ export class InternalController {
     return { ok: true, dormantFlagged: result.dormantFlagged, dealIds: result.dealIds }
   }
 
-  /** POST /api/internal/calendar-sync — Incremental sync all users (every 5 min) */
+  /** POST /api/internal/calendar-sync, Incremental sync all users (every 5 min) */
   @Post('calendar-sync')
   @HttpCode(HttpStatus.OK)
   async calendarSync() {
     const result = await this.calendarConnections.syncAll()
     return { ok: true, usersSynced: result.synced, eventsUpserted: result.totalEvents }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Shared-inbox email intake
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** POST /api/internal/email-ingest, Classify and optionally persist shared-inbox threads */
+  @Post('email-ingest')
+  @HttpCode(HttpStatus.OK)
+  async emailIngest(@Body() body: EmailIngestBody) {
+    return this.inboundEmail.ingest(body)
+  }
+
+  /** GET /api/internal/email-threads, List persisted shared-inbox email threads */
+  @Get('email-threads')
+  async listEmailThreads(
+    @Query('status') status?: string,
+    @Query('classification') classification?: string,
+    @Query('dealId') dealId?: string,
+    @Query('companyId') companyId?: string,
+    @Query('contactId') contactId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.inboundEmail.listThreads({
+      status,
+      classification,
+      dealId,
+      companyId,
+      contactId,
+      limit: limit ? Number(limit) : undefined,
+    })
+  }
+
+  /** GET /api/internal/email-threads/:id, Get one email thread with messages and linked CRM records */
+  @Get('email-threads/:id')
+  async getEmailThread(@Param('id') id: string) {
+    return this.inboundEmail.getThread(id)
+  }
+
+  /** POST /api/internal/email-threads/:id/classify, Reclassify a stored email thread */
+  @Post('email-threads/:id/classify')
+  @HttpCode(HttpStatus.OK)
+  async reclassifyEmailThread(@Param('id') id: string) {
+    return this.inboundEmail.reclassify(id)
+  }
+
+  /** POST /api/internal/email-threads/:id/draft, Create a Gmail draft only, never send */
+  @Post('email-threads/:id/draft')
+  @HttpCode(HttpStatus.OK)
+  async createEmailDraft(@Param('id') id: string) {
+    return this.inboundEmail.createDraft(id)
+  }
+
+  /** GET /api/internal/follow-up-reminders, List CRM follow-up reminders */
+  @Get('follow-up-reminders')
+  async listFollowUpReminders(
+    @Query('status') status?: FollowUpReminderStatus,
+    @Query('dealId') dealId?: string,
+    @Query('emailThreadId') emailThreadId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.followUpReminders.list({
+      status,
+      dealId,
+      emailThreadId,
+      from,
+      to,
+      limit: limit ? Number(limit) : undefined,
+    })
+  }
+
+  /** POST /api/internal/follow-up-reminders/:id/complete, Mark a follow-up reminder complete */
+  @Post('follow-up-reminders/:id/complete')
+  @HttpCode(HttpStatus.OK)
+  async completeFollowUpReminder(@Param('id') id: string) {
+    return this.followUpReminders.complete(id)
+  }
+
+  /** POST /api/internal/follow-up-reminders/:id/snooze, Snooze a follow-up reminder */
+  @Post('follow-up-reminders/:id/snooze')
+  @HttpCode(HttpStatus.OK)
+  async snoozeFollowUpReminder(@Param('id') id: string, @Body('remindAt') remindAt: string) {
+    return this.followUpReminders.snooze(id, remindAt)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -385,7 +477,7 @@ export class InternalController {
     return this.meetings.retryIngest(id)
   }
 
-  /** POST /api/internal/meetings/:id/assign-deal — Assign unresolved meeting to a deal */
+  /** POST /api/internal/meetings/:id/assign-deal, Assign unresolved meeting to a deal */
   @Post('meetings/:id/assign-deal')
   @HttpCode(HttpStatus.OK)
   async assignMeetingDeal(
@@ -396,7 +488,19 @@ export class InternalController {
     return this.meetings.assignDeal(id, body.dealId)
   }
 
-  /** GET /api/internal/meeting-resolver/candidates — Find candidate deals/brands/contacts */
+  /** POST /api/internal/meetings/:id/action-package, Generate draft-only post-meeting actions */
+  @Post('meetings/:id/action-package')
+  @HttpCode(HttpStatus.OK)
+  async createMeetingActionPackage(
+    @Headers() headers: Record<string, string | string[] | undefined>,
+    @Param('id') id: string,
+    @Body() body: CreateMeetingActionPackageBody,
+  ) {
+    const { performedBy } = this.resolvePerformer(headers)
+    return this.meetingActions.createActionPackage(id, body ?? {}, { authorId: performedBy ?? null })
+  }
+
+  /** GET /api/internal/meeting-resolver/candidates, Find candidate deals/brands/contacts */
   @Get('meeting-resolver/candidates')
   async meetingResolverCandidates(
     @Query('terms') terms?: string,

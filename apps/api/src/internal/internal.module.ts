@@ -13,6 +13,7 @@ import { PipelineModule } from '../pipeline/pipeline.module'
 import { WikiModule } from '../wiki/wiki.module'
 import { ProposalsModule } from '../proposals/proposals.module'
 import { MeetingsModule } from '../meetings/meetings.module'
+import { InboundEmailModule } from '../inbound-email/inbound-email.module'
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { MeetingsModule } from '../meetings/meetings.module'
     WikiModule,
     ProposalsModule,
     MeetingsModule,
+    InboundEmailModule,
   ],
   controllers: [InternalController],
   providers: [InternalService],

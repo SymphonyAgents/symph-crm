@@ -8,6 +8,7 @@ import { DealsService } from '../deals/deals.service'
 import { normalizeDealTitleForSearch } from '../deals/deal-title-normalization.util'
 import { normalizeAttendeeEmails, withMeetingAttendeeDetails } from '../common/utils/meeting-attendees.util'
 import { AriaGatewayService } from '../common/aria/aria-gateway.service'
+import { getMeetingActionPackage } from './meeting-actions.types'
 
 type MeetingStatus = 'pending' | 'done' | 'failed'
 
@@ -78,6 +79,7 @@ export class MeetingsService {
 
     return rows.map((meeting) => {
       const enriched = withMeetingAttendeeDetails(meeting)
+      const actionPackage = getMeetingActionPackage(enriched.rawPayload)
       return {
         id: enriched.id,
         dealId: enriched.dealId,
@@ -88,6 +90,8 @@ export class MeetingsService {
         status: enriched.status,
         lastError: enriched.lastError,
         createdAt: enriched.createdAt,
+        actionPackageStatus: actionPackage?.status ?? null,
+        draftGmailId: actionPackage?.draftGmailId ?? null,
       }
     })
   }
@@ -95,7 +99,14 @@ export class MeetingsService {
   async findOne(id: string) {
     const [meeting] = await this.db.select().from(meetings).where(eq(meetings.id, id)).limit(1)
     if (!meeting) throw new NotFoundException(`Meeting ${id} not found`)
-    return withMeetingAttendeeDetails(meeting)
+    const enriched = withMeetingAttendeeDetails(meeting)
+    const actionPackage = getMeetingActionPackage(enriched.rawPayload)
+    return {
+      ...enriched,
+      actionPackage,
+      actionPackageStatus: actionPackage?.status ?? null,
+      draftGmailId: actionPackage?.draftGmailId ?? null,
+    }
   }
 
   async findOneWithArtifacts(id: string) {

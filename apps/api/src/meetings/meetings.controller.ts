@@ -3,11 +3,16 @@ import { CurrentUserId } from '../auth/current-user.decorator'
 import { Roles } from '../auth/roles.guard'
 import { CrmUserRole } from '@symph-crm/shared'
 import { MeetingsService } from './meetings.service'
+import { MeetingActionsService } from './meeting-actions.service'
+import type { CreateMeetingActionPackageBody } from './meeting-actions.types'
 
 @Controller('meetings')
 @Roles(CrmUserRole.Sales)
 export class MeetingsController {
-  constructor(private readonly meetings: MeetingsService) {}
+  constructor(
+    private readonly meetings: MeetingsService,
+    private readonly meetingActions: MeetingActionsService,
+  ) {}
 
   @Get()
   async findAll(
@@ -53,5 +58,15 @@ export class MeetingsController {
   ) {
     if (!body.dealId) throw new BadRequestException('dealId is required')
     return this.meetings.assignDeal(id, body.dealId, { authorId: userId ?? null })
+  }
+
+  @Post(':id/action-package')
+  @HttpCode(HttpStatus.OK)
+  async createActionPackage(
+    @Param('id') id: string,
+    @Body() body: CreateMeetingActionPackageBody,
+    @Headers('x-user-id') userId?: string,
+  ) {
+    return this.meetingActions.createActionPackage(id, body ?? {}, { authorId: userId ?? null })
   }
 }

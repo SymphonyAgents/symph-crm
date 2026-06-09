@@ -12,7 +12,7 @@ import { CrmUserRole, PartnerCommissionStatus } from '@symph-crm/shared'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalStatus, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting, ApiPartnerDealGroup, DealCurrency } from '@/lib/types'
+import type { CreateEventForm, ApiDocument, ApiBilling, ApiBillingMilestone, ApiCompany, ApiCatalogItem, ApiProposalHead, ApiProposalStatus, ApiProposalType, ApiProposalVersion, ApiProposalShareLink, ApiRecording, ApiMeeting, ApiMeetingActionResult, ApiPartnerDealGroup, DealCurrency } from '@/lib/types'
 
 // ─── Shared ───────────────────────────────────────────────────────────────────
 
@@ -1084,5 +1084,39 @@ export function useAssignMeetingDeal(
       ;(options?.onError as ((error: Error, ...a: unknown[]) => void) | undefined)?.(error, ...rest)
     },
     ...options,
+  })
+}
+
+export type CreateMeetingActionPackageInput = {
+  id: string
+  dealId?: string | null
+  createDraft?: boolean
+  createReminder?: boolean
+  reminderAt?: string | null
+}
+
+export function useCreateMeetingActionPackage(
+  options?: UseMutationOptions<ApiMeetingActionResult, Error, CreateMeetingActionPackageInput>,
+) {
+  const qc = useQueryClient()
+  return useMutation<ApiMeetingActionResult, Error, CreateMeetingActionPackageInput>({
+    ...options,
+    mutationFn: ({ id, ...body }) => api.post<ApiMeetingActionResult>(`/meetings/${id}/action-package`, body),
+    onSuccess: (...args) => {
+      const [result, variables] = args
+      qc.invalidateQueries({ queryKey: queryKeys.meetings.all })
+      qc.invalidateQueries({ queryKey: queryKeys.meetings.detail(variables.id) })
+      const dealId = result.actionPackage.confirmedDealId ?? variables.dealId
+      if (dealId) {
+        qc.invalidateQueries({ queryKey: queryKeys.deals.notesFlat(dealId) })
+        qc.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
+      }
+      toast.success(result.status === 'needs_deal_review' ? 'Meeting needs deal review' : 'Meeting action package generated')
+      ;(options?.onSuccess as ((...a: unknown[]) => void) | undefined)?.(...args)
+    },
+    onError: (error, ...rest) => {
+      toast.error(error.message || 'Meeting action package failed')
+      ;(options?.onError as ((error: Error, ...a: unknown[]) => void) | undefined)?.(error, ...rest)
+    },
   })
 }

@@ -1,11 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowLeft, ExternalLink, FileText, Trash2 } from 'lucide-react'
-import { useAssignMeetingDeal, useDeleteMeeting } from '@/lib/hooks/mutations'
+import { ArrowLeft, CheckCircle, Copy, ExternalLink, FileText, Mail, Trash2 } from 'lucide-react'
+import { useAssignMeetingDeal, useCreateMeetingActionPackage, useDeleteMeeting } from '@/lib/hooks/mutations'
 import { useGetDeals, useGetMeeting } from '@/lib/hooks/queries'
 import { formatDate, cn } from '@/lib/utils'
-import type { ApiMeeting, ApiMeetingRawPayload, ApiMeetingStatus } from '@/lib/types'
+import type { ApiMeeting, ApiMeetingActionPackage, ApiMeetingRawPayload, ApiMeetingStatus } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Combobox } from '@/components/ui/combobox'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -48,12 +48,17 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
   const { data, isLoading } = useGetMeeting(meetingId)
   const { data: deals = [] } = useGetDeals()
   const deleteMeeting = useDeleteMeeting({ onSuccess: onBack })
+  const createActionPackage = useCreateMeetingActionPackage()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [createDraft, setCreateDraft] = useState(true)
+  const [createReminder, setCreateReminder] = useState(false)
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null)
 
   const detail = data?.meeting ?? null
   const rawFallback = getRawPayloadFallback(detail?.rawPayload)
   const summary = data?.summaryNote?.content ? stripFrontmatter(data.summaryNote.content) : rawFallback.summary
   const transcript = data?.transcriptNote?.content ? stripFrontmatter(data.transcriptNote.content) : rawFallback.transcript
+  const actionPackage = detail?.actionPackage ?? detail?.rawPayload?.meetingActionPackage ?? null
 
   if (isLoading && !detail) {
     return (
@@ -145,6 +150,25 @@ export function MeetingDetail({ meetingId, onBack }: { meetingId: string; onBack
           <div className="px-4 py-3 space-y-3">
             <ArtifactBlock title="Summary" content={summary} fallbackPath={detail.summaryNotePath} />
             <ArtifactBlock title="Transcript" content={transcript} fallbackPath={detail.transcriptNotePath} />
+            <MeetingActionPackageBlock
+              detail={detail}
+              deals={deals}
+              actionPackage={actionPackage}
+              selectedDealId={selectedDealId ?? detail.dealId ?? ''}
+              onSelectedDealIdChange={setSelectedDealId}
+              createDraft={createDraft}
+              onCreateDraftChange={setCreateDraft}
+              createReminder={createReminder}
+              onCreateReminderChange={setCreateReminder}
+              candidateDeals={createActionPackage.data?.candidates?.deals ?? []}
+              isPending={createActionPackage.isPending}
+              onGenerate={() => createActionPackage.mutate({
+                id: detail.id,
+                dealId: selectedDealId ?? detail.dealId ?? null,
+                createDraft,
+                createReminder,
+              })}
+            />
 
             {detail.lastError && (
               <div className="rounded-md border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300">
@@ -209,6 +233,186 @@ function MeetingDetailDealSelect({
         className="h-8 rounded-lg text-xxs shadow-none"
       />
     </div>
+  )
+}
+
+function MeetingActionPackageBlock({
+  detail,
+  deals,
+  actionPackage,
+  selectedDealId,
+  onSelectedDealIdChange,
+  createDraft,
+  onCreateDraftChange,
+  createReminder,
+  onCreateReminderChange,
+  candidateDeals,
+  isPending,
+  onGenerate,
+}: {
+  detail: ApiMeeting
+  deals: Array<{ id: string; title: string }>
+  actionPackage: ApiMeetingActionPackage | null
+  selectedDealId: string
+  onSelectedDealIdChange: (dealId: string | null) => void
+  createDraft: boolean
+  onCreateDraftChange: (value: boolean) => void
+  createReminder: boolean
+  onCreateReminderChange: (value: boolean) => void
+  candidateDeals: Array<{ id: string; title: string }>
+  isPending: boolean
+  onGenerate: () => void
+}) {
+  const options = useMemo(() => deals.map((deal) => ({ value: deal.id, label: deal.title })), [deals])
+
+  return (
+    <section className="border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+      <div className="px-3 py-2 bg-slate-50 dark:bg-white/[.04] border-b border-black/[.06] dark:border-white/[.08] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-slate-900 dark:text-white">Action package</p>
+          <p className="text-xxs text-slate-500 dark:text-slate-400">Draft-only follow-up, CRM actions, and source citations.</p>
+        </div>
+        {actionPackage?.status && (
+          <span className="w-fit rounded-md border border-black/[.08] px-1.5 py-0.5 text-atom font-semibold capitalize text-slate-600 dark:border-white/[.1] dark:text-slate-300">
+            {actionPackage.status.replaceAll('_', ' ')}
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-3 px-3 py-3">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+          Draft-only safety boundary: this feature can create a Gmail draft, but it never sends email automatically.
+        </div>
+
+        <div className="grid gap-2 lg:grid-cols-[1fr_auto] lg:items-center">
+          <Combobox
+            options={options}
+            value={selectedDealId}
+            onValueChange={(value) => onSelectedDealIdChange(value || null)}
+            placeholder="Confirm deal before attaching"
+            className="h-8 rounded-lg text-xxs shadow-none"
+          />
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={isPending}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Mail className="h-3.5 w-3.5" strokeWidth={1.8} />
+            {isPending ? 'Generating...' : 'Generate follow-up'}
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={createDraft}
+              onChange={(event) => onCreateDraftChange(event.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300"
+            />
+            Create Gmail draft only
+          </label>
+          <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={createReminder}
+              onChange={(event) => onCreateReminderChange(event.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300"
+            />
+            Create follow-up reminder
+          </label>
+        </div>
+
+        {!actionPackage && (
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            Generate an action package after reviewing the summary and transcript. If no deal is confirmed, CRM will return a review state instead of attaching blindly.
+          </div>
+        )}
+
+        {candidateDeals.length > 0 && (
+          <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-slate-700 dark:text-slate-300">
+            <p className="font-semibold text-slate-900 dark:text-white">Suggested deal matches</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {candidateDeals.map((deal) => (
+                <button
+                  key={deal.id}
+                  type="button"
+                  onClick={() => onSelectedDealIdChange(deal.id)}
+                  className="rounded-md border border-primary/20 bg-white px-2 py-1 text-xxs font-semibold text-primary transition-colors hover:bg-primary/10 dark:bg-white/[.04]"
+                >
+                  {deal.title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {actionPackage?.lastError && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200">
+            {actionPackage.lastError}
+          </div>
+        )}
+
+        {actionPackage && (
+          <div className="space-y-3">
+            <div className="rounded-md border border-black/[.06] p-3 dark:border-white/[.08]">
+              <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-900 dark:text-white">
+                <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.8} /> Summary
+              </div>
+              <p className="whitespace-pre-wrap text-xs leading-5 text-slate-700 dark:text-slate-300">{actionPackage.summary}</p>
+            </div>
+
+            <div className="rounded-md border border-black/[.06] p-3 dark:border-white/[.08]">
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-white">Action items</p>
+              <ul className="space-y-1 text-xs leading-5 text-slate-700 dark:text-slate-300">
+                {actionPackage.actionItems.map((item, index) => <li key={`${item}-${index}`}>- {item}</li>)}
+              </ul>
+            </div>
+
+            <div className="rounded-md border border-black/[.06] p-3 dark:border-white/[.08]">
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-slate-900 dark:text-white">Draft email</p>
+                  <p className="text-xxs text-slate-500 dark:text-slate-400">
+                    {actionPackage.draftGmailId ? `Gmail draft created: ${actionPackage.draftGmailId}` : 'Copy or regenerate with draft creation enabled.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard?.writeText(`Subject: ${actionPackage.followUpDraftSubject}\n\n${actionPackage.followUpDraftText}`)}
+                  className="inline-flex h-7 items-center justify-center gap-1.5 rounded-md border border-black/[.08] px-2 text-xxs font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.06]"
+                >
+                  <Copy className="h-3.5 w-3.5" strokeWidth={1.8} /> Copy draft
+                </button>
+              </div>
+              <div className="rounded-md bg-slate-50 p-3 text-xs leading-5 text-slate-700 dark:bg-white/[.04] dark:text-slate-300">
+                <p className="font-semibold">Subject: {actionPackage.followUpDraftSubject}</p>
+                <pre className="mt-2 whitespace-pre-wrap font-sans">{actionPackage.followUpDraftText}</pre>
+              </div>
+            </div>
+
+            <div className="rounded-md border border-black/[.06] p-3 dark:border-white/[.08]">
+              <p className="mb-2 text-xs font-semibold text-slate-900 dark:text-white">Sources</p>
+              <ul className="space-y-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                {actionPackage.citations.map((citation, index) => (
+                  <li key={`${citation.label}-${index}`}>
+                    - {citation.url ? <a className="text-primary underline-offset-2 hover:underline" href={citation.url} target="_blank" rel="noreferrer">{citation.label}</a> : citation.label}
+                    {citation.storagePath ? `: ${citation.storagePath}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {detail.sourceUrl && (
+          <a href={detail.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline-offset-2 hover:underline">
+            <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.8} /> Open source meeting
+          </a>
+        )}
+      </div>
+    </section>
   )
 }
 
