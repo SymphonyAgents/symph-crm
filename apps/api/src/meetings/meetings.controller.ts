@@ -65,7 +65,7 @@ export class MeetingsController {
   async createActionPackage(
     @Param('id') id: string,
     @Body() body: CreateMeetingActionPackageBody,
-    @Headers('x-user-id') userId?: string,
+    @CurrentUserId() userId?: string,
   ) {
     return this.meetingActions.createActionPackage(id, body ?? {}, { authorId: userId ?? null })
   }
