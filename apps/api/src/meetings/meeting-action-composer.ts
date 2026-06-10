@@ -6,6 +6,8 @@ type MeetingActionComposeInput = {
     title: string
     sourceUrl: string
     attendees: string[]
+    attendeeDetails?: Array<{ email: string | null; name: string | null; avatarUrl?: string | null }>
+    startedAt?: Date | string | null
     summaryNotePath: string | null
     transcriptNotePath: string | null
   }
@@ -295,29 +297,112 @@ function isPlaceholderDealTitle(dealTitle: string | null | undefined): boolean {
   return /^test\s+lead\b/i.test(dealTitle) || /^untitled\b/i.test(dealTitle)
 }
 
+function nameFromEmail(email: string): string | null {
+  const localPart = email.split('@')[0]
+  if (!localPart) return null
+  const cleaned = localPart
+    .replace(/[._+-]+/g, ' ')
+    .replace(/\d+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!cleaned) return null
+  return cleaned
+    .split(' ')
+    .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
+function isInternalEmail(email: string | null | undefined): boolean {
+  if (!email) return false
+  const normalized = email.trim().toLowerCase()
+  return INTERNAL_EMAIL_DOMAINS.some(domain => normalized.endsWith(`@${domain}`))
+}
+
+function isSystemParticipant(profile: { email: string | null; name: string | null }): boolean {
+  const email = profile.email?.trim().toLowerCase() ?? ''
+  const name = profile.name?.trim().toLowerCase() ?? ''
+  return email === 'aria@symph.co' || name === 'aria'
+}
+
+function cleanParticipantName(name: string): string | null {
+  const cleaned = name
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\([^)]*\)\s*/g, ' ')
+    .trim()
+  if (!cleaned || cleaned.includes('@')) return null
+  return cleaned
+}
+
+function participantName(profile: { email: string | null; name: string | null }): string | null {
+  return cleanParticipantName(profile.name ?? '') ?? (profile.email ? nameFromEmail(profile.email) : null)
+}
+
+function attendeeProfileFromString(attendee: string): { email: string | null; name: string | null } {
+  const trimmed = attendee.trim()
+  const match = trimmed.match(/^(.+?)\s*<([^>]+)>$/)
+  if (match) return { name: match[1].trim() || null, email: match[2].trim() || null }
+  return trimmed.includes('@') ? { email: trimmed, name: null } : { email: null, name: trimmed || null }
+}
+
+function getDraftGreeting(meeting: MeetingActionComposeInput['meeting']): string {
+  const rawProfiles = meeting.attendeeDetails?.length
+    ? meeting.attendeeDetails
+    : meeting.attendees.map(attendeeProfileFromString)
+  const profiles = rawProfiles.filter(profile => !isSystemParticipant(profile))
+  const externalProfiles = profiles.filter(profile => !isInternalEmail(profile.email))
+  const selectedProfiles = externalProfiles.length > 0 ? externalProfiles : profiles
+  const names = dedupeLines(
+    selectedProfiles
+      .map(participantName)
+      .filter((name): name is string => Boolean(name)),
+  ).slice(0, 6)
+
+  return names.length > 0 ? `Hi, ${names.join(', ')},` : 'Hi,'
+}
+
+function formatMeetingDateTime(value: Date | string | null | undefined): string {
+  if (!value) return 'See calendar invite'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return 'See calendar invite'
+  return new Intl.DateTimeFormat('en', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'UTC',
+    timeZoneName: 'short',
+  }).format(date)
+}
+
 function formatDraftBody(params: {
-  meetingTitle: string
+  meeting: MeetingActionComposeInput['meeting']
   summary: string
   actionItems: string[]
   dealTitle?: string | null
 }): string {
-  const meetingSubject = cleanMeetingSubject(params.meetingTitle)
-  const contextSubject = isPlaceholderDealTitle(params.dealTitle) ? meetingSubject : params.dealTitle?.trim() || meetingSubject
+  const meetingSubject = cleanMeetingSubject(params.meeting.title)
+  const noteContext = isPlaceholderDealTitle(params.dealTitle) ? meetingSubject : params.dealTitle?.trim() || meetingSubject
+  const contextLine = noteContext !== meetingSubject ? [`Context: ${noteContext}`] : []
   const summaryLines = params.summary.split('\n').map(line => `- ${line}`).join('\n')
   const actionLines = params.actionItems.map(item => `- ${item}`).join('\n')
 
   return [
-    'Hi,',
+    getDraftGreeting(params.meeting),
     '',
-    `Following up on ${contextSubject}.`,
+    'Thanks for the meeting. I appreciate the discussion, and here are my notes.',
     '',
-    'What I have from the meeting:',
+    `Meeting title: ${meetingSubject}`,
+    ...contextLine,
+    `Date/time: ${formatMeetingDateTime(params.meeting.startedAt)}`,
+    '',
+    'Here are my key takeaways',
+    '',
+    'Summary:',
     summaryLines,
     '',
     'Proposed next steps:',
     actionLines,
-    '',
-    'If this matches your read, I can turn this into the next client-facing note.',
     '',
     'Best,',
     'Dave',
@@ -338,7 +423,7 @@ export function composeMeetingActionPackage(input: MeetingActionComposeInput): M
   const draftRecipients = getExternalMeetingRecipients(input.meeting.attendees)
   const followUpDraftSubject = `Follow-up: ${input.meeting.title}`
   const followUpDraftText = formatDraftBody({
-    meetingTitle: input.meeting.title,
+    meeting: input.meeting,
     summary,
     actionItems,
     dealTitle: input.dealTitle,

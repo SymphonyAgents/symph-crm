@@ -58,6 +58,7 @@ const qualityTokens = [
   'AI_SLOP_PATTERN',
   'isFragment',
   'isPlaceholderDealTitle',
+  'Here are my key takeaways',
   'Proposed next steps',
 ]
 for (const token of qualityTokens) {
@@ -117,7 +118,15 @@ const actionPackage = composer.composeMeetingActionPackage({
     id: 'meeting-1',
     title: 'MPIC GCP to Azure Technical Sync',
     sourceUrl: 'https://meetings.symph.co/meetings/9450638',
-    attendees: ['dave@symph.co', 'client@example.com'],
+    attendees: ['dave@symph.co', 'raven@symph.co', 'ems@symph.co', 'mpic.client@example.com'],
+    attendeeDetails: [
+      { email: 'dave@symph.co', name: 'Dave Overton', avatarUrl: null },
+      { email: 'raven@symph.co', name: 'Raven Duran', avatarUrl: null },
+      { email: 'ems@symph.co', name: 'Ems Oriel', avatarUrl: null },
+      { email: 'mpic.client@example.com', name: 'MPIC Client', avatarUrl: null },
+      { email: 'aria@symph.co', name: 'Aria', avatarUrl: null },
+    ],
+    startedAt: new Date('2026-06-09T03:30:00.000Z'),
     summaryNotePath: 'summary.md',
     transcriptNotePath: 'transcript.md',
   },
@@ -132,6 +141,8 @@ const actionPackage = composer.composeMeetingActionPackage({
 const bannedDraftPatterns = [
   /Here is the quick recap/i,
   /Please confirm if this matches your understanding/i,
+  /turn this into the next client-facing note/i,
+  /^Hi,\s*$/m,
   /Test Lead -/i,
   /unlock the power/i,
   /in today's fast-paced world/i,
@@ -180,13 +191,25 @@ if (/Meeting Summary -|^Overview$/m.test(summary)) {
   process.exit(1)
 }
 
-if (!actionPackage.followUpDraftText.includes('What I have from the meeting:')) {
-  console.error('Meeting action anti-slop regression failed: missing human recap heading')
-  process.exit(1)
+const requiredDraftTokens = [
+  'Hi, MPIC Client,',
+  'Thanks for the meeting. I appreciate the discussion, and here are my notes.',
+  'Meeting title: MPIC GCP to Azure Technical Sync',
+  'Date/time: June 9, 2026',
+  'Here are my key takeaways',
+  'Summary:',
+  'Proposed next steps:',
+]
+
+for (const token of requiredDraftTokens) {
+  if (!actionPackage.followUpDraftText.includes(token)) {
+    console.error(`Meeting action sendable-note regression failed: missing ${token}`)
+    process.exit(1)
+  }
 }
 
-if (!actionPackage.followUpDraftText.includes('Proposed next steps:')) {
-  console.error('Meeting action anti-slop regression failed: missing proposed next steps heading')
+if (/\?\s*(Best,)?\s*Dave\s*$/i.test(actionPackage.followUpDraftText)) {
+  console.error('Meeting action sendable-note regression failed: draft ends with a question')
   process.exit(1)
 }
 
