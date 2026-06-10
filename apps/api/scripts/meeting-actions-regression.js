@@ -86,6 +86,7 @@ const tempFile = path.join(tempDir, 'meeting-action-composer.js')
 fs.writeFileSync(tempFile, compiled)
 const composer = require(tempFile)
 
+const dashVariant = String.fromCharCode(0x2014)
 const mpicSummary = `---
 title: MPIC GCP to Azure Technical Sync
 ---
@@ -93,8 +94,8 @@ title: MPIC GCP to Azure Technical Sync
 
 ## Overview
 The team aligned on presenting MPIC with **3** options for the GCP-to-Azure migration question: keep GCP with direct billing to MPIC, Symph handles the migration, or MPIC's team does it themselves.
-Raven assessed the migration as technically feasible but flagged BigQuery as the biggest risk, since there is no direct Azure equivalent and a full migration including BigQuery would require about **2** weeks of dev work and retesting.
-The team is not trying to stop MPIC from migrating. The goal is to lay out all the facts, costs, and effort so MPIC can make an informed decision.
+Raven assessed the migration as technically feasible but flagged BigQuery as the biggest risk ${dashVariant} since there is no direct Azure equivalent and a full migration including BigQuery would require about **2** weeks of dev work and retesting.
+The team is not trying to stop MPIC from migrating ${dashVariant} the goal is to lay out all the facts, costs, and effort so MPIC can make an informed decision.
 Chelle and Paul raised that the engagement is no longer sustainable revenue-wise, and there is an open question about whether to use this as a graceful exit or pursue one last SOW.
 Ems will estimate what percentage of GCP costs BigQuery accounts for to help inform the decision.
 
@@ -105,6 +106,8 @@ const noisyTranscript = `Paul Gonia: And share ka nga ng views mo dyan.
 Christopher Cheng: it. Send Anna. Yearly Anna.
 Ems Oriel: I will estimate the BigQuery share of the monthly GCP cost so we can show MPIC the real cost driver.
 Raven Duran: We should prepare the options note with the migration effort, BigQuery risk, and billing handoff option.
+Jarrhey De la Pena: I would say that's how I would play it out in my head, but the big prerequisite talaga is if you can explain how it's not that straightforward, which I think is where the bulk of the work will be.
+Raven Duran: But then pretty soon they will realize, if they do not really have the capability, because I do not exactly know what their capability is, then they will just realize it is too much effort and we either pay Symph or continue with GCP.
 `
 
 const actions = composer.extractMeetingActionItems(mpicSummary, noisyTranscript)
@@ -150,6 +153,9 @@ const bannedActionFragments = [
   /And share ka nga/i,
   /Send Anna/i,
   /^it\./i,
+  /Jarrhey De la Pena/i,
+  /Raven Duran: But then/i,
+  /^Option\s+2/i,
 ]
 
 for (const pattern of bannedActionFragments) {

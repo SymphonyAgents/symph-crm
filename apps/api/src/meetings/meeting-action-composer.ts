@@ -27,7 +27,7 @@ const SUMMARY_SECTION_PATTERN = /^(overview|summary|meeting summary|key points?|
 const SECTION_HEADING_PATTERN = /^(overview|summary|meeting summary|key points?|discussion|what happened|why\b.*|context|background|action items?|next steps?|follow-?ups?|to do|todos?|open questions?|decisions needed|transcript)\b/i
 const ACTION_VERB_PATTERN = /\b(will|should|needs? to|need to|must|to prepare|prepare|send|share|schedule|confirm|estimate|decide|draft|review|follow up|follow-up|propose|align|finalize|coordinate|provide|create|update)\b/i
 const AI_SLOP_PATTERN = /\b(leverage|delve|unlock the power|in today's fast-paced world|pivotal|crucial|foster|showcase|testament|landscape|seamless|robust)\b/i
-const SPEAKER_PREFIX_PATTERN = /^([A-Z][\p{L}.'-]*(?:\s+[A-Z][\p{L}.'-]*){0,3}):\s+(.+)$/u
+const SPEAKER_PREFIX_PATTERN = /^([A-Z][\p{L}.'-]*(?:\s+[\p{L}.'-]+){0,4}):\s+(.+)$/u
 const WORD_PATTERN = /[A-Za-z\p{L}0-9]+/gu
 
 function stripFrontmatter(content: string | null | undefined): string | null {
@@ -52,8 +52,17 @@ function cleanLine(line: string): string {
     .trim()
 }
 
+function normalizeDashVariants(line: string): string {
+  return [...line]
+    .map(char => {
+      const code = char.charCodeAt(0)
+      return code === 0x2013 || code === 0x2014 ? '-' : char
+    })
+    .join('')
+}
+
 function normalizeSentence(line: string): string {
-  return cleanLine(line)
+  return normalizeDashVariants(cleanLine(line))
     .replace(/\s+([,.;:!?])/g, '$1')
     .replace(/\.$/, '')
     .trim()
@@ -162,6 +171,9 @@ function actionTextFromLine(line: string): string | null {
   let cleaned = normalizeSentence(text)
 
   if (speaker) {
+    if (!/^(I\s+will|I'll|I\s+can|I\s+should|We\s+should|We\s+need|Need\s+to|Please\s+|Can\s+you\s+)/i.test(cleaned)) {
+      return null
+    }
     cleaned = cleaned
       .replace(/^I\s+will\b/i, `${speaker} will`)
       .replace(/^I'll\b/i, `${speaker} will`)
@@ -170,6 +182,8 @@ function actionTextFromLine(line: string): string | null {
       .replace(/^We\s+should\b/i, 'We should')
   }
 
+  if (cleaned.length > 220) return null
+  if (/^option\s+\d+\b/i.test(cleaned)) return null
   if (isFragment(cleaned)) return null
   if (!ACTION_VERB_PATTERN.test(cleaned)) return null
   if (AI_SLOP_PATTERN.test(cleaned)) return null
@@ -206,6 +220,11 @@ function inferActionLines(lines: string[]): string[] {
     .filter((line): line is string => Boolean(line))
 }
 
+function inferSummaryActionLines(lines: string[]): string[] {
+  return inferActionLines(lines)
+    .filter(line => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s+will\b/.test(line))
+}
+
 export function getMeetingContentSummary(summaryText: string | null, transcriptText: string | null): string {
   const lines = getSummaryCandidateLines(summaryText, transcriptText)
     .filter(line => !ACTION_SECTION_PATTERN.test(line))
@@ -224,7 +243,7 @@ export function extractMeetingActionItems(summaryText: string | null, transcript
   const transcriptLines = getCleanLines(transcriptText)
 
   const structured = linesUnderActionSections(summaryLines)
-  const inferredFromSummary = inferActionLines(summaryLines)
+  const inferredFromSummary = inferSummaryActionLines(summaryLines)
   const inferredFromTranscript = inferActionLines(transcriptLines)
 
   const actions = dedupeLines([
