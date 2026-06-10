@@ -220,9 +220,26 @@ function inferActionLines(lines: string[]): string[] {
     .filter((line): line is string => Boolean(line))
 }
 
+function inferOptionActionLine(line: string): string | null {
+  if (!/\b(presenting|present|lay out|layout|show)\b/i.test(line)) return null
+  if (!/\boptions?\b/i.test(line)) return null
+
+  const subjectMatch = line.match(/\b([A-Z][A-Za-z0-9&.'-]{1,24})\b(?=\s+with\b|\s+the\b|\s+options?\b)/)
+  const subject = subjectMatch?.[1] && !/^(The|Symph|GCP|Azure|BigQuery)$/i.test(subjectMatch[1])
+    ? subjectMatch[1]
+    : 'the client'
+
+  return `Prepare the ${subject} options note with the choices, costs, migration risks, and recommended path`
+}
+
 function inferSummaryActionLines(lines: string[]): string[] {
-  return inferActionLines(lines)
-    .filter(line => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s+will\b/.test(line))
+  return [
+    ...inferActionLines(lines)
+      .filter(line => /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s+will\b/.test(line)),
+    ...lines
+      .map(inferOptionActionLine)
+      .filter((line): line is string => Boolean(line)),
+  ]
 }
 
 export function getMeetingContentSummary(summaryText: string | null, transcriptText: string | null): string {

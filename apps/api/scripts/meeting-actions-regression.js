@@ -170,7 +170,7 @@ if (!actions.some((action) => /BigQuery/i.test(action))) {
   process.exit(1)
 }
 
-if (!actions.some((action) => /options note|migration effort|billing handoff/i.test(action))) {
+if (!actions.some((action) => /Prepare the MPIC options note|options note|migration effort|billing handoff/i.test(action))) {
   console.error('Meeting action quality regression failed: expected an options-note action item')
   process.exit(1)
 }
