@@ -321,7 +321,10 @@ function isInternalEmail(email: string | null | undefined): boolean {
 function isSystemParticipant(profile: { email: string | null; name: string | null }): boolean {
   const email = profile.email?.trim().toLowerCase() ?? ''
   const name = profile.name?.trim().toLowerCase() ?? ''
-  return email === 'aria@symph.co' || name === 'aria'
+  return email === 'aria@symph.co'
+    || name === 'aria'
+    || email === 'dave@symph.co'
+    || name === 'dave overton'
 }
 
 function cleanParticipantName(name: string): string | null {

@@ -138,6 +138,24 @@ const actionPackage = composer.composeMeetingActionPackage({
   confirmedDealId: 'deal-1',
 })
 
+const internalOnlyActionPackage = composer.composeMeetingActionPackage({
+  meeting: {
+    id: 'meeting-2',
+    title: 'Internal MPIC Follow-Up',
+    sourceUrl: 'https://meetings.symph.co/meetings/9450639',
+    attendees: ['Dave Overton <dave@symph.co>', 'Raven Duran <raven@symph.co>', 'aria@symph.co'],
+    startedAt: new Date('2026-06-09T04:30:00.000Z'),
+    summaryNotePath: 'summary.md',
+    transcriptNotePath: 'transcript.md',
+  },
+  summaryText: mpicSummary,
+  transcriptText: noisyTranscript,
+  dealTitle: 'Internal MPIC Follow-Up',
+  generatedAt: new Date('2026-06-10T00:00:00.000Z'),
+  generatedBy: 'dave',
+  confirmedDealId: 'deal-1',
+})
+
 const bannedDraftPatterns = [
   /Here is the quick recap/i,
   /Please confirm if this matches your understanding/i,
@@ -206,6 +224,16 @@ for (const token of requiredDraftTokens) {
     console.error(`Meeting action sendable-note regression failed: missing ${token}`)
     process.exit(1)
   }
+}
+
+if (!internalOnlyActionPackage.followUpDraftText.startsWith('Hi, Raven Duran,')) {
+  console.error('Meeting action sendable-note regression failed: internal fallback greeting should exclude sender and system attendee')
+  process.exit(1)
+}
+
+if (/Hi,.*Dave Overton|Hi,.*Aria/i.test(internalOnlyActionPackage.followUpDraftText)) {
+  console.error('Meeting action sendable-note regression failed: internal fallback greeting includes sender or system attendee')
+  process.exit(1)
 }
 
 if (/\?\s*(Best,)?\s*Dave\s*$/i.test(actionPackage.followUpDraftText)) {
