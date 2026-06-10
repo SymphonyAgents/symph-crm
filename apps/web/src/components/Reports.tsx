@@ -1,12 +1,16 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from './EmptyState'
-import { formatCurrencyBreakdown, formatMoneyShort, hasMultipleCurrencies, moneyValue, normalizeDealCurrency, sumMoneyByCurrency } from '@/lib/currency'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DEAL_CURRENCIES, formatCurrencyBreakdown, moneyValue, normalizeDealCurrency, sumMoneyByCurrency } from '@/lib/currency'
+import { formatConversionRateNote, formatConvertedMoney, sumConvertedMoney } from '@/lib/currency-conversion'
 import { STAGE_LABELS, STAGE_COLORS } from '@/lib/constants'
 import { useGetPipelineSummary, useGetDeals, useGetUsers } from '@/lib/hooks/queries'
 import { StageFunnelChart } from './StageFunnelChart'
 import { Skeleton } from './ui/skeleton'
+import type { DealCurrency } from '@/lib/types'
 
 function Spinner() {
   return (
@@ -66,6 +70,7 @@ function AMTableSkeleton() {
 }
 
 export function Reports() {
+  const [displayCurrency, setDisplayCurrency] = useState<DealCurrency>('PHP')
   const { data: summary, isLoading } = useGetPipelineSummary()
   const { data: deals = [], isLoading: loadingDeals } = useGetDeals({ dealType: 'agency' })
   const { data: users = [] } = useGetUsers()
@@ -75,18 +80,18 @@ export function Reports() {
   const closedLostDeals = deals.filter(d => d.stage === 'closed_lost')
   const activeDeals = deals.filter(d => !['closed_won', 'closed_lost'].includes(d.stage))
   const activeTotals = sumMoneyByCurrency(activeDeals)
-  const mixedActiveTotals = hasMultipleCurrencies(activeTotals)
-  const singleActiveCurrency = Object.entries(activeTotals).find(([, total]) => total > 0)?.[0]
-  const singleActiveTotal = singleActiveCurrency ? activeTotals[normalizeDealCurrency(singleActiveCurrency)] : 0
-  const avgDealSizeLabel = activeDeals.length > 0 && !mixedActiveTotals
-    ? formatMoneyShort(singleActiveTotal / activeDeals.length, normalizeDealCurrency(singleActiveCurrency))
-    : 'By currency'
+  const nativeActiveLabel = formatCurrencyBreakdown(activeTotals)
+  const convertedActiveTotal = sumConvertedMoney(activeDeals, displayCurrency)
+  const avgDealSizeLabel = activeDeals.length > 0
+    ? formatConvertedMoney(convertedActiveTotal / activeDeals.length, displayCurrency)
+    : 'No data'
+  const conversionRateNote = formatConversionRateNote()
 
   const metrics = [
     {
       label: 'Total Closed Won',
-      value: formatCurrencyBreakdown(sumMoneyByCurrency(closedWonDeals), { empty: 'No value' }),
-      trend: `${closedWonDeals.length} deals`,
+      value: formatConvertedMoney(sumConvertedMoney(closedWonDeals, displayCurrency), displayCurrency),
+      trend: `${closedWonDeals.length} deals · native ${formatCurrencyBreakdown(sumMoneyByCurrency(closedWonDeals), { empty: 'No value' })}`,
       color: '#16a34a',
     },
     {
@@ -104,21 +109,19 @@ export function Reports() {
     {
       label: 'Avg Deal Size',
       value: activeDeals.length > 0 ? avgDealSizeLabel : 'No data',
-      trend: mixedActiveTotals ? 'Phase 2 conversion pending' : `From ${activeDeals.length} active`,
+      trend: activeDeals.length > 0 ? `From ${activeDeals.length} active · ${displayCurrency}` : 'No data',
       color: undefined,
     },
   ]
 
-  // Pipeline value by stage, grouped by native currency when needed.
-  // If the report spans multiple currencies, use deal counts for bar widths so the chart does not compare raw amounts across currencies.
-  const chartUsesDealCounts = hasMultipleCurrencies(sumMoneyByCurrency(deals))
+  // Pipeline value by stage, converted to the selected display currency for comparable bar widths.
   const activeStages = (summary?.dealsByStage.filter(s => s.count > 0) ?? []).map(stage => {
     const stageDeals = deals.filter(deal => deal.stage === stage.stage)
-    const totals = sumMoneyByCurrency(stageDeals)
+    const convertedTotal = sumConvertedMoney(stageDeals, displayCurrency)
     return {
       ...stage,
-      totalLabel: formatCurrencyBreakdown(totals),
-      chartValue: chartUsesDealCounts ? stage.count : Object.values(totals).reduce((sum, total) => sum + total, 0),
+      totalLabel: formatConvertedMoney(convertedTotal, displayCurrency),
+      chartValue: convertedTotal,
     }
   })
   const maxStageValue = Math.max(...activeStages.map(s => s.chartValue), 1)
@@ -135,10 +138,43 @@ export function Reports() {
   const amRows = Array.from(amMapRaw.entries())
     .sort((a, b) => b[1].deals - a[1].deals || a[0].localeCompare(b[0]))
     .slice(0, 10)
-    .map(([key, stats]) => [key === 'Unassigned' ? 'Unassigned' : (userMap.get(key) ?? key), stats] as [string, { deals: number; totals: ReturnType<typeof sumMoneyByCurrency> }])
+    .map(([key, stats]) => {
+      const convertedValue = sumConvertedMoney(
+        DEAL_CURRENCIES.map(currency => ({ value: stats.totals[currency], currency })),
+        displayCurrency,
+      )
+      return [
+        key === 'Unassigned' ? 'Unassigned' : (userMap.get(key) ?? key),
+        stats,
+        formatConvertedMoney(convertedValue, displayCurrency),
+      ] as [string, { deals: number; totals: ReturnType<typeof sumMoneyByCurrency> }, string]
+    })
 
   return (
     <div className="p-4 md:p-5 max-w-[1200px]">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h1>
+          <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">
+            Converted from active native totals ({nativeActiveLabel}). {conversionRateNote}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xxs font-semibold uppercase tracking-[0.06em] text-slate-400">Display currency</span>
+          <Select value={displayCurrency} onValueChange={v => setDisplayCurrency(v as DealCurrency)}>
+            <SelectTrigger className="h-8 text-xs w-[86px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DEAL_CURRENCIES.map(currency => (
+                <SelectItem key={currency} value={currency} className="text-xs">
+                  {currency}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Metrics row */}
       <div className="flex gap-3 mb-4 flex-wrap">
@@ -233,7 +269,7 @@ export function Reports() {
             />
           ) : (
             <div className="flex flex-col">
-              {amRows.map(([name, stats], i) => (
+              {amRows.map(([name, stats, convertedValue], i) => (
                 <div
                   key={name}
                   className="grid grid-cols-[20px_1fr_auto_auto] items-center gap-3 py-2.5 px-1 border-b border-black/[.04] dark:border-white/[.06] last:border-0"
@@ -245,7 +281,7 @@ export function Reports() {
                     <div className="text-xs font-semibold text-slate-900 dark:text-white">{name}</div>
                     <div className="text-atom text-slate-400">{stats.deals} deal{stats.deals !== 1 ? 's' : ''}</div>
                   </div>
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums">{formatCurrencyBreakdown(stats.totals)}</div>
+                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums" title={`Native: ${formatCurrencyBreakdown(stats.totals)}`}>{convertedValue}</div>
                 </div>
               ))}
             </div>
