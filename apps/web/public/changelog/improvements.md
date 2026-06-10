@@ -1,5 +1,8 @@
 # Improvements
 
+## Sendable meeting follow-up notes
+CRM meetings can now generate a sendable follow-up note with participant greetings, meeting title and date/time, key takeaways, summary, and proposed next steps. Gmail remains draft-only, no email is sent automatically.
+
 ## Meetings list view
 The Meetings page now stays focused on the list, while full meeting details open on a dedicated detail page.
 
