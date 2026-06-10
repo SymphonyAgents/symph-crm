@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 const fs = require('fs')
+const os = require('os')
 const path = require('path')
+const ts = require('typescript')
 
 const root = path.resolve(__dirname, '..')
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8')
@@ -43,13 +45,143 @@ for (const token of requiredServiceCalls) {
   }
 }
 
-const composer = read('src/meetings/meeting-action-composer.ts')
+const composerSource = read('src/meetings/meeting-action-composer.ts')
 const citationTokens = ['Original meeting', 'Meeting summary note', 'Meeting transcript note', 'citations']
 for (const token of citationTokens) {
-  if (!composer.includes(token)) {
+  if (!composerSource.includes(token)) {
     console.error(`Meeting action citation regression failed: missing ${token}`)
     process.exit(1)
   }
+}
+
+const qualityTokens = [
+  'AI_SLOP_PATTERN',
+  'isFragment',
+  'isPlaceholderDealTitle',
+  'Proposed next steps',
+]
+for (const token of qualityTokens) {
+  if (!composerSource.includes(token)) {
+    console.error(`Meeting action quality regression failed: missing ${token}`)
+    process.exit(1)
+  }
+}
+
+if ([...composerSource].some((char) => char.charCodeAt(0) === 0x2014)) {
+  console.error('Meeting action anti-slop regression failed: composer contains an em dash')
+  process.exit(1)
+}
+
+const compiled = ts.transpileModule(composerSource, {
+  compilerOptions: {
+    module: ts.ModuleKind.CommonJS,
+    target: ts.ScriptTarget.ES2022,
+    esModuleInterop: true,
+  },
+}).outputText
+
+const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'meeting-action-regression-'))
+process.on('exit', () => fs.rmSync(tempDir, { recursive: true, force: true }))
+const tempFile = path.join(tempDir, 'meeting-action-composer.js')
+fs.writeFileSync(tempFile, compiled)
+const composer = require(tempFile)
+
+const mpicSummary = `---
+title: MPIC GCP to Azure Technical Sync
+---
+# Meeting Summary - MPIC GCP to Azure Technical Sync
+
+## Overview
+The team aligned on presenting MPIC with **3** options for the GCP-to-Azure migration question: keep GCP with direct billing to MPIC, Symph handles the migration, or MPIC's team does it themselves.
+Raven assessed the migration as technically feasible but flagged BigQuery as the biggest risk, since there is no direct Azure equivalent and a full migration including BigQuery would require about **2** weeks of dev work and retesting.
+The team is not trying to stop MPIC from migrating. The goal is to lay out all the facts, costs, and effort so MPIC can make an informed decision.
+Chelle and Paul raised that the engagement is no longer sustainable revenue-wise, and there is an open question about whether to use this as a graceful exit or pursue one last SOW.
+Ems will estimate what percentage of GCP costs BigQuery accounts for to help inform the decision.
+
+## Why MPIC wants to migrate
+`
+
+const noisyTranscript = `Paul Gonia: And share ka nga ng views mo dyan.
+Christopher Cheng: it. Send Anna. Yearly Anna.
+Ems Oriel: I will estimate the BigQuery share of the monthly GCP cost so we can show MPIC the real cost driver.
+Raven Duran: We should prepare the options note with the migration effort, BigQuery risk, and billing handoff option.
+`
+
+const actions = composer.extractMeetingActionItems(mpicSummary, noisyTranscript)
+const summary = composer.getMeetingContentSummary(mpicSummary, noisyTranscript)
+const actionPackage = composer.composeMeetingActionPackage({
+  meeting: {
+    id: 'meeting-1',
+    title: 'MPIC GCP to Azure Technical Sync',
+    sourceUrl: 'https://meetings.symph.co/meetings/9450638',
+    attendees: ['dave@symph.co', 'client@example.com'],
+    summaryNotePath: 'summary.md',
+    transcriptNotePath: 'transcript.md',
+  },
+  summaryText: mpicSummary,
+  transcriptText: noisyTranscript,
+  dealTitle: 'Test Lead - MPIC Meeting Action Engine',
+  generatedAt: new Date('2026-06-10T00:00:00.000Z'),
+  generatedBy: 'dave',
+  confirmedDealId: 'deal-1',
+})
+
+const bannedDraftPatterns = [
+  /Here is the quick recap/i,
+  /Please confirm if this matches your understanding/i,
+  /Test Lead -/i,
+  /unlock the power/i,
+  /in today's fast-paced world/i,
+]
+
+for (const pattern of bannedDraftPatterns) {
+  if (pattern.test(actionPackage.followUpDraftText)) {
+    console.error(`Meeting action anti-slop regression failed: draft matches ${pattern}`)
+    process.exit(1)
+  }
+}
+
+if ([...actionPackage.followUpDraftText].some((char) => char.charCodeAt(0) === 0x2014)) {
+  console.error('Meeting action anti-slop regression failed: draft contains an em dash')
+  process.exit(1)
+}
+
+const bannedActionFragments = [
+  /And share ka nga/i,
+  /Send Anna/i,
+  /^it\./i,
+]
+
+for (const pattern of bannedActionFragments) {
+  if (actions.some((action) => pattern.test(action))) {
+    console.error(`Meeting action fragment regression failed: action item matches ${pattern}`)
+    process.exit(1)
+  }
+}
+
+if (!actions.some((action) => /BigQuery/i.test(action))) {
+  console.error('Meeting action quality regression failed: expected a BigQuery action item')
+  process.exit(1)
+}
+
+if (!actions.some((action) => /options note|migration effort|billing handoff/i.test(action))) {
+  console.error('Meeting action quality regression failed: expected an options-note action item')
+  process.exit(1)
+}
+
+if (/Meeting Summary -|^Overview$/m.test(summary)) {
+  console.error('Meeting action summary regression failed: summary includes markdown heading noise')
+  process.exit(1)
+}
+
+if (!actionPackage.followUpDraftText.includes('What I have from the meeting:')) {
+  console.error('Meeting action anti-slop regression failed: missing human recap heading')
+  process.exit(1)
+}
+
+if (!actionPackage.followUpDraftText.includes('Proposed next steps:')) {
+  console.error('Meeting action anti-slop regression failed: missing proposed next steps heading')
+  process.exit(1)
 }
 
 console.log('Meeting action regression checks passed')
