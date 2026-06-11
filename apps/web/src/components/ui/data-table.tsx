@@ -46,7 +46,7 @@ export function SortableHeader({
   return (
     <button
       type="button"
-      className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200 transition-colors -ml-1 px-1 py-0.5 rounded"
+      className="-ml-1 flex items-center gap-1 rounded-control px-1 py-0.5 transition-colors hover:text-foreground"
       onClick={() => column.toggleSorting(sorted === 'asc')}
     >
       {children}
@@ -117,9 +117,9 @@ export function DataTable<TData, TValue>({
         {table.getRowModel().rows.length === 0 ? (
           <TableRow>
             <TableCell colSpan={columns.length} className="h-32 text-center">
-              <div className="text-ssm text-slate-400">{emptyMessage}</div>
+              <div className="text-ssm text-muted-foreground">{emptyMessage}</div>
               {emptyDescription && (
-                <div className="text-xxs text-slate-300 dark:text-white/20 mt-1">{emptyDescription}</div>
+                <div className="mt-1 text-xxs text-text-faint">{emptyDescription}</div>
               )}
             </TableCell>
           </TableRow>
@@ -128,7 +128,7 @@ export function DataTable<TData, TValue>({
             <TableRow
               key={row.id}
               className={cn(
-                'hover:bg-slate-50/50 dark:hover:bg-white/[.02] transition-colors',
+                'hover:bg-surface-hover transition-colors',
                 onRowClick && 'cursor-pointer',
                 rowClassName?.(row.original),
               )}

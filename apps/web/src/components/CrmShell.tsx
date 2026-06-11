@@ -9,8 +9,10 @@ import { useChatSidebar } from '@/lib/chat-sidebar-context'
 
 export function CrmShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [userCollapsedSidebar, setUserCollapsedSidebar] = useState(false)
   const pathname = usePathname()
-  const sidebarCollapsed = pathname === '/chat' || pathname.startsWith('/wiki')
+  const routeCollapsedSidebar = pathname === '/chat' || pathname.startsWith('/wiki')
+  const sidebarCollapsed = routeCollapsedSidebar || userCollapsedSidebar
   const isChat = pathname === '/chat'
   const { toggle: toggleChatSidebar } = useChatSidebar()
 
@@ -20,6 +22,7 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         collapsed={sidebarCollapsed}
+        onCollapsedChange={setUserCollapsedSidebar}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <Topbar

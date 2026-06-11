@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useTheme } from 'next-themes'
 import { Avatar } from './Avatar'
 import { api } from '@/lib/api'
 import { useUser } from '@/lib/hooks/use-user'
@@ -11,31 +10,33 @@ import { cn } from '@/lib/utils'
 import { CrmUserRole } from '@symph-crm/shared'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
-  MessageCircle,
-  LayoutGrid,
-  Columns3,
-  BookOpen,
-  Mail,
-  TrendingUp,
-  FileText,
-  ClipboardList,
-  Receipt,
-  Package,
-  Settings,
-  Sun,
-  Moon,
   BookMarked,
+  BookOpen,
+  Box,
+  ChevronsUpDown,
+  ClipboardList,
+  Columns3,
+  FileText,
+  Grid2X2,
+  Inbox,
+  MessageCircle,
   Mic,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ReceiptText,
+  Search,
+  Settings,
+  TrendingUp,
   Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 function LogoutOverlay() {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white/60 dark:bg-black/60 backdrop-blur-md">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-overlay backdrop-blur-md">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
-        <p className="text-ssm font-medium text-slate-500">Signing out...</p>
+        <div className="w-10 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+        <p className="text-ssm font-medium text-muted-foreground">Signing out...</p>
       </div>
     </div>
   )
@@ -45,6 +46,7 @@ type SidebarProps = {
   isOpen?: boolean
   onClose?: () => void
   collapsed?: boolean
+  onCollapsedChange?: (collapsed: boolean) => void
 }
 
 type NavItem = {
@@ -60,14 +62,14 @@ type NavSection = {
   items: NavItem[]
 }
 
-function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] {
+function getNavSections(role?: CrmUserRole): NavSection[] {
   if (role === CrmUserRole.Partner) {
     return [
       {
         title: 'Main',
         items: [
           { path: '/deals', label: 'Deals', icon: BookOpen },
-          { path: '/commissions', label: 'Commissions', icon: Receipt },
+          { path: '/commissions', label: 'Commissions', icon: ReceiptText },
         ],
       },
     ]
@@ -78,8 +80,8 @@ function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] 
       title: 'Main',
       items: [
         { path: '/chat', label: 'Chat', icon: MessageCircle },
-        { path: '/', label: 'Dashboard', icon: LayoutGrid },
-        { path: '/pipeline', label: 'Pipeline', icon: Columns3, ...(dormantCount > 0 ? { badge: dormantCount, badgeColor: '#f59e0b' } : {}) },
+        { path: '/', label: 'Dashboard', icon: Grid2X2 },
+        { path: '/pipeline', label: 'Pipeline', icon: Columns3 },
         { path: '/deals', label: 'Brands', icon: BookOpen },
         { path: '/wiki', label: 'Wiki', icon: BookMarked },
       ],
@@ -87,7 +89,7 @@ function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] 
     {
       title: 'Engagement',
       items: [
-        { path: '/inbox', label: 'Inbox', icon: Mail },
+        { path: '/inbox', label: 'Inbox', icon: Inbox },
         { path: '/meetings', label: 'Meetings', icon: Mic },
         { path: '/proposals', label: 'Proposals', icon: FileText },
         { path: '/users', label: 'Partnerships', icon: Users },
@@ -97,8 +99,8 @@ function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] 
       title: 'Business',
       items: [
         { path: '/revenue', label: 'Revenue', icon: TrendingUp },
-        { path: '/bills', label: 'Bills', icon: Receipt },
-        { path: '/catalog', label: 'Catalog', icon: Package },
+        { path: '/bills', label: 'Bills', icon: ReceiptText },
+        { path: '/catalog', label: 'Catalog', icon: Box },
       ],
     },
     {
@@ -112,6 +114,7 @@ function getNavSections(dormantCount: number, role?: CrmUserRole): NavSection[] 
 
 function isActive(itemPath: string, pathname: string): boolean {
   if (itemPath === '/') return pathname === '/'
+  if (itemPath === '/meetings') return pathname === '/meetings' || pathname === '/recordings' || pathname.startsWith('/meetings/')
   return pathname === itemPath || pathname.startsWith(itemPath + '/')
 }
 
@@ -124,27 +127,27 @@ function LogoutConfirmModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[9998] bg-black/50 backdrop-blur-sm px-4 flex items-center justify-center"
+      className="fixed inset-0 z-[9998] bg-overlay backdrop-blur-sm px-4 flex items-center justify-center"
       onClick={onCancel}
     >
       <div
-        className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+        className="max-w-sm w-full rounded-md border border-border bg-card shadow-lg p-4 animate-in zoom-in-95 fade-in-0 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="text-sm font-semibold text-slate-900 dark:text-white">Sign out of Symph CRM?</p>
-        <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+        <p className="text-sm font-semibold text-foreground">Sign out of Symph CRM?</p>
+        <p className="text-ssm text-muted-foreground leading-relaxed mt-1">
           Any unsaved work will be lost. You can sign back in anytime.
         </p>
         <div className="flex gap-2.5 mt-4">
           <button
             onClick={onCancel}
-            className="flex-1 h-11 sm:h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+            className="flex-1 h-11 sm:h-[var(--control-height-md)] rounded-control text-xs font-medium border border-border text-muted-foreground hover:bg-surface-hover hover:text-foreground transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 h-11 sm:h-8 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
+            className="flex-1 h-11 sm:h-[var(--control-height-md)] rounded-control text-xs font-medium text-danger-foreground bg-danger-dim hover:bg-danger/20 transition-colors"
           >
             Sign out
           </button>
@@ -154,16 +157,13 @@ function LogoutConfirmModal({
   )
 }
 
-export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange }: SidebarProps) {
   const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
   const { user, role, isLoading, isPartner } = useUser()
   const [hoveredPath, setHoveredPath] = useState<string | null>(null)
   const [signingOut, setSigningOut] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
-  const navSections = isLoading ? [] : getNavSections(0, role)
+  const navSections = isLoading ? [] : getNavSections(role)
 
   async function handleSignOut() {
     setShowLogoutConfirm(false)
@@ -171,6 +171,9 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
     await api.post('/auth/logout', {})
     window.location.href = '/login'
   }
+
+  const collapsedWidth = 'md:w-[52px] w-[var(--sidebar-width)]'
+  const expandedWidth = 'w-[var(--sidebar-width)]'
 
   return (
     <>
@@ -181,201 +184,171 @@ export function Sidebar({ isOpen, onClose, collapsed = false }: SidebarProps) {
           onCancel={() => setShowLogoutConfirm(false)}
         />
       )}
-      {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-20 bg-black/20 md:hidden"
+          className="fixed inset-0 z-20 bg-overlay md:hidden"
           onClick={onClose}
         />
       )}
 
       <TooltipProvider delayDuration={0}>
-      <aside className={cn(
-        'shrink-0 bg-white dark:bg-[#1e1e21] border-r border-black/[.06] dark:border-white/[.08] flex flex-col h-full overflow-hidden',
-        'fixed inset-y-0 left-0 z-30 md:relative md:z-auto',
-        'transition-all duration-200',
-        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
-        collapsed ? 'md:w-[60px] w-[216px]' : 'w-[216px]'
-      )}>
-        {/* Logo */}
-        <div className={cn(
-          'h-[44px] border-b border-black/[.06] dark:border-white/[.08] flex items-center',
-          collapsed ? 'md:justify-center md:px-0 px-4' : 'px-4'
+        <aside className={cn(
+          'shrink-0 bg-bg-subtle border-r border-border flex flex-col h-full overflow-hidden',
+          'fixed inset-y-0 left-0 z-30 md:relative md:z-auto',
+          'transition-[width,transform] duration-200',
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          collapsed ? collapsedWidth : expandedWidth,
         )}>
-          <div
-            className="w-[26px] h-[26px] rounded-[6px] flex items-center justify-center text-xxs font-extrabold text-white shrink-0 tracking-tight"
-            style={{ background: 'linear-gradient(135deg, #1547e6, #3b82f6)' }}
-          >
-            S
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className={cn(
-          'py-1.5 flex-1 flex flex-col overflow-y-auto',
-          collapsed ? 'md:px-1.5 px-2' : 'px-2'
-        )}>
-          {navSections.map((section, si) => (
-            <div key={si} className={cn(si > 0 && 'mt-2.5')}>
-              <div className={cn(
-                'text-atom font-semibold uppercase tracking-[0.06em] text-slate-400 px-[10px] pt-[4px] pb-0.5',
-                collapsed && 'md:hidden'
-              )}>
-                {section.title}
-              </div>
-              <div className="flex flex-col gap-px">
-                {section.items.map(item => {
-                  const active = isActive(item.path, pathname)
-                  const hovered = hoveredPath === item.path
-                  const Icon = item.icon
-
-                  const linkEl = (
-                    <Link
-                      key={item.path}
-                      href={item.path}
-                      onClick={() => onClose?.()}
-                      onMouseEnter={() => setHoveredPath(item.path)}
-                      onMouseLeave={() => setHoveredPath(null)}
-                      className={cn(
-                        'relative flex items-center gap-[9px] px-[10px] py-3 md:py-[6px] rounded text-ssm w-full text-left transition-colors duration-150',
-                        active
-                          ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary dark:text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
-                          : 'font-medium',
-                        !active && hovered && 'bg-slate-100 dark:bg-white/[.06] text-slate-900 dark:text-white',
-                        !active && !hovered && 'text-slate-600 dark:text-slate-400',
-                        collapsed && 'md:justify-center md:px-0 md:py-[8px]'
-                      )}
-                    >
-                      <Icon size={15} strokeWidth={1.4} className="shrink-0" />
-                      <span className={cn('flex-1', collapsed && 'md:hidden')}>{item.label}</span>
-                      {item.badge && (
-                        <span
-                          className={cn(
-                            'text-white text-atom font-bold px-1.5 py-px rounded-full tabular-nums',
-                            collapsed && 'md:hidden'
-                          )}
-                          style={{ background: item.badgeColor || 'var(--primary)' }}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </Link>
-                  )
-
-                  if (!collapsed) return <div key={item.path}>{linkEl}</div>
-
-                  return (
-                    <Tooltip key={item.path}>
-                      <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
-                      <TooltipContent side="right" className="hidden md:block">{item.label}</TooltipContent>
-                    </Tooltip>
-                  )
-                })}
-              </div>
+          <div className={cn(
+            'h-[var(--topbar-height)] border-b border-border flex items-center gap-2',
+            collapsed ? 'md:justify-center md:px-0 px-3.5' : 'px-3.5',
+          )}>
+            <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold text-primary-foreground bg-primary shrink-0 tracking-tight">
+              S
             </div>
-          ))}
-        </nav>
+            <div className={cn('min-w-0 flex-1 flex items-center gap-2', collapsed && 'md:hidden')}>
+              <span className="truncate text-sbase font-semibold tracking-[-0.02em] text-foreground">Symph</span>
+              <ChevronsUpDown size={13} strokeWidth={1.5} className="ml-auto text-text-faint" />
+            </div>
+          </div>
 
-        {/* Settings — pinned bottom, outside nav sections */}
-        {!isLoading && !isPartner && <div className={cn('mt-auto pt-1', collapsed ? 'md:px-1.5 px-2' : 'px-2')}>
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href="/settings"
-                  onClick={() => onClose?.()}
-                  className={cn(
-                    'relative flex items-center gap-[9px] px-[10px] py-3 md:py-[6px] rounded text-ssm w-full transition-colors duration-150',
-                    isActive('/settings', pathname)
-                      ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
-                      : 'font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] hover:text-slate-900 dark:hover:text-white',
-                    'md:justify-center md:px-0 md:py-[8px]'
-                  )}
-                >
-                  <Settings size={15} strokeWidth={1.4} className="shrink-0" />
-                  <span className="flex-1 md:hidden">Settings</span>
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="hidden md:block">Settings</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Link
-              href="/settings"
-              onClick={() => onClose?.()}
+          <div className={cn('border-b border-border', collapsed ? 'md:px-0 px-2 py-2' : 'px-2 py-2')}>
+            <button
+              type="button"
               className={cn(
-                'relative flex items-center gap-[9px] px-[10px] py-3 md:py-[6px] rounded text-ssm w-full transition-colors duration-150',
-                isActive('/settings', pathname)
-                  ? 'bg-primary/[.08] dark:bg-primary/[.12] text-primary font-semibold ring-1 ring-primary/20 dark:ring-primary/25'
-                  : 'font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] hover:text-slate-900 dark:hover:text-white',
+                'flex h-[30px] w-full items-center gap-2 rounded-control border border-border bg-card text-xs text-text-faint transition-colors hover:border-border-strong hover:bg-surface-hover hover:text-foreground',
+                collapsed ? 'md:mx-auto md:w-8 md:justify-center md:px-0 px-2' : 'px-2',
+              )}
+              onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }))}
+            >
+              <Search size={14} strokeWidth={1.5} className="shrink-0" />
+              <span className={cn('min-w-0 flex-1 text-left', collapsed && 'md:hidden')}>Jump to...</span>
+              <kbd className={cn('rounded-control border border-border bg-secondary px-1.5 py-px text-atom font-medium text-text-faint', collapsed && 'md:hidden')}>
+                ⌘K
+              </kbd>
+            </button>
+          </div>
+
+          <nav className={cn('flex-1 overflow-y-auto pb-2', collapsed ? 'md:px-0 px-2' : 'px-0')}>
+            {navSections.map((section, sectionIndex) => (
+              <div key={section.title} className={cn(sectionIndex > 0 && 'mt-2')}>
+                <div className={cn(
+                  'text-atom font-semibold uppercase tracking-[0.12em] text-text-faint',
+                  collapsed ? 'md:mx-auto md:my-2 md:h-px md:w-7 md:bg-border md:p-0 md:text-transparent px-3.5 pb-1 pt-3' : 'px-3.5 pb-1 pt-3',
+                )}>
+                  {section.title}
+                </div>
+                <div className="flex flex-col">
+                  {section.items.map(item => {
+                    const active = isActive(item.path, pathname)
+                    const hovered = hoveredPath === item.path
+                    const Icon = item.icon
+
+                    const linkEl = (
+                      <Link
+                        key={item.path}
+                        href={item.path}
+                        onClick={() => onClose?.()}
+                        onMouseEnter={() => setHoveredPath(item.path)}
+                        onMouseLeave={() => setHoveredPath(null)}
+                        className={cn(
+                          'relative flex h-8 items-center gap-3 text-left text-[length:var(--v-size-nav)] leading-[var(--v-lh-nav)] font-[var(--v-wt-nav)] transition-colors duration-100',
+                          collapsed ? 'md:mx-auto md:h-8 md:w-8 md:justify-center md:px-0 px-3.5' : 'px-3.5',
+                          active
+                            ? 'bg-surface-active text-foreground font-medium'
+                            : 'text-muted-foreground',
+                          !active && hovered && 'bg-surface-hover text-foreground',
+                        )}
+                      >
+                        <Icon size={16} strokeWidth={1.55} className="shrink-0" />
+                        <span className={cn('min-w-0 flex-1 truncate', collapsed && 'md:hidden')}>{item.label}</span>
+                        {item.badge && (
+                          <span
+                            className={cn(
+                              'rounded-control bg-secondary px-2 py-0.5 text-atom font-semibold tabular-nums text-text-faint ring-1 ring-border',
+                              collapsed && 'md:hidden',
+                            )}
+                            style={item.badgeColor ? { color: item.badgeColor } : undefined}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    )
+
+                    if (!collapsed) return <div key={item.path}>{linkEl}</div>
+
+                    return (
+                      <Tooltip key={item.path}>
+                        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+                        <TooltipContent side="right" className="hidden md:block">{item.label}</TooltipContent>
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </nav>
+
+          <div className={cn('border-t border-border py-2', collapsed ? 'md:px-0 px-2' : 'px-2')}>
+            {!isLoading && !isPartner && (
+              <Link
+                href="/settings"
+                onClick={() => onClose?.()}
+                className={cn(
+                  'mb-1 flex h-8 items-center gap-3 rounded-control px-2 text-sm font-medium transition-colors',
+                  isActive('/settings', pathname)
+                    ? 'bg-surface-active text-foreground'
+                    : 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+                  collapsed && 'md:mx-auto md:h-8 md:w-8 md:justify-center md:px-0',
+                )}
+              >
+                <Settings size={16} strokeWidth={1.55} />
+                <span className={cn(collapsed && 'md:hidden')}>Settings</span>
+              </Link>
+            )}
+            <button
+              type="button"
+              onClick={() => onCollapsedChange?.(!collapsed)}
+              className={cn(
+                'flex h-8 w-full items-center gap-3 rounded-control px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
+                collapsed && 'md:mx-auto md:h-8 md:w-8 md:justify-center md:px-0',
               )}
             >
-              <Settings size={15} strokeWidth={1.4} className="shrink-0" />
-              <span className="flex-1">Settings</span>
-            </Link>
-          )}
-        </div>}
+              {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.55} /> : <PanelLeftClose size={16} strokeWidth={1.55} />}
+              <span className={cn(collapsed && 'md:hidden')}>{collapsed ? 'Expand' : 'Collapse'}</span>
+            </button>
+          </div>
 
-        {/* Theme toggle */}
-        {mounted && (
           <div className={cn(
-            'py-2 border-t border-black/[.06] dark:border-white/[.08]',
-            collapsed ? 'md:px-1.5 px-[14px]' : 'px-[14px]'
+            'border-t border-border py-3 flex items-center gap-3',
+            collapsed ? 'md:justify-center md:px-0 px-3.5' : 'px-3.5',
           )}>
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                    className="w-full flex items-center gap-2 px-[10px] py-3 md:py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors md:justify-center md:px-0"
-                  >
-                    {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} className="shrink-0" /> : <Moon size={14} strokeWidth={1.4} className="shrink-0" />}
-                    <span className="md:hidden">{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="hidden md:block">
-                  {theme === 'dark' ? 'Light mode' : 'Dark mode'}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
+            <Avatar
+              name={user?.name || '?'}
+              email={user?.email ?? undefined}
+              src={user?.image ?? undefined}
+              size={34}
+            />
+            <div className={cn('min-w-0 flex-1', collapsed && 'md:hidden')}>
+              <div className="truncate text-sm font-semibold text-foreground">{user?.name || 'User'}</div>
+              <div className="truncate text-xs text-text-faint">{user?.email || ''}</div>
+            </div>
+            {!isPartner && (
               <button
-                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                className="w-full flex items-center gap-2 px-[10px] py-3 md:py-[6px] rounded text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                onClick={() => setShowLogoutConfirm(true)}
+                disabled={signingOut}
+                className={cn(
+                  'text-xs font-medium text-text-faint hover:text-foreground transition-colors disabled:opacity-40',
+                  collapsed && 'md:hidden',
+                )}
+                title="Sign out"
               >
-                {theme === 'dark' ? <Sun size={14} strokeWidth={1.4} className="shrink-0" /> : <Moon size={14} strokeWidth={1.4} className="shrink-0" />}
-                <span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span>
+                Sign out
               </button>
             )}
           </div>
-        )}
-
-        {/* User profile */}
-        <div className={cn(
-          'py-2.5 border-t border-black/[.06] dark:border-white/[.08] flex items-center gap-[9px]',
-          collapsed ? 'md:justify-center md:px-0 px-[14px]' : 'px-[14px]'
-        )}>
-          <Avatar
-            name={user?.name || '?'}
-            email={user?.email ?? undefined}
-            src={user?.image ?? undefined}
-            size={28}
-          />
-          <div className={cn('flex-1 min-w-0', collapsed && 'md:hidden')}>
-            <div className="text-xs font-semibold text-slate-900 dark:text-white truncate">{user?.name || 'User'}</div>
-            <div className="text-atom text-slate-400 truncate">{user?.email || ''}</div>
-          </div>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            disabled={signingOut}
-            className={cn(
-              'text-atom font-medium text-slate-400 hover:text-slate-600 dark:text-slate-400 transition-colors cursor-pointer disabled:opacity-40',
-              collapsed && 'md:hidden'
-            )}
-            title="Sign out"
-          >
-            Sign out
-          </button>
-        </div>
-      </aside>
+        </aside>
       </TooltipProvider>
     </>
   )
