@@ -2,6 +2,7 @@
 
 import {
   type ColumnDef,
+  type HeaderContext,
   type SortingState,
   type ColumnFiltersState,
   flexRender,
@@ -43,13 +44,15 @@ export function SortableHeader({
   children: React.ReactNode
 }) {
   const sorted = column.getIsSorted()
+  const label = typeof children === 'string' ? formatHeaderLabel(children) : children
+
   return (
     <button
       type="button"
-      className="-ml-1 flex items-center gap-1 rounded-control px-1 py-0.5 transition-colors hover:text-foreground"
+      className="-ml-1 flex items-center gap-1 rounded-control px-1 py-0.5 normal-case transition-colors hover:text-foreground"
       onClick={() => column.toggleSorting(sorted === 'asc')}
     >
-      {children}
+      {label}
       {sorted === 'asc' ? (
         <ArrowUp size={12} />
       ) : sorted === 'desc' ? (
@@ -59,6 +62,19 @@ export function SortableHeader({
       )}
     </button>
   )
+}
+
+function formatHeaderLabel(header: string) {
+  return header
+    .toLowerCase()
+    .replace(/\b\w/g, char => char.toUpperCase())
+}
+
+function renderHeader<TData, TValue>(
+  header: ColumnDef<TData, TValue>['header'],
+  context: HeaderContext<TData, TValue>,
+) {
+  return typeof header === 'string' ? formatHeaderLabel(header) : flexRender(header, context)
 }
 
 // ── DataTable ───────────────────────────────────────────────────────────────
@@ -75,6 +91,7 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void
   /** Optional callback to add extra class names to a row */
   rowClassName?: (row: TData) => string | undefined
+  initialSorting?: SortingState
 }
 
 export function DataTable<TData, TValue>({
@@ -85,8 +102,9 @@ export function DataTable<TData, TValue>({
   emptyDescription,
   onRowClick,
   rowClassName,
+  initialSorting,
 }: DataTableProps<TData, TValue>) {
-  const [sorting, setSorting] = useState<SortingState>([])
+  const [sorting, setSorting] = useState<SortingState>(initialSorting ?? [])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
 
   const table = useReactTable({
@@ -107,7 +125,7 @@ export function DataTable<TData, TValue>({
           <TableRow key={headerGroup.id} className="hover:bg-transparent">
             {headerGroup.headers.map(header => (
               <TableHead key={header.id} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>
-                {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+                {header.isPlaceholder ? null : renderHeader(header.column.columnDef.header, header.getContext())}
               </TableHead>
             ))}
           </TableRow>

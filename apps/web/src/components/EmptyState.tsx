@@ -29,7 +29,7 @@ export function EmptyState({ icon, title, description, action, className, compac
       className
     )}>
       <div className={cn(
-        'rounded-lg bg-slate-50 dark:bg-white/[.03] flex items-center justify-center mb-3',
+        'rounded-lg bg-surface-alt flex items-center justify-center mb-3',
         compact ? 'w-10 h-10' : 'w-12 h-12'
       )}>
         <svg
@@ -46,7 +46,7 @@ export function EmptyState({ icon, title, description, action, className, compac
         </svg>
       </div>
       <div className={cn(
-        'font-semibold text-slate-900 dark:text-white',
+        'font-semibold text-foreground',
         compact ? 'text-xs' : 'text-ssm'
       )}>
         {title}

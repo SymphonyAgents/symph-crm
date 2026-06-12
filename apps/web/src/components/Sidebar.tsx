@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Avatar } from './Avatar'
@@ -13,6 +13,7 @@ import {
   BookMarked,
   BookOpen,
   Box,
+  Check,
   ChevronsUpDown,
   ClipboardList,
   Columns3,
@@ -21,15 +22,20 @@ import {
   Inbox,
   MessageCircle,
   Mic,
+  Moon,
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
   Search,
   Settings,
+  Sparkles,
+  Sun,
   TrendingUp,
   Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 function LogoutOverlay() {
   return (
@@ -60,6 +66,81 @@ type NavItem = {
 type NavSection = {
   title: string
   items: NavItem[]
+}
+
+type ThemeOption = {
+  value: 'light' | 'dark' | 'midnight'
+  label: string
+  description: string
+  icon: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
+}
+
+const THEME_OPTIONS: ThemeOption[] = [
+  { value: 'light', label: 'Light', description: 'Clean daytime workspace', icon: Sun },
+  { value: 'dark', label: 'Dark', description: 'Neutral low-light mode', icon: Moon },
+  { value: 'midnight', label: 'Midnight', description: 'Deep blue focus mode', icon: Sparkles },
+]
+
+function ThemeSelector({ collapsed }: { collapsed?: boolean }) {
+  const { theme, resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
+
+  const activeTheme = mounted ? (theme === 'system' ? resolvedTheme : theme) : 'light'
+  const activeOption = THEME_OPTIONS.find(option => option.value === activeTheme) ?? THEME_OPTIONS[0]
+  const ActiveIcon = activeOption.icon
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'flex h-8 w-8 shrink-0 items-center justify-center rounded-control border border-border bg-secondary text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
+            collapsed && 'md:mx-auto',
+          )}
+          aria-label={`Change color mode. Current mode: ${activeOption.label}`}
+          title={activeOption.label}
+        >
+          <ActiveIcon size={14} strokeWidth={1.6} className="text-primary" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="right" align="end" className="w-[220px] p-1.5">
+        <div className="px-2 pb-1 pt-1">
+          <p className="eyebrow-label">Color mode</p>
+        </div>
+        <div className="space-y-1">
+          {THEME_OPTIONS.map(option => {
+            const Icon = option.icon
+            const isActive = activeOption.value === option.value
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setTheme(option.value)}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+                )}
+              >
+                <Icon size={15} strokeWidth={1.6} className="shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold">{option.label}</span>
+                  <span className={cn('block truncate text-atom', isActive ? 'text-primary/75' : 'text-text-faint')}>
+                    {option.description}
+                  </span>
+                </span>
+                {isActive && <Check size={14} strokeWidth={1.8} className="shrink-0" />}
+              </button>
+            )
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 function getNavSections(role?: CrmUserRole): NavSection[] {
@@ -233,7 +314,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
             {navSections.map((section, sectionIndex) => (
               <div key={section.title} className={cn(sectionIndex > 0 && 'mt-2')}>
                 <div className={cn(
-                  'text-atom font-semibold uppercase tracking-[0.12em] text-text-faint',
+                  'eyebrow-label',
                   collapsed ? 'md:mx-auto md:my-2 md:h-px md:w-7 md:bg-border md:p-0 md:text-transparent px-3.5 pb-1 pt-3' : 'px-3.5 pb-1 pt-3',
                 )}>
                   {section.title}
@@ -292,26 +373,29 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
 
           <div className={cn('border-t border-border py-2', collapsed ? 'md:px-0 px-2' : 'px-2')}>
             {!isLoading && !isPartner && (
-              <Link
-                href="/settings"
-                onClick={() => onClose?.()}
-                className={cn(
-                  'mb-1 flex h-8 items-center gap-3 rounded-control px-2 text-sm font-medium transition-colors',
-                  isActive('/settings', pathname)
-                    ? 'bg-surface-active text-foreground'
-                    : 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
-                  collapsed && 'md:mx-auto md:h-8 md:w-8 md:justify-center md:px-0',
-                )}
-              >
-                <Settings size={16} strokeWidth={1.55} />
-                <span className={cn(collapsed && 'md:hidden')}>Settings</span>
-              </Link>
+              <div className={cn('mb-1 flex items-center gap-1.5', collapsed && 'md:flex-col')}>
+                <Link
+                  href="/settings"
+                  onClick={() => onClose?.()}
+                  className={cn(
+                    'flex h-8 flex-1 items-center gap-3 rounded-control px-2 text-[length:var(--v-size-nav)] leading-[var(--v-lh-nav)] font-[var(--v-wt-nav)] transition-colors',
+                    isActive('/settings', pathname)
+                      ? 'bg-surface-active text-foreground'
+                      : 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+                    collapsed && 'md:mx-auto md:h-8 md:w-8 md:flex-none md:justify-center md:px-0',
+                  )}
+                >
+                  <Settings size={16} strokeWidth={1.55} />
+                  <span className={cn(collapsed && 'md:hidden')}>Settings</span>
+                </Link>
+                <ThemeSelector collapsed={collapsed} />
+              </div>
             )}
             <button
               type="button"
               onClick={() => onCollapsedChange?.(!collapsed)}
               className={cn(
-                'flex h-8 w-full items-center gap-3 rounded-control px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
+                'flex h-8 w-full items-center gap-3 rounded-control px-2 text-[length:var(--v-size-nav)] leading-[var(--v-lh-nav)] font-[var(--v-wt-nav)] text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
                 collapsed && 'md:mx-auto md:h-8 md:w-8 md:justify-center md:px-0',
               )}
             >

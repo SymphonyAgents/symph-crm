@@ -34,7 +34,7 @@ const columns: ColumnDef<AuditLogEntry>[] = [
     size: 160,
     cell: ({ row }) => (
       <span
-        className="text-xs text-slate-600 dark:text-slate-400 tabular-nums"
+        className="text-xs text-muted-foreground tabular-nums"
         title={formatFullDate(row.original.createdAt)}
       >
         {formatFullDate(row.original.createdAt)}
@@ -80,9 +80,9 @@ const columns: ColumnDef<AuditLogEntry>[] = [
       const entityLabel = ENTITY_LABEL[entry.entityType] ?? entry.entityType
       return (
         <div className="flex flex-col">
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{entityLabel}</span>
+          <span className="text-xs font-medium text-muted-foreground">{entityLabel}</span>
           {entry.entityName && (
-            <span className="text-xxs text-slate-500 dark:text-slate-400 truncate max-w-[140px]">{entry.entityName}</span>
+            <span className="text-xxs text-muted-foreground truncate max-w-[140px]">{entry.entityName}</span>
           )}
           {!entry.entityName && entry.entityId && (
             <span className="text-xxs text-slate-400 font-mono">#{entry.entityId.slice(0, 8)}</span>
@@ -104,7 +104,7 @@ const columns: ColumnDef<AuditLogEntry>[] = [
       return (
         <div className="flex items-center gap-2">
           <Avatar name={entry.performerName || 'System'} src={entry.performerImage ?? undefined} size={24} />
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">
+          <span className="text-xs font-medium text-muted-foreground truncate">
             {entry.performerName || 'System'}
           </span>
         </div>
@@ -117,9 +117,9 @@ const columns: ColumnDef<AuditLogEntry>[] = [
     size: 80,
     cell: ({ row }) => {
       const source = row.original.source
-      if (!source) return <span className="text-xxs text-slate-300 dark:text-white/20">—</span>
+      if (!source) return <span className="text-xxs text-slate-300/20">—</span>
       return (
-        <span className="inline-block px-1.5 py-px rounded text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+        <span className="inline-block px-1.5 py-px rounded eyebrow-label bg-secondary">
           {source}
         </span>
       )
@@ -183,9 +183,9 @@ function AuditTab() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
         <div>
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">Audit Log</div>
+          <div className="text-ssm font-semibold text-foreground">Audit Log</div>
           <div className="text-xxs text-slate-400 mt-0.5">
-            {isLoading ? 'Loading...' : `${total} event${total !== 1 ? 's' : ''}`}
+            {isLoading ? 'Loading...' : `${total} event${total !== 1 ? 's' : ''} · Track CRM changes across deals, brands, users, and billing`}
           </div>
         </div>
 
@@ -207,12 +207,12 @@ function AuditTab() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search logs..."
-              className="w-full bg-slate-50 dark:bg-white/[.03] border border-black/[.06] dark:border-white/[.08] rounded-lg pl-8 pr-7 py-[5px] text-xs text-slate-900 dark:text-white placeholder:text-slate-400 outline-none"
+              className="w-full bg-surface-alt border border-border rounded-lg pl-8 pr-7 py-[5px] text-xs text-foreground placeholder:text-slate-400 outline-none"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hover:text-foreground"
               >
                 <X size={12} />
               </button>
@@ -270,7 +270,7 @@ function AuditTab() {
       </div>
 
       {/* DataTable */}
-      <div className="flex-1 overflow-y-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+      <div className="flex-1 overflow-y-auto bg-card border border-border rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
         {isLoading ? (
           <DataTableSkeleton />
         ) : (
@@ -299,14 +299,14 @@ function AuditTab() {
             <button
               onClick={() => setPage(p => Math.max(0, p - 1))}
               disabled={page === 0}
-              className="h-7 w-7 rounded-lg border border-black/[.08] dark:border-white/[.08] flex items-center justify-center text-slate-500 hover:bg-slate-50 dark:hover:bg-white/[.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-slate-500 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft size={14} />
             </button>
             <button
               onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
-              className="h-7 w-7 rounded-lg border border-black/[.08] dark:border-white/[.08] flex items-center justify-center text-slate-500 hover:bg-slate-50 dark:hover:bg-white/[.04] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="h-7 w-7 rounded-lg border border-border flex items-center justify-center text-slate-500 hover:bg-surface-hover disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight size={14} />
             </button>
@@ -341,15 +341,15 @@ function AuditTab() {
                 <div className="px-6 py-4 space-y-3 text-xs">
                   {/* When */}
                   <div className="flex items-start gap-3">
-                    <span className="w-12 shrink-0 font-medium text-slate-400 uppercase tracking-wide text-xxs pt-0.5">When</span>
-                    <span className="text-slate-700 dark:text-slate-300 tabular-nums">{formatFullDate(selectedEntry.createdAt)}</span>
+                    <span className="w-12 shrink-0 eyebrow-label pt-0.5">When</span>
+                    <span className="text-muted-foreground tabular-nums">{formatFullDate(selectedEntry.createdAt)}</span>
                   </div>
 
                   {/* On */}
                   <div className="flex items-start gap-3">
-                    <span className="w-12 shrink-0 font-medium text-slate-400 uppercase tracking-wide text-xxs pt-0.5">On</span>
+                    <span className="w-12 shrink-0 eyebrow-label pt-0.5">On</span>
                     <div className="flex flex-col">
-                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                      <span className="font-medium text-muted-foreground">
                         {entityLabel}
                         {selectedEntry.entityName && <> &mdash; &ldquo;{selectedEntry.entityName}&rdquo;</>}
                       </span>
@@ -361,18 +361,18 @@ function AuditTab() {
 
                   {/* By */}
                   <div className="flex items-start gap-3">
-                    <span className="w-12 shrink-0 font-medium text-slate-400 uppercase tracking-wide text-xxs pt-0.5">By</span>
+                    <span className="w-12 shrink-0 eyebrow-label pt-0.5">By</span>
                     <div className="flex items-center gap-2">
                       <Avatar name={selectedEntry.performerName || 'System'} src={selectedEntry.performerImage ?? undefined} size={20} />
-                      <span className="font-medium text-slate-700 dark:text-slate-300">{selectedEntry.performerName || 'System'}</span>
+                      <span className="font-medium text-muted-foreground">{selectedEntry.performerName || 'System'}</span>
                     </div>
                   </div>
 
                   {/* Via */}
                   {selectedEntry.source && (
                     <div className="flex items-start gap-3">
-                      <span className="w-12 shrink-0 font-medium text-slate-400 uppercase tracking-wide text-xxs pt-0.5">Via</span>
-                      <span className="inline-block px-1.5 py-px rounded text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                      <span className="w-12 shrink-0 eyebrow-label pt-0.5">Via</span>
+                      <span className="inline-block px-1.5 py-px rounded eyebrow-label bg-secondary">
                         {selectedEntry.source}
                       </span>
                     </div>
@@ -380,13 +380,13 @@ function AuditTab() {
 
                   {/* Details */}
                   {selectedEntry.details && Object.keys(selectedEntry.details).length > 0 && (
-                    <div className="pt-2 border-t border-black/[.06] dark:border-white/[.08]">
-                      <span className="block font-medium text-slate-400 uppercase tracking-wide text-xxs mb-2">Details</span>
-                      <div className="space-y-1.5 bg-slate-50 dark:bg-white/[.03] rounded-md p-3">
+                    <div className="pt-2 border-t border-border">
+                      <span className="block eyebrow-label mb-2">Details</span>
+                      <div className="space-y-1.5 bg-surface-alt rounded-md p-3">
                         {Object.entries(selectedEntry.details).map(([key, value]) => (
                           <div key={key} className="flex items-start gap-2">
                             <span className="text-xxs font-mono text-slate-400 shrink-0 min-w-[80px]">{key}</span>
-                            <span className="text-xxs text-slate-700 dark:text-slate-300 break-all">
+                            <span className="text-xxs text-muted-foreground break-all">
                               {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}
                             </span>
                           </div>

@@ -26,7 +26,7 @@ export function TabFilter<T extends string>({ items, value, onChange, className 
             type="button"
             onClick={() => onChange(item.id)}
             className={cn(
-              'inline-flex h-7 items-center rounded px-2.5 text-xxs font-semibold transition-colors active:scale-[0.96]',
+              'inline-flex h-7 items-center rounded-control px-2.5 text-xxs font-semibold transition-colors active:scale-[0.96]',
               active
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',

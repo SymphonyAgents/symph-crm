@@ -50,18 +50,18 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
+        className="bg-card rounded-lg shadow-lg border border-border w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">New Brand</div>
+            <div className="text-sm font-semibold text-foreground">New Brand</div>
             <div className="text-xs text-slate-400 mt-0.5">Add a client brand to group deals under</div>
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -72,7 +72,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Brand Name <span className="text-red-400">*</span>
             </label>
             <Input
@@ -87,7 +87,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Industry</label>
+              <label className="eyebrow-label">Industry</label>
               <Combobox
                 options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
                 value={industry}
@@ -97,7 +97,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Domain</label>
+              <label className="eyebrow-label">Domain</label>
               <Input
                 value={domain}
                 onChange={e => setDomain(e.target.value)}
@@ -109,7 +109,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Website</label>
+              <label className="eyebrow-label">Website</label>
               <Input
                 value={website}
                 onChange={e => setWebsite(e.target.value)}
@@ -118,7 +118,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">HQ Location</label>
+              <label className="eyebrow-label">HQ Location</label>
               <Input
                 value={hqLocation}
                 onChange={e => setHqLocation(e.target.value)}
@@ -138,14 +138,14 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-11 sm:h-9 rounded-control border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending || !name.trim()}
-              className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+              className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-control text-ssm font-medium text-white transition-colors disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
             >
               <>{isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Create Brand</>

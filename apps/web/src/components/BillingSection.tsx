@@ -117,25 +117,25 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
 
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
-        <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>
+      <div className="bg-card rounded-md border border-border shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4">
+        <p className="eyebrow-label mb-3">Billing</p>
         <div className="animate-pulse flex flex-col gap-3">
           {/* Type badge skeleton */}
           <div className="flex items-center justify-between">
-            <div className="h-5 w-16 rounded-full bg-slate-100 dark:bg-white/[.06]" />
-            <div className="h-3 w-8 rounded bg-slate-100 dark:bg-white/[.06]" />
+            <div className="h-5 w-16 rounded-full bg-secondary" />
+            <div className="h-3 w-8 rounded bg-secondary" />
           </div>
           {/* Row skeletons */}
           {[1, 2, 3].map(i => (
-            <div key={i} className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
-              <div className="h-3 w-16 rounded bg-slate-100 dark:bg-white/[.06]" />
-              <div className="h-3 w-20 rounded bg-slate-100 dark:bg-white/[.06]" />
+            <div key={i} className="flex items-center justify-between py-1.5 border-b border-border">
+              <div className="h-3 w-16 rounded bg-secondary" />
+              <div className="h-3 w-20 rounded bg-secondary" />
             </div>
           ))}
           {/* History skeleton */}
-          <div className="mt-2 pt-3 border-t border-black/[.04] dark:border-white/[.05]">
-            <div className="h-2.5 w-14 rounded bg-slate-100 dark:bg-white/[.06] mb-2" />
-            <div className="h-2.5 w-40 rounded bg-slate-100 dark:bg-white/[.06]" />
+          <div className="mt-2 pt-3 border-t border-border">
+            <div className="h-2.5 w-14 rounded bg-secondary mb-2" />
+            <div className="h-2.5 w-40 rounded bg-secondary" />
           </div>
         </div>
       </div>
@@ -148,8 +148,8 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
   const showSummary = billing && !isEditing
 
   return (
-    <div className={embedded ? "p-4 bg-white dark:bg-[#1e1e21] rounded-b-xl border border-black/[.06] dark:border-white/[.08]" : "bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4"}>
-      {!embedded && <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">Billing</p>}
+    <div className={embedded ? "p-4 bg-card rounded-b-xl border border-border" : "bg-card rounded-md border border-border shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-4"}>
+      {!embedded && <p className="eyebrow-label mb-3">Billing</p>}
 
       {showSummary ? (
         <div>
@@ -167,14 +167,14 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           </div>
 
           {/* Amount */}
-          <div className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
+          <div className="flex items-center justify-between py-1.5 border-b border-border">
             <span className="text-xs text-slate-400">Amount</span>
-            <span className="text-xs font-bold text-slate-800 dark:text-white tabular-nums">{formatBillingMoney(billing.amount, currency)}</span>
+            <span className="text-xs font-bold text-foreground tabular-nums">{formatBillingMoney(billing.amount, currency)}</span>
           </div>
 
           {/* Monthly rate if annual */}
           {billing.monthlyDerived && (
-            <div className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
+            <div className="flex items-center justify-between py-1.5 border-b border-border">
               <span className="text-xs text-slate-400">Monthly Rate</span>
               <span className="text-xs text-slate-500 tabular-nums">{formatBillingMoney(billing.monthlyDerived, currency)}/mo</span>
             </div>
@@ -182,7 +182,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
 
           {/* Contract period */}
           {(billing.contractStart || billing.contractEnd) && (
-            <div className="flex items-center justify-between py-1.5 border-b border-black/[.04] dark:border-white/[.05]">
+            <div className="flex items-center justify-between py-1.5 border-b border-border">
               <span className="text-xs text-slate-400">Period</span>
               <span className="text-xs text-slate-500">{formatDate(billing.contractStart)} – {formatDate(billing.contractEnd)}</span>
             </div>
@@ -191,20 +191,20 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           {/* Milestones if milestone type */}
           {billing.billingType === 'milestone' && billing.milestones && billing.milestones.length > 0 && (
             <div className="mt-3">
-              <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-2">Milestones</p>
+              <p className="eyebrow-label mb-2">Milestones</p>
               <div className="flex flex-col gap-1.5">
                 {billing.milestones.map(m => (
                   <div key={m.id} className={cn(
                     'flex items-center gap-2 px-2.5 py-2 rounded-lg border',
-                    m.isPaid ? 'border-[rgba(22,163,74,0.2)] bg-[rgba(22,163,74,0.04)]' : 'border-black/[.06] dark:border-white/[.08]'
+                    m.isPaid ? 'border-[rgba(22,163,74,0.2)] bg-[rgba(22,163,74,0.04)]' : 'border-border'
                   )}>
                     <div className={cn('w-4 h-4 rounded border flex items-center justify-center shrink-0',
-                      m.isPaid ? 'bg-[#16a34a] border-[#16a34a]' : 'border-slate-300 dark:border-slate-600'
+                      m.isPaid ? 'bg-[#16a34a] border-[#16a34a]' : 'border-border dark:border-slate-600'
                     )}>
                       {m.isPaid && <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn('text-xxs font-medium truncate', m.isPaid ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-white')}>{m.name}</p>
+                      <p className={cn('text-xxs font-medium truncate', m.isPaid ? 'text-slate-400 line-through' : 'text-foreground')}>{m.name}</p>
                       <div className="flex items-center gap-1.5">
                         <span className="text-atom tabular-nums text-slate-500">{formatBillingMoney(m.amount, currency)}</span>
                         {m.percentage && <span className="text-atom font-semibold px-1 py-0.5 rounded bg-primary/10 text-primary tabular-nums">{parseFloat(m.percentage).toFixed(0)}%</span>}
@@ -217,8 +217,8 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           )}
 
           {/* Billing History section */}
-          <div className="mt-4 pt-3 border-t border-black/[.04] dark:border-white/[.05]">
-            <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-2">History</p>
+          <div className="mt-4 pt-3 border-t border-border">
+            <p className="eyebrow-label mb-2">History</p>
             <p className="text-xxs text-slate-400">Changes to billing will appear here</p>
           </div>
         </div>
@@ -228,7 +228,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
 
           {/* Billing type selector */}
           <div className="mb-3">
-            <label className="text-xxs font-medium text-slate-500 dark:text-slate-400 block mb-1">Type</label>
+            <label className="text-xxs font-medium text-muted-foreground block mb-1">Type</label>
             <Select
               value={billingType}
               onValueChange={(v: string) => {
@@ -250,21 +250,21 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           {/* Contract dates */}
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div>
-              <label className="text-xxs font-medium text-slate-500 dark:text-slate-400 block mb-1">Start</label>
+              <label className="text-xxs font-medium text-muted-foreground block mb-1">Start</label>
               <input
                 type="date"
                 value={contractStart}
                 onChange={e => { setContractStart(e.target.value); setDirty(true) }}
-                className="w-full h-8 rounded-md border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xs text-slate-800 dark:text-white outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
+                className="w-full h-8 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
               />
             </div>
             <div>
-              <label className="text-xxs font-medium text-slate-500 dark:text-slate-400 block mb-1">End</label>
+              <label className="text-xxs font-medium text-muted-foreground block mb-1">End</label>
               <input
                 type="date"
                 value={contractEnd}
                 onChange={e => { setContractEnd(e.target.value); setDirty(true) }}
-                className="w-full h-8 rounded-md border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xs text-slate-800 dark:text-white outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
+                className="w-full h-8 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
               />
             </div>
           </div>
@@ -272,7 +272,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           {/* Amount input — Annual or Monthly */}
           {billingType !== 'milestone' && (
             <div className="mb-3">
-              <label className="text-xxs font-medium text-slate-500 dark:text-slate-400 block mb-1">
+              <label className="text-xxs font-medium text-muted-foreground block mb-1">
                 {billingType === 'annual' ? 'Annual Total' : 'Monthly Amount'}
               </label>
               <input
@@ -287,7 +287,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                   setAmount(parts.join('.'))
                   setDirty(true)
                 }}
-                className="w-full h-8 rounded-md border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xs text-slate-800 dark:text-white tabular-nums outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
+                className="w-full h-8 rounded-md border border-border bg-transparent px-2 text-xs text-foreground tabular-nums outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
               />
               {billingType === 'annual' && amount && (
                 <p className="text-atom text-slate-400 mt-1 tabular-nums">
@@ -305,7 +305,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
           {/* Milestone section */}
           {billingType === 'milestone' && (
             <div className="mb-3">
-              <label className="text-xxs font-medium text-slate-500 dark:text-slate-400 block mb-2">Milestones</label>
+              <label className="text-xxs font-medium text-muted-foreground block mb-2">Milestones</label>
 
               {/* Existing milestones */}
               {billing?.milestones && billing.milestones.length > 0 && (
@@ -317,7 +317,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                         'flex items-center gap-2 px-2 py-1.5 rounded-lg border transition-colors',
                         m.isPaid
                           ? 'border-[rgba(22,163,74,0.2)] bg-[rgba(22,163,74,0.04)]'
-                          : 'border-black/[.06] dark:border-white/[.08]'
+                          : 'border-border'
                       )}
                     >
                       <button
@@ -326,7 +326,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                           'w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors',
                           m.isPaid
                             ? 'bg-[#16a34a] border-[#16a34a]'
-                            : 'border-slate-300 dark:border-slate-600 hover:border-primary'
+                            : 'border-border dark:border-slate-600 hover:border-primary'
                         )}
                       >
                         {m.isPaid && (
@@ -338,7 +338,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                       <div className="flex-1 min-w-0">
                         <p className={cn(
                           'text-xxs font-medium truncate',
-                          m.isPaid ? 'text-slate-400 line-through' : 'text-slate-800 dark:text-white'
+                          m.isPaid ? 'text-slate-400 line-through' : 'text-foreground'
                         )}>
                           {m.name}
                         </p>
@@ -371,7 +371,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                   placeholder="Milestone name"
                   value={newMilestoneName}
                   onChange={e => setNewMilestoneName(e.target.value)}
-                  className="flex-1 h-7 rounded-md border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xxs text-slate-800 dark:text-white placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
+                  className="flex-1 h-7 rounded-md border border-border bg-transparent px-2 text-xxs text-foreground placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
                 />
                 <input
                   type="text"
@@ -384,7 +384,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
                     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
                     setNewMilestoneAmount(parts.join('.'))
                   }}
-                  className="w-[80px] h-7 rounded-md border border-black/[.08] dark:border-white/[.1] bg-transparent px-2 text-xxs text-slate-800 dark:text-white tabular-nums placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
+                  className="w-[80px] h-7 rounded-md border border-border bg-transparent px-2 text-xxs text-foreground tabular-nums placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-inset focus:ring-primary/30"
                 />
                 <button
                   onClick={handleAddMilestone}
@@ -397,10 +397,10 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
 
               {/* Total */}
               {billing?.amount && (
-                <div className="mt-2 pt-2 border-t border-black/[.04] dark:border-white/[.05]">
+                <div className="mt-2 pt-2 border-t border-border">
                   <div className="flex items-center justify-between">
                     <span className="text-atom text-slate-400">Total</span>
-                    <span className="text-xxs font-bold text-slate-800 dark:text-white tabular-nums">{formatBillingMoney(billing.amount, currency)}</span>
+                    <span className="text-xxs font-bold text-foreground tabular-nums">{formatBillingMoney(billing.amount, currency)}</span>
                   </div>
                   {billing.monthlyDerived && (
                     <div className="flex items-center justify-between mt-0.5">
@@ -418,7 +418,7 @@ export function BillingSection({ dealId, onSaved, initialEditing = false, embedd
             {isEditing && billing && (
               <button
                 onClick={() => { setIsEditing(false); setDirty(false) }}
-                className="flex-1 h-8 rounded-lg border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-lg border border-border text-muted-foreground text-xs font-semibold hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>

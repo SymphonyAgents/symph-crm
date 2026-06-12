@@ -75,18 +75,18 @@ export function EditContactModal({ contact, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
+        className="bg-card rounded-lg shadow-lg border border-border w-full max-w-[420px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">Edit Contact</div>
+            <div className="text-sm font-semibold text-foreground">Edit Contact</div>
             <div className="text-xs text-slate-400 mt-0.5">Update contact details</div>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -98,7 +98,7 @@ export function EditContactModal({ contact, onClose }: Props) {
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           {/* Name */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Full Name <span className="text-red-400">*</span>
             </label>
             <Input
@@ -113,7 +113,7 @@ export function EditContactModal({ contact, onClose }: Props) {
 
           {/* Role */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Role <span className="text-slate-400">(optional)</span>
             </label>
             <Select value={role || '__none__'} onValueChange={v => setRole(v === '__none__' ? '' : v)}>
@@ -135,7 +135,7 @@ export function EditContactModal({ contact, onClose }: Props) {
           {/* Phone + Email */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              <label className="eyebrow-label">
                 Phone <span className="text-slate-400">(optional)</span>
               </label>
               <Input
@@ -147,7 +147,7 @@ export function EditContactModal({ contact, onClose }: Props) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              <label className="eyebrow-label">
                 Email <span className="text-slate-400">(optional)</span>
               </label>
               <Input
@@ -162,7 +162,7 @@ export function EditContactModal({ contact, onClose }: Props) {
 
           {/* Notes */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Notes <span className="text-slate-400">(optional)</span>
             </label>
             <Input
@@ -183,7 +183,7 @@ export function EditContactModal({ contact, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-9 rounded-lg border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>

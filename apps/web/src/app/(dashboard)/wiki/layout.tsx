@@ -208,7 +208,7 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
       >
         <div className={cn(
           'w-px h-full',
-          isDragging ? 'bg-primary/40' : 'bg-black/[.06] dark:bg-white/[.06] group-hover:bg-primary/30',
+          isDragging ? 'bg-primary/40' : 'bg-black/[.06] group-hover:bg-primary/30',
           'transition-colors duration-150',
         )} />
       </div>
@@ -216,7 +216,7 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
       {/* Content area */}
       <div className={cn(
         'md:flex md:flex-1 md:h-full md:min-w-0 flex-col',
-        'bg-white dark:bg-[#161618]',
+        'bg-card',
         'h-full w-full',
         mobilePane === 'content' || view === 'graph' ? 'flex' : 'hidden md:flex',
       )}>
@@ -239,12 +239,12 @@ function WikiLayoutInner({ children }: { children: React.ReactNode }) {
                   value={graphSearch}
                   onChange={e => setGraphSearch(e.target.value)}
                   placeholder="Search nodes..."
-                  className="w-[240px] h-8 pl-8 pr-3 text-xs rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white/90 dark:bg-[#1e1e21]/90 backdrop-blur-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/30 shadow-sm transition-colors"
+                  className="w-[240px] h-8 pl-8 pr-3 text-xs rounded-lg border border-border bg-white/90 backdrop-blur-sm text-foreground placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/30 shadow-sm transition-colors"
                 />
                 {graphSearch && (
                   <button
                     onClick={() => { setGraphSearch(''); graphSearchRef.current?.focus() }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hover:text-foreground"
                   >
                     <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

@@ -54,7 +54,7 @@ function IconThumb({ src, size = 16, className }: { src?: string | null; size?: 
   return (
     <div
       className={cn(
-        'rounded-sm bg-slate-100 dark:bg-white/[.06] flex items-center justify-center text-slate-400',
+        'rounded-sm bg-secondary flex items-center justify-center text-slate-400',
         className,
       )}
       style={{ width: size, height: size }}
@@ -83,6 +83,7 @@ export default function CatalogPage() {
     }, { all: 0, internal: 0, service: 0, reseller: 0, partnership: 0 })
   }, [allItems])
   const tabItems = useMemo<TabFilterItem<TabId>[]>(() => TABS.map(t => ({ id: t.id, label: t.label, count: tabCounts[t.id] })), [tabCounts])
+  const activeCount = useMemo(() => allItems.filter(item => item.isActive && item.productType !== 'partnership').length, [allItems])
 
   const updateProduct = useUpdateCatalogItem({
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.catalogItems.all }),
@@ -105,14 +106,14 @@ export default function CatalogPage() {
       accessorKey: 'name',
       header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
       cell: ({ row }) => (
-        <span className="text-ssm font-medium text-slate-900 dark:text-white">{row.original.name}</span>
+        <span className="text-ssm font-medium text-foreground">{row.original.name}</span>
       ),
     },
     ...(tab === 'internal' ? [{
       accessorKey: 'industry',
       header: ({ column }: any) => <SortableHeader column={column}>Industry</SortableHeader>,
       cell: ({ row }: any) => (
-        <span className="text-ssm text-slate-600 dark:text-slate-300">{row.original.industry || '—'}</span>
+        <span className="text-ssm text-muted-foreground">{row.original.industry || '—'}</span>
       ),
     } as ColumnDef<ApiCatalogItem>] : []),
     {
@@ -144,7 +145,7 @@ export default function CatalogPage() {
       accessorKey: 'createdAt',
       header: ({ column }) => <SortableHeader column={column}>Created</SortableHeader>,
       cell: ({ row }) => (
-        <span className="text-ssm text-slate-500 dark:text-slate-400 tabular-nums">{formatDate(row.original.createdAt)}</span>
+        <span className="text-ssm text-muted-foreground tabular-nums">{formatDate(row.original.createdAt)}</span>
       ),
     },
     {
@@ -159,21 +160,21 @@ export default function CatalogPage() {
                 e.stopPropagation()
                 updateProduct.mutate({ id: p.id, data: { isActive: !p.isActive } })
               }}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-primary hover:bg-surface-hover transition-colors"
               title={p.isActive ? 'Deactivate' : 'Activate'}
             >
               {p.isActive ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setEditing(p) }}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-primary hover:bg-surface-hover transition-colors"
               title="Edit"
             >
               <Pencil size={13} />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); setDeleting(p) }}
-              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-[#dc2626] hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+              className="h-7 w-7 rounded-md flex items-center justify-center text-slate-500 hover:text-[#dc2626] hover:bg-surface-hover transition-colors"
               title="Delete"
             >
               <Trash2 size={13} />
@@ -186,6 +187,13 @@ export default function CatalogPage() {
 
   return (
     <div className="p-4 md:px-6 pb-6 w-full">
+      <div className="mb-4 flex flex-col gap-1">
+        <div className="text-ssm font-semibold text-foreground">Catalog</div>
+        <div className="text-xxs text-slate-400 tabular-nums">
+          {allItems.length} item{allItems.length !== 1 ? 's' : ''} · {activeCount} active · Products, services, and resellers used across deals
+        </div>
+      </div>
+
       <div className="mb-4 flex items-center justify-between gap-3">
         <TabFilter items={tabItems} value={tab} onChange={setTab} />
         {tab !== 'all' && (
@@ -199,7 +207,7 @@ export default function CatalogPage() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md shadow-[var(--shadow-card)]">
+      <div className="bg-card border border-border rounded-md shadow-[var(--shadow-card)]">
         {isLoading ? (
           <DataTableSkeleton />
         ) : (
@@ -313,12 +321,12 @@ function CatalogItemFormModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[460px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+        className="bg-card rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-border w-full max-w-[460px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between bg-white dark:bg-[#1e1e21] rounded-t-lg">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-card rounded-t-lg">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">
+            <div className="text-sm font-semibold text-foreground">
               {item ? `Edit ${typeLabel}` : `New ${typeLabel}`}
             </div>
             <div className="text-xs text-slate-400 mt-0.5">
@@ -327,7 +335,7 @@ function CatalogItemFormModal({
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -338,7 +346,7 @@ function CatalogItemFormModal({
         <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           {/* Icon */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Icon <span className="text-slate-400">(optional, up to 512KB)</span>
             </label>
             <div className="flex items-center gap-3">
@@ -354,7 +362,7 @@ function CatalogItemFormModal({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
                 >
                   <Upload size={13} />
                   {iconPreview ? 'Replace icon' : 'Upload icon'}
@@ -363,7 +371,7 @@ function CatalogItemFormModal({
                   <button
                     type="button"
                     onClick={handleRemoveIcon}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-black/[.08] dark:border-white/[.08] text-[#dc2626] hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-ssm font-medium border border-border text-[#dc2626] hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
                   >
                     <X size={13} />
                     Remove icon
@@ -374,7 +382,7 @@ function CatalogItemFormModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Name</label>
+            <label className="eyebrow-label">Name</label>
             <Input
               autoFocus
               value={name}
@@ -386,7 +394,7 @@ function CatalogItemFormModal({
 
           {productType === 'internal' && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              <label className="eyebrow-label">
                 Industry <span className="text-slate-400">(optional)</span>
               </label>
               <Combobox
@@ -399,7 +407,7 @@ function CatalogItemFormModal({
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Landing page <span className="text-slate-400">(optional)</span>
             </label>
             <Input
@@ -420,7 +428,7 @@ function CatalogItemFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-9 rounded-lg border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>
@@ -458,21 +466,21 @@ function ConfirmDeleteModal({
       onClick={onCancel}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+        className="bg-card rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-border w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">Delete catalog item</div>
+        <div className="px-4 py-3 border-b border-border">
+          <div className="text-sm font-semibold text-foreground">Delete catalog item</div>
         </div>
         <div className="p-4 flex flex-col gap-4">
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            Delete <span className="font-medium text-slate-900 dark:text-white">{item.name}</span>? This cannot be undone.
+          <p className="text-xs text-muted-foreground">
+            Delete <span className="font-medium text-foreground">{item.name}</span>? This cannot be undone.
           </p>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-9 rounded-lg border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>

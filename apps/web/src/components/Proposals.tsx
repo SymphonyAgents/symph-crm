@@ -116,7 +116,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           aria-label="Proposal actions"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-black/[.08] bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-800 active:scale-[0.96] dark:border-white/[.1] dark:bg-white/[.04] dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-slate-500 shadow-sm transition-colors hover:bg-secondary hover:text-slate-800 active:scale-[0.96] hover:text-foreground"
         >
           <MoreVertical className="h-4 w-4" strokeWidth={1.8} />
         </button>
@@ -125,7 +125,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           onClick={onViewVersions}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-secondary"
         >
           <History className="h-3.5 w-3.5" strokeWidth={1.8} />
           View versions
@@ -134,7 +134,7 @@ function ProposalActionsMenu({
           type="button"
           onClick={onDownloadHtml}
           disabled={isHtmlPending}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-200 dark:hover:bg-white/[.06] dark:disabled:text-slate-600"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:text-slate-300 dark:disabled:text-slate-600"
         >
           {isHtmlPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Download className="h-3.5 w-3.5" strokeWidth={1.8} />}
           Download HTML
@@ -142,8 +142,8 @@ function ProposalActionsMenu({
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
           canUploadPdf && !isPdfPending
-            ? 'cursor-pointer text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
-            : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
+            ? 'cursor-pointer text-slate-700 hover:bg-secondary'
+            : 'cursor-not-allowed text-text-faint',
         )}>
           {isPdfPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />}
           {hasPdf ? 'Replace PDF' : 'Upload PDF'}
@@ -167,8 +167,8 @@ function ProposalActionsMenu({
           className={cn(
             'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-xs font-medium transition-colors',
             hasPdf
-              ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
-              : 'pointer-events-none text-slate-300 dark:text-slate-600',
+              ? 'text-slate-700 hover:bg-secondary'
+              : 'pointer-events-none text-text-faint',
           )}
         >
           <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -205,19 +205,19 @@ function ProposalRow({
   return (
     <TableRow
       onClick={onOpen}
-      className="cursor-pointer transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[.03]"
+      className="cursor-pointer transition-colors hover:bg-surface-alt"
     >
-      <TableCell className="py-3">
+      <TableCell>
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-100 dark:bg-white/[.04]">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-secondary">
             <FileIcon size={16} className="text-slate-400" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{p.title}</div>
+            <div className="truncate text-ssm font-semibold text-foreground">{p.title}</div>
             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xxs text-slate-500">
-              <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
+              <AvatarRoot className="h-4 w-4 border border-border">
                 {p.creatorImage && <AvatarImage src={p.creatorImage} alt={p.creatorName || p.creatorEmail || 'Creator'} />}
-                <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                <AvatarFallback className="bg-secondary text-[8px] text-muted-foreground">
                   {initials(p.creatorName, p.creatorEmail)}
                 </AvatarFallback>
               </AvatarRoot>
@@ -233,7 +233,7 @@ function ProposalRow({
         </div>
       </TableCell>
       {showStatusControls && (
-        <TableCell className="w-[118px] py-3" onClick={(event) => event.stopPropagation()}>
+        <TableCell className="w-[118px]" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-end gap-1.5">
             {p.signedPdfFileName && <StatusPill tone="emerald">PDF</StatusPill>}
             <Select value={p.status} onValueChange={(value) => onStatusChange(value as ApiProposalStatus)} disabled={isStatusPending}>
@@ -256,7 +256,7 @@ function ProposalRow({
           </div>
         </TableCell>
       )}
-      <TableCell className="w-[190px] py-3" onClick={(event) => event.stopPropagation()}>
+      <TableCell className="w-[190px]" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-end gap-1.5">
           <div className="hidden items-center gap-1.5 text-xxs text-slate-500 sm:flex">
             <span className="font-mono">v{p.currentVersion}</span>
@@ -305,33 +305,33 @@ function ProposalVersionsDialog({
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((item) => (
-                <div key={item} className="h-14 rounded-md bg-slate-100 dark:bg-white/[.06] animate-pulse" />
+                <div key={item} className="h-14 rounded-md bg-secondary animate-pulse" />
               ))}
             </div>
           ) : versions.length === 0 ? (
-            <div className="rounded-md border border-black/[.06] px-4 py-8 text-center dark:border-white/[.08]">
-              <History className="mx-auto mb-2 h-5 w-5 text-slate-300 dark:text-slate-600" strokeWidth={1.6} />
-              <p className="text-ssm font-semibold text-slate-700 dark:text-slate-200">No versions yet</p>
-              <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">Saved proposal versions will appear here.</p>
+            <div className="rounded-md border border-border px-4 py-8 text-center">
+              <History className="mx-auto mb-2 h-5 w-5 text-text-faint" strokeWidth={1.6} />
+              <p className="text-ssm font-semibold text-foreground">No versions yet</p>
+              <p className="mt-1 text-xxs text-muted-foreground">Saved proposal versions will appear here.</p>
             </div>
           ) : (
             <div className="space-y-2">
               {versions.map((version) => (
-                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-[#1c1c1f] sm:flex-row sm:items-center sm:justify-between">
+                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-border bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">v{version.version}</span>
+                      <span className="font-mono text-xs font-semibold text-foreground">v{version.version}</span>
                       {version.wordCount != null && <span className="text-xxs text-slate-400 tabular-nums">{version.wordCount.toLocaleString()} words</span>}
                     </div>
-                    <p className="mt-0.5 truncate text-xxs text-slate-500 dark:text-slate-400">
+                    <p className="mt-0.5 truncate text-xxs text-muted-foreground">
                       {version.changeNote || version.excerpt || 'Saved version'}
                     </p>
-                    <p className="mt-1 text-atom text-slate-400 dark:text-slate-500">{relTime(version.createdAt)}</p>
+                    <p className="mt-1 text-atom text-text-faint">{relTime(version.createdAt)}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => onViewVersion(version)}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xxs font-semibold text-white transition-colors hover:bg-slate-700 active:scale-[0.96] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xxs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover active:scale-[0.96]"
                   >
                     <Eye className="h-3.5 w-3.5" strokeWidth={1.8} />
                     View
@@ -431,6 +431,13 @@ export function Proposals() {
 
   return (
     <div className="p-4 md:px-6 pb-6 w-full">
+      <div className="mb-4 flex flex-col gap-1">
+        <div className="text-ssm font-semibold text-foreground">Proposals</div>
+        <div className="text-xxs text-slate-400 tabular-nums">
+          {proposals.length} proposal{proposals.length !== 1 ? 's' : ''} · {statusCounts.signed} signed · Generated proposal versions across brands and deals
+        </div>
+      </div>
+
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <TabFilter items={typeItems} value={typeFilter} onChange={(next) => updateFilters(next)} />
         <div className="relative min-w-[260px] flex-1">
@@ -446,7 +453,7 @@ export function Proposals() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search proposals, brands, deals…"
-            className="w-full h-9 pl-9 pr-3 text-xs rounded-lg bg-slate-100 dark:bg-white/[.04] border border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-[#1c1c1f] outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
+            className="w-full h-9 pl-9 pr-3 text-xs rounded-lg bg-secondary border border-transparent focus:border-primary/30 focus:bg-card dark:focus:bg-[#1c1c1f] outline-none placeholder:text-slate-400 text-foreground"
           />
         </div>
         {showStatusControls && <TabFilter items={statusItems} value={statusFilter} onChange={(next) => updateFilters('formal', next)} />}
@@ -454,13 +461,13 @@ export function Proposals() {
 
       {/* Body */}
       {isLoading ? (
-        <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
+        <div className="bg-card border border-border rounded-md shadow-[var(--shadow-card)] overflow-hidden">
           <DataTableSkeleton />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl py-16 text-center">
-          <FileIcon size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <div className="text-ssm font-semibold text-slate-700 dark:text-slate-200">
+        <div className="bg-card border border-border rounded-md py-16 text-center">
+          <FileIcon size={32} className="text-text-faint mx-auto mb-3" />
+          <div className="text-ssm font-semibold text-foreground">
             {search ? 'No matches' : 'No proposals yet'}
           </div>
           <div className="text-xxs text-slate-500 mt-1">
@@ -468,7 +475,7 @@ export function Proposals() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1c1c1f]">
+        <div className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">

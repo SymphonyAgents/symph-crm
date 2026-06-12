@@ -42,8 +42,8 @@ function ChartSkeleton() {
       {bars.map((w, i) => (
         <div key={i} className="flex items-center gap-2.5">
           <Skeleton className="w-[80px] h-2.5 rounded shrink-0" />
-          <div className="flex-1 h-[16px] bg-slate-100 dark:bg-white/[.06] rounded overflow-hidden">
-            <div className="h-full bg-slate-200 dark:bg-white/[.1] animate-pulse rounded" style={{ width: w + '%' }} />
+          <div className="flex-1 h-[16px] bg-secondary rounded overflow-hidden">
+            <div className="h-full bg-skeleton animate-pulse rounded" style={{ width: w + '%' }} />
           </div>
           <Skeleton className="w-12 h-2.5 rounded shrink-0" />
         </div>
@@ -56,7 +56,7 @@ function AMTableSkeleton() {
   return (
     <div className="flex flex-col">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="grid grid-cols-[20px_1fr_auto] items-center gap-3 py-2.5 px-1 border-b border-black/[.04] dark:border-white/[.06] last:border-0">
+        <div key={i} className="grid grid-cols-[20px_1fr_auto] items-center gap-3 py-2.5 px-1 border-b border-border last:border-0">
           <Skeleton className="w-4 h-3 rounded" />
           <div className="flex flex-col gap-1.5">
             <Skeleton className="h-3 w-28 rounded" />
@@ -154,13 +154,13 @@ export function Reports() {
     <div className="p-4 md:p-5 max-w-[1200px]">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900 dark:text-white">Reports</h1>
-          <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">
+          <h1 className="text-lg font-semibold text-foreground">Reports</h1>
+          <p className="mt-1 text-xxs text-muted-foreground">
             Converted from active native totals ({nativeActiveLabel}). {conversionRateNote}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xxs font-semibold uppercase tracking-[0.06em] text-slate-400">Display currency</span>
+          <span className="eyebrow-label">Display currency</span>
           <Select value={displayCurrency} onValueChange={v => setDisplayCurrency(v as DealCurrency)}>
             <SelectTrigger className="h-8 text-xs w-[86px]">
               <SelectValue />
@@ -188,9 +188,9 @@ export function Reports() {
           metrics.map((m) => (
             <Card key={m.label} className="flex-[1_1_200px]">
               <CardContent>
-                <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1.5">{m.label}</div>
+                <div className="eyebrow-label mb-1.5">{m.label}</div>
                 <div className="text-2xl font-bold tabular-nums leading-none" style={{ color: m.color || undefined }}>
-                  {!m.color && <span className="text-slate-900 dark:text-white">{m.value}</span>}
+                  {!m.color && <span className="text-foreground">{m.value}</span>}
                   {m.color && m.value}
                 </div>
                 <div className="text-xxs text-slate-500 mt-1.5">{m.trend}</div>
@@ -206,7 +206,7 @@ export function Reports() {
         {/* Pipeline Value by Stage */}
         <Card>
           <CardContent>
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-4 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
+            <div className="text-ssm font-semibold text-foreground mb-4 pb-4 border-b border-border">
               Pipeline Value by Stage
             </div>
             {isLoading ? (
@@ -222,10 +222,10 @@ export function Reports() {
               <div className="flex flex-col gap-2.5">
                 {activeStages.map(s => (
                   <div key={s.stage} className="flex items-center gap-2.5">
-                    <div className="w-[80px] shrink-0 text-xxs font-medium text-slate-600 dark:text-slate-400 truncate">
+                    <div className="w-[80px] shrink-0 text-xxs font-medium text-muted-foreground truncate">
                       {STAGE_LABELS[s.stage] ?? s.stage}
                     </div>
-                    <div className="flex-1 h-[16px] bg-slate-100 dark:bg-white/[.06] rounded overflow-hidden">
+                    <div className="flex-1 h-[16px] bg-secondary rounded overflow-hidden">
                       <div
                         className="h-full rounded transition-all duration-500"
                         style={{
@@ -235,7 +235,7 @@ export function Reports() {
                         }}
                       />
                     </div>
-                    <div className="w-[56px] shrink-0 text-xxs font-semibold tabular-nums text-right text-slate-700 dark:text-slate-300">
+                    <div className="w-[56px] shrink-0 text-xxs font-semibold tabular-nums text-right text-muted-foreground">
                       {s.totalLabel}
                     </div>
                     <div className="w-[18px] shrink-0 text-atom font-medium text-center text-slate-400 tabular-nums">
@@ -255,7 +255,7 @@ export function Reports() {
       {/* AM Performance */}
       <Card className="mb-4">
         <CardContent>
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-3.5 pb-3.5 border-b border-black/[.06] dark:border-white/[.08]">
+          <div className="text-ssm font-semibold text-foreground mb-3.5 pb-3.5 border-b border-border">
             AM Performance
           </div>
           {loadingDeals ? (
@@ -272,16 +272,16 @@ export function Reports() {
               {amRows.map(([name, stats, convertedValue], i) => (
                 <div
                   key={name}
-                  className="grid grid-cols-[20px_1fr_auto_auto] items-center gap-3 py-2.5 px-1 border-b border-black/[.04] dark:border-white/[.06] last:border-0"
+                  className="grid grid-cols-[20px_1fr_auto_auto] items-center gap-3 py-2.5 px-1 border-b border-border last:border-0"
                 >
                   <div className={`text-xxs font-bold tabular-nums text-center ${i === 0 ? 'text-primary' : 'text-slate-400'}`}>
                     {i + 1}
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-900 dark:text-white">{name}</div>
+                    <div className="text-xs font-semibold text-foreground">{name}</div>
                     <div className="text-atom text-slate-400">{stats.deals} deal{stats.deals !== 1 ? 's' : ''}</div>
                   </div>
-                  <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums" title={`Native: ${formatCurrencyBreakdown(stats.totals)}`}>{convertedValue}</div>
+                  <div className="text-xs font-semibold text-muted-foreground tabular-nums" title={`Native: ${formatCurrencyBreakdown(stats.totals)}`}>{convertedValue}</div>
                 </div>
               ))}
             </div>

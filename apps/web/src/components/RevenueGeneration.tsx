@@ -142,7 +142,7 @@ function EditableMonthCell({
           onChange={e => setDraft(e.target.value)}
           onBlur={commitEdit}
           onKeyDown={handleKeyDown}
-          className="w-full h-7 px-2 text-right text-ssm tabular-nums rounded border border-primary/30 bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary/40"
+          className="w-full h-7 px-2 text-right text-ssm tabular-nums rounded border border-primary/30 bg-card bg-secondary text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
         />
       </td>
     )
@@ -155,11 +155,11 @@ function EditableMonthCell({
       title="Click to edit"
     >
       {currentValue > 0 ? (
-        <span className={hasOverride ? 'text-primary font-medium' : 'text-slate-800 dark:text-slate-200'}>
+        <span className={hasOverride ? 'text-primary font-medium' : 'text-foreground'}>
           {phpFmt(currentValue)}
         </span>
       ) : (
-        <span className="text-slate-300 dark:text-slate-600">, </span>
+        <span className="text-text-faint">, </span>
       )}
     </td>
   )
@@ -169,7 +169,7 @@ function EditableMonthCell({
 
 function SectionHeader({ icon, title, color }: { icon: React.ReactNode; title: string; color: string }) {
   return (
-    <div className={`flex items-center gap-2.5 px-4 py-3 rounded-xl ${color} mb-3`}>
+    <div className={`flex items-center gap-2.5 px-4 py-3 rounded-md ${color} mb-3`}>
       <div className="shrink-0">{icon}</div>
       <span className="text-sm font-semibold">{title}</span>
     </div>
@@ -180,7 +180,7 @@ function MonthHeaders() {
   return (
     <>
       {MONTH_LABELS.map(m => (
-        <th key={m} className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right min-w-[90px] whitespace-nowrap">{m}</th>
+        <th key={m} className="px-3 py-2.5 eyebrow-label text-right min-w-[90px] whitespace-nowrap">{m}</th>
       ))}
     </>
   )
@@ -202,13 +202,13 @@ function AddRevenueIconButton({ onClick }: { onClick: () => void }) {
 
 function OwnerCell({ user }: { user: ApiUser | undefined }) {
   if (!user) {
-    return <span className="text-xs text-slate-400 dark:text-slate-500">Unassigned</span>
+    return <span className="text-xs text-text-faint">Unassigned</span>
   }
 
   return (
     <div className="flex items-center gap-1.5 min-w-0">
       <Avatar name={user.name || user.email} email={user.email ?? undefined} src={user.image ?? undefined} size={18} />
-      <span className="truncate text-xs text-slate-500 dark:text-slate-400">{(user.name || user.email).split(' ')[0]}</span>
+      <span className="truncate text-xs text-muted-foreground">{(user.name || user.email).split(' ')[0]}</span>
     </div>
   )
 }
@@ -257,20 +257,20 @@ function RevenueBillingModal({
       <DialogPortal>
         <DialogOverlay className="z-40 bg-black/45" />
         <DialogPrimitive.Content
-          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-black/[.06] dark:border-white/[.08] mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0 data-[state=closed]:duration-100 data-[state=closed]:ease-in"
+          className="fixed left-[50%] top-[50%] z-50 w-full max-w-[420px] translate-x-[-50%] translate-y-[-50%] bg-card rounded-lg shadow-lg border border-border mx-4 animate-in zoom-in-95 fade-in-0 duration-150 ease-out data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=closed]:fade-out-0 data-[state=closed]:duration-100 data-[state=closed]:ease-in"
           onOpenAutoFocus={event => event.preventDefault()}
         >
-          <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
             <div className="min-w-0">
-              <DialogTitle className="text-sm font-semibold text-slate-900 dark:text-white">Add Billing</DialogTitle>
+              <DialogTitle className="text-sm font-semibold text-foreground">Add Billing</DialogTitle>
               <DialogDescription className="mt-0.5 truncate text-xs text-slate-400">
                 {deal.title}
               </DialogDescription>
-              <p className="mt-0.5 truncate text-xxs text-slate-400 dark:text-slate-500">
+              <p className="mt-0.5 truncate text-xxs text-text-faint">
                 Brand: {deal.brandName ?? 'No brand assigned'}
               </p>
             </div>
-            <DialogPrimitive.Close className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors">
+            <DialogPrimitive.Close className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover  transition-colors">
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
@@ -279,7 +279,7 @@ function RevenueBillingModal({
 
           <form onSubmit={handleSubmit} className="p-4 flex flex-col gap-4">
           <div className="mb-3">
-            <label className="mb-1.5 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">
+            <label className="mb-1.5 block eyebrow-label text-muted-foreground">
               Billing type
             </label>
             <div className="grid grid-cols-3 gap-1.5">
@@ -296,7 +296,7 @@ function RevenueBillingModal({
                     'h-8 rounded-md text-xs font-semibold transition-colors',
                     billingType === option.value
                       ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-300'
-                      : 'border border-black/[.08] text-slate-600 hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]',
+                      : 'border border-border text-slate-600 hover:bg-surface-hover border-border text-muted-foreground ',
                   )}
                 >
                   {option.label}
@@ -306,7 +306,7 @@ function RevenueBillingModal({
           </div>
 
           <div>
-            <label className="mb-1 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">
+            <label className="mb-1 block eyebrow-label text-muted-foreground">
               {amountLabel}
             </label>
             <input
@@ -315,27 +315,27 @@ function RevenueBillingModal({
               value={amount}
               onChange={event => setAmount(formatMoneyInput(event.target.value))}
               placeholder="0.00"
-              className="h-9 w-full rounded-md border border-black/[.08] bg-transparent px-2 text-xs tabular-nums text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 dark:border-white/[.1] dark:text-white"
+              className="h-9 w-full rounded-md border border-border bg-transparent px-2 text-xs tabular-nums text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 border-border text-foreground"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">Start</label>
+              <label className="mb-1 block eyebrow-label text-muted-foreground">Start</label>
               <input
                 type="date"
                 value={contractStart}
                 onChange={event => setContractStart(event.target.value)}
-                className="h-9 w-full rounded-md border border-black/[.08] bg-transparent px-2 text-xs text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 dark:border-white/[.1] dark:text-white"
+                className="h-9 w-full rounded-md border border-border bg-transparent px-2 text-xs text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 border-border text-foreground"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500 dark:text-slate-400">End</label>
+              <label className="mb-1 block eyebrow-label text-muted-foreground">End</label>
               <input
                 type="date"
                 value={contractEnd}
                 onChange={event => setContractEnd(event.target.value)}
-                className="h-9 w-full rounded-md border border-black/[.08] bg-transparent px-2 text-xs text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 dark:border-white/[.1] dark:text-white"
+                className="h-9 w-full rounded-md border border-border bg-transparent px-2 text-xs text-slate-800 outline-none transition-shadow focus:ring-1 focus:ring-inset focus:ring-primary/30 border-border text-foreground"
               />
             </div>
           </div>
@@ -344,7 +344,7 @@ function RevenueBillingModal({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-9 rounded-lg border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover  transition-colors"
             >
               Cancel
             </button>
@@ -386,7 +386,7 @@ function ResellerProductBadge({ product }: { product: ResellerProduct }) {
 
 function EmptyValue({ align = 'right' }: { align?: 'left' | 'right' }) {
   return (
-    <span className={cn('block text-slate-300 dark:text-slate-600', align === 'right' && 'text-right')}>
+    <span className={cn('block text-text-faint', align === 'right' && 'text-right')}>
       --
     </span>
   )
@@ -407,21 +407,21 @@ function ResellerMetricCard({
 }) {
   const iconClass = {
     blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400',
-    slate: 'bg-slate-100 text-slate-600 dark:bg-white/[.06] dark:text-slate-400',
+    slate: 'bg-secondary text-slate-600  text-muted-foreground',
     emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400',
     amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400',
   }[tone]
 
   return (
-    <div className="rounded-md border border-black/[.06] bg-white p-4 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+    <div className="rounded-md border border-border bg-card p-4 shadow-card">
       <div className="mb-2 flex items-start justify-between gap-3">
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-xs font-semibold text-muted-foreground">{label}</p>
         <div className={cn('flex h-8 w-8 items-center justify-center rounded-md', iconClass)}>
           <Icon size={16} />
         </div>
       </div>
-      <p className="text-base font-bold tabular-nums text-slate-900 dark:text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{sub}</p>
+      <p className="text-base font-bold tabular-nums text-foreground">{value}</p>
+      <p className="mt-1 text-xs text-text-faint">{sub}</p>
     </div>
   )
 }
@@ -492,16 +492,16 @@ function ResellerPricingTable({ deals }: { deals: ApiDeal[] }) {
   const totalProfit = deals.reduce((sum, deal) => sum + getResellerGrossProfit(deal), 0)
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+    <div className="overflow-x-auto rounded-md border border-border">
       <table className="w-full min-w-[980px] border-collapse text-left">
         <thead>
-          <tr className="border-b border-black/[.06] bg-slate-50 dark:border-white/[.08] dark:bg-white/[.02]">
-            <th className="px-4 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Deal</th>
-            <th className="px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Product</th>
-            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cost price</th>
-            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Billing price</th>
-            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Gross profit</th>
-            <th className="px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Margin</th>
+          <tr className="border-b border-border bg-surface-alt">
+            <th className="px-4 py-2.5 eyebrow-label">Deal</th>
+            <th className="px-3 py-2.5 eyebrow-label">Product</th>
+            <th className="px-3 py-2.5 text-right eyebrow-label">Cost price</th>
+            <th className="px-3 py-2.5 text-right eyebrow-label">Billing price</th>
+            <th className="px-3 py-2.5 text-right eyebrow-label">Gross profit</th>
+            <th className="px-3 py-2.5 text-right eyebrow-label">Margin</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-black/[.04] dark:divide-white/[.04]">
@@ -522,8 +522,8 @@ function ResellerPricingTable({ deals }: { deals: ApiDeal[] }) {
               <tr
                 key={deal.id}
                 className={cn(
-                  'transition-colors hover:bg-slate-50 dark:hover:bg-white/[.02]',
-                  index % 2 === 0 ? '' : 'bg-slate-50/40 dark:bg-white/[.01]',
+                  'transition-colors hover:bg-surface-hover',
+                  index % 2 === 0 ? '' : 'bg-surface-alt',
                 )}
               >
                 <td className="px-4 py-2.5">
@@ -531,7 +531,7 @@ function ResellerPricingTable({ deals }: { deals: ApiDeal[] }) {
                     href={`/deals/${deal.id}?from=revenue`}
                     className="group inline-flex max-w-[520px]"
                   >
-                    <span className="truncate text-ssm font-medium text-slate-800 transition-colors group-hover:text-primary dark:text-slate-200">
+                    <span className="truncate text-ssm font-medium text-slate-800 transition-colors group-hover:text-primary text-foreground">
                       {deal.title}
                     </span>
                   </Link>
@@ -543,19 +543,19 @@ function ResellerPricingTable({ deals }: { deals: ApiDeal[] }) {
                       : <EmptyValue align="left" />}
                   </div>
                 </td>
-                <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-muted-foreground">
                   {cost > 0 ? formatPhp(cost) : <EmptyValue />}
                 </td>
-                <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-slate-900 dark:text-white">
+                <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-foreground">
                   {billing > 0 ? formatPhp(billing) : <EmptyValue />}
                 </td>
                 <td className={cn(
                   'px-3 py-2.5 text-right text-ssm font-bold tabular-nums',
-                  profit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-300 dark:text-slate-600',
+                  profit > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-text-faint',
                 )}>
                   {profit > 0 ? formatPhp(profit) : '--'}
                 </td>
-                <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-muted-foreground">
                   {margin !== null ? `${margin.toFixed(1)}%` : <EmptyValue />}
                 </td>
               </tr>
@@ -563,18 +563,18 @@ function ResellerPricingTable({ deals }: { deals: ApiDeal[] }) {
           })}
         </tbody>
         <tfoot>
-          <tr className="border-t border-black/[.06] bg-slate-50 dark:border-white/[.06] dark:bg-white/[.03]">
+          <tr className="border-t border-border bg-surface-alt border-border ">
             <td className="px-4 py-2.5">
               <div className="flex items-center gap-2">
-                <span className="text-ssm font-bold text-slate-700 dark:text-slate-300">Total</span>
+                <span className="text-ssm font-bold text-muted-foreground">Total</span>
                 <span className="text-xs text-slate-400">{deals.length} deal{deals.length === 1 ? '' : 's'}</span>
               </div>
             </td>
             <td />
-            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-slate-700 dark:text-slate-300">
+            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-muted-foreground">
               {formatPhp(totalCost)}
             </td>
-            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-slate-900 dark:text-white">
+            <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-foreground">
               {formatPhp(totalBilling)}
             </td>
             <td className="px-3 py-2.5 text-right text-ssm font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
@@ -611,7 +611,7 @@ function ResellerTableTabs({
             'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors active:scale-[0.98]',
             value === tab.value
               ? 'bg-primary/10 text-primary'
-              : 'bg-white text-slate-700 hover:bg-slate-50 dark:bg-[#1e1e21] dark:text-slate-300 dark:hover:bg-white/[.04]',
+              : 'bg-card text-muted-foreground hover:bg-surface-hover',
           )}
         >
           {tab.label}
@@ -639,14 +639,14 @@ function ResellerMonthlyRevenueSection({
         title="Reseller Monthly Revenue"
         color="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-200"
       />
-      <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full min-w-[1120px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-black/[.06] bg-slate-50 dark:border-white/[.08] dark:bg-white/[.02]">
-              <th className="sticky left-0 z-10 w-[320px] bg-slate-50 px-4 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500 dark:bg-[#1a1a1d]">Deal</th>
-              <th className="w-[110px] px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500">Product</th>
-              <th className="w-[90px] px-3 py-2.5 text-atom font-semibold uppercase tracking-wide text-slate-500">Stage</th>
-              <th className="w-[120px] px-3 py-2.5 text-right text-atom font-semibold uppercase tracking-wide text-slate-500">Billing</th>
+            <tr className="border-b border-border bg-surface-alt">
+              <th className="sticky left-0 z-10 w-[320px] bg-surface-alt px-4 py-2.5 eyebrow-label bg-surface-alt">Deal</th>
+              <th className="w-[110px] px-3 py-2.5 eyebrow-label">Product</th>
+              <th className="w-[90px] px-3 py-2.5 eyebrow-label">Stage</th>
+              <th className="w-[120px] px-3 py-2.5 text-right eyebrow-label">Billing</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -660,11 +660,11 @@ function ResellerMonthlyRevenueSection({
             ) : deals.map((deal, index) => {
               const products = getResellerProducts(deal)
               return (
-                <tr key={deal.id} className={index % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-                  <td className="sticky left-0 z-10 bg-white px-4 py-2.5 dark:bg-[#1e1e21]">
+                <tr key={deal.id} className={index % 2 === 0 ? '' : 'bg-surface-alt'}>
+                  <td className="sticky left-0 z-10 bg-card px-4 py-2.5">
                     <Link
                       href={`/deals/${deal.id}?from=revenue`}
-                      className="flex items-center gap-1 text-ssm font-medium text-slate-800 transition-colors hover:text-primary dark:text-slate-200 dark:hover:text-primary"
+                      className="flex items-center gap-1 text-ssm font-medium text-slate-800 transition-colors hover:text-primary text-foreground dark:hover:text-primary"
                     >
                       <span className="max-w-[270px] truncate">{deal.title}</span>
                       <ChevronRight size={11} className="shrink-0 opacity-50" />
@@ -678,7 +678,7 @@ function ResellerMonthlyRevenueSection({
                     </div>
                   </td>
                   <td className="px-3 py-2.5"><StagePill stage={deal.stage} /></td>
-                  <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+                  <td className="px-3 py-2.5 text-right text-ssm font-semibold tabular-nums text-muted-foreground">
                     {formatPhp(getResellerBillingPrice(deal))}
                   </td>
                   {MONTH_KEYS.map(monthKey => (
@@ -733,14 +733,14 @@ function ProjectRevenueSection({
         title="Section A: Project Based Revenue"
         color="bg-teal-50 dark:bg-teal-950/30 text-teal-800 dark:text-teal-200"
       />
-      <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Project / Deal</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Owner</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Stage</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[100px]">Value</th>
+            <tr className="border-b border-border bg-surface-alt">
+              <th className="px-4 py-2.5 eyebrow-label w-[260px] sticky left-0 bg-surface-alt bg-surface-alt z-10">Project / Deal</th>
+              <th className="px-3 py-2.5 eyebrow-label w-[70px]">Owner</th>
+              <th className="px-3 py-2.5 eyebrow-label w-[70px]">Stage</th>
+              <th className="px-3 py-2.5 eyebrow-label text-right w-[100px]">Value</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -755,11 +755,11 @@ function ProjectRevenueSection({
               projectDeals.map((deal, i) => {
                 const v = numVal(deal.value)
                 return (
-                  <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-                    <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
+                  <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-surface-alt'}>
+                    <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
                       <Link
                         href={`/deals/${deal.id}?from=revenue`}
-                        className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
+                        className="text-ssm font-medium text-foreground hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
                       >
                         <span className="truncate max-w-[220px]">{deal.title}</span>
                         <ChevronRight size={11} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
@@ -769,7 +769,7 @@ function ProjectRevenueSection({
                       <OwnerCell user={deal.assignedTo ? userById.get(deal.assignedTo) : undefined} />
                     </td>
                     <td className="px-3 py-2.5"><StagePill stage={deal.stage} /></td>
-                    <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
+                    <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-muted-foreground">
                       {v > 0 ? (
                         <div>
                           <div>{phpFmt(v)}</div>
@@ -834,11 +834,11 @@ function StartupRevenueSection({
     const otf = numVal(deal.oneTimeFee)
 
     return (
-      <tr className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-        <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
+      <tr className={i % 2 === 0 ? '' : 'bg-surface-alt'}>
+        <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
           <Link
             href={`/deals/${deal.id}?from=revenue`}
-            className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
+            className="text-ssm font-medium text-foreground hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
           >
             <span className="truncate max-w-[220px]">{deal.title}</span>
             <ChevronRight size={11} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
@@ -848,10 +848,10 @@ function StartupRevenueSection({
           <OwnerCell user={deal.assignedTo ? userById.get(deal.assignedTo) : undefined} />
         </td>
         <td className="px-3 py-2.5"><StagePill stage={deal.stage} /></td>
-        <td className="px-3 py-2.5 text-right text-ssm tabular-nums text-slate-500 dark:text-slate-400">
+        <td className="px-3 py-2.5 text-right text-ssm tabular-nums text-muted-foreground">
           {otf > 0 ? phpFmt(otf) : ', '}
         </td>
-        <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
+        <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-muted-foreground">
           {mrr > 0 ? phpFmt(mrr) : (
             <AddRevenueIconButton onClick={() => onBillingClick(deal)} />
           )}
@@ -866,7 +866,7 @@ function StartupRevenueSection({
   function SubgroupHeader({ label, color }: { label: string; color: string }) {
     return (
       <tr>
-        <td colSpan={5 + MONTH_KEYS.length} className={`px-4 py-2 text-xs font-bold uppercase tracking-wider ${color}`}>
+        <td colSpan={5 + MONTH_KEYS.length} className={`px-4 py-2 eyebrow-label font-bold ${color}`}>
           {label}
         </td>
       </tr>
@@ -880,15 +880,15 @@ function StartupRevenueSection({
         title="Section B: Startup Based Revenue (MRR)"
         color="bg-violet-50 dark:bg-violet-950/30 text-violet-800 dark:text-violet-200"
       />
-      <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Owner</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[70px]">Stage</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[112px] whitespace-nowrap">One-Time</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[90px] whitespace-nowrap">MRR</th>
+            <tr className="border-b border-border bg-surface-alt">
+              <th className="px-4 py-2.5 eyebrow-label w-[260px] sticky left-0 bg-surface-alt bg-surface-alt z-10">Client</th>
+              <th className="px-3 py-2.5 eyebrow-label w-[70px]">Owner</th>
+              <th className="px-3 py-2.5 eyebrow-label w-[70px]">Stage</th>
+              <th className="px-3 py-2.5 eyebrow-label text-right w-[112px] whitespace-nowrap">One-Time</th>
+              <th className="px-3 py-2.5 eyebrow-label text-right w-[90px] whitespace-nowrap">MRR</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -943,12 +943,12 @@ function ExistingClientsSection({
         title="Section C: Existing Clients (Retainers)"
         color="bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200"
       />
-      <div className="overflow-x-auto rounded-xl border border-black/[.06] dark:border-white/[.08]">
+      <div className="overflow-x-auto rounded-md border border-border">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.02]">
-              <th className="px-4 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide w-[260px] sticky left-0 bg-slate-50 dark:bg-[#1a1a1d] z-10">Client</th>
-              <th className="px-3 py-2.5 text-atom font-semibold text-slate-500 uppercase tracking-wide text-right w-[110px]">MRR</th>
+            <tr className="border-b border-border bg-surface-alt">
+              <th className="px-4 py-2.5 eyebrow-label w-[260px] sticky left-0 bg-surface-alt bg-surface-alt z-10">Client</th>
+              <th className="px-3 py-2.5 eyebrow-label text-right w-[110px]">MRR</th>
               <MonthHeaders />
             </tr>
           </thead>
@@ -960,17 +960,17 @@ function ExistingClientsSection({
                 const mrr = numVal(deal.mrr)
                 const displayName = deal.title.replace(' - Existing Client', '')
                 return (
-                  <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-slate-50/50 dark:bg-white/[.01]'}>
-                    <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1e1e21] z-10">
+                  <tr key={deal.id} className={i % 2 === 0 ? '' : 'bg-surface-alt'}>
+                    <td className="px-4 py-2.5 sticky left-0 bg-card z-10">
                       <Link
                         href={`/deals/${deal.id}?from=revenue`}
-                        className="text-ssm font-medium text-slate-800 dark:text-slate-200 hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
+                        className="text-ssm font-medium text-foreground hover:text-primary dark:hover:text-primary transition-colors flex items-center gap-1 group"
                       >
                         <span className="truncate max-w-[220px]">{displayName}</span>
                         <ChevronRight size={11} className="opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-slate-700 dark:text-slate-300">
+                    <td className="px-3 py-2.5 text-right text-ssm tabular-nums font-medium text-muted-foreground">
                       {mrr > 0 ? phpFmt(mrr) : ', '}
                     </td>
                     {MONTH_KEYS.map(mk => (
@@ -1142,24 +1142,24 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
           target/gap framing is no longer meaningful (target = full-org). */}
       {!isFiltered && (<>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Target / Month</div>
-          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{'₱'}22,000,000</div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <div className="eyebrow-label mb-1">Target / Month</div>
+          <div className="text-xl font-bold text-foreground tabular-nums">{'₱'}22,000,000</div>
         </div>
-        <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-atom font-semibold text-teal-500 uppercase tracking-wide mb-1">Project Revenue / Mo</div>
-          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(projectSubtotal)}</div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <div className="eyebrow-label text-teal-500 mb-1">Project Revenue / Mo</div>
+          <div className="text-xl font-bold text-foreground tabular-nums">{phpFmt(projectSubtotal)}</div>
         </div>
-        <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-atom font-semibold text-violet-500 uppercase tracking-wide mb-1">Startup MRR</div>
-          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(startupSubtotal)}</div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <div className="eyebrow-label text-violet-500 mb-1">Startup MRR</div>
+          <div className="text-xl font-bold text-foreground tabular-nums">{phpFmt(startupSubtotal)}</div>
         </div>
-        <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
-          <div className="text-atom font-semibold text-amber-500 uppercase tracking-wide mb-1">Existing Clients</div>
-          <div className="text-xl font-bold text-slate-800 dark:text-white tabular-nums">{phpFmt(existingSubtotal)}</div>
+        <div className="rounded-md border border-border bg-card p-4">
+          <div className="eyebrow-label text-amber-500 mb-1">Existing Clients</div>
+          <div className="text-xl font-bold text-foreground tabular-nums">{phpFmt(existingSubtotal)}</div>
         </div>
-        <div className={`rounded-xl border p-4 ${gap < 0 ? 'border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20' : 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/20'}`}>
-          <div className={`text-atom font-semibold uppercase tracking-wide mb-1 ${gap < 0 ? 'text-red-400' : 'text-emerald-500'}`}>
+        <div className={`rounded-md border p-4 ${gap < 0 ? 'border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20' : 'border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-950/20'}`}>
+          <div className={`eyebrow-label mb-1 ${gap < 0 ? 'text-red-400' : 'text-emerald-500'}`}>
             {gap < 0 ? 'Gap to Target' : 'Surplus'}
           </div>
           <div className={`text-xl font-bold tabular-nums ${gap < 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
@@ -1169,12 +1169,12 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
       </div>
 
       {/* Progress bar */}
-      <div className="rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-white/[.03] p-4">
+      <div className="rounded-md border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-ssm font-semibold text-slate-700 dark:text-slate-300">Revenue vs. Target ({'₱'}22M)</span>
-          <span className="text-ssm font-bold tabular-nums text-slate-700 dark:text-slate-300">{pct}%</span>
+          <span className="text-ssm font-semibold text-muted-foreground">Revenue vs. Target ({'₱'}22M)</span>
+          <span className="text-ssm font-bold tabular-nums text-muted-foreground">{pct}%</span>
         </div>
-        <div className="h-2.5 rounded-full bg-slate-100 dark:bg-white/[.06] overflow-hidden">
+        <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -1224,11 +1224,11 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
       <ExistingClientsSection deals={activeDeals} onMonthSave={handleMonthSave} />
 
       {/* Grand total row */}
-      <div className="overflow-x-auto rounded-xl border-2 border-slate-800 dark:border-white/[.2] bg-slate-800 dark:bg-white/[.06]">
+      <div className="overflow-x-auto rounded-md border-2 border-border-strong bg-surface-active ">
         <table className="w-full border-collapse">
           <tbody>
             <tr>
-              <td className="px-4 py-3 text-sm font-bold text-white dark:text-white w-[260px] sticky left-0 bg-slate-800 dark:bg-[#2a2d31] z-10">
+              <td className="px-4 py-3 text-sm font-bold text-white text-foreground w-[260px] sticky left-0 bg-slate-800 bg-secondary z-10">
                 TOTAL REVENUE
               </td>
               {/* spacer cols to align with table above */}
@@ -1260,7 +1260,7 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
         </table>
       </div>
 
-      <p className="text-atom text-slate-400 dark:text-slate-500 text-center">
+      <p className="text-atom text-text-faint text-center">
         Click any month cell to enter a custom amount. Blue values = custom override; white = auto-calculated.
         Revenue uses monthly overrides first, then MRR, then value / contract length, then value / 12.
       </p>

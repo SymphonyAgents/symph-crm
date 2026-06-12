@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -58,18 +58,93 @@ function stageToast(fromStage: string, toStage: string, dealTitle: string) {
 
 type SubTab = { id: string; name: string; count: number }
 
+type DealAssignee = {
+  id: string
+  displayName: string
+  shortName: string
+  email?: string
+  image?: string | null
+}
+
 type PipelineProps = {
   onOpenDeal: (id: string) => void
   /** Catalog parent category for the new tabbed pipeline. Undefined = All tab (no filter). */
   catalogProductType?: 'internal' | 'service' | 'reseller' | 'partnership'
   /** Drill into a specific catalog row within the active product_type. */
   catalogItemId?: string
+  /** Catalog parent tabs rendered on the left of the desktop action row. */
+  parentTabs?: ReactNode
   /** Catalog-item sub-tabs to render alongside the action buttons. Empty/undefined hides the row. */
   subTabs?: SubTab[]
   /** Active sub-tab id; null = "All" within the parent category. */
   activeSubTabId?: string | null
   /** Fired when user picks a sub-tab. Null = clear filter to All. */
   onSubTabChange?: (id: string | null) => void
+}
+
+function getUserLabel(user: ApiUser | undefined, fallback: string) {
+  return user?.name ?? user?.email ?? fallback
+}
+
+function getUserShortName(user: ApiUser | undefined, fallback: string) {
+  return user?.nickname ?? user?.firstName ?? user?.name?.split(' ')[0] ?? user?.email?.split('@')[0] ?? fallback
+}
+
+function getDealAssigneeIds(deal: ApiDeal): string[] {
+  const ids = [deal.assignedTo, deal.subAccountManagerId].filter(Boolean) as string[]
+  return Array.from(new Set(ids))
+}
+
+function getDealAssignees(deal: ApiDeal, users: ApiUser[] = []): DealAssignee[] {
+  return getDealAssigneeIds(deal).map(id => {
+    const user = users.find(u => u.id === id)
+    return {
+      id,
+      displayName: getUserLabel(user, id),
+      shortName: getUserShortName(user, id === deal.assignedTo ? '?' : id),
+      email: user?.email,
+      image: user?.image,
+    }
+  })
+}
+
+function getDealAssigneeSearchText(deal: ApiDeal, users: ApiUser[] = []) {
+  return getDealAssigneeIds(deal)
+    .flatMap(id => {
+      const user = users.find(u => u.id === id)
+      return [id, user?.name, user?.email, user?.firstName, user?.lastName, user?.nickname]
+    })
+    .filter(Boolean)
+    .join(' ')
+}
+
+function AssigneeStack({ assignees, cardBgVar = 'var(--kanban-card)' }: { assignees: DealAssignee[]; cardBgVar?: string }) {
+  if (!assignees.length) {
+    return <span className="text-xxs font-medium text-muted-foreground">Unassigned</span>
+  }
+
+  const visible = assignees.slice(0, 3)
+  const label = assignees.map(assignee => assignee.shortName).join(', ')
+
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex shrink-0 -space-x-1.5">
+        {visible.map(assignee => (
+          <div
+            key={assignee.id}
+            className="rounded-full ring-2"
+            style={{ ['--tw-ring-color' as string]: cardBgVar }}
+            title={assignee.displayName}
+          >
+            <Avatar name={assignee.displayName} email={assignee.email} src={assignee.image ?? undefined} size={20} />
+          </div>
+        ))}
+      </div>
+      <span className="min-w-0 truncate text-xxs font-medium text-muted-foreground" title={assignees.map(assignee => assignee.displayName).join(', ')}>
+        {label}
+      </span>
+    </div>
+  )
 }
 
 // --- Spinner ---
@@ -104,7 +179,7 @@ function PipelineSubTabButton({
         'rounded-md px-2.5 py-1 text-xxs font-medium transition-colors inline-flex items-center gap-1.5 active:scale-[0.98] shrink-0',
         active
           ? 'bg-primary/10 text-primary'
-          : 'bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+          : 'bg-card border border-border text-muted-foreground hover:bg-surface-hover',
       )}
     >
       {children}
@@ -171,22 +246,22 @@ function CardActionsMenu({
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o); setShowAssign(false); setShowAdvanceTo(false); setShowMoveTo(false) }}
-        className="w-10 h-10 sm:w-6 sm:h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+        className="w-10 h-10 sm:w-6 sm:h-6 rounded-md flex items-center justify-center text-text-faint transition-colors hover:bg-surface-hover hover:text-foreground"
       >
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 min-w-[180px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="absolute right-0 top-7 z-50 min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
           {/* Assign, locked for won/lost deals */}
           {isSales && isTerminal ? (
             <div
-              className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-400 dark:text-slate-600 cursor-not-allowed select-none"
+              className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-text-faint cursor-not-allowed select-none"
               title="Cannot reassign AM — deal is won/lost"
             >
               <span className="flex items-center gap-2">
                 <UserIcon size={14} /> Assign
               </span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300 dark:text-slate-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-text-faint">
                 <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </svg>
@@ -195,13 +270,13 @@ function CardActionsMenu({
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAssign(v => !v); setShowAdvanceTo(false); setShowMoveTo(false) }}
-                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 <span className="flex items-center gap-2"><UserIcon size={14} /> Assign</span>
                 <ChevronRight size={12} className={cn('text-slate-400 transition-transform duration-150', showAssign && 'rotate-90')} />
               </button>
               {showAssign && (
-                <div className="border-t border-black/[.04] dark:border-white/[.06] max-h-[144px] overflow-y-auto">
+                <div className="border-t border-border max-h-[144px] overflow-y-auto">
                   {users.length === 0 ? (
                     <div className="px-3 py-2 text-xs text-slate-400 italic">No team members</div>
                   ) : (
@@ -209,7 +284,7 @@ function CardActionsMenu({
                       <button
                         key={u.id}
                         onClick={(e) => { e.stopPropagation(); setOpen(false); setShowAssign(false); onAssign(u.id, u.name || u.email) }}
-                        className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                        className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
                       >
                         <Avatar name={u.name || u.email} src={u.image ?? undefined} size={18} />
                         {u.name || u.email}
@@ -226,7 +301,7 @@ function CardActionsMenu({
             <button
               onClick={(e) => { e.stopPropagation(); onAdvance() }}
               disabled={isAdvancing}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors disabled:opacity-50"
             >
               {isAdvancing ? <Spinner size={14} /> : <ChevronRight size={14} />}
               {isAdvancing ? 'Advancing…' : 'Advance'}
@@ -238,18 +313,18 @@ function CardActionsMenu({
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowAdvanceTo(v => !v); setShowAssign(false); setShowMoveTo(false) }}
-                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 <span className="flex items-center gap-2"><ChevronRight size={14} /> Advance to…</span>
                 <ChevronDown size={12} className={cn('text-slate-400 transition-transform duration-150', showAdvanceTo && 'rotate-180')} />
               </button>
               {showAdvanceTo && (
-                <div className="border-t border-black/[.04] dark:border-white/[.06] max-h-[200px] overflow-y-auto">
+                <div className="border-t border-border max-h-[200px] overflow-y-auto">
                   {advanceTargets.map(t => (
                     <button
                       key={t.id}
                       onClick={(e) => { e.stopPropagation(); setOpen(false); onAdvanceTo(t.dbStage) }}
-                      className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
                       {t.label}
@@ -265,18 +340,18 @@ function CardActionsMenu({
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); setShowMoveTo(v => !v); setShowAssign(false); setShowAdvanceTo(false) }}
-                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center justify-between w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 <span className="flex items-center gap-2"><ChevronDown size={14} className="rotate-90" /> Move back…</span>
                 <ChevronDown size={12} className={cn('text-slate-400 transition-transform duration-150', showMoveTo && 'rotate-180')} />
               </button>
               {showMoveTo && (
-                <div className="border-t border-black/[.04] dark:border-white/[.06] max-h-[200px] overflow-y-auto">
+                <div className="border-t border-border max-h-[200px] overflow-y-auto">
                   {moveBackTargets.map(t => (
                     <button
                       key={t.id}
                       onClick={(e) => { e.stopPropagation(); setOpen(false); onMoveTo(t.dbStage) }}
-                      className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                      className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
                       {t.label}
@@ -291,7 +366,7 @@ function CardActionsMenu({
           {isSales && (
             <button
               onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit() }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               <Pencil size={14} /> Edit deal
             </button>
@@ -301,7 +376,7 @@ function CardActionsMenu({
           {isSales && (
             <button
               onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete() }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-1.5 text-ssm text-danger-foreground transition-colors hover:bg-danger-dim"
             >
               <Trash2 size={14} /> Delete
             </button>
@@ -354,31 +429,23 @@ function DealCard({
   // double up as a generic service pill alongside the product reference.
   const hasCatalogItem = allServices.includes('internal_products') && !!deal.catalogItemName
   const services = allServices.filter(s => s !== 'internal_products')
-  // Resolve UUID to display name — deal.assignedTo stores a user ID from the API
-  const resolvedAm = users?.find(u => u.id === deal.assignedTo)
-  // Kanban card: prefer nickname → firstName → first word of name → email prefix
-  const amShortName = resolvedAm
-    ? (resolvedAm.nickname ?? resolvedAm.firstName ?? resolvedAm.name?.split(' ')[0] ?? resolvedAm.email?.split('@')[0] ?? '?')
-    : (deal.assignedTo ? '?' : '—')
-  const amName = resolvedAm?.name ?? resolvedAm?.email ?? deal.assignedTo ?? 'Unassigned'
+  const assignees = getDealAssignees(deal, users ?? [])
 
   return (
     <div
       onClick={onClick}
       className={cn(
-        'group rounded-lg p-3 cursor-pointer transition-colors duration-150',
+        'group rounded-control border p-2.5 cursor-pointer shadow-[var(--shadow-card)] transition-[background-color,border-color,box-shadow] duration-100 hover:bg-[var(--kanban-card-hover)] hover:border-border-strong hover:shadow-[var(--shadow-md)]',
         isWon
-          ? 'bg-[rgba(22,163,74,0.05)] dark:bg-[rgba(22,163,74,0.08)] border border-[rgba(22,163,74,0.22)]'
+          ? 'border-success/20 bg-[var(--kanban-card)]'
           : isLost
-          ? 'bg-white dark:bg-[#222225] border border-[rgba(220,38,38,0.15)] opacity-70'
-          : 'bg-white dark:bg-[#222225] border border-black/[.08] dark:border-white/[.1]'
+          ? 'border-danger/20 bg-[var(--kanban-card)] opacity-70'
+          : 'border-border bg-[var(--kanban-card)]'
       )}
-      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = colColor + '14' }}
-      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '' }}
     >
       {/* Brand name + outreach badge + actions */}
       <div className="flex items-center justify-between">
-        <span className="text-xxs font-semibold uppercase tracking-[0.05em] text-slate-400 truncate max-w-[120px]">
+        <span className="eyebrow-label truncate max-w-[120px]">
           {brandName}
         </span>
         <div className="flex items-center gap-1">
@@ -401,7 +468,7 @@ function DealCard({
             'text-atom font-semibold px-1.5 py-px rounded-full leading-tight',
             outreach === 'inbound'
               ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
-              : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
+              : 'bg-secondary text-slate-500'
           )}>
             {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
           </span>
@@ -409,7 +476,7 @@ function DealCard({
       </div>
 
       {/* Deal title */}
-      <div className="text-xs font-semibold text-slate-900 dark:text-white leading-snug mb-2.5">
+      <div className="text-xs font-semibold text-foreground leading-snug mb-2.5">
         {formatDealName(deal.title)}
       </div>
 
@@ -419,7 +486,7 @@ function DealCard({
           {hasCatalogItem && (
             productLoading ? (
               <span
-                className="rounded-sm bg-slate-200/70 dark:bg-white/[.08] animate-pulse shrink-0"
+                className="rounded-sm bg-skeleton animate-pulse shrink-0"
                 style={{ width: 18, height: 18 }}
                 aria-label="Loading product icon"
               />
@@ -435,7 +502,7 @@ function DealCard({
                 style={{ width: 18, height: 18 }}
               />
             ) : (
-              <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
+              <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500">
                 {deal.catalogItemName}
               </span>
             )
@@ -443,7 +510,7 @@ function DealCard({
           {services.slice(0, 3).map(s => (
             <span
               key={s}
-              className="text-atom font-medium px-2 py-0.5 rounded-full dark:brightness-150"
+              className="text-atom font-medium px-2 py-0.5 rounded-full"
               style={{ background: `${colColor}18`, color: colColor }}
             >
               {formatServiceType(s)}
@@ -456,14 +523,14 @@ function DealCard({
       )}
 
       {/* Value + AM + doc indicator */}
-      <div className="flex items-center justify-between pt-2 border-t border-black/[.05] dark:border-white/[.08]">
-        <span className="text-sbase font-bold tabular-nums" style={{ color: colColor }}>
+      <div className="flex items-center justify-between pt-2 border-t border-border">
+        <span className="text-[11.5px] font-bold tabular-nums text-muted-foreground">
           {formatDealMoney(deal)}
         </span>
         <div className="flex items-center gap-2">
           {(deal.documentCount ?? 0) > 0 && (
             <div
-              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[.08]"
+              className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-secondary"
               title={`${deal.documentCount} resource${(deal.documentCount ?? 0) !== 1 ? 's' : ''} attached`}
             >
               <Paperclip size={10} className="text-slate-400 shrink-0" />
@@ -472,10 +539,7 @@ function DealCard({
               </span>
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <Avatar name={amName} email={resolvedAm?.email ?? undefined} src={resolvedAm?.image ?? undefined} size={20} />
-            <span className="text-xxs font-medium text-slate-600 dark:text-slate-400">{amShortName}</span>
-          </div>
+          <AssigneeStack assignees={assignees} />
         </div>
       </div>
     </div>
@@ -544,9 +608,8 @@ function DroppableColumn({ col, children }: { col: (typeof KANBAN_STAGES)[number
       ref={setNodeRef}
       data-stage-id={col.id}
       className={cn(
-        'w-[252px] shrink-0 flex flex-col rounded-lg transition-all duration-150 self-stretch',
-        'bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]',
-        isOver ? 'border-2 border-dashed' : 'border border-black/[.07] dark:border-white/[.08]',
+        'w-[268px] shrink-0 flex flex-col overflow-hidden rounded-lg bg-bg-subtle transition-all duration-150 self-stretch',
+        isOver ? 'border-2 border-dashed' : 'border border-border',
       )}
       style={isOver ? { borderColor: col.color } : undefined}
     >
@@ -601,13 +664,13 @@ function MobileActionSheet({
     <div className="fixed inset-0 z-50 md:hidden" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 animate-in fade-in-0 duration-200" />
       <div
-        className="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#1e1e21] rounded-t-xl max-h-[70vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-xl max-h-[70vh] overflow-y-auto animate-in slide-in-from-bottom duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Context label */}
-        <div className="px-4 pt-4 pb-3 border-b border-black/[.06] dark:border-white/[.08]">
-          <p className="text-xxs font-semibold text-slate-400 uppercase tracking-wide">{brandName}</p>
-          <p className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">{formatDealName(deal.title)}</p>
+        <div className="px-4 pt-4 pb-3 border-b border-border">
+          <p className="eyebrow-label">{brandName}</p>
+          <p className="text-sm font-semibold text-foreground mt-0.5">{formatDealName(deal.title)}</p>
         </div>
 
         {/* Actions */}
@@ -617,13 +680,13 @@ function MobileActionSheet({
             <>
               <button
                 onClick={() => { setShowAssign(!showAssign); setShowAdvance(false); setShowMoveBack(false) }}
-                className="flex items-center justify-between w-full py-3.5 px-4 text-sm text-slate-700 dark:text-slate-300 border-b border-black/[.04] dark:border-white/[.06] active:bg-slate-50 dark:active:bg-white/[.04]"
+                className="flex items-center justify-between w-full py-3.5 px-4 text-sm text-muted-foreground border-b border-border active:bg-surface-hover"
               >
                 <span className="flex items-center gap-3"><UserIcon size={16} /> Assign</span>
                 <ChevronRight size={14} className={cn('text-slate-400 transition-transform duration-150', showAssign && 'rotate-90')} />
               </button>
               {showAssign && (
-                <div className="border-b border-black/[.04] dark:border-white/[.06] bg-slate-50/50 dark:bg-white/[.02]">
+                <div className="border-b border-border bg-surface-alt">
                   {users.length === 0 ? (
                     <div className="px-4 py-3 text-xs text-slate-400">No team members</div>
                   ) : (
@@ -631,7 +694,7 @@ function MobileActionSheet({
                       <button
                         key={u.id}
                         onClick={() => { onAssign(u.id, u.name || u.email); onClose() }}
-                        className="flex items-center gap-3 w-full py-2.5 px-6 text-sm text-slate-700 dark:text-slate-300 active:bg-slate-100 dark:active:bg-white/[.04]"
+                        className="flex items-center gap-3 w-full py-2.5 px-6 text-sm text-muted-foreground active:bg-surface-hover"
                       >
                         <Avatar name={u.name || u.email} src={u.image ?? undefined} size={22} />
                         {u.name || u.email}
@@ -648,18 +711,18 @@ function MobileActionSheet({
             <>
               <button
                 onClick={() => { setShowAdvance(!showAdvance); setShowMoveBack(false); setShowAssign(false) }}
-                className="flex items-center justify-between w-full py-3.5 px-4 text-sm text-slate-700 dark:text-slate-300 border-b border-black/[.04] dark:border-white/[.06] active:bg-slate-50 dark:active:bg-white/[.04]"
+                className="flex items-center justify-between w-full py-3.5 px-4 text-sm text-muted-foreground border-b border-border active:bg-surface-hover"
               >
                 <span className="flex items-center gap-3"><ArrowRight size={16} /> Advance to...</span>
                 <ChevronDown size={14} className={cn('text-slate-400 transition-transform duration-150', showAdvance && 'rotate-180')} />
               </button>
               {showAdvance && (
-                <div className="border-b border-black/[.04] dark:border-white/[.06] bg-slate-50/50 dark:bg-white/[.02]">
+                <div className="border-b border-border bg-surface-alt">
                   {advanceTargets.map(t => (
                     <button
                       key={t.id}
                       onClick={() => { onAdvanceTo(t.dbStage); onClose() }}
-                      className="flex items-center gap-3 w-full py-2.5 px-6 text-sm text-slate-700 dark:text-slate-300 active:bg-slate-100 dark:active:bg-white/[.04]"
+                      className="flex items-center gap-3 w-full py-2.5 px-6 text-sm text-muted-foreground active:bg-surface-hover"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
                       {t.label}
@@ -675,18 +738,18 @@ function MobileActionSheet({
             <>
               <button
                 onClick={() => { setShowMoveBack(!showMoveBack); setShowAdvance(false); setShowAssign(false) }}
-                className="flex items-center justify-between w-full py-3.5 px-4 text-sm text-slate-700 dark:text-slate-300 border-b border-black/[.04] dark:border-white/[.06] active:bg-slate-50 dark:active:bg-white/[.04]"
+                className="flex items-center justify-between w-full py-3.5 px-4 text-sm text-muted-foreground border-b border-border active:bg-surface-hover"
               >
                 <span className="flex items-center gap-3"><ArrowLeft size={16} /> Move back...</span>
                 <ChevronDown size={14} className={cn('text-slate-400 transition-transform duration-150', showMoveBack && 'rotate-180')} />
               </button>
               {showMoveBack && (
-                <div className="border-b border-black/[.04] dark:border-white/[.06] bg-slate-50/50 dark:bg-white/[.02]">
+                <div className="border-b border-border bg-surface-alt">
                   {moveBackTargets.map(t => (
                     <button
                       key={t.id}
                       onClick={() => { onMoveTo(t.dbStage); onClose() }}
-                      className="flex items-center gap-3 w-full py-2.5 px-6 text-sm text-slate-700 dark:text-slate-300 active:bg-slate-100 dark:active:bg-white/[.04]"
+                      className="flex items-center gap-3 w-full py-2.5 px-6 text-sm text-muted-foreground active:bg-surface-hover"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
                       {t.label}
@@ -700,7 +763,7 @@ function MobileActionSheet({
           {/* View deal */}
           <button
             onClick={() => { onViewDeal(); onClose() }}
-            className="flex items-center gap-3 w-full py-3.5 px-4 text-sm text-slate-700 dark:text-slate-300 border-b border-black/[.04] dark:border-white/[.06] active:bg-slate-50 dark:active:bg-white/[.04]"
+            className="flex items-center gap-3 w-full py-3.5 px-4 text-sm text-muted-foreground border-b border-border active:bg-surface-hover"
           >
             <ExternalLink size={16} /> View deal
           </button>
@@ -709,7 +772,7 @@ function MobileActionSheet({
           {isSales && (
             <button
               onClick={() => { onEdit(); onClose() }}
-              className="flex items-center gap-3 w-full py-3.5 px-4 text-sm text-slate-700 dark:text-slate-300 border-b border-black/[.04] dark:border-white/[.06] active:bg-slate-50 dark:active:bg-white/[.04]"
+              className="flex items-center gap-3 w-full py-3.5 px-4 text-sm text-muted-foreground border-b border-border active:bg-surface-hover"
             >
               <Pencil size={16} /> Edit deal
             </button>
@@ -719,7 +782,7 @@ function MobileActionSheet({
           {isSales && (
             <button
               onClick={() => { onDelete(); onClose() }}
-              className="flex items-center gap-3 w-full py-3.5 px-4 text-sm text-red-600 border-b border-black/[.04] dark:border-white/[.06] active:bg-red-50 dark:active:bg-red-500/10"
+              className="flex items-center gap-3 w-full py-3.5 px-4 text-sm text-danger-foreground border-b border-border active:bg-danger-dim"
             >
               <Trash2 size={16} /> Delete
             </button>
@@ -738,6 +801,7 @@ export function Pipeline({
   onOpenDeal,
   catalogProductType,
   catalogItemId,
+  parentTabs,
   subTabs,
   activeSubTabId,
   onSubTabChange,
@@ -827,16 +891,16 @@ export function Pipeline({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [amDropdownOpen])
 
-  // amOptions: unique AMs across all deals, UUIDs resolved to display names
+  // amOptions: unique primary and sub-assigned AMs across all deals, UUIDs resolved to display names
   const amOptions = useMemo(() => {
     const ids = new Set<string>()
     for (const d of deals) {
-      if (d.assignedTo) ids.add(d.assignedTo)
+      for (const id of getDealAssigneeIds(d)) ids.add(id)
     }
     return Array.from(ids)
       .map(id => {
         const user = users.find(u => u.id === id)
-        return { id, label: user?.name ?? user?.email ?? id }
+        return { id, label: getUserLabel(user, id) }
       })
       .sort((a, b) => a.label.localeCompare(b.label))
   }, [deals, users])
@@ -846,7 +910,7 @@ export function Pipeline({
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(d => {
-        const amLabel = amOptions.find(o => o.id === d.assignedTo)?.label ?? ''
+        const amLabel = getDealAssigneeSearchText(d, users)
         // Match against service-tag display names (slug → catalog row name)
         const tagDisplay = (d.servicesTags ?? []).map(s => catalogNameBySlug.get(s) ?? s)
         const productName = d.catalogItemId ? (catalogNameById.get(d.catalogItemId) ?? '') : ''
@@ -862,10 +926,10 @@ export function Pipeline({
       })
     }
     if (amFilter) {
-      result = result.filter(d => d.assignedTo === amFilter)
+      result = result.filter(d => getDealAssigneeIds(d).includes(amFilter))
     }
     return result
-  }, [deals, search, amFilter, amOptions, companyMap, catalogNameBySlug, catalogNameById])
+  }, [deals, search, amFilter, users, companyMap, catalogNameBySlug, catalogNameById])
 
   // Mobile: further filter by stage when a pill is selected
   const mobileFilteredDeals = useMemo(() => {
@@ -1093,30 +1157,24 @@ export function Pipeline({
         />
       )}
 
-      {/* ── Desktop actions row — sub-tabs on the left, actions on the right ── */}
-      <div className="hidden md:flex items-center justify-between gap-3 px-4 py-2.5 shrink-0">
-        {/* Sub-tabs (left) */}
-        <div className="flex items-center flex-wrap gap-1.5 min-w-0">
-          {subTabs && subTabs.length > 0 && onSubTabChange && (
-            <SubTabFilter
-              items={[{ id: 'all', label: 'All' }, ...subTabs.map(s => ({ id: s.id, label: s.name, count: s.count }))]}
-              value={activeSubTabId ?? 'all'}
-              onChange={(next) => onSubTabChange(next === 'all' ? null : next)}
-            />
-          )}
-        </div>
+      {/* ── Desktop action row — parent tabs left, actions right ── */}
+      <div className="hidden md:flex flex-col gap-2 px-4 py-2.5 shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 overflow-x-auto">
+            {parentTabs}
+          </div>
 
-        {/* Actions (right) */}
-        <div className="flex gap-2 items-center shrink-0">
+          {/* Actions (right) */}
+          <div className="flex gap-2 items-center shrink-0">
           {/* Search result count — only when actively searching */}
           {search.trim() && (
-            <span className="text-xs text-slate-500 dark:text-slate-400 mr-1">
+            <span className="text-xs text-muted-foreground mr-1">
               Showing <span className="font-semibold text-primary tabular-nums">{filteredDeals.length}</span> result{filteredDeals.length !== 1 ? 's' : ''}
             </span>
           )}
           {/* Search */}
           {searchOpen ? (
-            <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[200px]">
+            <div className="flex items-center gap-1.5 bg-card border border-border rounded-control px-2.5 py-[5px] w-[200px]">
               <Search size={13} className="text-slate-400 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -1124,11 +1182,11 @@ export function Pipeline({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search deals…"
-                className="flex-1 bg-transparent text-xs text-slate-900 dark:text-white placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
+                className="flex-1 bg-transparent text-xs text-foreground placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
               />
               <button
                 onClick={() => { setSearchOpen(false); setSearch('') }}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                className="text-slate-400 hover:text-slate-600 hover:text-foreground"
               >
                 <X size={13} />
               </button>
@@ -1136,7 +1194,7 @@ export function Pipeline({
           ) : (
             <button
               onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50) }}
-              className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5"
+              className="bg-card border border-border rounded-control px-3 py-[5px] text-xs font-medium text-muted-foreground hover:bg-surface-hover transition-colors duration-150 cursor-pointer flex items-center gap-1.5"
               title="Search (Ctrl+F)"
             >
               <Search size={12} /> Search
@@ -1148,13 +1206,13 @@ export function Pipeline({
             <>
               <button
                 onClick={() => setShowCreateBrand(true)}
-                className="bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-3 py-[5px] text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors flex items-center gap-1.5"
+                className="bg-card border border-border rounded-control px-3 py-[5px] text-xs font-medium text-muted-foreground hover:bg-surface-hover transition-colors flex items-center gap-1.5"
               >
                 + New Brand
               </button>
               <button
                 onClick={() => setShowCreateDeal(true)}
-                className="rounded-lg px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
+                className="rounded-control px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
                 style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
               >
                 + New Deal
@@ -1167,22 +1225,22 @@ export function Pipeline({
             <button
               onClick={() => setAmDropdownOpen(o => !o)}
               className={cn(
-                'bg-white dark:bg-[#1e1e21] border rounded-lg px-3 py-[5px] text-xs font-medium hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
+                'bg-card border rounded-control px-3 py-[5px] text-xs font-medium hover:bg-surface-hover transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
                 amFilter
                   ? 'border-primary/30 text-primary'
-                  : 'border-black/[.08] dark:border-white/[.08] text-slate-700 dark:text-slate-300'
+                  : 'border-border text-muted-foreground'
               )}
             >
               {amFilter ? (amOptions.find(o => o.id === amFilter)?.label ?? 'AM') : 'All AMs'}
               <ChevronDown size={12} />
             </button>
             {amDropdownOpen && (
-              <div className="absolute right-0 top-9 z-50 min-w-[160px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
+              <div className="absolute right-0 top-9 z-50 min-w-[160px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
                 <button
                   onClick={() => { setAmFilter(null); setAmDropdownOpen(false) }}
                   className={cn(
-                    'w-full px-3 py-1.5 text-xs text-left hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors',
-                    !amFilter ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-300'
+                    'w-full px-3 py-1.5 text-xs text-left hover:bg-surface-hover transition-colors',
+                    !amFilter ? 'font-semibold text-primary' : 'text-muted-foreground'
                   )}
                 >
                   All AMs
@@ -1192,8 +1250,8 @@ export function Pipeline({
                     key={o.id}
                     onClick={() => { setAmFilter(o.id); setAmDropdownOpen(false) }}
                     className={cn(
-                      'w-full px-3 py-1.5 text-xs text-left hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors',
-                      amFilter === o.id ? 'font-semibold text-primary' : 'text-slate-700 dark:text-slate-300'
+                      'w-full px-3 py-1.5 text-xs text-left hover:bg-surface-hover transition-colors',
+                      amFilter === o.id ? 'font-semibold text-primary' : 'text-muted-foreground'
                     )}
                   >
                     {o.label}
@@ -1202,7 +1260,18 @@ export function Pipeline({
               </div>
             )}
           </div>
+          </div>
         </div>
+
+        {subTabs && subTabs.length > 0 && onSubTabChange && (
+          <div className="flex min-w-0 items-center overflow-x-auto">
+            <SubTabFilter
+              items={[{ id: 'all', label: 'All' }, ...subTabs.map(s => ({ id: s.id, label: s.name, count: s.count }))]}
+              value={activeSubTabId ?? 'all'}
+              onChange={(next) => onSubTabChange(next === 'all' ? null : next)}
+            />
+          </div>
+        )}
       </div>
 
       {/* ── Desktop board (hidden on mobile) ── */}
@@ -1210,27 +1279,27 @@ export function Pipeline({
         {isLoading ? (
           <div className="flex gap-2.5 px-4 pb-4" style={{ minWidth: 'max-content' }}>
             {KANBAN_STAGES.map(col => (
-              <div key={col.id} className="w-[252px] shrink-0 flex flex-col rounded-lg border border-black/[.07] dark:border-white/[.08] bg-[rgba(0,0,0,0.02)] dark:bg-white/[.02]">
-                <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
+              <div key={col.id} className="w-[268px] shrink-0 flex flex-col overflow-hidden rounded-lg border border-border bg-bg-subtle">
+                <div className="px-3.5 py-3 shrink-0 border-b border-border bg-surface-alt">
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-slate-200 dark:bg-white/[.1]" />
-                    <div className="h-3 w-20 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse flex-1" />
-                    <div className="h-5 w-6 bg-slate-100 dark:bg-white/[.06] rounded-full animate-pulse" />
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse bg-skeleton" />
+                    <div className="h-3 w-20 bg-skeleton rounded animate-pulse flex-1" />
+                    <div className="h-5 w-6 bg-skeleton rounded-full animate-pulse" />
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 p-2.5">
                   {[1, 2].map(i => (
-                    <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
-                      <div className="h-2.5 w-16 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
-                      <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-1" />
-                      <div className="h-3 w-3/4 bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
+                    <div key={i} className="rounded-control p-2.5 bg-[var(--kanban-card)] border border-border animate-pulse">
+                      <div className="h-2.5 w-16 bg-skeleton rounded mb-2" />
+                      <div className="h-4 w-full bg-skeleton rounded mb-1" />
+                      <div className="h-3 w-3/4 bg-skeleton rounded mb-3" />
                       <div className="flex gap-1.5 mb-3">
-                        <div className="h-4 w-12 bg-slate-100 dark:bg-white/[.06] rounded-full" />
-                        <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded-full" />
+                        <div className="h-4 w-12 bg-skeleton rounded-full" />
+                        <div className="h-4 w-16 bg-skeleton rounded-full" />
                       </div>
-                      <div className="flex items-center justify-between pt-2 border-t border-black/[.04] dark:border-white/[.06]">
-                        <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded" />
-                        <div className="h-5 w-5 bg-slate-100 dark:bg-white/[.06] rounded-full" />
+                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                        <div className="h-4 w-16 bg-skeleton rounded" />
+                        <div className="h-5 w-5 bg-skeleton rounded-full" />
                       </div>
                     </div>
                   ))}
@@ -1248,11 +1317,11 @@ export function Pipeline({
               {columnDeals.map(col => (
                 <DroppableColumn key={col.id} col={col}>
                   {/* Column header */}
-                  <div className="px-3.5 py-3 shrink-0 border-b border-black/[.06] dark:border-white/[.08] bg-white/60 dark:bg-white/[.04]">
+                  <div className="px-3.5 py-3 shrink-0 border-b border-border bg-surface-alt">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: col.color }} />
-                      <span className="text-ssm font-semibold text-slate-700 dark:text-slate-300 flex-1 leading-none">{col.label}</span>
-                      <span className="bg-white dark:bg-[#1e1e21] border border-black/[.07] dark:border-white/[.08] text-slate-500 text-xxs font-semibold tabular-nums px-2 py-0.5 rounded-full">
+                      <span className="text-ssm font-semibold text-muted-foreground flex-1 leading-none">{col.label}</span>
+                      <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xxs font-semibold tabular-nums text-muted-foreground">
                         {col.deals.length}
                       </span>
                     </div>
@@ -1271,7 +1340,7 @@ export function Pipeline({
                   {/* Cards */}
                   <div className="flex flex-col gap-2 p-2.5">
                     {col.deals.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-slate-300 dark:text-white/20">
+                      <div className="py-8 text-center text-xs text-text-faint">
                         No deals
                       </div>
                     ) : (
@@ -1304,7 +1373,7 @@ export function Pipeline({
             {/* Drag ghost overlay */}
             <DragOverlay>
               {activeDeal ? (
-                <div className="opacity-85 scale-[1.02] shadow-2xl rounded-lg pointer-events-none">
+                <div className="opacity-85 scale-[1.02] shadow-2xl rounded-control pointer-events-none">
                   <DealCard
                     deal={activeDeal}
                     colColor={activeDealColColor}
@@ -1326,16 +1395,16 @@ export function Pipeline({
         <div className="px-4 pt-3 pb-2.5 shrink-0">
           <div className="flex flex-col gap-2.5 mb-2.5">
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold text-slate-900 dark:text-white">Deals</h1>
+              <h1 className="text-sm font-bold text-foreground">Deals</h1>
               {!isLoading && (
-                <span className="bg-slate-100 dark:bg-white/[.06] text-slate-500 text-xxs font-semibold tabular-nums px-2 py-0.5 rounded-full">
+                <span className="bg-secondary text-slate-500 text-xxs font-semibold tabular-nums px-2 py-0.5 rounded-full">
                   {filteredDeals.length}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {searchOpen ? (
-                <div className="flex items-center gap-1.5 bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] rounded-lg px-2.5 py-[5px] w-[160px]">
+                <div className="flex items-center gap-1.5 bg-card border border-border rounded-control px-2.5 py-[5px] w-[160px]">
                   <Search size={13} className="text-slate-400 shrink-0" />
                   <input
                     type="text"
@@ -1343,16 +1412,16 @@ export function Pipeline({
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Search..."
                     autoFocus
-                    className="flex-1 bg-transparent text-xs text-slate-900 dark:text-white placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
+                    className="flex-1 bg-transparent text-xs text-foreground placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
                   />
-                  <button onClick={() => { setSearchOpen(false); setSearch('') }} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+                  <button onClick={() => { setSearchOpen(false); setSearch('') }} className="text-slate-400 hover:text-slate-600 hover:text-foreground">
                     <X size={13} />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => setSearchOpen(true)}
-                  className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-500 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
+                  className="w-11 h-11 rounded-control flex items-center justify-center text-slate-500 border border-border bg-card"
                 >
                   <Search size={14} />
                 </button>
@@ -1361,13 +1430,13 @@ export function Pipeline({
                 <>
                   <button
                     onClick={() => setShowCreateBrand(true)}
-                    className="h-11 rounded-lg px-3 text-xs font-medium text-slate-700 dark:text-slate-300 border border-black/[.08] dark:border-white/[.08] bg-white dark:bg-[#1e1e21]"
+                    className="h-11 rounded-control px-3 text-xs font-medium text-muted-foreground border border-border bg-card"
                   >
                     + Brand
                   </button>
                   <button
                     onClick={() => setShowCreateDeal(true)}
-                    className="h-11 rounded-lg px-3 text-xs font-medium text-white"
+                    className="h-11 rounded-control px-3 text-xs font-medium text-white"
                     style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                   >
                     + Deal
@@ -1396,7 +1465,7 @@ export function Pipeline({
                 'rounded-full text-xxs font-semibold px-3.5 py-2.5 whitespace-nowrap shrink-0 transition-colors duration-150',
                 mobileStageFilter === null
                   ? 'bg-primary text-white'
-                  : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
+                  : 'bg-secondary text-muted-foreground'
               )}
             >
               All stages
@@ -1411,7 +1480,7 @@ export function Pipeline({
                     'rounded-full text-xxs font-semibold px-3.5 py-2.5 whitespace-nowrap shrink-0 transition-colors duration-150 flex items-center gap-1.5',
                     mobileStageFilter === col.id
                       ? 'bg-primary text-white'
-                      : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
+                      : 'bg-secondary text-muted-foreground'
                   )}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: col.color }} />
@@ -1428,19 +1497,19 @@ export function Pipeline({
           {isLoading ? (
             <div className="flex flex-col gap-2.5">
               {[1, 2, 3].map(i => (
-                <div key={i} className="rounded-lg p-3.5 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] animate-pulse">
-                  <div className="h-2.5 w-20 bg-slate-100 dark:bg-white/[.06] rounded mb-2" />
-                  <div className="h-4 w-full bg-slate-100 dark:bg-white/[.06] rounded mb-3" />
-                  <div className="h-3 w-16 bg-slate-100 dark:bg-white/[.06] rounded-full mb-3" />
-                  <div className="border-t border-black/[.04] dark:border-white/[.06] pt-2.5 flex items-center justify-between">
-                    <div className="h-4 w-16 bg-slate-100 dark:bg-white/[.06] rounded" />
-                    <div className="h-5 w-5 bg-slate-100 dark:bg-white/[.06] rounded-full" />
+                <div key={i} className="rounded-lg p-3.5 bg-card border border-border animate-pulse">
+                  <div className="h-2.5 w-20 bg-skeleton rounded mb-2" />
+                  <div className="h-4 w-full bg-skeleton rounded mb-3" />
+                  <div className="h-3 w-16 bg-skeleton rounded-full mb-3" />
+                  <div className="border-t border-border pt-2.5 flex items-center justify-between">
+                    <div className="h-4 w-16 bg-skeleton rounded" />
+                    <div className="h-5 w-5 bg-skeleton rounded-full" />
                   </div>
                 </div>
               ))}
             </div>
           ) : mobileFilteredDeals.length === 0 ? (
-            <div className="py-12 text-center text-xs text-slate-400 dark:text-white/20">
+            <div className="py-12 text-center text-xs text-text-faint">
               No deals found
             </div>
           ) : (
@@ -1455,30 +1524,26 @@ export function Pipeline({
                 const hasCatalogItem = allServices.includes('internal_products') && !!d.catalogItemName
                 const services = allServices.filter(s => s !== 'internal_products')
                 const productIconUrl = d.catalogItemId ? catalogIconById.get(d.catalogItemId) ?? null : null
-                const resolvedAm = users.find(u => u.id === d.assignedTo)
-                const amShortName = resolvedAm
-                  ? (resolvedAm.nickname ?? resolvedAm.firstName ?? resolvedAm.name?.split(' ')[0] ?? resolvedAm.email?.split('@')[0] ?? '?')
-                  : (d.assignedTo ? '?' : '-')
-                const amName = resolvedAm?.name ?? resolvedAm?.email ?? d.assignedTo ?? 'Unassigned'
+                const assignees = getDealAssignees(d, users)
 
                 return (
                   <div
                     key={d.id}
                     onClick={() => setMobileActionDeal(d)}
-                    className="rounded-lg p-3 bg-white dark:bg-[#222225] border border-black/[.08] dark:border-white/[.1] active:bg-slate-50 dark:active:bg-white/[.04] transition-colors cursor-pointer"
+                    className="rounded-lg p-3 bg-card border border-border active:bg-surface-hover transition-colors cursor-pointer"
                   >
                     {/* Top: stage dot + brand + outreach pill + stage pill */}
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: stageColor }} />
-                        <span className="text-xxs font-semibold uppercase tracking-wide text-slate-400 truncate">
+                        <span className="eyebrow-label truncate">
                           {brandName}
                         </span>
                         <span className={cn(
                           'text-atom font-semibold px-1.5 py-px rounded-full leading-tight shrink-0',
                           outreach === 'inbound'
                             ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
-                            : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
+                            : 'bg-secondary text-slate-500'
                         )}>
                           {outreach === 'inbound' ? 'Inbound' : 'Outbound'}
                         </span>
@@ -1495,7 +1560,7 @@ export function Pipeline({
                     </div>
 
                     {/* Deal title */}
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white leading-snug mb-1.5">
+                    <p className="text-sm font-semibold text-foreground leading-snug mb-1.5">
                       {formatDealName(d.title)}
                     </p>
 
@@ -1505,7 +1570,7 @@ export function Pipeline({
                         {hasCatalogItem && (
                           catalogLoading ? (
                             <span
-                              className="rounded-sm bg-slate-200/70 dark:bg-white/[.08] animate-pulse shrink-0"
+                              className="rounded-sm bg-skeleton animate-pulse shrink-0"
                               style={{ width: 18, height: 18 }}
                               aria-label="Loading product icon"
                             />
@@ -1521,7 +1586,7 @@ export function Pipeline({
                               style={{ width: 18, height: 18 }}
                             />
                           ) : (
-                            <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500 dark:text-violet-400">
+                            <span className="text-atom font-semibold px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-500">
                               {d.catalogItemName}
                             </span>
                           )
@@ -1529,7 +1594,7 @@ export function Pipeline({
                         {services.slice(0, 2).map(s => (
                           <span
                             key={s}
-                            className="text-atom font-medium px-2 py-0.5 rounded-full dark:brightness-150"
+                            className="text-atom font-medium px-2 py-0.5 rounded-full"
                             style={{ background: `${stageColor}18`, color: stageColor }}
                           >
                             {formatServiceType(s)}
@@ -1542,14 +1607,11 @@ export function Pipeline({
                     )}
 
                     {/* Divider + bottom row */}
-                    <div className="flex items-center justify-between pt-2 border-t border-black/[.05] dark:border-white/[.08]">
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
                       <span className="text-sm font-bold tabular-nums" style={{ color: stageColor }}>
                         {formatDealMoney(d)}
                       </span>
-                      <div className="flex items-center gap-1.5">
-                        <Avatar name={amName} email={resolvedAm?.email ?? undefined} src={resolvedAm?.image ?? undefined} size={20} />
-                        <span className="text-xxs font-medium text-slate-600 dark:text-slate-400">{amShortName}</span>
-                      </div>
+                      <AssigneeStack assignees={assignees} cardBgVar="var(--card)" />
                     </div>
                   </div>
                 )
@@ -1589,22 +1651,22 @@ export function Pipeline({
           onClick={() => setDeleteConfirmDealId(null)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full rounded-md border border-border bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Move deal to trash?</p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">This will hide the deal from CRM views. It can be restored from Trash for 30 days before permanent deletion.</p>
+            <p className="text-sm font-semibold text-foreground">Move deal to trash?</p>
+            <p className="text-ssm text-muted-foreground leading-relaxed mt-1">This will hide the deal from CRM views. It can be restored from Trash for 30 days before permanent deletion.</p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setDeleteConfirmDealId(null)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-control text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
                 disabled={deleteDeal.isPending}
-                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
+                className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
               >
                 <>{deleteDeal.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Move to trash</>
               </button>
@@ -1623,7 +1685,7 @@ export function Pipeline({
             onClick={() => setMoveConfirm(null)}
           >
             <div
-              className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+              className="max-w-sm w-full rounded-md border border-border bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
               onClick={e => e.stopPropagation()}
             >
               {/* Stage transition indicator */}
@@ -1636,9 +1698,9 @@ export function Pipeline({
                 <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: targetCol?.color ?? '#94a3b8' }} />
                 <span className="text-xs font-semibold" style={{ color: targetCol?.color ?? '#94a3b8' }}>{targetCol?.label ?? moveConfirm.targetStage}</span>
               </div>
-              <p className="text-sm font-semibold text-slate-900 dark:text-white">Move deal back?</p>
-              <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-                Move <span className="font-semibold text-slate-900 dark:text-white">{moveConfirm.dealTitle}</span> back to{' '}
+              <p className="text-sm font-semibold text-foreground">Move deal back?</p>
+              <p className="text-ssm text-muted-foreground leading-relaxed mt-1">
+                Move <span className="font-semibold text-foreground">{moveConfirm.dealTitle}</span> back to{' '}
                 <span className="font-semibold" style={{ color: targetCol?.color }}>
                   {targetCol?.label ?? moveConfirm.targetStage}
                 </span>.
@@ -1646,14 +1708,14 @@ export function Pipeline({
               <div className="flex gap-2.5 mt-4">
                 <button
                   onClick={() => setMoveConfirm(null)}
-                  className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                  className="flex-1 h-8 rounded-control text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmMove}
                   disabled={patchStage.isPending}
-                  className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors"
+                  className="flex-1 h-8 flex items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-white bg-primary hover:bg-primary/90 disabled:opacity-60 transition-colors"
                 >
                   <>{patchStage.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Move</>
                 </button>

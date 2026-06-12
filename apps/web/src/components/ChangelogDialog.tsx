@@ -155,7 +155,7 @@ export function ChangelogDialog() {
     >
       <div
         className={cn(
-          'bg-white dark:bg-[#1e1e21] rounded-lg border border-black/[.06] dark:border-white/[.08]',
+          'bg-card rounded-lg border border-border',
           'shadow-lg',
           'w-full max-w-[520px] mx-4 max-h-[80vh]',
           'flex flex-col overflow-hidden',
@@ -164,22 +164,22 @@ export function ChangelogDialog() {
         onClick={e => e.stopPropagation()}
       >
         {/* Hero */}
-        <div className="relative px-5 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08] bg-gradient-to-b from-[rgba(108,99,255,0.06)] to-transparent dark:from-[rgba(108,99,255,0.08)] shrink-0">
+        <div className="relative px-5 pt-5 pb-4 border-b border-border bg-gradient-to-b from-[rgba(108,99,255,0.06)] to-transparent dark:from-[rgba(108,99,255,0.08)] shrink-0">
           <button
             onClick={handleClose}
-            className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+            className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover transition-colors"
           >
             <X size={14} />
           </button>
-          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[rgba(108,99,255,0.1)] text-[#6c63ff] text-atom font-semibold uppercase tracking-[0.08em] mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[rgba(108,99,255,0.1)] text-[#6c63ff] eyebrow-label mb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-[#6c63ff]" />
             Latest update
           </div>
-          <div className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">What&rsquo;s new</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+          <div className="text-base font-semibold text-foreground tracking-tight">What&rsquo;s new</div>
+          <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
             We have been shipping fast. Here is everything that changed.
           </div>
-          <div className="font-mono text-atom uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500 mt-2.5">
+          <div className="eyebrow-label mt-2.5">
             {updateCount} {updateCount === 1 ? 'update' : 'updates'}
           </div>
         </div>
@@ -200,35 +200,35 @@ export function ChangelogDialog() {
                     <Icon size={12} />
                   </div>
                   <span
-                    className="text-atom font-semibold uppercase tracking-[0.08em]"
+                    className="eyebrow-label"
                     style={{ color: conf.color }}
                   >
                     {CATEGORY_LABEL[group.category]}
                   </span>
-                  <div className="flex-1 h-px bg-black/[.06] dark:bg-white/[.06] ml-1" />
+                  <div className="flex-1 h-px bg-black/[.06] ml-1" />
                 </div>
                 {/* Entry cards */}
                 <div className="space-y-1.5">
                   {group.items.map(r => (
                     <div
                       key={r.id}
-                      className="bg-slate-50 dark:bg-white/[.03] hover:bg-slate-100/70 dark:hover:bg-white/[.05] border border-black/[.04] dark:border-white/[.06] rounded-md px-3 py-2.5 flex gap-2.5 items-start transition-colors"
+                      className="bg-surface-alt hover:bg-surface-hover border border-border rounded-md px-3 py-2.5 flex gap-2.5 items-start transition-colors"
                     >
                       <span
                         className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5"
                         style={{ background: conf.color }}
                       />
                       <div className="min-w-0 flex-1">
-                        <div className="text-ssm font-semibold text-slate-900 dark:text-white leading-snug">
+                        <div className="text-ssm font-semibold text-foreground leading-snug">
                           {r.title}
                         </div>
                         {r.description && (
-                          <div className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
+                          <div className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                             {r.description}
                           </div>
                         )}
                       </div>
-                      <span className="font-mono text-atom font-semibold uppercase tracking-[0.05em] px-1.5 py-0.5 rounded shrink-0" style={{ background: conf.bg, color: conf.color }}>
+                      <span className="eyebrow-label px-1.5 py-0.5 rounded shrink-0" style={{ background: conf.bg, color: conf.color }}>
                         {CATEGORY_TAG[group.category]}
                       </span>
                     </div>
@@ -240,7 +240,7 @@ export function ChangelogDialog() {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-black/[.06] dark:border-white/[.08] bg-slate-50/50 dark:bg-white/[.02] flex items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-3 border-t border-border bg-surface-alt flex items-center justify-between gap-3 shrink-0">
           <span className="text-xxs text-slate-400">Release notes update when the changelog markdown changes.</span>
           <button
             onClick={handleClose}

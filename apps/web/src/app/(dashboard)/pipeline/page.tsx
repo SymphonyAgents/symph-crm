@@ -96,21 +96,17 @@ function PipelineInner() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Stats + Tabs strip */}
+      {/* Page header + tabs */}
       <div className="shrink-0 px-4 md:px-6 pt-3 pb-0">
-        <div className="flex items-center justify-between gap-3 mb-2 min-h-[20px]">
-          {isLoading ? (
-            <div className="h-4 w-40 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-          ) : (
-            <span className="text-ssm font-medium text-slate-900 dark:text-white tabular-nums">
-              {stats.activeCount} active deal{stats.activeCount !== 1 ? 's' : ''}
-              {stats.totalLabel !== 'No value' && (
-                <> &middot; <span>{stats.totalLabel}</span></>
-              )}
-            </span>
-          )}
+        <div className="mb-3 flex flex-col gap-1">
+          <div className="text-ssm font-semibold text-foreground">Pipeline</div>
+          <div className="text-xxs text-slate-400 tabular-nums">
+            {isLoading ? 'Loading deals...' : `${stats.activeCount} active deal${stats.activeCount !== 1 ? 's' : ''}${stats.totalLabel !== 'No value' ? ` · ${stats.totalLabel} active pipeline` : ' · No active pipeline value'}`}
+          </div>
         </div>
-        <CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />
+        <div className="md:hidden">
+          <CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -118,6 +114,7 @@ function PipelineInner() {
           onOpenDeal={(id) => router.push(`/deals/${id}?from=pipeline`)}
           catalogProductType={tabValue ?? undefined}
           catalogItemId={activeItemId ?? undefined}
+          parentTabs={<CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />}
           subTabs={subTabs}
           activeSubTabId={activeItemId}
           onSubTabChange={onSubTabChange}

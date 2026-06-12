@@ -87,11 +87,11 @@ export function CommandPalette() {
       onClick={() => setOpen(false)}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg border border-black/[.06] dark:border-white/[.1] shadow-2xl w-full max-w-[480px] mx-4 overflow-hidden"
+        className="bg-card rounded-lg border border-border shadow-2xl w-full max-w-[480px] mx-4 overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
         {/* Search input */}
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-black/[.06] dark:border-white/[.08]">
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-border">
           <Search size={15} strokeWidth={1.4} className="text-slate-400 shrink-0" />
           <input
             ref={inputRef}
@@ -99,9 +99,9 @@ export function CommandPalette() {
             onChange={e => { setQuery(e.target.value); setSelectedIndex(0) }}
             onKeyDown={handleInputKeyDown}
             placeholder="Search or jump to..."
-            className="flex-1 bg-transparent border-none outline-none text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
+            className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-slate-400"
           />
-          <kbd className="text-atom font-medium text-slate-400 bg-slate-100 dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] rounded px-1.5 py-0.5">
+          <kbd className="text-atom font-medium text-slate-400 bg-secondary border border-border rounded px-1.5 py-0.5">
             Esc
           </kbd>
         </div>
@@ -121,8 +121,8 @@ export function CommandPalette() {
                 className={cn(
                   'w-full flex items-center gap-3 px-4 py-2 text-left text-ssm transition-colors',
                   i === selectedIndex
-                    ? 'bg-slate-100 dark:bg-white/[.06] text-slate-900 dark:text-white'
-                    : 'text-slate-600 dark:text-slate-400'
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground'
                 )}
               >
                 <span className="flex-1 font-medium">{item.label}</span>

@@ -47,15 +47,15 @@ function ComingSoonApp({
   description: string
 }) {
   return (
-    <div className="flex items-center gap-4 py-4 px-4 rounded-xl border border-black/[.06] dark:border-white/[.06] bg-slate-50/50 dark:bg-white/[.02] opacity-50">
-      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
+    <div className="flex items-center gap-4 py-4 px-4 rounded-md border border-border bg-surface-alt opacity-50">
+      <div className="w-10 h-10 rounded-md bg-secondary flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-ssm font-semibold text-slate-900 dark:text-white">{name}</div>
+        <div className="text-ssm font-semibold text-foreground">{name}</div>
         <div className="text-xs text-slate-400 mt-0.5">{description}</div>
       </div>
-      <span className="text-atom font-semibold text-slate-400 bg-slate-100 dark:bg-white/[.06] px-2 py-1 rounded-md">
+      <span className="text-atom font-semibold text-slate-400 bg-secondary px-2 py-1 rounded-md">
         Coming soon
       </span>
     </div>
@@ -112,11 +112,17 @@ export function Settings() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+      <div className="flex flex-col gap-1">
+        <div className="text-ssm font-semibold text-foreground">Settings</div>
+        <div className="text-xxs text-slate-400">
+          {user?.email || 'Manage your profile'} · {statusLoading ? 'Checking connected apps...' : calendarStatus?.connected ? `Google Calendar connected${calendarStatus.googleEmail ? ` as ${calendarStatus.googleEmail}` : ''}` : 'Google Calendar not connected'}
+        </div>
+      </div>
 
       {/* Banner */}
       {banner && (
         <div className={cn(
-          'flex items-center gap-3 px-4 py-3 rounded-xl text-ssm font-medium animate-in fade-in-0 slide-in-from-top-1 duration-200',
+          'flex items-center gap-3 px-4 py-3 rounded-md text-ssm font-medium animate-in fade-in-0 slide-in-from-top-1 duration-200',
           banner.type === 'success'
             ? 'bg-emerald-50 dark:bg-emerald-500/[.1] text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
             : 'bg-red-50 dark:bg-red-500/[.1] text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20'
@@ -134,15 +140,15 @@ export function Settings() {
 
       {/* ── Profile ─────────────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-slate-400 mb-3">Profile</h2>
-        <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4 flex items-center gap-4">
+        <h2 className="eyebrow-label mb-3">Profile</h2>
+        <div className="bg-card rounded-md border border-border p-4 flex items-center gap-4">
           {user?.image ? (
             <img src={user.image} alt="" className="w-14 h-14 rounded-full shrink-0 ring-2 ring-black/[.06] dark:ring-white/[.08]" />
           ) : (
             <Avatar name={user?.name || '?'} size={56} />
           )}
           <div className="flex-1 min-w-0">
-            <div className="text-sbase font-semibold text-slate-900 dark:text-white truncate">
+            <div className="text-sbase font-semibold text-foreground truncate">
               {user?.name || '—'}
             </div>
             <div className="text-ssm text-slate-400 truncate mt-0.5">{user?.email || '—'}</div>
@@ -157,14 +163,14 @@ export function Settings() {
 
       {/* System */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-slate-400 mb-3">System</h2>
-        <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
+        <h2 className="eyebrow-label mb-3">System</h2>
+        <div className="bg-card rounded-md border border-border p-4">
           <Link href="/settings/trash" className="flex items-center gap-4 group">
-            <div className="w-10 h-10 rounded-xl bg-red-50 dark:bg-red-500/[.08] border border-red-100 dark:border-red-500/20 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-md bg-red-50 dark:bg-red-500/[.08] border border-red-100 dark:border-red-500/20 flex items-center justify-center shrink-0">
               <Trash2 size={18} className="text-red-500" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-ssm font-semibold text-slate-900 dark:text-white">Deal Trash</div>
+              <div className="text-ssm font-semibold text-foreground">Deal Trash</div>
               <div className="text-xs text-slate-400 mt-0.5">Restore deals for 30 days or permanently delete trashed records</div>
             </div>
             <ChevronRight size={16} className="text-slate-300 group-hover:text-primary transition-colors" />
@@ -174,22 +180,22 @@ export function Settings() {
 
       {/* ── Connected Apps ───────────────────────────────────────────────────── */}
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-[0.06em] text-slate-400 mb-3">Connected Apps</h2>
+        <h2 className="eyebrow-label mb-3">Connected Apps</h2>
         <div className="space-y-2">
 
           {/* Google */}
-          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] p-4">
+          <div className="bg-card rounded-md border border-border p-4">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-white dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] flex items-center justify-center shrink-0 shadow-sm">
+              <div className="w-10 h-10 rounded-md bg-card border border-border flex items-center justify-center shrink-0 shadow-sm">
                 <GoogleIcon size={20} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-ssm font-semibold text-slate-900 dark:text-white">Google</div>
+                <div className="text-ssm font-semibold text-foreground">Google</div>
                 {statusLoading ? (
                   <div className="text-xs text-slate-400 mt-0.5">Checking status...</div>
                 ) : calendarStatus?.connected ? (
                   <div className="text-xs text-slate-400 mt-0.5 truncate">
-                    Connected as <span className="text-slate-600 dark:text-slate-300 font-medium">{calendarStatus.googleEmail}</span>
+                    Connected as <span className="text-muted-foreground font-medium">{calendarStatus.googleEmail}</span>
                   </div>
                 ) : (
                   <div className="text-xs text-slate-400 mt-0.5">Calendar · Gmail · Not connected</div>
@@ -202,7 +208,7 @@ export function Settings() {
                 <button
                   onClick={handleDisconnect}
                   disabled={disconnecting}
-                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-400/20 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-400/20 transition-colors disabled:opacity-50"
                 >
                   {disconnecting ? (
                     <Loader2 size={12} className="animate-spin" />
@@ -224,7 +230,7 @@ export function Settings() {
 
             {/* Re-auth nudge if needsReconnect */}
             {calendarStatus?.connected && (calendarStatus as any).needsReconnect && (
-              <div className="mt-3 pt-3 border-t border-black/[.04] dark:border-white/[.06] flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+              <div className="mt-3 pt-3 border-t border-border flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
                 <RefreshCw size={12} />
                 <span>New permissions required. Please disconnect and reconnect to enable all features.</span>
               </div>
@@ -232,9 +238,9 @@ export function Settings() {
 
             {/* Scope info */}
             {calendarStatus?.connected && (
-              <div className="mt-3 pt-3 border-t border-black/[.04] dark:border-white/[.06] flex flex-wrap gap-1.5">
+              <div className="mt-3 pt-3 border-t border-border flex flex-wrap gap-1.5">
                 {['Gmail read/modify', 'Gmail send', 'Calendar events'].map(s => (
-                  <span key={s} className="inline-flex items-center gap-1 text-atom font-medium px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.05] text-slate-500 dark:text-slate-400">
+                  <span key={s} className="inline-flex items-center gap-1 text-atom font-medium px-2 py-0.5 rounded-md bg-secondary text-muted-foreground">
                     <Check size={10} className="text-emerald-500" />
                     {s}
                   </span>

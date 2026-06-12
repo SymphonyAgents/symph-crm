@@ -91,7 +91,7 @@ function EventDetailPanel({
       onClick={onClose}
     >
       <div
-        className="w-full sm:w-[380px] bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
+        className="w-full sm:w-[380px] bg-card rounded-lg shadow-xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Colored header strip */}
@@ -115,11 +115,11 @@ function EventDetailPanel({
 
         {/* Body */}
         <div className="px-4 py-4 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 120px)' }}>
-          <h2 className="text-sbase font-semibold text-slate-900 dark:text-white leading-snug">
+          <h2 className="text-sbase font-semibold text-foreground leading-snug">
             {event.title}
           </h2>
 
-          <div className="flex items-start gap-2.5 text-ssm text-slate-600 dark:text-slate-400">
+          <div className="flex items-start gap-2.5 text-ssm text-muted-foreground">
             <Clock size={14} className="shrink-0 mt-0.5" />
             <span>
               {new Date(event.startAt).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -129,14 +129,14 @@ function EventDetailPanel({
           </div>
 
           {event.location && (
-            <div className="flex items-start gap-2.5 text-ssm text-slate-600 dark:text-slate-400">
+            <div className="flex items-start gap-2.5 text-ssm text-muted-foreground">
               <MapPin size={14} className="shrink-0 mt-0.5" />
               <span>{event.location}</span>
             </div>
           )}
 
           {event.attendeeEmails.length > 0 && (
-            <div className="flex items-start gap-2.5 text-ssm text-slate-600 dark:text-slate-400">
+            <div className="flex items-start gap-2.5 text-ssm text-muted-foreground">
               <Users size={14} className="shrink-0 mt-0.5" />
               <div className="space-y-0.5 max-h-[200px] overflow-y-auto">
                 {event.attendeeEmails.map(email => (
@@ -147,14 +147,14 @@ function EventDetailPanel({
           )}
 
           {event.description && (
-            <div className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-wrap border-t border-black/[.06] dark:border-white/[.06] pt-3">
+            <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap border-t border-border pt-3">
               {event.description}
             </div>
           )}
         </div>
 
         {event.dealId && onOpenDeal && (
-          <div className="px-4 py-3 border-t border-black/[.06] dark:border-white/[.06]">
+          <div className="px-4 py-3 border-t border-border">
             <button
               onClick={() => { onOpenDeal(event.dealId!); onClose() }}
               className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-ssm font-medium text-primary hover:bg-primary/[.06] rounded-lg transition-colors"
@@ -212,14 +212,14 @@ function CreateEventModal({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-xl w-full max-w-md mx-4 p-6 animate-in zoom-in-95 duration-150"
+        className="bg-card rounded-lg shadow-xl w-full max-w-md mx-4 p-6 animate-in zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sbase font-semibold text-slate-900 dark:text-white">New Event</h2>
+          <h2 className="text-sbase font-semibold text-foreground">New Event</h2>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:text-foreground hover:bg-surface-hover transition-colors"
           >
             <X size={14} />
           </button>
@@ -227,7 +227,7 @@ function CreateEventModal({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Title *</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Title *</label>
             <Input
               className="h-9 text-ssm"
               value={form.title}
@@ -238,7 +238,7 @@ function CreateEventModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Type</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Type</label>
             <Select value={form.eventType} onValueChange={v => set('eventType', v as CreateEventForm['eventType'])}>
               <SelectTrigger className="h-9 text-ssm">
                 <SelectValue />
@@ -254,7 +254,7 @@ function CreateEventModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Start date *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Start date *</label>
               <Input
                 type="date"
                 className="h-9 text-ssm"
@@ -263,14 +263,14 @@ function CreateEventModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Start time *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Start time *</label>
               <TimePicker value={form.startTime} onChange={v => set('startTime', v)} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">End date *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">End date *</label>
               <Input
                 type="date"
                 className="h-9 text-ssm"
@@ -279,13 +279,13 @@ function CreateEventModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">End time *</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">End time *</label>
               <TimePicker value={form.endTime} onChange={v => set('endTime', v)} />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Location</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Location</label>
             <Input
               className="h-9 text-ssm"
               value={form.location}
@@ -295,7 +295,7 @@ function CreateEventModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Description</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Description</label>
             <Textarea
               className="text-ssm min-h-[72px] resize-none"
               value={form.description}
@@ -309,7 +309,7 @@ function CreateEventModal({
           <div className="flex justify-end gap-2 pt-1">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-ssm rounded-lg border border-black/[.06] dark:border-white/[.08] text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+              className="px-4 py-2 text-ssm rounded-lg border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>
@@ -404,10 +404,10 @@ function WeekView({
 
   return (
     // h-full so it expands to fill the flex container on desktop
-    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21] flex flex-col h-full">
+    <div className="border border-border rounded-lg overflow-hidden bg-card flex flex-col h-full">
       {/* Day headers — fixed, never scrolls */}
       <div
-        className="grid border-b border-black/[.06] dark:border-white/[.08] shrink-0"
+        className="grid border-b border-border shrink-0"
         style={{ gridTemplateColumns: '44px repeat(7, 1fr)' }}
       >
         <div className="py-2" />
@@ -416,12 +416,12 @@ function WeekView({
           const isToday = key === today
           return (
             <div key={key} className="py-2 text-center">
-              <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide">
+              <div className="eyebrow-label">
                 {DAYS[d.getDay()]}
               </div>
               <div className={cn(
                 'text-sbase font-bold mx-auto w-7 h-7 flex items-center justify-center rounded-full mt-0.5 transition-colors',
-                isToday ? 'bg-primary text-white' : 'text-slate-700 dark:text-slate-300',
+                isToday ? 'bg-primary text-white' : 'text-muted-foreground',
               )}>
                 {d.getDate()}
               </div>
@@ -439,7 +439,7 @@ function WeekView({
           {/* Hour labels */}
           <div>
             {HOURS.map(h => (
-              <div key={h} className="relative border-t border-black/[.04] dark:border-white/[.04]" style={{ height: HOUR_PX }}>
+              <div key={h} className="relative border-t border-border" style={{ height: HOUR_PX }}>
                 <span className="absolute -top-2 right-2 text-atom text-slate-400 tabular-nums select-none">
                   {h === 12 ? '12 PM' : h > 12 ? `${h - 12} PM` : `${h} AM`}
                 </span>
@@ -458,7 +458,7 @@ function WeekView({
               <div
                 key={key}
                 className={cn(
-                  'relative border-l border-black/[.04] dark:border-white/[.04] cursor-pointer',
+                  'relative border-l border-border cursor-pointer',
                   isToday && 'bg-primary/[.02]',
                 )}
                 style={{ height: totalHeight }}
@@ -485,7 +485,7 @@ function WeekView({
                 {HOURS.map(h => (
                   <div
                     key={h}
-                    className="absolute left-0 right-0 border-t border-black/[.04] dark:border-white/[.04]"
+                    className="absolute left-0 right-0 border-t border-border"
                     style={{ top: (h - gridStartHour) * HOUR_PX }}
                   />
                 ))}
@@ -494,7 +494,7 @@ function WeekView({
                 {HOURS.map(h => (
                   <div
                     key={`${h}-half`}
-                    className="absolute left-0 right-0 border-t border-black/[.02] dark:border-white/[.02]"
+                    className="absolute left-0 right-0 border-t border-border"
                     style={{ top: (h - gridStartHour) * HOUR_PX + HOUR_PX / 2 }}
                   />
                 ))}
@@ -594,9 +594,9 @@ function TeamDemosPanel({
   const grouped = useMemo(() => groupDemosByDay(demos), [demos])
 
   return (
-    <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden flex flex-col">
-      <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] shrink-0 flex items-center justify-between">
-        <p className="text-ssm font-semibold text-slate-900 dark:text-white">Team Demos</p>
+    <div className="border border-border rounded-lg bg-card overflow-hidden flex flex-col">
+      <div className="px-4 py-3 border-b border-border shrink-0 flex items-center justify-between">
+        <p className="text-ssm font-semibold text-foreground">Team Demos</p>
         <Badge variant="muted" className="text-xxs font-medium">
           {demos.length}
         </Badge>
@@ -625,7 +625,7 @@ function TeamDemosPanel({
           <div className="space-y-3">
             {grouped.map(group => (
               <div key={group.label}>
-                <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-1.5 px-2">{group.label}</p>
+                <p className="eyebrow-label mb-1.5 px-2">{group.label}</p>
                 <div className="space-y-0.5">
                   {group.demos.map(demo => {
                     const initials = demo.userName
@@ -640,7 +640,7 @@ function TeamDemosPanel({
                         className={cn(
                           'w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors',
                           demo.dealId
-                            ? 'hover:bg-slate-50 dark:hover:bg-white/[.04] cursor-pointer'
+                            ? 'hover:bg-surface-hover cursor-pointer'
                             : 'cursor-default'
                         )}
                       >
@@ -653,14 +653,14 @@ function TeamDemosPanel({
                           {initials}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{demo.title}</p>
+                          <p className="text-xs font-semibold text-foreground truncate">{demo.title}</p>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-xxs text-slate-500 dark:text-slate-400">
+                            <span className="text-xxs text-muted-foreground">
                               {new Date(demo.startAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {formatTime(demo.startAt)}
                             </span>
                           </div>
                           {demo.userName && (
-                            <p className="text-xxs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{demo.userName}</p>
+                            <p className="text-xxs text-text-faint mt-0.5 truncate">{demo.userName}</p>
                           )}
                         </div>
                       </button>
@@ -860,9 +860,9 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
 
         {/* Connection status pill */}
         {status?.connected && (
-          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
-            Connected as <span className="font-medium text-slate-700 dark:text-slate-300 ml-1">{status.googleEmail}</span>
+            Connected as <span className="font-medium text-muted-foreground ml-1">{status.googleEmail}</span>
             {status.lastSyncedAt && (
               <span className="ml-auto tabular-nums">
                 Last synced {new Date(status.lastSyncedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}
@@ -887,12 +887,12 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
 
           {/* Nav header */}
           <div className="shrink-0 flex items-center gap-2 mb-3 flex-wrap">
-            <div className="text-sbase font-bold text-slate-900 dark:text-white tracking-tight truncate">
+            <div className="text-sbase font-bold text-foreground tracking-tight truncate">
               {headerTitle}
             </div>
             <div className="ml-auto flex items-center gap-1.5 flex-wrap">
               {/* Month / Week toggle */}
-              <div className="flex items-center bg-slate-100 dark:bg-white/[.06] rounded-lg p-0.5 gap-0.5">
+              <div className="flex items-center bg-secondary rounded-lg p-0.5 gap-0.5">
                 {(['month', 'week'] as CalendarView[]).map(v => (
                   <button
                     key={v}
@@ -900,8 +900,8 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                     className={cn(
                       'h-[26px] px-2.5 rounded-lg text-xs font-medium transition-all',
                       view === v
-                        ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm'
-                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300',
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-slate-700 hover:text-foreground',
                     )}
                   >
                     {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -911,20 +911,20 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
 
               <button
                 onClick={handlePrev}
-                className="w-7 h-7 flex items-center justify-center rounded-lg border border-black/[.06] dark:border-white/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] text-slate-500 dark:text-slate-400 transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-surface-hover text-muted-foreground transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={handleNext}
-                className="w-7 h-7 flex items-center justify-center rounded-lg border border-black/[.06] dark:border-white/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] text-slate-500 dark:text-slate-400 transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-border hover:bg-surface-hover text-muted-foreground transition-colors"
               >
                 <ChevronRight size={14} />
               </button>
 
               <button
                 onClick={handleToday}
-                className="px-3 py-1.5 text-xs border border-black/[.06] dark:border-white/[.08] rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] text-slate-600 dark:text-slate-400 transition-colors"
+                className="px-3 py-1.5 text-xs border border-border rounded-lg hover:bg-surface-hover text-muted-foreground transition-colors"
               >
                 Today
               </button>
@@ -940,10 +940,10 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
           {/* Month view — natural height, scroll on mobile */}
           {view === 'month' && (
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg overflow-hidden bg-white dark:bg-[#1e1e21]">
-                <div className="grid grid-cols-7 border-b border-black/[.06] dark:border-white/[.08]">
+              <div className="border border-border rounded-lg overflow-hidden bg-card">
+                <div className="grid grid-cols-7 border-b border-border">
                   {DAYS.map(d => (
-                    <div key={d} className="py-2.5 text-center text-atom font-semibold text-slate-400 uppercase tracking-wide">{d}</div>
+                    <div key={d} className="py-2.5 text-center eyebrow-label">{d}</div>
                   ))}
                 </div>
                 <div className="grid grid-cols-7">
@@ -959,16 +959,16 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                         onClick={() => { if (cell.current) { setClickedDate(cell.dateKey); setShowCreateModal(true) } }}
                         className={cn(
                           'min-h-[72px] md:min-h-[88px] px-1.5 py-1 transition-colors',
-                          !isLastCol && 'border-r border-black/[.06] dark:border-white/[.08]',
-                          !isLastRow && 'border-b border-black/[.06] dark:border-white/[.08]',
-                          isToday && 'bg-slate-50 dark:bg-white/[.04]',
-                          cell.current && 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-white/[.03]',
+                          !isLastCol && 'border-r border-border',
+                          !isLastRow && 'border-b border-border',
+                          isToday && 'bg-surface-alt',
+                          cell.current && 'cursor-pointer hover:bg-surface-alt',
                           !cell.current && 'opacity-30 cursor-default',
                         )}
                       >
                         <div className={cn(
                           'text-xxs tabular-nums mb-1 w-5 h-5 flex items-center justify-center rounded-full',
-                          isToday ? 'bg-primary text-white font-bold' : 'text-slate-500 dark:text-slate-400',
+                          isToday ? 'bg-primary text-white font-bold' : 'text-muted-foreground',
                         )}>
                           {cell.day}
                         </div>
@@ -993,7 +993,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                             )
                           })}
                           {cellEvents.length > 3 && (
-                            <div className="text-atom text-slate-400 dark:text-slate-500 pl-1">
+                            <div className="text-atom text-text-faint pl-1">
                               +{cellEvents.length - 3} more
                             </div>
                           )}
@@ -1009,7 +1009,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                 {Object.entries(EVENT_TYPE_HEX).map(([type, hex]) => (
                   <div key={type} className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-sm" style={{ background: hex }} />
-                    <span className="text-xxs text-slate-500 dark:text-slate-400 capitalize">{type.replace('_', ' ')}</span>
+                    <span className="text-xxs text-muted-foreground capitalize">{type.replace('_', ' ')}</span>
                   </div>
                 ))}
                 {/* Legend: owned vs invited */}
@@ -1051,9 +1051,9 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
         <div className="flex flex-col gap-4 min-h-0 overflow-y-auto">
 
         {/* Upcoming */}
-        <div className="border border-black/[.06] dark:border-white/[.08] rounded-lg bg-white dark:bg-[#1e1e21] overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
-            <p className="text-ssm font-semibold text-slate-900 dark:text-white">Upcoming</p>
+        <div className="border border-border rounded-lg bg-card overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-border shrink-0">
+            <p className="text-ssm font-semibold text-foreground">Upcoming</p>
           </div>
           <div className="p-3 flex-1 overflow-y-auto">
             {!status?.connected ? (
@@ -1078,7 +1078,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                     <button
                       key={ev.id}
                       onClick={() => setSelectedEvent(ev)}
-                      className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.04] text-left transition-colors"
+                      className="w-full flex items-start gap-2.5 p-2 rounded-lg hover:bg-surface-hover text-left transition-colors"
                     >
                       {/* Color strip — solid for owned, dashed/outline for invited */}
                       <div
@@ -1089,12 +1089,12 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
                         }}
                       />
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{ev.title}</p>
-                        <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <p className="text-xs font-semibold text-foreground truncate">{ev.title}</p>
+                        <p className="text-xxs text-muted-foreground mt-0.5">
                           {new Date(ev.startAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} · {formatTime(ev.startAt)}
                         </p>
                         {ev.location && (
-                          <p className="text-xxs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{ev.location}</p>
+                          <p className="text-xxs text-text-faint mt-0.5 truncate">{ev.location}</p>
                         )}
                       </div>
                     </button>

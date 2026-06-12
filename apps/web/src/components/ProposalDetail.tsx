@@ -107,7 +107,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           aria-label="Proposal actions"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-black/[.08] bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-800 active:scale-[0.96] dark:border-white/[.1] dark:bg-white/[.04] dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-slate-500 shadow-sm transition-colors hover:bg-secondary hover:text-slate-800 active:scale-[0.96] hover:text-foreground"
         >
           <MoreVertical className="h-4 w-4" strokeWidth={1.8} />
         </button>
@@ -116,7 +116,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           onClick={onViewVersions}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-secondary"
         >
           <History className="h-3.5 w-3.5" strokeWidth={1.8} />
           View versions
@@ -124,7 +124,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           onClick={onDownloadHtml}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-secondary"
         >
           <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
           Download HTML
@@ -132,8 +132,8 @@ function ProposalActionsMenu({
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
           canUploadPdf && !isPdfPending
-            ? 'cursor-pointer text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
-            : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
+            ? 'cursor-pointer text-slate-700 hover:bg-secondary'
+            : 'cursor-not-allowed text-text-faint',
         )}>
           {isPdfPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />}
           {hasPdf ? 'Replace PDF' : 'Upload PDF'}
@@ -157,8 +157,8 @@ function ProposalActionsMenu({
           className={cn(
             'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-xs font-medium transition-colors',
             hasPdf
-              ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
-              : 'pointer-events-none text-slate-300 dark:text-slate-600',
+              ? 'text-slate-700 hover:bg-secondary'
+              : 'pointer-events-none text-text-faint',
           )}
         >
           <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -199,35 +199,35 @@ function ProposalVersionsDialog({
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((item) => (
-                <div key={item} className="h-14 rounded-md bg-slate-100 dark:bg-white/[.06] animate-pulse" />
+                <div key={item} className="h-14 rounded-md bg-secondary animate-pulse" />
               ))}
             </div>
           ) : versions.length === 0 ? (
-            <div className="rounded-md border border-black/[.06] px-4 py-8 text-center dark:border-white/[.08]">
-              <History className="mx-auto mb-2 h-5 w-5 text-slate-300 dark:text-slate-600" strokeWidth={1.6} />
-              <p className="text-ssm font-semibold text-slate-700 dark:text-slate-200">No versions yet</p>
-              <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">Saved proposal versions will appear here.</p>
+            <div className="rounded-md border border-border px-4 py-8 text-center">
+              <History className="mx-auto mb-2 h-5 w-5 text-text-faint" strokeWidth={1.6} />
+              <p className="text-ssm font-semibold text-foreground">No versions yet</p>
+              <p className="mt-1 text-xxs text-muted-foreground">Saved proposal versions will appear here.</p>
             </div>
           ) : (
             <div className="space-y-2">
               {versions.map((version) => (
-                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-[#1c1c1f] sm:flex-row sm:items-center sm:justify-between">
+                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-border bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">v{version.version}</span>
+                      <span className="font-mono text-xs font-semibold text-foreground">v{version.version}</span>
                       {version.wordCount != null && <span className="text-xxs text-slate-400 tabular-nums">{version.wordCount.toLocaleString()} words</span>}
                     </div>
-                    <p className="mt-0.5 truncate text-xxs text-slate-500 dark:text-slate-400">
+                    <p className="mt-0.5 truncate text-xxs text-muted-foreground">
                       {version.changeNote || version.excerpt || 'Saved version'}
                     </p>
-                    <p className="mt-1 text-atom text-slate-400 dark:text-slate-500">
+                    <p className="mt-1 text-atom text-text-faint">
                       {new Date(version.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => onViewVersion(version.id)}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xxs font-semibold text-white transition-colors hover:bg-slate-700 active:scale-[0.96] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xxs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover active:scale-[0.96]"
                   >
                     <Eye className="h-3.5 w-3.5" strokeWidth={1.8} />
                     View
@@ -323,10 +323,10 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
 
   if (isLoading || isVersionLoading) {
     return (
-      <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0f0f12]">
-        <div className="shrink-0 bg-white dark:bg-[#1c1c1f] border-b border-black/[.06] dark:border-white/[.08] h-[57px]" />
+      <div className="h-full flex flex-col bg-surface-alt">
+        <div className="shrink-0 bg-card border-b border-border h-[57px]" />
         <div className="flex-1 min-h-0 p-4 md:p-6 max-w-[1400px] mx-auto w-full">
-          <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
+          <div className="bg-card border border-border rounded-md shadow-[var(--shadow-card)] overflow-hidden">
             <DataTableSkeleton />
           </div>
         </div>
@@ -337,7 +337,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
   if (error || versionError || !data) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
-        <div className="text-ssm font-semibold text-slate-700 dark:text-slate-200">
+        <div className="text-ssm font-semibold text-foreground">
           {error?.message ?? versionError?.message ?? 'Proposal not found'}
         </div>
         <button
@@ -353,22 +353,22 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
   const activeVersion = selectedVersion ?? data.version
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-slate-50 dark:bg-[#0f0f12]">
+    <div className="h-full flex flex-col overflow-hidden bg-surface-alt">
       {/* Sticky header */}
-      <div className="shrink-0 bg-white dark:bg-[#1c1c1f] border-b border-black/[.06] dark:border-white/[.08]">
+      <div className="shrink-0 bg-card border-b border-border">
         <div className="flex flex-col gap-3 px-4 py-3 md:mx-auto md:w-full md:max-w-[1400px] md:flex-row md:items-center md:px-6">
           <button
             onClick={onBack}
-            className="shrink-0 flex items-center gap-1.5 h-7 px-2 -ml-2 rounded-md text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.05] transition-colors duration-150"
+            className="shrink-0 flex items-center gap-1.5 h-7 px-2 -ml-2 rounded-md text-xs font-medium text-slate-500 hover:text-slate-900 hover:text-foreground hover:bg-secondary transition-colors duration-150"
           >
             <ChevronLeftIcon size={14} />
             <span>Proposals</span>
           </button>
 
-          <div className="hidden h-5 w-px shrink-0 bg-black/[.08] dark:bg-white/[.08] md:block" />
+          <div className="hidden h-5 w-px shrink-0 bg-black/[.08] md:block" />
 
           <div className="min-w-0 flex-1">
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate" title={data.title}>
+            <div className="text-ssm font-semibold text-foreground truncate" title={data.title}>
               {data.title}
             </div>
             <div className="text-xxs text-slate-500 mt-0.5 truncate flex items-center gap-1.5">
@@ -376,9 +376,9 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
               {versionId && <span className="text-slate-400">Viewing saved version</span>}
               <span className="text-slate-300">·</span>
               <span className="inline-flex min-w-0 items-center gap-1.5">
-                <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
+                <AvatarRoot className="h-4 w-4 border border-border">
                   {data.creatorImage && <AvatarImage src={data.creatorImage} alt={data.creatorName || data.creatorEmail || 'Creator'} />}
-                  <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                  <AvatarFallback className="bg-secondary text-[8px] text-muted-foreground">
                     {initials(data.creatorName, data.creatorEmail)}
                   </AvatarFallback>
                 </AvatarRoot>
@@ -462,7 +462,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
                 <button
                   onClick={handleCancelEdit}
                   disabled={saveVersion.isPending}
-                  className="h-7 px-3 rounded-lg text-xxs font-medium text-slate-500 border border-black/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors disabled:opacity-50"
+                  className="h-7 px-3 rounded-lg text-xxs font-medium text-slate-500 border border-border hover:bg-surface-hover transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -512,7 +512,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
       />
 
       {/* Full-width iframe */}
-      <div className="flex-1 min-h-0 bg-slate-100 dark:bg-[#0f0f12] relative">
+      <div className="flex-1 min-h-0 bg-secondary relative">
         {isEditing && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-primary/90 text-white text-xxs font-medium px-3 py-1 rounded-full shadow-md pointer-events-none">
             Click any text to edit
@@ -531,7 +531,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
             ? 'allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-same-origin'
             : 'allow-scripts allow-forms allow-popups allow-modals allow-downloads'
           }
-          className="w-full h-full border-0 bg-white"
+          className="w-full h-full border-0 bg-card"
           onLoad={injectContentEditable}
         />
       </div>

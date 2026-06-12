@@ -33,24 +33,24 @@ export default function SignedProposalPdfPage({ params }: { params: Promise<{ id
   }, [id])
 
   return (
-    <div className="flex min-h-[60dvh] items-center justify-center bg-slate-50 px-6 text-center dark:bg-[#0f0f12]">
-      <div className="max-w-sm rounded-md border border-black/[.06] bg-white p-6 shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1c1c1f]">
+    <div className="flex min-h-[60dvh] items-center justify-center bg-surface-alt px-6 text-center">
+      <div className="max-w-sm rounded-md border border-border bg-card p-6 shadow-[var(--shadow-card)]">
         {error ? (
           <>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Signed PDF unavailable</p>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{error}</p>
+            <p className="text-sm font-semibold text-foreground">Signed PDF unavailable</p>
+            <p className="mt-2 text-xs text-muted-foreground">{error}</p>
             <button
               type="button"
               onClick={() => router.push(`/proposals/${id}`)}
-              className="mt-4 h-8 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition-colors hover:bg-slate-700 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+              className="mt-4 h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
             >
               Back to proposal
             </button>
           </>
         ) : (
           <>
-            <span className="mx-auto block h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-700 dark:border-white/20 dark:border-t-white" />
-            <p className="mt-3 text-xs font-semibold text-slate-700 dark:text-slate-200">Opening signed PDF...</p>
+            <span className="mx-auto block h-5 w-5 animate-spin rounded-full border-2 border-border border-t-primary" />
+            <p className="mt-3 text-xs font-semibold text-foreground">Opening signed PDF...</p>
           </>
         )}
       </div>

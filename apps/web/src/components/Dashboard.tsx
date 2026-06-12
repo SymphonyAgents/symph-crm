@@ -205,7 +205,7 @@ export function Dashboard() {
         </div>
 
         <div className="ml-0 md:ml-auto flex items-center gap-2">
-          <span className="text-xxs font-semibold uppercase tracking-[0.06em] text-slate-400">Display currency</span>
+          <span className="eyebrow-label">Display currency</span>
           <Select value={displayCurrency} onValueChange={v => setDisplayCurrency(v as DealCurrency)}>
             <SelectTrigger className="h-8 text-xs w-[86px]">
               <SelectValue />
@@ -220,7 +220,7 @@ export function Dashboard() {
           </Select>
         </div>
       </div>
-      <div className="mb-5 text-atom text-slate-500 dark:text-slate-400">
+      <div className="mb-5 text-atom text-muted-foreground">
         Converted from native totals ({nativePipelineLabel}). {conversionRateNote}
       </div>
 
@@ -269,19 +269,19 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4 items-start">
         <div className="flex flex-col gap-4">
           <StageFunnelChart deals={deals} isLoading={loadingDeals} onStageClick={(stageId) => router.push(`/pipeline?stage=${stageId}`)} />
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-3 shadow-[var(--shadow-card)]">
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-3.5">Top Deals</div>
+          <div className="bg-card border border-border rounded-lg p-3 shadow-[var(--shadow-card)]">
+            <div className="text-ssm font-semibold text-foreground mb-3.5">Top Deals</div>
             {isLoading ? <TopDealsSkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <TopDeals deals={topDeals} />}
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-3 shadow-[var(--shadow-card)]">
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-3.5">AM Leaderboard</div>
+          <div className="bg-card border border-border rounded-lg p-3 shadow-[var(--shadow-card)]">
+            <div className="text-ssm font-semibold text-foreground mb-3.5">AM Leaderboard</div>
             {isLoading ? <AMLeaderboardSkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <AMLeaderboard entries={amEntries} />}
           </div>
-          <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-3 shadow-[var(--shadow-card)]">
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-3.5">Recent Activity</div>
+          <div className="bg-card border border-border rounded-lg p-3 shadow-[var(--shadow-card)]">
+            <div className="text-ssm font-semibold text-foreground mb-3.5">Recent Activity</div>
             {isLoading ? <RecentActivitySkeleton /> : isError ? <p className="text-xs text-slate-400 py-2">No data available</p> : <RecentActivity entries={recentEntries} onOpenDeal={(id) => router.push(`/deals/${id}?from=dashboard`)} />}
           </div>
         </div>

@@ -13,7 +13,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
   const loginUrl = `${BACKEND_API_URL}/auth/google?returnTo=${encodeURIComponent(returnTo)}`
 
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-[#141416]">
+    <div className="min-h-dvh flex items-center justify-center bg-surface-alt">
       <div className="w-full max-w-[360px] mx-4">
         <div className="flex items-center justify-center gap-2.5 mb-8">
           <div
@@ -23,22 +23,22 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
             S
           </div>
           <div>
-            <div className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Symph CRM</div>
-            <div className="text-xxs text-slate-400 dark:text-slate-500">Sales Pipeline</div>
+            <div className="text-base font-bold text-foreground tracking-tight">Symph CRM</div>
+            <div className="text-xxs text-text-faint">Sales Pipeline</div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-[#1e1e21] rounded-md border border-black/[.06] dark:border-white/[.08] shadow-sm p-6">
-          <h1 className="text-base font-semibold text-slate-900 dark:text-white text-center mb-1">
+        <div className="bg-card rounded-md border border-border shadow-sm p-6">
+          <h1 className="text-base font-semibold text-foreground text-center mb-1">
             Sign in
           </h1>
-          <p className="text-ssm text-slate-500 dark:text-slate-400 text-center mb-6">
+          <p className="text-ssm text-muted-foreground text-center mb-6">
             Use your Symph Google account to continue
           </p>
 
           <a
             href={loginUrl}
-            className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-slate-50 dark:bg-[#242428] dark:hover:bg-[#2a2a2f] border border-slate-200 dark:border-white/[.08] rounded-lg px-4 py-2.5 text-ssm font-medium text-slate-700 dark:text-slate-200 transition-colors duration-150 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2.5 bg-card hover:bg-surface-alt dark:hover:bg-[#2a2a2f] border border-border rounded-lg px-4 py-2.5 text-ssm font-medium text-foreground transition-colors duration-150 cursor-pointer"
           >
             <svg width="18" height="18" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -50,7 +50,7 @@ export default async function LoginPage({ searchParams }: { searchParams?: Promi
           </a>
         </div>
 
-        <p className="text-xxs text-slate-400 dark:text-slate-500 text-center mt-4">
+        <p className="text-xxs text-text-faint text-center mt-4">
           Symph internal use only
         </p>
       </div>

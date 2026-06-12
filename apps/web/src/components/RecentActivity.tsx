@@ -33,8 +33,8 @@ export function RecentActivity({ entries, onOpenDeal }: RecentActivityProps) {
               onClick={() => entry.dealId && onOpenDeal?.(entry.dealId)}
               className={cn(
                 'grid grid-cols-[8px_1fr] gap-3 py-2.5 px-1',
-                i < entries.length - 1 && 'border-b border-black/[.06] dark:border-white/[.08]',
-                entry.dealId && onOpenDeal && 'cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[.02] rounded-lg transition-colors',
+                i < entries.length - 1 && 'border-b border-border',
+                entry.dealId && onOpenDeal && 'cursor-pointer hover:bg-surface-hover rounded-lg transition-colors',
               )}
             >
               <div
@@ -42,7 +42,7 @@ export function RecentActivity({ entries, onOpenDeal }: RecentActivityProps) {
                 style={{ background: entry.color }}
               />
               <div>
-                <div className="text-xs font-medium text-slate-900 dark:text-white leading-[1.4]">{entry.text}</div>
+                <div className="text-xs font-medium text-foreground leading-[1.4]">{entry.text}</div>
                 <div className="text-atom text-slate-400 mt-0.5">{entry.time}</div>
               </div>
             </div>

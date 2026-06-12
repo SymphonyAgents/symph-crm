@@ -107,7 +107,7 @@ function TimePickerDropdown({
               'w-full text-left px-3 py-1.5 text-ssm transition-colors',
               slot.value === value
                 ? 'bg-blue-600 text-white'
-                : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[.08]',
+                : 'text-muted-foreground hover:bg-surface-hover',
             )}
           >
             {slot.label}
@@ -133,7 +133,7 @@ function TimeButton({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full h-9 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-ssm px-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white"
+        className="w-full h-9 rounded-lg border border-border bg-card text-ssm px-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-foreground"
       >
         {slot?.label ?? value}
       </button>
@@ -175,7 +175,7 @@ function DatePickerButton({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full h-9 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-ssm px-3 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white"
+          className="w-full h-9 rounded-lg border border-border bg-card text-ssm px-3 text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-foreground"
         >
           <span className={!value ? 'text-slate-400' : ''}>
             {selected ? format(selected, 'MMM d, yyyy') : (placeholder ?? 'Select date')}
@@ -197,8 +197,8 @@ function DatePickerButton({
 
 // ─── Input/label styles ──────────────────────────────────────────────────────
 
-const labelClass = 'text-xxs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-[0.05em] mb-1.5 block'
-const inputClass = 'w-full h-9 rounded-lg border border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04] text-ssm px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500'
+const labelClass = 'eyebrow-label mb-1.5 block'
+const inputClass = 'w-full h-9 rounded-lg border border-border bg-card text-ssm px-3 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 text-foreground placeholder:text-text-faint'
 
 // ─── EventPopover — floating popover panel ───────────────────────────────────
 
@@ -306,17 +306,17 @@ export function EventPopover({
 
       {/* Floating panel */}
       <div
-        className="fixed z-50 rounded-xl bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] shadow-2xl overflow-hidden flex flex-col"
+        className="fixed z-50 rounded-md bg-card border border-border shadow-2xl overflow-hidden flex flex-col"
         style={{ left, top, width: PANEL_W }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">New Event</span>
+        <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-border shrink-0">
+          <span className="text-sm font-semibold text-foreground">New Event</span>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:text-foreground hover:bg-surface-hover transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -344,7 +344,7 @@ export function EventPopover({
           <div>
             <label className={labelClass}>Stage</label>
             <Select value={stage} onValueChange={setStage}>
-              <SelectTrigger className="h-9 text-ssm w-full rounded-lg border-slate-200 dark:border-white/[.12] bg-white dark:bg-white/[.04]">
+              <SelectTrigger className="h-9 text-ssm w-full rounded-lg border-border bg-card">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -413,7 +413,7 @@ export function EventPopover({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-black/[.06] dark:border-white/[.08] shrink-0">
+        <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-border shrink-0">
           <Button type="button" variant="outline" className="text-ssm" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

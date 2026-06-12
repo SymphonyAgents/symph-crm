@@ -49,8 +49,8 @@ export function StageFunnelChart({ deals, isLoading, onStageClick }: PipelinePro
   const hasData = deals.length > 0
 
   return (
-    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[var(--shadow-card)] p-3">
-      <div className="text-ssm font-semibold text-slate-900 dark:text-white mb-4">
+    <div className="bg-card border border-border rounded-lg shadow-[var(--shadow-card)] p-3">
+      <div className="text-ssm font-semibold text-foreground mb-4">
         Pipeline Progress
       </div>
 
@@ -58,15 +58,15 @@ export function StageFunnelChart({ deals, isLoading, onStageClick }: PipelinePro
         <div>
           <div className="grid grid-cols-5 gap-1.5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="rounded-lg border border-black/[.06] dark:border-white/[.08] px-2.5 py-2 space-y-1.5">
-                <div className="h-2 w-16 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
-                <div className="h-5 w-8 bg-slate-100 dark:bg-white/[.06] rounded animate-pulse" />
+              <div key={i} className="rounded-lg border border-border px-2.5 py-2 space-y-1.5">
+                <div className="h-2 w-16 bg-secondary rounded animate-pulse" />
+                <div className="h-5 w-8 bg-secondary rounded animate-pulse" />
               </div>
             ))}
           </div>
           <div className="grid grid-cols-2 gap-1.5 mt-2">
-            <div className="h-9 rounded-lg bg-slate-100 dark:bg-white/[.06] animate-pulse" />
-            <div className="h-9 rounded-lg bg-slate-100 dark:bg-white/[.06] animate-pulse" />
+            <div className="h-9 rounded-lg bg-secondary animate-pulse" />
+            <div className="h-9 rounded-lg bg-secondary animate-pulse" />
           </div>
         </div>
       ) : !hasData ? (
@@ -85,14 +85,14 @@ export function StageFunnelChart({ deals, isLoading, onStageClick }: PipelinePro
                   'rounded-lg border px-2.5 py-2 text-left transition-colors duration-150',
                   selectedStage === stage.id
                     ? 'border-primary ring-1 ring-primary/20 bg-primary/[.04]'
-                    : 'border-black/[.06] dark:border-white/[.08] hover:border-black/[.12] dark:hover:border-white/[.15]'
+                    : 'border-border hover:border-border dark:hover:border-white/[.15]'
                 )}
               >
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-                  <span className="text-xxs font-medium text-slate-500 dark:text-slate-400 truncate">{stage.label}</span>
+                  <span className="text-xxs font-medium text-muted-foreground truncate">{stage.label}</span>
                 </div>
-                <div className="text-sbase font-bold tabular-nums text-slate-900 dark:text-white mt-0.5">
+                <div className="text-sbase font-bold tabular-nums text-foreground mt-0.5">
                   {stage.count}
                 </div>
               </button>

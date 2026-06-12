@@ -40,7 +40,7 @@ export function PipelineBar({ deals }: PipelineBarProps) {
             >
               {s.label}
             </div>
-            <div className="h-[6px] bg-slate-100 dark:bg-white/[.06] rounded-full overflow-hidden">
+            <div className="h-[6px] bg-secondary rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -51,7 +51,7 @@ export function PipelineBar({ deals }: PipelineBarProps) {
               />
             </div>
             <div
-              className="text-sbase font-bold tabular-nums text-slate-900 dark:text-white"
+              className="text-sbase font-bold tabular-nums text-foreground"
               style={!hasDeals ? { color: '#94a3b8' } : undefined}
             >
               {s.count}
