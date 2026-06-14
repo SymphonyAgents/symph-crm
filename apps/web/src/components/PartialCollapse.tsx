@@ -54,7 +54,7 @@ export function PartialCollapse({
         <div className="flex items-center gap-2 mb-2">
           {icon && <span className="shrink-0 text-primary">{icon}</span>}
           {label && (
-            <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-primary">
+            <span className="eyebrow-label text-primary">
               {label}
             </span>
           )}

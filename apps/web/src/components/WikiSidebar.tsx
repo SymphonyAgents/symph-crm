@@ -121,7 +121,7 @@ function DealNotesFlat({
 
   if (isLoading) {
     return (
-      <div className="ml-[22px] border-l border-black/[.22] dark:border-white/[.28] py-1">
+      <div className="ml-[22px] border-l border-border py-1">
         <div className="flex items-center gap-2 px-2 py-1 pl-8">
           <div className="w-3 h-3 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
           <span className="text-[10px] text-slate-400">Loading...</span>
@@ -132,14 +132,14 @@ function DealNotesFlat({
 
   if (noteRows.length === 0 && resourceDocs.length === 0) {
     return (
-      <div className="ml-[22px] border-l border-black/[.22] dark:border-white/[.28] py-1">
+      <div className="ml-[22px] border-l border-border py-1">
         <div className="pl-8 pr-2 py-1 text-[10px] text-slate-400 italic">No notes yet</div>
       </div>
     )
   }
 
   return (
-    <div className="ml-[22px] border-l border-black/[.22] dark:border-white/[.28]">
+    <div className="ml-[22px] border-l border-border">
       {noteRows.map((row) => {
         if (row.kind === 'log') {
           const isActive = isSelectedDeal && activeCat === 'log'
@@ -154,13 +154,13 @@ function DealNotesFlat({
                 'flex items-center gap-2 pl-8 pr-2 py-[4px] cursor-pointer transition-colors',
                 isActive
                   ? 'bg-primary/[.07] dark:bg-primary/[.1]'
-                  : 'hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                  : 'hover:bg-surface-hover'
               )}
             >
               <span className="w-1 h-1 rounded-full shrink-0 bg-slate-400" />
               <span className={cn(
                 'flex-1 text-sbase min-w-0 truncate',
-                isActive ? 'text-primary font-medium' : 'text-slate-500 dark:text-slate-400'
+                isActive ? 'text-primary font-medium' : 'text-muted-foreground'
               )}>
                 Log
               </span>
@@ -182,7 +182,7 @@ function DealNotesFlat({
               'flex items-center gap-2 pl-8 pr-2 py-[4px] cursor-pointer transition-colors',
               isActive
                 ? 'bg-primary/[.07] dark:bg-primary/[.1]'
-                : 'hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                : 'hover:bg-surface-hover'
             )}
           >
             <span
@@ -191,7 +191,7 @@ function DealNotesFlat({
             />
             <span className={cn(
               'flex-1 text-sbase min-w-0 truncate',
-              isActive ? 'text-primary font-medium' : 'text-slate-600 dark:text-slate-300'
+              isActive ? 'text-primary font-medium' : 'text-muted-foreground'
             )}>
               {row.title}
             </span>
@@ -212,7 +212,7 @@ function DealNotesFlat({
               'flex items-center gap-2 pl-8 pr-2 py-[4px] cursor-pointer transition-colors',
               isActive
                 ? 'bg-primary/[.07] dark:bg-primary/[.1]'
-                : 'hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                : 'hover:bg-surface-hover'
             )}
           >
             <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" className={cn('shrink-0', isActive ? 'text-primary' : 'text-slate-400')}>
@@ -220,7 +220,7 @@ function DealNotesFlat({
             </svg>
             <span className={cn(
               'flex-1 text-sbase min-w-0 truncate',
-              isActive ? 'text-primary font-medium' : 'text-slate-500 dark:text-slate-400'
+              isActive ? 'text-primary font-medium' : 'text-muted-foreground'
             )}>
               {doc.title || doc.storagePath?.split('/').pop()}
             </span>
@@ -448,15 +448,15 @@ export function WikiSidebar({
   }
 
   return (
-    <div className="flex flex-col h-full w-full min-w-0 bg-white dark:bg-[#1a1a1d] border-r border-black/[.06] dark:border-white/[.06]">
+    <div className="flex flex-col h-full w-full min-w-0 bg-card border-r border-border">
         {/* Header + view toggle */}
-        <div className="px-3 pt-3 pb-2 shrink-0 border-b border-black/[.06] dark:border-white/[.06]">
+        <div className="px-3 pt-3 pb-2 shrink-0 border-b border-border">
           <div className="flex items-center justify-between mb-2.5">
-            <span className="text-xxs font-semibold uppercase tracking-[0.06em] text-slate-400">
+            <span className="eyebrow-label">
               Wiki
             </span>
             <TooltipProvider delayDuration={0}>
-              <div className="flex items-center bg-slate-100 dark:bg-white/[.06] rounded-md p-0.5 gap-0.5">
+              <div className="flex items-center bg-secondary rounded-md p-0.5 gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -464,8 +464,8 @@ export function WikiSidebar({
                       className={cn(
                         'h-6 w-6 rounded flex items-center justify-center transition-all',
                         view === 'list'
-                          ? 'bg-white dark:bg-[#2a2a2e] text-slate-900 dark:text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 hover:text-foreground'
                       )}
                     >
                       <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round">
@@ -485,8 +485,8 @@ export function WikiSidebar({
                       className={cn(
                         'h-6 w-6 rounded flex items-center justify-center transition-all',
                         view === 'graph'
-                          ? 'bg-white dark:bg-[#2a2a2e] text-slate-900 dark:text-white shadow-sm'
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-slate-400 hover:text-slate-600 hover:text-foreground'
                       )}
                     >
                       <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
@@ -517,7 +517,7 @@ export function WikiSidebar({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search brands, deals, notes, files..."
-                className="w-full h-7 pl-7 pr-3 text-xs rounded-md border border-black/[.08] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.04] text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors"
+                className="w-full h-7 pl-7 pr-3 text-xs rounded-md border border-border bg-surface-alt text-foreground placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-colors"
               />
             </div>
           )}
@@ -550,13 +550,13 @@ export function WikiSidebar({
                         'flex items-center gap-1.5 px-2 py-[5px] cursor-pointer select-none group transition-colors',
                         isSelectedBrand && !selectedDealId
                           ? 'bg-primary/[.07] dark:bg-primary/[.1]'
-                          : 'hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                          : 'hover:bg-surface-hover'
                       )}
                       onClick={() => handleBrandClick(group)}
                     >
                       <button
                         onClick={e => { e.stopPropagation(); toggleExpandBrand(id) }}
-                        className="w-4 h-4 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 transition-colors"
+                        className="w-4 h-4 flex items-center justify-center text-muted-foreground hover:text-slate-700 shrink-0 transition-colors"
                       >
                         <svg
                           width={10} height={10} viewBox="0 0 24 24"
@@ -578,7 +578,7 @@ export function WikiSidebar({
                         'flex-1 text-sbase truncate min-w-0',
                         isSelectedBrand && !selectedDealId
                           ? 'text-primary font-semibold'
-                          : 'text-slate-700 dark:text-slate-200 font-medium'
+                          : 'text-foreground font-medium'
                       )}>
                         {label}
                       </span>
@@ -590,7 +590,7 @@ export function WikiSidebar({
 
                     {/* Deals — click toggles tree, no nav */}
                     {isBrandOpen && groupDeals.length > 0 && (
-                      <div className="ml-[22px] border-l border-black/[.22] dark:border-white/[.28]">
+                      <div className="ml-[22px] border-l border-border">
                         {groupDeals
                           .slice()
                           .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''))
@@ -607,12 +607,12 @@ export function WikiSidebar({
                                     'flex items-center gap-2 px-2 py-[5px] cursor-pointer transition-colors',
                                     isThisDealSelected && !activeFile && activeCat !== 'log' && activeCat !== 'resources'
                                       ? 'bg-primary/[.07] dark:bg-primary/[.1]'
-                                      : 'hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                                      : 'hover:bg-surface-hover'
                                   )}
                                 >
                                   <button
                                     onClick={e => { e.stopPropagation(); toggleExpandDeal(deal.id) }}
-                                    className="w-3 h-3 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 shrink-0 transition-colors"
+                                    className="w-3 h-3 flex items-center justify-center text-muted-foreground hover:text-slate-700 shrink-0 transition-colors"
                                   >
                                     <svg
                                       width={8} height={8} viewBox="0 0 24 24"
@@ -631,7 +631,7 @@ export function WikiSidebar({
                                     'flex-1 text-sbase truncate min-w-0',
                                     isThisDealSelected
                                       ? 'text-primary font-medium'
-                                      : 'text-slate-600 dark:text-slate-300'
+                                      : 'text-muted-foreground'
                                   )}>
                                     {deal.title}
                                   </span>

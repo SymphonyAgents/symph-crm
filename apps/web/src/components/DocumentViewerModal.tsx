@@ -188,7 +188,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
       onClick={isEditing ? undefined : onClose}
     >
       <div
-        className="bg-white dark:bg-[#1a1d21] shadow-2xl border border-black/[.08] dark:border-white/[.08] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150 w-screen h-screen rounded-none sm:w-[96vw] sm:h-[96vh] sm:rounded-xl"
+        className="bg-card shadow-2xl border border-border flex flex-col animate-in fade-in-0 zoom-in-95 duration-150 w-screen h-screen rounded-none sm:w-[96vw] sm:h-[96vh] sm:rounded-md"
         onClick={e => e.stopPropagation()}
         onKeyDown={e => {
           if (e.key === 'Escape') {
@@ -199,7 +199,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
         }}
       >
         {/* ── Header ────────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 p-4 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
+        <div className="flex items-center gap-3 p-4 border-b border-border shrink-0">
           {/* File icon */}
           <div className="text-slate-400 shrink-0">
             {isImage ? (
@@ -220,7 +220,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
 
           {/* Title + meta */}
           <div className="flex-1 min-w-0 max-w-[calc(100%-200px)] md:max-w-none">
-            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate flex items-center gap-2" title={doc.title}>
+            <div className="text-sm font-semibold text-foreground truncate flex items-center gap-2" title={doc.title}>
               {doc.title}
               {isEditing && (
                 <span className="inline-flex items-center gap-1 text-xxs font-medium text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-md shrink-0">
@@ -237,7 +237,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                 const filename = parts[parts.length - 1]
                 const breadcrumb = category ? `${category} / ${filename}` : filename
                 return breadcrumb ? (
-                  <span className="text-slate-300 dark:text-slate-600 truncate max-w-[180px]" title={doc.storagePath}>{breadcrumb}</span>
+                  <span className="text-text-faint truncate max-w-[180px]" title={doc.storagePath}>{breadcrumb}</span>
                 ) : null
               })()}
               <span className="shrink-0">{getFileTypeLabel(doc)}</span>
@@ -259,7 +259,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                 type="button"
                 onClick={handleCancelEdit}
                 disabled={updateDocument.isPending}
-                className="h-7 px-3 rounded-lg text-xxs font-medium text-slate-500 dark:text-slate-400 border border-black/[.08] dark:border-white/[.08] hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors disabled:opacity-50"
+                className="h-7 px-3 rounded-lg text-xxs font-medium text-muted-foreground border border-border hover:bg-surface-hover transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -284,13 +284,13 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
             <>
               {/* Rendered / Raw toggle — only for markdown, hidden while editing */}
               {isMarkdown && (
-                <div className="flex items-center bg-slate-100 dark:bg-white/[.06] rounded-lg p-0.5 gap-0.5 shrink-0">
+                <div className="flex items-center bg-secondary rounded-lg p-0.5 gap-0.5 shrink-0">
                   <button
                     onClick={() => setViewMode('rendered')}
                     className={`h-[26px] px-3 rounded-md text-xxs font-medium transition-all ${
                       viewMode === 'rendered'
-                        ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-slate-500 hover:text-muted-foreground'
                     }`}
                   >
                     Rendered
@@ -299,8 +299,8 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                     onClick={() => setViewMode('raw')}
                     className={`h-[26px] px-3 rounded-md text-xxs font-medium transition-all ${
                       viewMode === 'raw'
-                        ? 'bg-white dark:bg-[#1e1e21] text-slate-900 dark:text-white shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-300'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-slate-500 hover:text-muted-foreground'
                     }`}
                   >
                     Raw
@@ -385,7 +385,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
           {/* Close */}
           <button
             onClick={isEditing ? handleCancelEdit : onClose}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors shrink-0"
             title={isEditing ? 'Cancel editing' : 'Close'}
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
@@ -432,13 +432,13 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
               ref={textareaRef}
               value={editedContent}
               onChange={e => setEditedContent(e.target.value)}
-              className="flex-1 w-full resize-none px-8 py-7 text-ssm font-mono text-slate-700 dark:text-slate-300 bg-transparent outline-none leading-relaxed placeholder:text-slate-300 dark:placeholder:text-slate-600"
+              className="flex-1 w-full resize-none px-8 py-7 text-ssm font-mono text-muted-foreground bg-transparent outline-none leading-relaxed placeholder:text-slate-300 dark:placeholder:text-slate-600"
               placeholder="Write your note here..."
               spellCheck={false}
             />
-            <div className="px-8 py-2 border-t border-black/[.05] dark:border-white/[.05] flex items-center justify-between shrink-0">
+            <div className="px-8 py-2 border-t border-border flex items-center justify-between shrink-0">
               <span className="text-xxs text-slate-400">{editedContent.length} chars</span>
-              <span className="text-xxs text-slate-400">Click Save or press <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-white/[.06] font-mono">Esc</kbd> to cancel</span>
+              <span className="text-xxs text-slate-400">Click Save or press <kbd className="px-1 py-0.5 rounded bg-secondary font-mono">Esc</kbd> to cancel</span>
             </div>
           </div>
         ) : (
@@ -456,7 +456,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                 </div>
               ) : preview?.url ? (
                 <div className="flex flex-col items-center justify-center gap-4 p-8 min-h-[200px]">
-                  <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" className="text-slate-300 dark:text-slate-600">
+                  <svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" className="text-text-faint">
                     <path d="M9 18V5l12-2v13" />
                     <circle cx="6" cy="18" r="3" />
                     <circle cx="18" cy="16" r="3" />
@@ -521,13 +521,13 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                 </svg>
                 {doc.excerpt ? (
                   <div className="text-center max-w-[480px]">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">Preview (excerpt)</p>
+                    <p className="text-xs text-muted-foreground font-medium mb-1">Preview (excerpt)</p>
                     <p className="text-xs text-slate-400 leading-relaxed">{doc.excerpt}</p>
                   </div>
                 ) : (
                   <>
                     <p className="text-xs">Content not available</p>
-                    <p className="text-atom text-slate-300 dark:text-slate-600">Enable Supabase Storage to view full content</p>
+                    <p className="text-atom text-text-faint">Enable Supabase Storage to view full content</p>
                   </>
                 )}
               </div>
@@ -562,10 +562,10 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
                   prose-code:before:content-none prose-code:after:content-none
                   prose-pre:rounded-lg prose-pre:text-ssm
                   prose-pre:bg-black/[.04] dark:prose-pre:bg-white/[.05]
-                  prose-pre:border prose-pre:border-black/[.07] dark:prose-pre:border-white/[.08]
+                  prose-pre:border prose-pre:border-border dark:prose-pre:border-white/[.08]
                   prose-table:text-sm
                   prose-th:font-semibold prose-th:border-b prose-th:border-black/10 dark:prose-th:border-white/10
-                  prose-td:border-b prose-td:border-black/[.05] dark:prose-td:border-white/[.05]`}
+                  prose-td:border-b prose-td:border-border dark:prose-td:border-white/[.05]`}
               >
                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                   {content}
@@ -573,7 +573,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
               </div>
             ) : (
               /* Raw / plain text — mono font, whitespace preserved */
-              <pre className="px-8 py-7 text-ssm font-mono text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed overflow-x-auto">
+              <pre className="px-8 py-7 text-ssm font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed overflow-x-auto">
                 {content}
               </pre>
             )}

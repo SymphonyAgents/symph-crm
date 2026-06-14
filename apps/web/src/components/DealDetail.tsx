@@ -22,6 +22,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { SearchInput } from '@/components/ui/search-input'
 import { toast } from 'sonner'
 import {
   cn, formatNumberWithCommas, timeAgo, formatDate,
@@ -35,7 +36,7 @@ import {
   STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
   PROGRESS_STAGES, ACTIVITY_LABELS, DOC_TYPE_LABELS, ACCEPTED_FILE_TYPES,
 } from '@/lib/constants'
-import { Copy, Check, Plus, Trash2 } from 'lucide-react'
+import { Copy, Check, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Input } from './ui/input'
 import { DocumentViewerModal } from './DocumentViewerModal'
 import { PasteChip, PastePreviewModal } from './PasteChip'
@@ -79,7 +80,7 @@ function StageProgress({ currentStage }: { currentStage: string }) {
   const currentIdx = isLost ? -1 : getStageProgressIndex(currentStage)
 
   return (
-    <div className="mt-5 px-1">
+    <div className="mt-5">
       <div className="flex items-center">
         {PROGRESS_STAGES.map((stage, i) => {
           const stageColor = STAGE_STEP_COLOR[stage.id] ?? 'var(--stage-lead)'
@@ -88,7 +89,7 @@ function StageProgress({ currentStage }: { currentStage: string }) {
             {/* Connector line between stages */}
             {i > 0 && (
               <div
-                className="flex-1 h-[1.5px] mx-2 shrink"
+                className="flex-1 h-px shrink"
                 style={{
                   background: i <= currentIdx
                     ? 'var(--primary)'
@@ -118,8 +119,8 @@ function StageProgress({ currentStage }: { currentStage: string }) {
                   i === currentIdx
                     ? 'font-semibold text-primary'
                     : i < currentIdx
-                    ? 'font-medium text-slate-500 dark:text-slate-400'
-                    : 'text-slate-400 dark:text-slate-500'
+                    ? 'font-medium text-muted-foreground'
+                    : 'text-text-faint'
                 )}
               >
                 {stage.label}
@@ -167,7 +168,7 @@ function MobileStageProgress({ currentStage }: { currentStage: string }) {
   return (
     <div className="mt-4 sm:hidden">
       <div className="flex items-center justify-between gap-3 mb-2">
-        <span className="text-xxs font-semibold uppercase tracking-[0.08em] text-slate-400">Stage</span>
+        <span className="eyebrow-label">Stage</span>
         <span className={cn(
           'text-xs font-semibold truncate',
           isLost ? 'text-red-500' : 'text-primary'
@@ -180,16 +181,34 @@ function MobileStageProgress({ currentStage }: { currentStage: string }) {
   )
 }
 
-function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SidebarSection({
+  title,
+  action,
+  surface = 'flat',
+  children,
+}: {
+  title: string
+  action?: React.ReactNode
+  surface?: 'flat' | 'card'
+  children: React.ReactNode
+}) {
   return (
-    <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
-      <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider mb-3">{title}</p>
+    <div
+      className={cn(
+        'bg-card rounded-md border border-border shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3',
+        surface === 'flat' && 'sm:bg-transparent sm:rounded-none sm:border-0 sm:shadow-none sm:p-0',
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="eyebrow-label">{title}</p>
+        {action}
+      </div>
       {children}
     </div>
   )
 }
 
-// ─── Sub-AM picker — shadcn Popover + Command, single-select, searchable ─────
+// ─── Sub-AM picker - shadcn Popover + Command, single-select, searchable ─────
 
 function SubAmPicker({
   value,
@@ -212,7 +231,7 @@ function SubAmPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center gap-2 w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left text-ssm"
+          className="flex items-center gap-2 w-full min-h-8 px-2 py-1 rounded-md border border-border bg-card hover:border-primary/40 transition-colors text-left text-ssm"
         >
           {selectedUser ? (
             <UserOption user={selectedUser} />
@@ -223,7 +242,7 @@ function SubAmPicker({
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search…" />
+          <CommandInput placeholder="Search..." />
           <CommandList>
             <CommandEmpty>No matches</CommandEmpty>
             <CommandGroup>
@@ -254,7 +273,7 @@ function SubAmPicker({
   )
 }
 
-// ─── Builder picker — Popover + Command, "add one" trigger, searchable ──────
+// ─── Builder picker - Popover + Command, "add one" trigger, searchable ──────
 
 function BuilderPicker({
   users,
@@ -278,15 +297,15 @@ function BuilderPicker({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex items-center justify-between w-full min-h-8 px-2 py-1 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] hover:border-primary/40 transition-colors text-left text-ssm text-slate-400"
+          className="flex items-center justify-between w-full min-h-8 px-2 py-1 rounded-md border border-border bg-card hover:border-primary/40 transition-colors text-left text-ssm text-slate-400"
         >
-          Add builder…
+          Add builder...
           <Plus size={13} className="text-slate-400 shrink-0" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search builder…" />
+          <CommandInput placeholder="Search builder..." />
           <CommandList>
             <CommandEmpty>No matches</CommandEmpty>
             <CommandGroup>
@@ -309,9 +328,46 @@ function BuilderPicker({
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-2 py-1.5 border-b border-black/[.04] dark:border-white/[.05] last:border-0">
+    <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-0">
       <span className="text-xs text-slate-400 shrink-0">{label}</span>
-      <span className="text-xs font-medium text-slate-800 dark:text-white text-right">{value}</span>
+      <span className="text-xs font-medium text-foreground text-right">{value}</span>
+    </div>
+  )
+}
+
+function normalizeHexColor(value: string) {
+  const trimmed = value.trim()
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+  return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toUpperCase() : null
+}
+
+function getBrandColorLayers(color: string | null | undefined) {
+  const colors = (color ?? '')
+    .split(/[\s,]+/)
+    .map(value => normalizeHexColor(value))
+    .filter(Boolean)
+    .slice(0, 5) as string[]
+
+  return colors.length > 0 ? colors : ['#FFFFFF', '#FFFFFF', '#FFFFFF']
+}
+
+function BrandColorLayers({ color }: { color: string | null | undefined }) {
+  const colors = getBrandColorLayers(color)
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex shrink-0 -space-x-1.5">
+        {colors.map((layerColor, index) => (
+          <span
+            key={`${layerColor}-${index}`}
+            className="h-5 w-5 rounded-full border border-border shadow-sm ring-1 ring-background"
+            style={{ background: layerColor }}
+          />
+        ))}
+      </span>
+      <span className="min-w-0 truncate font-mono text-xxs text-muted-foreground">
+        {color || 'Not set'}
+      </span>
     </div>
   )
 }
@@ -336,7 +392,7 @@ function QuickActionRow({
           ? 'text-[#16a34a] hover:bg-[rgba(22,163,74,0.06)]'
           : variant === 'danger'
           ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-500/[.08]'
-          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]'
+          : 'text-muted-foreground hover:bg-surface-hover'
       )}
     >
       <span className="w-5 h-5 flex items-center justify-center shrink-0 text-slate-400">
@@ -354,7 +410,7 @@ function parseDocStage(tags?: string[] | null): string | null {
   return tag ? tag.slice('deal_stage:'.length) : null
 }
 
-/** Small colored stage pill — uses CSS vars so dark mode remaps to muted tones */
+/** Small colored stage pill - uses CSS vars so dark mode remaps to muted tones */
 function StagePill({ stage }: { stage: string }) {
   const label = STAGE_LABELS[stage] ?? stage
   return (
@@ -384,7 +440,7 @@ function CopyButton({ value }: { value: string }) {
         'shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xxs font-medium transition-colors',
         copied
           ? 'border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10'
-          : 'border-black/[.08] dark:border-white/[.1] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+          : 'border-border text-muted-foreground hover:bg-surface-hover',
       )}
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
@@ -473,7 +529,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [removingBuilderId, setRemovingBuilderId] = useState<string | null>(null)
   const [editingBrandColor, setEditingBrandColor] = useState(false)
-  const [brandColorDraft, setBrandColorDraft] = useState('')
+  const [brandColorDrafts, setBrandColorDrafts] = useState<string[]>(['#FFFFFF', '#FFFFFF', '#FFFFFF'])
   const [editingProposalLink, setEditingProposalLink] = useState(false)
   const [proposalLinkDraft, setProposalLinkDraft] = useState('')
   const [editingDemoLink, setEditingDemoLink] = useState(false)
@@ -582,6 +638,21 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const brandColor = getBrandColor(company?.name ?? deal?.companyId)
   const contactCount = dbContacts.length
 
+  const openBrandColorModal = useCallback(() => {
+    setBrandColorDrafts(getBrandColorLayers(deal?.clientBrandColor))
+    setEditingBrandColor(true)
+  }, [deal?.clientBrandColor])
+
+  const updateBrandColorDraft = useCallback((index: number, value: string) => {
+    setBrandColorDrafts(prev => prev.map((color, colorIndex) => (
+      colorIndex === index ? value.toUpperCase() : color
+    )))
+  }, [])
+
+  const addBrandColorDraft = useCallback(() => {
+    setBrandColorDrafts(prev => prev.length >= 5 ? prev : [...prev, '#FFFFFF'])
+  }, [])
+
   // ── User map + AM resolution ─────────────────────────────────────────────
   const userNameMap = useMemo(() => {
     const m = new Map<string, string>()
@@ -589,7 +660,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
     return m
   }, [users])
 
-  // deal.assignedTo stores a user UUID — resolve to display name + full user
+  // deal.assignedTo stores a user UUID - resolve to display name + full user
   const amDisplayName = deal?.assignedTo
     ? (userNameMap.get(deal.assignedTo) ?? deal.assignedTo)
     : null
@@ -853,7 +924,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       const AUDIO_TAGS = ['mp3', 'm4a', 'mpeg', 'mp4', 'x-m4a']
       const isVoice = doc.tags?.some(t => AUDIO_TAGS.includes(t))
       if (isVoice) {
-        // Voice recordings are in Supabase Storage — need a signed URL
+        // Voice recordings are in Supabase Storage - need a signed URL
         const data = await api.get<{ url: string; filename: string }>(`/documents/${doc.id}/download`)
         const a = document.createElement('a')
         a.href = data.url
@@ -928,11 +999,11 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   // ── Render: deal content ──────────────────────────────────────────────────
 
   return (
-    <div className="px-0 pt-4 pb-6 sm:p-4 md:p-6">
+    <div className="px-0 pt-4 pb-6 sm:p-0">
       {/* ── Delete confirmation modal ───────────────────────────────── */}
       {deletingDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setDeletingDoc(null)}>
-          <div className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[92vw] max-w-[400px] p-4 animate-in fade-in-0 zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+          <div className="bg-card rounded-md shadow-2xl border border-border w-[92vw] max-w-[400px] p-4 animate-in fade-in-0 zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center shrink-0">
                 <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-red-500">
@@ -943,8 +1014,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </svg>
               </div>
               <div>
-                <h3 className="text-sbase font-semibold text-slate-900 dark:text-white">Delete permanently?</h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">This cannot be undone.</p>
+                <h3 className="text-sbase font-semibold text-foreground">Delete permanently?</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">This cannot be undone.</p>
               </div>
             </div>
             <div className="rounded-lg bg-red-50/50 dark:bg-red-500/[.06] border border-red-100 dark:border-red-500/10 px-3 py-2.5 mb-5">
@@ -956,7 +1027,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             <div className="flex gap-2">
               <button
                 onClick={() => setDeletingDoc(null)}
-                className="flex-1 h-9 rounded-lg text-ssm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-white/[.06] hover:bg-slate-200 dark:hover:bg-white/[.10] transition-colors"
+                className="flex-1 h-9 rounded-lg text-ssm font-medium text-muted-foreground bg-secondary hover:bg-skeleton transition-colors"
               >
                 Cancel
               </button>
@@ -994,7 +1065,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             </DialogHeader>
             <div className="space-y-3 p-4">
               <div className="space-y-1.5">
-                <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Commission amount</label>
+                <label className="eyebrow-label">Commission amount</label>
                 <Input
                   value={commissionDraft}
                   onChange={event => setCommissionDraft(formatNumberWithCommas(event.target.value))}
@@ -1004,7 +1075,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Notes</label>
+                <label className="eyebrow-label">Notes</label>
                 <Input
                   value={commissionNotesDraft}
                   onChange={event => setCommissionNotesDraft(event.target.value)}
@@ -1016,7 +1087,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 <button
                   type="button"
                   onClick={() => setEditingCommissionGroupId(null)}
-                  className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+                  className="h-9 flex-1 rounded-lg border border-border text-xs font-semibold text-slate-600 transition-colors hover:bg-surface-alt"
                 >
                   Cancel
                 </button>
@@ -1028,6 +1099,68 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 >
                   {updateCommission.isPending && <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
                   Save commission
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {editingBrandColor && (
+        <Dialog open onOpenChange={open => { if (!open) setEditingBrandColor(false) }}>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
+            <DialogHeader className="px-4">
+              <div>
+                <DialogTitle>Edit brand colors</DialogTitle>
+                <DialogDescription>
+                  Set up to five brand colors. Saving to the backend comes later.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4 p-4">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+                {brandColorDrafts.map((color, index) => {
+                  const safeColor = normalizeHexColor(color) ?? '#FFFFFF'
+
+                  return (
+                    <div key={index} className="rounded-md border border-border bg-surface-alt p-2 text-center">
+                      <label className="relative mx-auto block h-12 w-12 cursor-pointer rounded-full border border-border shadow-sm ring-1 ring-background" style={{ background: safeColor }}>
+                        <Input
+                          type="color"
+                          value={safeColor}
+                          onChange={event => updateBrandColorDraft(index, event.target.value)}
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                        />
+                      </label>
+                      <Input
+                        value={color}
+                        onChange={event => updateBrandColorDraft(index, event.target.value)}
+                        placeholder="#FFFFFF"
+                        className="mt-2 h-7 border-0 bg-transparent px-0 text-center font-mono text-[10px] shadow-none focus-visible:ring-0"
+                      />
+                    </div>
+                  )
+                })}
+                {brandColorDrafts.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addBrandColorDraft}
+                    className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-alt p-2 text-center text-muted-foreground transition-colors hover:bg-surface-hover hover:text-primary"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border bg-card">
+                      <Plus size={16} />
+                    </span>
+                    <span className="mt-2 text-[10px] font-medium">Add color</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setEditingBrandColor(false)}
+                  className="h-9 flex-1 rounded-control border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-hover"
+                >
+                  Close
                 </button>
               </div>
             </div>
@@ -1047,17 +1180,17 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setDeletingContact(null)}
         >
           <div
-            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-slate-200 dark:border-white/[.08] w-full max-w-[360px] mx-4 p-5 animate-in zoom-in-95 fade-in-0 duration-200"
+            className="bg-card rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-border w-full max-w-[360px] mx-4 p-5 animate-in zoom-in-95 fade-in-0 duration-200"
             onClick={e => e.stopPropagation()}
           >
-            <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">Remove contact?</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              <span className="font-medium text-slate-700 dark:text-slate-300">{toPascalCase(deletingContact.name)}</span> will be removed from this deal. This cannot be undone.
+            <div className="text-sm font-semibold text-foreground mb-1">Remove contact?</div>
+            <div className="text-xs text-muted-foreground mb-4">
+              <span className="font-medium text-muted-foreground">{toPascalCase(deletingContact.name)}</span> will be removed from this deal. This cannot be undone.
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeletingContact(null)}
-                className="flex-1 h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-9 rounded-lg border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
@@ -1083,17 +1216,17 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowDeleteConfirm(false)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4"
+            className="max-w-sm w-full rounded-md border border-border bg-card shadow-2xl p-4"
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete deal?</p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+            <p className="text-sm font-semibold text-foreground">Delete deal?</p>
+            <p className="text-ssm text-muted-foreground leading-relaxed mt-1">
               This will hide the deal from CRM views and move it to Trash. It can be restored for 30 days before permanent deletion.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
@@ -1120,7 +1253,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         />
       )}
 
-      {/* Paste preview modal — ESC-closable, shows full pasted content */}
+      {/* Paste preview modal - ESC-closable, shows full pasted content */}
       {notePastePreviewText && (
         <PastePreviewModal text={notePastePreviewText} onClose={() => setNotePastePreviewText(null)} />
       )}
@@ -1132,7 +1265,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowAdvanceConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="w-full max-w-sm bg-card rounded-md border border-border shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -1145,16 +1278,16 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: `var(--stage-${nextStage}, #94a3b8)` }} />
               <span className="text-xs font-semibold" style={{ color: `var(--stage-${nextStage}, #94a3b8)` }}>{STAGE_LABELS[nextStage] ?? nextStage}</span>
             </div>
-            <p className="text-sbase font-bold text-slate-900 dark:text-white mb-1">
+            <p className="text-sbase font-bold text-foreground mb-1">
               Advance this deal?
             </p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Move <span className="font-medium text-slate-700 dark:text-slate-200">{deal.title}</span> to <span className="font-medium" style={{ color: `var(--stage-${nextStage}, #94a3b8)` }}>{STAGE_LABELS[nextStage] ?? nextStage}</span>. This can't be undone.
+            <p className="text-ssm text-muted-foreground leading-relaxed">
+              Move <span className="font-medium text-foreground">{deal.title}</span> to <span className="font-medium" style={{ color: `var(--stage-${nextStage}, #94a3b8)` }}>{STAGE_LABELS[nextStage] ?? nextStage}</span>. This can't be undone.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setShowAdvanceConfirm(false)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
@@ -1180,7 +1313,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowWonConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="w-full max-w-sm bg-card rounded-md border border-border shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -1193,16 +1326,16 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: 'var(--stage-closed_won, #16a34a)' }} />
               <span className="text-xs font-semibold" style={{ color: 'var(--stage-closed_won, #16a34a)' }}>Won</span>
             </div>
-            <p className="text-sbase font-bold text-slate-900 dark:text-white mb-1">
+            <p className="text-sbase font-bold text-foreground mb-1">
               Mark as Won?
             </p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Move <span className="font-medium text-slate-700 dark:text-slate-200">{deal.title}</span> to <span className="font-medium" style={{ color: 'var(--stage-closed_won, #16a34a)' }}>Won</span>. This can't be undone.
+            <p className="text-ssm text-muted-foreground leading-relaxed">
+              Move <span className="font-medium text-foreground">{deal.title}</span> to <span className="font-medium" style={{ color: 'var(--stage-closed_won, #16a34a)' }}>Won</span>. This can't be undone.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setShowWonConfirm(false)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
@@ -1227,7 +1360,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           onClick={() => setShowLostConfirm(false)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="w-full max-w-sm bg-card rounded-md border border-border shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
             {/* Stage transition indicator */}
@@ -1240,16 +1373,16 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: 'var(--stage-closed_lost, #dc2626)' }} />
               <span className="text-xs font-semibold" style={{ color: 'var(--stage-closed_lost, #dc2626)' }}>Lost</span>
             </div>
-            <p className="text-sbase font-bold text-slate-900 dark:text-white mb-1">
+            <p className="text-sbase font-bold text-foreground mb-1">
               Close as Lost?
             </p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed">
-              Move <span className="font-medium text-slate-700 dark:text-slate-200">{deal.title}</span> to <span className="font-medium" style={{ color: 'var(--stage-closed_lost, #dc2626)' }}>Lost</span>. This can't be undone.
+            <p className="text-ssm text-muted-foreground leading-relaxed">
+              Move <span className="font-medium text-foreground">{deal.title}</span> to <span className="font-medium" style={{ color: 'var(--stage-closed_lost, #dc2626)' }}>Lost</span>. This can't be undone.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setShowLostConfirm(false)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
@@ -1277,17 +1410,17 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             onClick={() => setRemovingBuilderId(null)}
           >
             <div
-              className="w-full max-w-sm bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+              className="w-full max-w-sm bg-card rounded-md border border-border shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
               onClick={e => e.stopPropagation()}
             >
-              <p className="text-sbase font-bold text-slate-900 dark:text-white mb-1">Remove builder?</p>
-              <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed">
-                Remove <span className="font-medium text-slate-700 dark:text-slate-200">{label}</span> from this deal&apos;s builders list.
+              <p className="text-sbase font-bold text-foreground mb-1">Remove builder?</p>
+              <p className="text-ssm text-muted-foreground leading-relaxed">
+                Remove <span className="font-medium text-foreground">{label}</span> from this deal&apos;s builders list.
               </p>
               <div className="flex gap-2.5 mt-4">
                 <button
                   onClick={() => setRemovingBuilderId(null)}
-                  className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                  className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
                 >
                   Cancel
                 </button>
@@ -1318,28 +1451,28 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-300 hover:text-primary dark:hover:text-primary transition-colors mb-4 w-fit px-4 sm:px-0"
+        className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary dark:hover:text-primary transition-colors mb-4 w-fit px-4 sm:px-6 sm:pt-4"
       >
         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><polyline points="15 18 9 12 15 6" /></svg>
         {backLabel}
       </button>
 
       {/* ── Mobile header (sm:hidden) ────────────────────────────────────────── */}
-      <div className="sm:hidden bg-white dark:bg-[#1e1e21] border-y border-black/[.06] dark:border-white/[.08] p-4 mb-0 flex flex-col gap-3">
+      <div className="sm:hidden bg-card border-y border-border p-4 mb-0 flex flex-col gap-3">
         {/* Company tag */}
-        <p className="text-xxs font-semibold text-slate-400 uppercase tracking-wide leading-none truncate">
+        <p className="eyebrow-label leading-none truncate">
           {company?.name ?? 'No Brand'}
         </p>
 
         {/* Deal title */}
         <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-snug -mt-1 line-clamp-2">
+          <h1 className="text-xl font-bold text-foreground leading-snug -mt-1 line-clamp-2">
             {formatDealTitle(deal.title)}
           </h1>
           {isSales && (
             <button
               onClick={() => setShowEditDeal(true)}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-surface-hover transition-colors shrink-0"
               title="Edit deal"
             >
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
@@ -1371,8 +1504,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           >
             {stageLabel}
           </span>
-          <span className="text-slate-300 dark:text-slate-600">·</span>
-          <span className="text-sbase font-bold tabular-nums text-primary">
+          <span className="text-text-faint">·</span>
+          <span className="text-sbase font-semibold tabular-nums text-primary">
             {formatDealMoneyFull(deal)}
           </span>
         </div>
@@ -1383,7 +1516,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         {/* Context strip: days in stage + capture date */}
         <div className="flex items-center gap-3 text-xxs text-slate-400">
           <span>{daysInStage}d in stage</span>
-          <span className="text-slate-300 dark:text-slate-600">·</span>
+          <span className="text-text-faint">·</span>
           <span>Captured {formatDate(deal.createdAt)}</span>
         </div>
 
@@ -1408,40 +1541,40 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               )}
             </button>
           ) : (
-            <div className="flex-1 flex items-center justify-center py-2 rounded-lg text-xs font-medium text-slate-400 bg-slate-50 dark:bg-white/[.04]">
+            <div className="flex-1 flex items-center justify-center py-2 rounded-lg text-xs font-medium text-slate-400 bg-surface-alt">
               {deal.stage === 'closed_won' ? '🎉 Deal Won' : deal.stage === 'closed_lost' ? 'Deal Lost' : 'No next stage'}
             </div>
           )}
-          <button className="w-9 h-9 flex items-center justify-center rounded-lg border border-black/[.08] dark:border-white/[.1] text-slate-500 hover:bg-slate-50 dark:hover:bg-white/[.04] shrink-0">
+          <button className="w-9 h-9 flex items-center justify-center rounded-lg border border-border text-slate-500 hover:bg-surface-hover shrink-0">
             <svg width={16} height={16} viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
           </button>
         </div>
       </div>
 
       {/* ── Desktop header (hidden sm:block) ────────────────────────────────── */}
-      <div className="hidden sm:block bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3 mb-4">
+      <div className="hidden sm:block bg-[var(--bg-subtle)] border-y border-border px-7 py-5 mb-0">
         {/* Top row: brand info + value/advance */}
         <div className="flex sm:items-start sm:justify-between gap-3">
           {/* Left: Brand + deal info */}
           <div className="flex items-center gap-3.5 min-w-0">
             <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center text-sbase font-bold shrink-0"
+              className="w-12 h-12 rounded-md flex items-center justify-center text-sbase font-bold shrink-0"
               style={{ background: `${brandColor}18`, color: brandColor }}
             >
               {getInitials(company?.name ?? 'No Brand')}
             </div>
             <div className="min-w-0">
-              <p className="text-xxs font-semibold text-slate-400 uppercase tracking-wide leading-none mb-1">
+              <p className="eyebrow-label leading-none mb-1">
                 {company?.name ?? 'No Brand'}
               </p>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
+                <h1 className="text-xl font-semibold text-foreground leading-tight">
                   {formatDealTitle(deal.title)}
                 </h1>
                 {isSales && (
                   <button
                     onClick={() => setShowEditDeal(true)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-primary hover:bg-surface-hover transition-colors shrink-0"
                     title="Edit deal"
                   >
                     <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
@@ -1468,7 +1601,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
           {/* Right: Value → stage → advance (stacked, right-aligned) */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <div className="text-2xl font-bold tabular-nums text-primary leading-tight">
+            <div className="text-2xl font-semibold tabular-nums text-primary leading-tight">
               {formatDealMoneyFull(deal)}
             </div>
             <span
@@ -1508,13 +1641,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         </div>
       </div>
 
-      {/* ── Body: left content + right sidebar ─────────── */}
-      <div className="flex flex-col sm:flex-row sm:gap-4 sm:items-start">
+      {/* ── Body: assignment rail + center content + properties rail ─────────── */}
+      <div className="flex flex-col sm:grid sm:grid-cols-[248px_minmax(0,1fr)_240px] sm:items-stretch sm:min-h-[calc(100vh-220px)]">
 
-        {/* Left: tabs + content */}
-        <div className="flex-1 min-w-0 bg-white dark:bg-[#1e1e21] sm:rounded-xl border-y sm:border border-black/[.06] dark:border-white/[.08] sm:shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
-          {/* Tab bar — includes filters + view toggle flushed right */}
-          <div className="flex items-center border-b border-black/[.06] dark:border-white/[.08] gap-0 pr-2">
+        {/* Center: tabs + content */}
+        <div className="flex-1 min-w-0 bg-background sm:col-start-2 sm:row-start-1 sm:rounded-none border-y sm:border-y-0 sm:border-x border-border sm:shadow-none overflow-hidden">
+          {/* Tab bar - includes filters + view toggle flushed right */}
+          <div className="flex items-center border-b border-border gap-0 pr-2">
             {/* Tabs */}
             <div className="flex flex-1 min-w-0 flex-wrap">
               {([
@@ -1532,7 +1665,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     'flex items-center gap-1.5 px-3 sm:px-4 py-3 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap',
                     activeTab === tab.id
                       ? 'border-primary text-primary'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 hover:text-foreground'
                   )}
                 >
                   {tab.label}
@@ -1541,7 +1674,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       'text-atom font-semibold px-1.5 py-0.5 rounded-full min-w-[18px] text-center',
                       activeTab === tab.id
                         ? 'bg-primary/15 text-primary dark:bg-primary/20'
-                        : 'bg-slate-100 dark:bg-white/[.08] text-slate-500'
+                        : 'bg-secondary text-slate-500'
                     )}>
                       {tab.count}
                     </span>
@@ -1550,35 +1683,25 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               ))}
             </div>
 
-            {/* Right controls — search + filter + view toggle (hidden for timeline) */}
+
+            {/* Right controls - search + filter + view toggle (hidden for timeline) */}
             {activeTab !== 'timeline' && activeTab !== 'billing' && activeTab !== 'people' && activeTab !== 'proposals' && (
               <div className="hidden sm:flex items-center gap-1 shrink-0">
 
                 {/* Search input */}
-                <div className="flex items-center gap-1 h-7 bg-slate-50 dark:bg-white/[.04] border border-black/[.06] dark:border-white/[.07] rounded-md px-2">
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="text-slate-400 shrink-0">
-                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    value={docSearch}
-                    onChange={e => setDocSearch(e.target.value)}
-                    placeholder="Search…"
-                    className="bg-transparent text-xxs text-slate-700 dark:text-slate-300 placeholder:text-slate-400 outline-none w-[72px]"
-                  />
-                  {docSearch && (
-                    <button onClick={() => setDocSearch('')} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">
-                      <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                <SearchInput
+                  value={docSearch}
+                  onChange={e => setDocSearch(e.target.value)}
+                  onClear={() => setDocSearch('')}
+                  placeholder="Search..."
+                  containerClassName="h-7 w-[112px]"
+                  className="text-xxs"
+                />
 
-                {/* Type / ext filter — shadcn Select */}
+                {/* Type / ext filter - shadcn Select */}
                 {activeTab === 'notes' && noteTypes.length > 1 && (
                   <Select value={noteTypeFilter} onValueChange={setNoteTypeFilter}>
-                    <SelectTrigger className="h-7 w-auto min-w-[84px] text-xxs border-none bg-transparent shadow-none px-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1 focus:ring-0">
+                    <SelectTrigger className="h-7 w-auto min-w-[84px] text-xxs border-none bg-transparent shadow-none px-1.5 text-muted-foreground hover:text-slate-700 hover:text-foreground gap-1 focus:ring-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1591,7 +1714,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 )}
                 {activeTab === 'resources' && (
                   <Select value={resourceExtFilter} onValueChange={setResourceExtFilter}>
-                    <SelectTrigger className="h-7 w-auto min-w-[80px] text-xxs border-none bg-transparent shadow-none px-1.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1 focus:ring-0">
+                    <SelectTrigger className="h-7 w-auto min-w-[80px] text-xxs border-none bg-transparent shadow-none px-1.5 text-muted-foreground hover:text-slate-700 hover:text-foreground gap-1 focus:ring-0">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1606,14 +1729,14 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 {/* Divider + List/Grid toggle (notes tab only) */}
                 {activeTab === 'notes' && (
                   <>
-                    <div className="w-px h-4 bg-black/[.06] dark:bg-white/[.08] mx-0.5" />
+                    <div className="w-px h-4 bg-black/[.06] mx-0.5" />
                     <button
                       onClick={() => setViewMode('list')}
                       className={cn(
                         'w-7 h-7 rounded-md flex items-center justify-center transition-colors',
                         viewMode === 'list'
                           ? 'bg-primary/10 text-primary'
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                          : 'text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover'
                       )}
                       title="List view"
                     >
@@ -1625,7 +1748,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         'w-7 h-7 rounded-md flex items-center justify-center transition-colors',
                         viewMode === 'grid'
                           ? 'bg-primary/10 text-primary'
-                          : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                          : 'text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover'
                       )}
                       title="Grid view"
                     >
@@ -1655,12 +1778,12 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     <div className="w-4 h-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium text-primary">
-                        {cbPushStatus === 'uploading' ? 'Uploading recording…' : 'Analyzing recording…'}
+                        {cbPushStatus === 'uploading' ? 'Uploading recording...' : 'Analyzing recording...'}
                       </p>
-                      <p className="text-xxs text-slate-400 dark:text-slate-500 mt-0.5">
+                      <p className="text-xxs text-text-faint mt-0.5">
                         {cbPushStatus === 'uploading'
                           ? 'Sending to Circleback'
-                          : 'Transcript and notes will appear here once ready (2–5 min)'}
+                          : 'Transcript and notes will appear here once ready (2-5 min)'}
                       </p>
                     </div>
                   </div>
@@ -1676,7 +1799,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       try {
                         await api.post('/recordings/circleback-retry', { uploadDocId: cbUploadDocId })
                         setCbPushStatus('processing')
-                        toast.info('Retrying…')
+                        toast.info('Retrying...')
                       } catch {
                         toast.error('Retry failed')
                       }
@@ -1689,13 +1812,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               )}
 
               {/* Note input, Chat-style unified container */}
-              <div className="p-4 border-b border-black/[.05] dark:border-white/[.06]">
+              <div className="p-4 border-b border-border">
                 <div
                   className={cn(
-                    'rounded-xl bg-white dark:bg-[#1e1e21] transition-all duration-150',
+                    'rounded-md bg-card transition-all duration-150',
                     noteFocused
-                      ? 'border border-black/20 dark:border-white/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)] dark:shadow-none'
-                      : 'border border-black/[.08] dark:border-white/[.08]',
+                      ? 'border border-border-strong shadow-card'
+                      : 'border border-border',
                   )}
                 >
                   {/* Paste chips inside the container */}
@@ -1727,9 +1850,9 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                           handleAddNote()
                         }
                       }}
-                      placeholder={notePasteChips.length > 0 ? 'Add context (optional)…' : 'Add notes, paste a transcript, drop a link…'}
+                      placeholder={notePasteChips.length > 0 ? 'Add context (optional)...' : 'Add notes, paste a transcript, drop a link...'}
                       rows={1}
-                      className="w-full bg-transparent border-none outline-none text-ssm text-slate-900 dark:text-white leading-[1.6] resize-none overflow-hidden placeholder:text-slate-400"
+                      className="w-full bg-transparent border-none outline-none text-ssm text-foreground leading-[1.6] resize-none overflow-hidden placeholder:text-slate-400"
                       style={{ minHeight: '28px', maxHeight: '160px' }}
                     />
                   </div>
@@ -1756,7 +1879,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       onClick={() => circlebackFileRef.current?.click()}
                       disabled={cbUploading || cbPushStatus === 'processing'}
                       title="Upload recording for transcription"
-                      className="h-7 px-2 rounded-md flex items-center gap-1 text-xxs text-slate-500 dark:text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="h-7 px-2 rounded-md flex items-center gap-1 text-xxs text-muted-foreground hover:text-primary hover:bg-primary/[.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                           <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -1767,7 +1890,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       <span>Upload Recording</span>
                     </button>
                     <Select value={noteType} onValueChange={setNoteType}>
-                      <SelectTrigger className="h-7 w-auto min-w-[90px] text-xxs border-none bg-transparent shadow-none px-2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white gap-1">
+                      <SelectTrigger className="h-7 w-auto min-w-[90px] text-xxs border-none bg-transparent shadow-none px-2 text-muted-foreground hover:text-slate-700 hover:text-foreground gap-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1785,7 +1908,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       className={cn(
                         'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 active:scale-[0.94]',
                         (!noteText.trim() && notePasteChips.length === 0) || addingNote
-                          ? 'bg-slate-100 dark:bg-white/[.06] cursor-default'
+                          ? 'bg-secondary cursor-default'
                           : 'bg-primary hover:bg-primary/90 cursor-pointer',
                       )}
                     >
@@ -1829,12 +1952,12 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     return (
                       <div
                         key={doc.id}
-                        className="group rounded-lg border border-black/[.06] dark:border-white/[.08] p-3 cursor-pointer hover:border-primary/30 hover:bg-primary/[.02] transition-all flex flex-col gap-1.5"
+                        className="group rounded-lg border border-border p-3 cursor-pointer hover:border-primary/30 hover:bg-primary/[.02] transition-all flex flex-col gap-1.5"
                         onClick={() => setViewingDoc(doc)}
                       >
                         {/* Icon + type */}
                         <div className="flex items-center justify-between">
-                          <div className="text-slate-300 dark:text-slate-600 group-hover:text-primary/50 transition-colors">
+                          <div className="text-text-faint group-hover:text-primary/50 transition-colors">
                             {isCbMeeting ? (
                               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -1854,7 +1977,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             {isCbMeeting && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
-                                className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-primary hover:bg-primary/[.06] transition-colors"
+                                className="w-6 h-6 rounded-md flex items-center justify-center text-text-faint hover:text-primary hover:bg-primary/[.06] transition-colors"
                                 title="Play recording"
                               >
                                 <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
@@ -1864,7 +1987,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
-                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors opacity-0 group-hover:opacity-100"
+                              className="w-6 h-6 rounded-md flex items-center justify-center text-text-faint hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors opacity-0 group-hover:opacity-100"
                               title="Delete"
                             >
                               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -1875,7 +1998,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                           </div>
                         </div>
                         {/* Title */}
-                        <p className="text-xs font-semibold text-slate-800 dark:text-white line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                        <p className="text-xs font-semibold text-foreground line-clamp-2 leading-snug group-hover:text-primary transition-colors">
                           {doc.title}
                         </p>
                         {/* Excerpt */}
@@ -1886,7 +2009,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         )}
                         {/* Footer: type badge + author + date */}
                         <div className="flex items-center gap-1.5 mt-auto pt-1 flex-wrap">
-                          <span className="text-atom font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
+                          <span className="text-atom font-medium px-1.5 py-0.5 rounded-md bg-secondary text-slate-500 shrink-0">
                             {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
                           </span>
                           {authorUser && (
@@ -1902,7 +2025,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : (
                 /* List view */
-                <div className="divide-y divide-black/[.04] dark:divide-white/[.05]">
+                <div className="space-y-2 p-3">
                   {filteredNotes.map(doc => {
                     const docStage = parseDocStage(doc.tags)
                     const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
@@ -1911,89 +2034,58 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     return (
                       <div
                         key={doc.id}
-                        className="flex items-start gap-3 px-4 py-3 w-full min-w-0 overflow-hidden hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
+                        className="group rounded-md border border-border bg-card px-3 py-2 shadow-sm transition-colors hover:border-border-strong hover:bg-surface-hover cursor-pointer"
                         onClick={() => setViewingDoc(doc)}
                       >
-                        {/* Icon: mic for circleback meetings, file for others */}
-                        <div className="mt-0.5 shrink-0 text-slate-300 dark:text-slate-600 group-hover:text-primary/50 transition-colors">
-                          {isCbMeeting ? (
-                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                              <line x1="12" y1="19" x2="12" y2="23" />
-                              <line x1="8" y1="23" x2="16" y2="23" />
-                            </svg>
-                          ) : (
-                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                              <polyline points="10 9 9 9 8 9" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {/* Note name */}
-                          <p className="text-ssm font-semibold text-slate-800 dark:text-white truncate leading-tight group-hover:text-primary transition-colors">
-                            {doc.title}
-                          </p>
-                          {/* Excerpt */}
-                          {doc.excerpt ? (
-                            <p className="text-atom text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                              {doc.excerpt}
-                            </p>
-                          ) : (
-                            <p className="text-atom text-slate-300 dark:text-slate-600 italic mt-0.5">
-                              Empty note
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {authorUser && (
-                              <div className="flex items-center gap-1 shrink-0">
-                                <Avatar name={authorUser.name || authorUser.email} email={authorUser.email ?? undefined} src={authorUser.image ?? undefined} size={14} />
-                                <span className="text-atom text-slate-400">{authorName?.split(' ')[0] ?? 'AM'}</span>
-                              </div>
+                        <div className="mb-1 flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {authorUser ? (
+                              <Avatar name={authorUser.name || authorUser.email} email={authorUser.email ?? undefined} src={authorUser.image ?? undefined} size={20} />
+                            ) : (
+                              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-atom font-semibold text-primary">
+                                A
+                              </span>
                             )}
-                            <span className="text-atom font-medium px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.06] text-slate-500 shrink-0">
-                              {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
-                            </span>
-                            {docStage && <StagePill stage={docStage} />}
-                            <span className="text-atom text-slate-400">
+                            <span className="shrink-0 text-xs font-semibold text-foreground">{authorName?.split(' ')[0] ?? 'AM'}</span>
+                            <span className="shrink-0 text-xs text-text-faint">·</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">
                               {new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                             </span>
+                            <span className="shrink-0 rounded-control bg-secondary px-1.5 py-0.5 text-atom font-medium text-muted-foreground">
+                              {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
+                            </span>
+                            {docStage && <div className="shrink-0"><StagePill stage={docStage} /></div>}
                           </div>
-                        </div>
-                        {/* Actions */}
-                        <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">
-                          {isCbMeeting && (
+                          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            {isCbMeeting && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
+                                className="h-5 w-5 rounded-control flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors"
+                                title="Play recording"
+                              >
+                                <svg width={12} height={12} viewBox="0 0 24 24" fill="currentColor">
+                                  <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                              </button>
+                            )}
                             <button
-                              onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
-                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors"
-                              title="Play recording"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
+                              className="h-5 w-5 rounded-control flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"
+                              title="Delete"
                             >
-                              <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
-                                <polygon points="5 3 19 12 5 21 5 3" />
+                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                               </svg>
                             </button>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"
-                            title="Delete"
-                          >
-                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                          <span className="text-atom font-medium text-primary flex items-center gap-0.5">
-                            View
-                            <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                          </span>
+                            <button className="text-text-faint hover:text-foreground" type="button">
+                              <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+                            </button>
+                          </div>
                         </div>
+                        <p className="truncate text-xs leading-5 text-foreground">
+                          {doc.excerpt || doc.title || 'Empty note'}
+                        </p>
                       </div>
                     )
                   })}
@@ -2044,7 +2136,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
               {/* Header with upload button */}
               <div className="flex items-center justify-between mb-3">
-                <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider">Files</p>
+                <p className="eyebrow-label">Files</p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
@@ -2063,16 +2155,16 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               {pendingFiles.length > 0 && (
                 <div className="mb-4 flex flex-wrap gap-2 items-start">
                   {pendingFiles.map((file, i) => (
-                    <div key={i} className="relative group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-white/[.06] border border-black/[.08] dark:border-white/[.10] max-w-[180px]">
+                    <div key={i} className="relative group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-secondary border border-border max-w-[180px]">
                       <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-400 shrink-0">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                         <polyline points="14 2 14 8 20 8" />
                       </svg>
-                      <span className="text-xxs text-slate-600 dark:text-slate-300 truncate leading-tight">{file.name}</span>
+                      <span className="text-xxs text-muted-foreground truncate leading-tight">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))}
-                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white dark:bg-[#2a2c30] border border-black/[.12] dark:border-white/[.15] flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shadow-sm"
+                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors shadow-sm"
                       >
                         <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -2120,7 +2212,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       return (
                         <div
                           key={doc.id}
-                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.02] transition-colors group cursor-pointer"
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-hover transition-colors group cursor-pointer"
                           onClick={() => setViewingDoc(doc)}
                         >
                           {/* File type badge */}
@@ -2130,13 +2222,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             : ext === 'DOCX' || ext === 'DOC' ? 'bg-blue-50 dark:bg-blue-500/[.12] text-blue-600 dark:text-blue-400'
                             : ext === 'PPTX' || ext === 'PPT' ? 'bg-orange-50 dark:bg-orange-500/[.12] text-orange-600 dark:text-orange-400'
                             : ext === 'JPG' || ext === 'PNG' || ext === 'IMG' ? 'bg-purple-50 dark:bg-purple-500/[.12] text-purple-600 dark:text-purple-400'
-                            : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400'
+                            : 'bg-secondary text-muted-foreground'
                           )}>
                             {ext}
                           </div>
                           {/* File info */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-ssm font-medium text-slate-800 dark:text-white truncate group-hover:text-primary transition-colors" title={displayName}>
+                            <p className="text-ssm font-medium text-foreground truncate group-hover:text-primary transition-colors" title={displayName}>
                               {displayName}
                             </p>
                             <div className="flex items-center gap-2 mt-0.5">
@@ -2194,13 +2286,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               ) : !loadingResourceDocs && pendingFiles.length === 0 ? (
                 <div className="py-8 text-center">
                   <p className="text-ssm text-slate-400">No files uploaded yet</p>
-                  <p className="text-xxs text-slate-300 dark:text-slate-600 mt-1">Drop files here or click Upload to add resources</p>
+                  <p className="text-xxs text-text-faint mt-1">Drop files here or click Upload to add resources</p>
                 </div>
               ) : null}
 
               {/* Editable links */}
               <div className="flex flex-col gap-2 mb-3">
-                <p className="text-atom font-semibold text-slate-400 uppercase tracking-wider">Links</p>
+                <p className="eyebrow-label">Links</p>
 
                 {/* Proposal Link */}
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -2247,7 +2339,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       </a>
                       <button
                         onClick={() => { setProposalLinkDraft(deal.proposalLink || ''); setEditingProposalLink(true) }}
-                        className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
+                        className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-primary hover:bg-surface-hover transition-colors shrink-0"
                         title="Edit link"
                       >
                         <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
@@ -2311,7 +2403,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       </a>
                       <button
                         onClick={() => { setDemoLinkDraft(deal.demoLink || ''); setEditingDemoLink(true) }}
-                        className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
+                        className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-primary hover:bg-surface-hover transition-colors shrink-0"
                         title="Edit link"
                       >
                         <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
@@ -2338,29 +2430,29 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             <div className="p-4">
               {loadingProposals ? (
                 <div className="py-12 text-center">
-                  <p className="text-ssm text-slate-400">Loading proposals…</p>
+                  <p className="text-ssm text-slate-400">Loading proposals...</p>
                 </div>
               ) : dealProposals.length === 0 ? (
                 <div className="py-12 text-center">
                   <p className="text-ssm font-medium text-slate-400">No proposals yet</p>
-                  <p className="text-xxs text-slate-300 dark:text-slate-600 mt-1">New proposals are created via Aria chat.</p>
+                  <p className="text-xxs text-text-faint mt-1">New proposals are created via Aria chat.</p>
                 </div>
               ) : (
-                <div className="bg-slate-50 dark:bg-white/[.02] border border-black/[.06] dark:border-white/[.06] rounded-lg divide-y divide-black/[.06] dark:divide-white/[.06] overflow-hidden">
+                <div className="bg-surface-alt border border-border rounded-lg divide-y divide-black/[.06] dark:divide-white/[.06] overflow-hidden">
                   {dealProposals.map(p => (
                     <button
                       key={p.id}
                       onClick={() => router.push(`/proposals/${p.id}`)}
-                      className="w-full flex items-center gap-3 text-left px-3 py-2.5 hover:bg-white dark:hover:bg-white/[.04] transition-colors duration-150"
+                      className="w-full flex items-center gap-3 text-left px-3 py-2.5 hover:bg-card transition-colors duration-150"
                     >
-                      <div className="w-8 h-8 rounded-md bg-white dark:bg-white/[.06] border border-black/[.06] dark:border-white/[.08] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-md bg-card border border-border flex items-center justify-center shrink-0">
                         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
                           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                           <path d="M14 2v6h6" />
                         </svg>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{p.title}</div>
+                        <div className="text-ssm font-semibold text-foreground truncate">{p.title}</div>
                         {p.changeNote && (
                           <div className="text-xxs text-slate-500 mt-0.5 truncate">{p.changeNote}</div>
                         )}
@@ -2391,13 +2483,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               {!showAddPerson ? (
                 <button
                   onClick={() => setShowAddPerson(true)}
-                  className="flex items-center gap-1.5 w-full px-3.5 py-2.5 text-xs font-medium text-primary hover:bg-primary/[.06] rounded-lg border border-dashed border-black/[.1] dark:border-white/[.1] transition-colors"
+                  className="flex items-center gap-1.5 w-full px-3.5 py-2.5 text-xs font-medium text-primary hover:bg-primary/[.06] rounded-lg border border-dashed border-border transition-colors"
                 >
                   <Plus size={14} />
                   Add Person
                 </button>
               ) : (
-                <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-3.5 space-y-2.5">
+                <div className="rounded-lg border border-border bg-card p-3.5 space-y-2.5">
                   <Input
                     autoFocus
                     type="text"
@@ -2452,7 +2544,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                           name: personForm.name.trim(),
                           phone: personForm.phone.trim() || null,
                           email: personForm.email.trim() || null,
-                          title: [personForm.role, personForm.title.trim()].filter(Boolean).join(' — ') || null,
+                          title: [personForm.role, personForm.title.trim()].filter(Boolean).join(' - ') || null,
                         })
                       }}
                       disabled={!personForm.name.trim() || createContact.isPending}
@@ -2466,7 +2558,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         setShowAddPerson(false)
                         setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
                       }}
-                      className="h-8 px-3.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                      className="h-8 px-3.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:text-foreground transition-colors"
                     >
                       Cancel
                     </button>
@@ -2485,7 +2577,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   return (
                     <div
                       key={person.id}
-                      className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
+                      className="rounded-lg border border-border bg-card p-4"
                     >
                       {/* Header: avatar + name + role + actions */}
                       <div className="flex items-center gap-3">
@@ -2497,12 +2589,12 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            <span className="text-sm font-semibold text-foreground truncate">
                               {toPascalCase(person.name)}
                             </span>
                             {person.title && (
-                              <span className="text-atom font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.08] text-slate-500 dark:text-slate-400 whitespace-nowrap uppercase tracking-wide">
-                                {person.title.split(' — ')[0]}
+                              <span className="eyebrow-label rounded-md bg-secondary px-2 py-0.5 whitespace-nowrap">
+                                {person.title.split(' - ')[0]}
                               </span>
                             )}
                           </div>
@@ -2539,21 +2631,21 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
                       {/* Contact info sections */}
                       {(person.email || person.phone) && (
-                        <div className="mt-3 pt-3 border-t border-black/[.06] dark:border-white/[.06] space-y-3">
+                        <div className="mt-3 pt-3 border-t border-border space-y-3">
                           {person.email && (
                             <div>
-                              <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Email</div>
+                              <div className="eyebrow-label mb-1">Email</div>
                               <div className="flex items-center justify-between">
-                                <span className="text-ssm text-slate-800 dark:text-white truncate">{person.email}</span>
+                                <span className="text-ssm text-foreground truncate">{person.email}</span>
                                 <CopyButton value={person.email} />
                               </div>
                             </div>
                           )}
                           {person.phone && (
                             <div>
-                              <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Phone</div>
+                              <div className="eyebrow-label mb-1">Phone</div>
                               <div className="flex items-center justify-between">
-                                <span className="text-ssm text-slate-800 dark:text-white">{person.phone}</span>
+                                <span className="text-ssm text-foreground">{person.phone}</span>
                                 <CopyButton value={person.phone} />
                               </div>
                             </div>
@@ -2589,13 +2681,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       <div className="flex flex-col items-center shrink-0">
                         <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0 mt-1.5" />
                         {i < activities.length - 1 && (
-                          <div className="w-px flex-1 bg-slate-200 dark:bg-white/[.08]" />
+                          <div className="w-px flex-1 bg-skeleton" />
                         )}
                       </div>
                       {/* Content */}
                       <div className={cn('flex-1 min-w-0 pb-4', i === activities.length - 1 && 'pb-0')}>
                         <div className="flex items-start justify-between gap-2">
-                          <div className="text-xs font-medium text-slate-800 dark:text-white">
+                          <div className="text-xs font-medium text-foreground">
                             {ACTIVITY_LABELS[a.type] ?? a.type.replace(/_/g, ' ')}
                           </div>
                           <div className="text-atom text-slate-400 shrink-0">{timeAgo(a.createdAt)}</div>
@@ -2612,8 +2704,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           )}
         </div>
 
-        {/* ── Right sidebar ────────── */}
-        <div className="w-full sm:w-[260px] sm:shrink-0 flex flex-col gap-3 px-4 sm:px-0 pt-4 sm:pt-0">
+        {/* ── Right properties rail ────────── */}
+        <div className="w-full sm:w-auto sm:col-start-3 sm:row-start-1 sm:shrink-0 flex flex-col gap-4 px-4 sm:px-4 pt-4 sm:py-5 bg-[var(--bg-subtle)] sm:border-l sm:border-border">
 
           {/* Deal Info */}
           {!isPartner && (
@@ -2621,7 +2713,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             <InfoRow
               label="Deal Size"
               value={
-                <span className="text-primary font-bold">{formatDealMoneyFull(deal)}</span>
+                <span className="text-primary font-semibold">{formatDealMoneyFull(deal)}</span>
               }
             />
             {deal.outreachCategory && (
@@ -2633,7 +2725,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       'text-atom font-semibold px-2 py-0.5 rounded-full capitalize',
                       deal.outreachCategory === 'inbound'
                         ? 'bg-[rgba(22,163,74,0.1)] text-[#16a34a]'
-                        : 'bg-slate-100 dark:bg-white/[.06] text-slate-500'
+                        : 'bg-secondary text-slate-500'
                     )}
                   >
                     {deal.outreachCategory}
@@ -2676,10 +2768,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   const group = partnerDealGroupMap.get(groupId)
                   const commission = partnerCommissionMap.get(groupId)
                   return (
-                    <div key={groupId} className="rounded-md border border-black/[.06] p-2 dark:border-white/[.08]">
+                    <div key={groupId} className="rounded-md border border-border p-2">
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-xxs font-semibold text-slate-700 dark:text-slate-200">{group?.name ?? 'Partner group'}</p>
+                          <p className="truncate text-xxs font-semibold text-foreground">{group?.name ?? 'Partner group'}</p>
                           <p className="mt-0.5 text-atom text-slate-400">{commission?.commissionStatus ? toPascalCase(commission.commissionStatus) : 'No commission set'}</p>
                         </div>
                         <button
@@ -2697,6 +2789,23 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
             </SidebarSection>
           )}
 
+          {!isPartner && (
+            <div className="bg-card rounded-md border border-amber-200 dark:border-amber-500/30 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
+              <p className="eyebrow-label text-warning-foreground mb-2">Next Step</p>
+              <div className="bg-amber-50 dark:bg-amber-500/10 rounded-lg p-3 border border-amber-100 dark:border-amber-500/20">
+                <p className="eyebrow-label text-warning-foreground mb-1">Action Required</p>
+                <p className="text-ssm text-foreground leading-snug">Initial outreach - intro email + schedule call</p>
+                <p className="text-xxs text-amber-600 dark:text-amber-400 mt-1.5">Due Mar 22, 2026</p>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* ── Left assignment + actions rail ────────── */}
+        <div className="w-full sm:w-auto sm:col-start-1 sm:row-start-1 sm:shrink-0 px-4 sm:px-4 pb-4 sm:pb-5 bg-[var(--bg-subtle)] sm:border-r sm:border-border">
+          <div className="flex flex-col gap-4 rounded-b-md border border-t-0 border-border bg-card p-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+
           {/* Account Manager */}
           <SidebarSection title="Account Manager">
             <div className="relative">
@@ -2709,17 +2818,17 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         name={amDisplayName}
                         email={amUser?.email ?? undefined}
                         src={amUser?.image ?? undefined}
-                        size={34}
+                        size={28}
                       />
                       <div className="text-left min-w-0 flex-1">
-                        <p className="text-ssm font-semibold text-slate-800 dark:text-white truncate">{amDisplayName}</p>
-                        <p className="text-xxs text-slate-400">Account Manager</p>
+                        <p className="text-xs font-semibold text-foreground truncate">{amDisplayName}</p>
+                        <p className="text-atom text-slate-400">Account Manager</p>
                       </div>
                     </>
                   ) : (
                     <>
-                      <div className="w-[34px] h-[34px] rounded-full border-2 border-dashed border-slate-200 dark:border-white/[.12] flex items-center justify-center shrink-0">
-                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600">
+                      <div className="w-[34px] h-[34px] rounded-full border-2 border-dashed border-border flex items-center justify-center shrink-0">
+                        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-faint">
                           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                         </svg>
                       </div>
@@ -2727,35 +2836,35 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     </>
                   )}
                   {/* Lock indicator */}
-                  <div className="ml-auto shrink-0" title="Cannot reassign AM — deal is lost">
-                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600">
+                  <div className="ml-auto shrink-0" title="Cannot reassign AM - deal is lost">
+                    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-faint">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                     </svg>
                   </div>
                 </div>
               ) : (
-                /* Normal: click to assign — Popover + Command, searchable */
+                /* Normal: click to assign - Popover + Command, searchable */
                 <Popover open={showAssignDropdown} onOpenChange={setShowAssignDropdown}>
                   <PopoverTrigger asChild>
-                    <button className="flex items-center gap-2.5 w-full rounded-lg hover:bg-slate-50 dark:hover:bg-white/[.04] px-1 py-1 -mx-1 transition-colors group">
+                    <button className="flex items-center gap-2.5 w-full rounded-lg hover:bg-surface-hover px-1 py-1 -mx-1 transition-colors group">
                       {amDisplayName ? (
                         <>
                           <Avatar
                             name={amDisplayName}
                             email={amUser?.email ?? undefined}
                             src={amUser?.image ?? undefined}
-                            size={34}
+                            size={28}
                           />
                           <div className="text-left min-w-0 flex-1">
-                            <p className="text-ssm font-semibold text-slate-800 dark:text-white truncate">{amDisplayName}</p>
-                            <p className="text-xxs text-slate-400">Account Manager</p>
+                            <p className="text-xs font-semibold text-foreground truncate">{amDisplayName}</p>
+                            <p className="text-atom text-slate-400">Account Manager</p>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="w-[34px] h-[34px] rounded-full border-2 border-dashed border-slate-200 dark:border-white/[.12] flex items-center justify-center shrink-0">
-                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600">
+                          <div className="w-[34px] h-[34px] rounded-full border-2 border-dashed border-border flex items-center justify-center shrink-0">
+                            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-faint">
                               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
                             </svg>
                           </div>
@@ -2764,14 +2873,14 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                           </span>
                         </>
                       )}
-                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-slate-300 dark:text-slate-600 shrink-0 ml-auto">
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-faint shrink-0 ml-auto">
                         <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command>
-                      <CommandInput placeholder="Search…" />
+                      <CommandInput placeholder="Search..." />
                       <CommandList>
                         <CommandEmpty>No matches</CommandEmpty>
                         <CommandGroup>
@@ -2845,7 +2954,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     return (
                       <span
                         key={uid}
-                        className="inline-flex items-center gap-1.5 pl-1 pr-1 py-0.5 rounded-full text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-700 dark:text-slate-200"
+                        className="inline-flex items-center gap-1.5 pl-1 pr-1 py-0.5 rounded-full text-xxs font-medium bg-secondary text-foreground"
                       >
                         {u ? (
                           <Avatar
@@ -2855,13 +2964,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                             size={18}
                           />
                         ) : (
-                          <span className="w-[18px] h-[18px] rounded-full bg-slate-200 dark:bg-white/[.08]" />
+                          <span className="w-[18px] h-[18px] rounded-full bg-skeleton" />
                         )}
                         <span className="pr-1">{u?.name || u?.email || uid}</span>
                         {isSales && (
                           <button
                             onClick={() => setRemovingBuilderId(uid)}
-                            className="rounded-full hover:bg-slate-200 dark:hover:bg-white/[.08] p-0.5 text-slate-400 hover:text-red-500 transition-colors"
+                            className="rounded-full hover:bg-skeleton p-0.5 text-slate-400 hover:text-red-500 transition-colors"
                             title="Remove builder"
                           >
                             <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
@@ -2893,94 +3002,26 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           </SidebarSection>
 
           {/* Client Brand Color */}
-          <SidebarSection title="Client Brand Color">
-            <div className="flex items-center gap-2.5">
+          <SidebarSection
+            title="Client Brand Color"
+            action={isSales && (
               <button
-                onClick={() => {
-                  setBrandColorDraft(deal.clientBrandColor || '#000000')
-                  setEditingBrandColor(true)
-                }}
-                className="w-7 h-7 rounded-full border border-black/[.08] dark:border-white/[.12] shrink-0 cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/30"
-                style={{ background: deal.clientBrandColor || '#e2e8f0' }}
-                title={deal.clientBrandColor || 'Not set'}
-              />
-              {editingBrandColor ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <Input
-                    type="color"
-                    value={brandColorDraft}
-                    onChange={(e) => setBrandColorDraft(e.target.value)}
-                    className="w-8 h-8 p-0.5 border-none cursor-pointer"
-                  />
-                  <Input
-                    type="text"
-                    value={brandColorDraft}
-                    onChange={(e) => setBrandColorDraft(e.target.value)}
-                    placeholder="#000000"
-                    className="text-ssm flex-1 h-8 font-mono"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.currentTarget.blur()
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      const color = brandColorDraft.trim() || null
-                      setEditingBrandColor(false)
-                      const prev = queryClient.getQueryData(queryKeys.deals.detail(dealId))
-                      queryClient.setQueryData(queryKeys.deals.detail(dealId), (old: any) =>
-                        old ? { ...old, clientBrandColor: color } : old
-                      )
-                      updateDeal.mutate({ id: dealId, data: { clientBrandColor: color } as any }, {
-                        onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
-                        onSettled: () => {
-                          queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-                        },
-                      })
-                    }}
-                    className="text-xs font-medium text-primary hover:underline shrink-0"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingBrandColor(false)}
-                    className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-ssm text-slate-600 dark:text-slate-400 font-mono truncate">
-                    {deal.clientBrandColor || 'Not set'}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setBrandColorDraft(deal.clientBrandColor || '#000000')
-                      setEditingBrandColor(true)
-                    }}
-                    className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-primary hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors shrink-0"
-                    title="Edit color"
-                  >
-                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
+                type="button"
+                onClick={openBrandColorModal}
+                className="inline-flex items-center gap-1 rounded-control px-1.5 py-0.5 text-xxs font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-primary"
+              >
+                <Pencil size={10} />
+                Edit
+              </button>
+            )}
+          >
+            <BrandColorLayers color={deal.clientBrandColor} />
           </SidebarSection>
 
           {/* Quick Actions */}
           <SidebarSection title="Quick Actions">
             <div className="flex flex-col -mx-2">
-              <QuickActionRow
-                icon={<svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
-                label="Schedule Demo"
-                onClick={() => toast.info('Schedule Demo \u2014 coming soon')}
-              />
+
               <QuickActionRow
                 icon={<svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>}
                 label="Build Proposal"
@@ -2993,7 +3034,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               />
               {!isTerminal && isSales && (
                 <>
-                  <div className="border-t border-black/[.04] dark:border-white/[.06] my-1" />
+                  <div className="border-t border-border my-1" />
                   <QuickActionRow
                     icon={<svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><polyline points="20 6 9 17 4 12" /></svg>}
                     label="Mark as Won"
@@ -3013,23 +3054,15 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
           {/* Deal flags */}
           {deal.isFlagged && (
-            <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-xl p-4">
-              <p className="text-atom font-semibold text-red-600 uppercase tracking-wide mb-1">\u2691 Flagged</p>
+            <div className="bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-md p-4">
+              <p className="eyebrow-label text-red-600 mb-1">\u2691 Flagged</p>
               <p className="text-xs text-red-700 dark:text-red-400">{deal.flagReason || 'No reason specified'}</p>
             </div>
           )}
 
-          {/* Next Step (static placeholder — will be dynamic later) */}
-          <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3">
-            <p className="text-atom font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-2">Next Step</p>
-            <div className="bg-amber-50 dark:bg-amber-500/10 rounded-lg p-3 border border-amber-100 dark:border-amber-500/20">
-              <p className="text-atom font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1">Action Required</p>
-              <p className="text-ssm text-slate-700 dark:text-slate-200 leading-snug">Initial outreach — intro email + schedule call</p>
-              <p className="text-xxs text-amber-600 dark:text-amber-400 mt-1.5">Due Mar 22, 2026</p>
-            </div>
-          </div>
           </>
           )}
+          </div>
         </div>
       </div>
     </div>

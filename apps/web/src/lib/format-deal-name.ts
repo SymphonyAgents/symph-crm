@@ -1,51 +1,82 @@
-// Common acronyms and abbreviations that should stay uppercase
-const KNOWN_ACRONYMS = new Set([
+// Common acronyms and abbreviations that should stay uppercase.
+export const KNOWN_ACRONYMS = new Set([
   'MVP', 'API', 'SLA', 'GDPR', 'CRM', 'B2B', 'B2C', 'KPI', 'ROI', 'OKR',
   'SEO', 'SEM', 'PPC', 'CPC', 'CTR', 'CAC', 'LTV', 'ARR', 'MRR', 'USD',
   'EUR', 'INR', 'AUD', 'GBP', 'JPY', 'CNY', 'PHP', 'KRW', 'IDR', 'VND',
   'AI', 'ML', 'NLP', 'CV', 'RPA', 'ETL', 'BI', 'DL', 'QA', 'IT',
   'VPN', 'SSL', 'TLS', 'HTTP', 'REST', 'JSON', 'XML', 'CSV', 'PDF', 'URL',
   'SDK', 'API', 'CLI', 'IDE', 'UI', 'UX', 'CMS', 'ERP', 'HRM', 'HRIS',
-  'RFID', 'IoT', 'AWS', 'GCP', 'Azure', 'SQL', 'NoSQL', 'GPS', 'GSM', 'LTE'
+  'RFID', 'IoT', 'AWS', 'GCP', 'Azure', 'SQL', 'NoSQL', 'GPS', 'GSM', 'LTE',
+  'APAC', 'CMGN', 'CPS', 'SG'
 ])
 
-/**
- * Format deal name while preserving user capitalization intent and recognizing acronyms.
- *
- * Logic:
- * 1. If word is already ALL_CAPS, preserve it (user chose to emphasize)
- * 2. If word is all-lowercase AND 3-5 chars AND in KNOWN_ACRONYMS list, uppercase it
- * 3. Otherwise preserve exactly what user typed
- *
- * Examples:
- *   "jolly MVP" → "jolly MVP" (MVP already caps, jolly preserved)
- *   "new product launch" → "new product launch" (all lowercase preserved)
- *   "mvp integration" → "MVP integration" (mvp detected as acronym, integration preserved)
- *   "My Deal Name" → "My Deal Name" (mixed case preserved)
- */
-export function formatDealName(name: string): string {
+type FormatNameOptions = {
+  acronymMinLength?: number
+  acronymMaxLength?: number
+  knownAcronymsOnly?: boolean
+  pascalCaseFallback?: boolean
+  excludedAcronyms?: Set<string>
+}
+
+function splitWordToken(word: string): { prefix: string; core: string; suffix: string } {
+  const match = word.match(/^(\W*)([\p{L}\p{N}]+(?:[&'.-][\p{L}\p{N}]+)*)(\W*)$/u)
+  if (!match) return { prefix: '', core: word, suffix: '' }
+  return { prefix: match[1] ?? '', core: match[2] ?? word, suffix: match[3] ?? '' }
+}
+
+function toPascalWord(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+}
+
+export function formatNameWithAcronyms(name: string, options: FormatNameOptions = {}): string {
   if (!name || typeof name !== 'string') return ''
 
+  const {
+    acronymMinLength = 3,
+    acronymMaxLength = 5,
+    knownAcronymsOnly = true,
+    pascalCaseFallback = false,
+    excludedAcronyms = new Set<string>(),
+  } = options
+
   return name
-    .split(/\s+/) // Split by any whitespace
-    .map(word => {
-      if (!word) return word
+    .split(/(\s+)/)
+    .map(part => {
+      if (!part.trim()) return part
 
-      const isAllCaps = word === word.toUpperCase() && word !== word.toLowerCase()
-      const isAllLower = word === word.toLowerCase()
-      const isKnownAcronym = KNOWN_ACRONYMS.has(word.toUpperCase())
+      const { prefix, core, suffix } = splitWordToken(part)
+      if (!core) return part
 
-      // Already capitalized by user (all caps) — preserve
-      if (isAllCaps) return word
+      const upperCore = core.toUpperCase()
+      const lowerCore = core.toLowerCase()
+      const isAllCaps = core === upperCore && core !== lowerCore
+      const isAllLower = core === lowerCore
+      const isKnownAcronym = KNOWN_ACRONYMS.has(upperCore)
+      const isExcludedAcronym = excludedAcronyms.has(lowerCore)
+      const isAcronymLength = core.length >= acronymMinLength && core.length <= acronymMaxLength
 
-      // All lowercase, 3-5 chars, and in known acronyms list — uppercase it
-      if (isAllLower && word.length >= 3 && word.length <= 5 && isKnownAcronym) {
-        return word.toUpperCase()
+      if (isAllCaps) return part
+
+      if (isAllLower && isAcronymLength && !isExcludedAcronym && (!knownAcronymsOnly || isKnownAcronym)) {
+        return `${prefix}${upperCore}${suffix}`
       }
 
-      // Otherwise preserve exactly as user typed
-      return word
+      if (pascalCaseFallback && isAllLower) {
+        return `${prefix}${toPascalWord(core)}${suffix}`
+      }
+
+      return part
     })
-    .join(' ')
+    .join('')
     .trim()
+}
+
+// Format deal name while preserving user capitalization intent and recognizing known acronyms.
+export function formatDealName(name: string): string {
+  return formatNameWithAcronyms(name, {
+    acronymMinLength: 3,
+    acronymMaxLength: 5,
+    knownAcronymsOnly: true,
+    pascalCaseFallback: false,
+  })
 }

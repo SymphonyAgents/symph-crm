@@ -14,8 +14,8 @@ type MetricCardProps = {
 
 export function MetricCard({ label, value, trend, trendUp, accentColor, mono }: MetricCardProps) {
   return (
-    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg p-3 shadow-[var(--shadow-card)]">
-      <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400 mb-1.5">
+    <div className="bg-card border border-border rounded-lg p-3 shadow-[var(--shadow-card)]">
+      <div className="eyebrow-label mb-1.5">
         {label}
       </div>
       <div

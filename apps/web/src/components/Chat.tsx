@@ -51,7 +51,7 @@ function AttachmentBubble({ attachment }: { attachment: PendingAttachment }) {
         <img
           src={attachment.previewUrl}
           alt={attachment.filename}
-          className="max-w-[200px] max-h-[150px] rounded-lg border border-black/[.08] dark:border-white/[.08] object-cover"
+          className="max-w-[200px] max-h-[150px] rounded-lg border border-border object-cover"
         />
       </div>
     )
@@ -79,7 +79,7 @@ function AttachmentBubble({ attachment }: { attachment: PendingAttachment }) {
 
   return (
     <div className="flex justify-end mb-1">
-      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-dim border border-primary-border text-xs text-slate-600 dark:text-slate-400">
+      <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-dim border border-primary-border text-xs text-muted-foreground">
         {icon}
         <span className="max-w-[160px] truncate">{label}</span>
       </div>
@@ -100,10 +100,10 @@ function AttachmentPreview({
         <img
           src={attachment.previewUrl}
           alt={attachment.filename}
-          className="w-10 h-10 rounded-lg object-cover border border-black/[.08] dark:border-white/[.08] shrink-0"
+          className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
         />
       ) : (
-        <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
           {attachment.type === 'voice' ? (
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -120,7 +120,7 @@ function AttachmentPreview({
       )}
 
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{attachment.filename}</p>
+        <p className="text-xs font-medium text-muted-foreground truncate">{attachment.filename}</p>
         <p className="text-xxs text-slate-400 capitalize">
           {attachment.type === 'voice' && attachment.duration
             ? `Voice · ${formatDuration(attachment.duration)}`
@@ -130,7 +130,7 @@ function AttachmentPreview({
 
       <button
         onClick={onRemove}
-        className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors shrink-0"
+        className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-muted-foreground hover:bg-surface-hover transition-colors shrink-0"
       >
         <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -249,7 +249,7 @@ function renderContent(text: string) {
     const parts = line.split(/(\*\*.*?\*\*)/)
     const rendered = parts.map((part, partIdx) => {
       if (part.startsWith('**') && part.endsWith('**')) {
-        return <strong key={partIdx} className="font-semibold text-slate-900 dark:text-white">{part.slice(2, -2)}</strong>
+        return <strong key={partIdx} className="font-semibold text-foreground">{part.slice(2, -2)}</strong>
       }
       return <span key={partIdx}>{part}</span>
     })
@@ -337,7 +337,7 @@ function SessionSidebar({
                         expanded ? 'p-1.5' : 'p-1.5 flex items-center justify-center',
                         isActive
                           ? 'bg-primary/10 text-primary'
-                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]'
+                          : 'text-muted-foreground hover:bg-surface-hover'
                       )}
                     >
                       {expanded ? (
@@ -345,7 +345,7 @@ function SessionSidebar({
                           <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="shrink-0 opacity-50">
                             <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                           </svg>
-                          <span className={cn('text-xs truncate flex-1', isUnread || isSessionTyping ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium')}>{label}</span>
+                          <span className={cn('text-xs truncate flex-1', isUnread || isSessionTyping ? 'font-semibold text-foreground' : 'font-medium')}>{label}</span>
                           {/* Typing animation — Aria still formulating */}
                           {isSessionTyping && (
                             <span className="flex items-center gap-[2px] shrink-0">
@@ -362,7 +362,7 @@ function SessionSidebar({
                             <PopoverTrigger asChild>
                               <button
                                 onClick={(e) => e.stopPropagation()}
-                                className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/[.08] opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-skeleton opacity-0 group-hover:opacity-100 transition-opacity"
                               >
                                 <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor">
                                   <circle cx="5" cy="12" r="2" />
@@ -412,12 +412,12 @@ function SessionSidebar({
             className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
             onClick={closeMobile}
           />
-          <div className="fixed top-0 left-0 h-full w-[260px] z-50 flex flex-col bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08]">
+          <div className="fixed top-0 left-0 h-full w-[260px] z-50 flex flex-col bg-card border-r border-border">
             <div className="px-1.5 pt-3 pb-2 shrink-0 flex flex-col gap-1.5">
               <Link
                 href="/"
                 onClick={closeMobile}
-                className="flex items-center gap-2 px-2.5 py-1.5 mx-1.5 rounded-md text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center gap-2 px-2.5 py-1.5 mx-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-slate-800 hover:text-foreground hover:bg-surface-hover transition-colors"
               >
                 <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
@@ -428,7 +428,7 @@ function SessionSidebar({
               <div className="px-1.5">
                 <button
                   onClick={onNewChat}
-                  className="w-full h-9 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-white/[.04] hover:bg-slate-50 dark:hover:bg-white/[.06] flex items-center gap-2 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors"
+                  className="w-full h-9 rounded-md border border-border bg-card hover:bg-surface-hover flex items-center gap-2 px-3 text-xs font-semibold text-muted-foreground transition-colors"
                 >
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -446,7 +446,7 @@ function SessionSidebar({
       {/* ── Desktop sidebar — always visible, relative in flex flow ────── */}
       <div
         className={cn(
-          'hidden lg:flex lg:relative shrink-0 h-full flex-col bg-white dark:bg-[#16171a] border-r border-black/[.06] dark:border-white/[.08] transition-all duration-200 ease-out',
+          'hidden lg:flex lg:relative shrink-0 h-full flex-col bg-card border-r border-border transition-all duration-200 ease-out',
           expanded ? 'lg:w-[260px]' : 'lg:w-[52px]',
         )}
       >
@@ -457,7 +457,7 @@ function SessionSidebar({
               {/* Back to dashboard */}
               <Link
                 href="/"
-                className="flex items-center gap-2 px-2.5 py-1.5 mx-1.5 rounded-md text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="flex items-center gap-2 px-2.5 py-1.5 mx-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-slate-800 hover:text-foreground hover:bg-surface-hover transition-colors"
               >
                 <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
@@ -468,7 +468,7 @@ function SessionSidebar({
               <div className="flex items-center gap-1.5 px-1.5">
                 <button
                   onClick={onNewChat}
-                  className="flex-1 h-9 rounded-md border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-white/[.04] hover:bg-slate-50 dark:hover:bg-white/[.06] flex items-center gap-2 px-3 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-colors"
+                  className="flex-1 h-9 rounded-md border border-border bg-card hover:bg-surface-hover flex items-center gap-2 px-3 text-xs font-semibold text-muted-foreground transition-colors"
                 >
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                     <line x1="12" y1="5" x2="12" y2="19" />
@@ -479,7 +479,7 @@ function SessionSidebar({
                 <button
                   onClick={onToggleExpand}
                   title="Collapse sidebar"
-                  className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                  className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors"
                 >
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -495,7 +495,7 @@ function SessionSidebar({
                 <TooltipTrigger asChild>
                   <Link
                     href="/"
-                    className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                    className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors"
                   >
                     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                       <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
@@ -508,7 +508,7 @@ function SessionSidebar({
               <button
                 onClick={onToggleExpand}
                 title="Expand sidebar"
-                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+                className="h-9 w-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors"
               >
                 <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -519,7 +519,7 @@ function SessionSidebar({
               <button
                 onClick={onNewChat}
                 title="New Chat"
-                className="h-9 w-9 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-white/[.04] hover:bg-slate-50 dark:hover:bg-white/[.06] flex items-center justify-center text-slate-600 dark:text-slate-300 transition-colors"
+                className="h-9 w-9 rounded-lg border border-border bg-card hover:bg-surface-hover flex items-center justify-center text-muted-foreground transition-colors"
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -1088,12 +1088,12 @@ export function Chat({ dealId }: { dealId?: string }) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          'relative rounded-lg bg-white dark:bg-[#1e1e21] transition-all duration-150',
+          'relative rounded-lg bg-card transition-all duration-150',
           dragOver
             ? 'border-2 border-dashed border-primary shadow-[0_0_0_3px_rgba(var(--primary-rgb,99,102,241),0.15)]'
             : focused
               ? 'border border-black/20 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_0_0_3px_rgba(0,0,0,0.05)]'
-              : 'border border-black/[.08] dark:border-white/[.08] shadow-[var(--shadow-card)]'
+              : 'border border-border shadow-[var(--shadow-card)]'
         )}
       >
         {/* Drag overlay hint */}
@@ -1149,7 +1149,7 @@ export function Chat({ dealId }: { dealId?: string }) {
             disabled={isTyping}
             rows={1}
             className={cn(
-              'w-full bg-transparent border-none outline-none text-sm text-slate-900 dark:text-white leading-[1.6] resize-none overflow-hidden placeholder:text-slate-400',
+              'w-full bg-transparent border-none outline-none text-sm text-foreground leading-[1.6] resize-none overflow-hidden placeholder:text-slate-400',
               isTyping && 'opacity-50'
             )}
             style={{ minHeight: '28px', maxHeight: '160px' }}
@@ -1185,7 +1185,7 @@ export function Chat({ dealId }: { dealId?: string }) {
             onClick={() => fileInputRef.current?.click()}
             disabled={isTyping || recording}
             title="Attach file or image"
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-muted-foreground hover:bg-surface-hover transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -1203,7 +1203,7 @@ export function Chat({ dealId }: { dealId?: string }) {
               'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed',
               recording
                 ? 'text-red-500 bg-red-50 hover:bg-red-100'
-                : 'text-slate-400 hover:text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06]'
+                : 'text-slate-400 hover:text-muted-foreground hover:bg-surface-hover'
             )}
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -1230,7 +1230,7 @@ export function Chat({ dealId }: { dealId?: string }) {
               'w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 active:scale-[0.94]',
               canSubmit
                 ? 'bg-primary hover:bg-primary-hover cursor-pointer'
-                : 'bg-slate-100 dark:bg-white/[.06] cursor-default'
+                : 'bg-secondary cursor-default'
             )}
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={canSubmit ? '#fff' : '#94a3b8'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -1275,7 +1275,7 @@ export function Chat({ dealId }: { dealId?: string }) {
               >
                 S
               </div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight leading-none">
+              <h1 className="text-3xl font-bold text-foreground tracking-tight leading-none">
                 {getGreeting()}, {userName}
               </h1>
             </div>
@@ -1292,7 +1292,7 @@ export function Chat({ dealId }: { dealId?: string }) {
                   key={p.prompt}
                   type="button"
                   onClick={() => sendMessage(p.prompt)}
-                  className="px-3.5 py-2 rounded-lg bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:border-slate-300 hover:text-slate-900 dark:text-white active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
+                  className="px-3.5 py-2 rounded-lg bg-card border border-border text-xs font-medium text-muted-foreground hover:border-border hover:text-foreground active:scale-[0.98] transition-colors duration-150 shadow-[var(--shadow-card)]"
                 >
                   {p.label}
                 </button>
@@ -1328,7 +1328,7 @@ export function Chat({ dealId }: { dealId?: string }) {
             <div className="max-w-[680px] w-full mx-auto px-6 pt-8 pb-4 flex flex-col gap-5">
               {[1, 2, 3].map(i => (
                 <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`h-10 rounded-xl bg-slate-100 dark:bg-white/[.06] animate-pulse ${i % 2 === 0 ? 'w-48' : 'w-64'}`} />
+                  <div className={`h-10 rounded-md bg-secondary animate-pulse ${i % 2 === 0 ? 'w-48' : 'w-64'}`} />
                 </div>
               ))}
             </div>
@@ -1363,7 +1363,7 @@ export function Chat({ dealId }: { dealId?: string }) {
                   {msg.attachment && <AttachmentBubble attachment={msg.attachment} />}
                   {msg.content && (
                     <div className="flex justify-end">
-                      <div className="max-w-[78%] px-4 py-3 rounded-lg bg-primary-dim border border-primary-border text-ssm text-slate-900 dark:text-white leading-[1.6]">
+                      <div className="max-w-[78%] px-4 py-3 rounded-lg bg-primary-dim border border-primary-border text-ssm text-foreground leading-[1.6]">
                         {msg.content}
                       </div>
                     </div>
@@ -1371,7 +1371,7 @@ export function Chat({ dealId }: { dealId?: string }) {
                 </div>
               ) : (
                 <div>
-                  <div className="text-ssm text-slate-700 dark:text-slate-300 leading-[1.75] whitespace-pre-wrap">
+                  <div className="text-ssm text-muted-foreground leading-[1.75] whitespace-pre-wrap">
                     {renderContent(msg.content)}
                   </div>
                   {msg.actionsTaken && msg.actionsTaken.length > 0 && (
@@ -1386,7 +1386,7 @@ export function Chat({ dealId }: { dealId?: string }) {
         </div>
       </div>
 
-      <div className="shrink-0 px-6 pb-5 pt-3 border-t border-black/[.06] dark:border-white/[.08]">
+      <div className="shrink-0 px-6 pb-5 pt-3 border-t border-border">
         {apiError && (
           <p className="text-xxs text-red-500 mb-2 text-center">{apiError}</p>
         )}

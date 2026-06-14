@@ -38,12 +38,12 @@ function StatusBadge({ status }: { status: ApiUser['status'] }) {
 
 function EmptyState({ tab }: { tab: UserTab }) {
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-black/[.08] bg-slate-50/70 px-4 text-center dark:border-white/[.08] dark:bg-white/[.03]">
+    <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-alt px-4 text-center">
       <UserRoundCog size={22} className="text-slate-400" />
-      <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">
+      <p className="mt-3 text-sm font-semibold text-foreground">
         {tab === 'pending' ? 'No pending external users' : 'No approved external users'}
       </p>
-      <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-1 max-w-sm text-xs text-muted-foreground">
         {tab === 'pending'
           ? 'Non-Symph signups will appear here before they can access client-facing pages.'
           : 'Approved partner and external users will appear here.'}
@@ -156,16 +156,16 @@ function UserConfirmModal({
           </div>
         </DialogHeader>
         <div className="max-h-[calc(100dvh-8rem)] overflow-y-auto p-4">
-          <p className="text-ssm leading-relaxed text-slate-600 dark:text-slate-400">
-            {actionLabel} <span className="font-semibold text-slate-900 dark:text-white">{target.user.email}</span>. {isApprove ? 'They will be able to access the partner portal after approval.' : isReject ? 'They will not be able to access the CRM.' : 'They will lose CRM access.'}
+          <p className="text-ssm leading-relaxed text-muted-foreground">
+            {actionLabel} <span className="font-semibold text-foreground">{target.user.email}</span>. {isApprove ? 'They will be able to access the partner portal after approval.' : isReject ? 'They will not be able to access the CRM.' : 'They will lose CRM access.'}
           </p>
 
           {isApprove && (
             <div className="mt-4">
-              <label className="mb-1.5 block text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">
+              <label className="mb-1.5 block eyebrow-label">
                 Assign partner deal group <span className="font-normal normal-case text-slate-400">optional</span>
               </label>
-              <Command className="rounded-md border border-black/[.06] dark:border-white/[.08]">
+              <Command className="rounded-md border border-border">
                 <CommandInput placeholder="Search partner deal groups..." className="text-ssm" />
                 <CommandList className="h-[min(220px,32dvh)] max-h-[220px] overflow-y-auto">
                   <CommandEmpty>No partner deal groups found.</CommandEmpty>
@@ -180,13 +180,13 @@ function UserConfirmModal({
                           className="text-ssm"
                         >
                           <span className={cn(
-                            'flex size-4 items-center justify-center rounded border border-slate-300 dark:border-white/[.16]',
+                            'flex size-4 items-center justify-center rounded border border-border',
                             checked && 'border-primary bg-primary text-white',
                           )}>
                             {checked && <Check size={12} />}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium text-slate-900 dark:text-white">{group.name}</div>
+                            <div className="truncate font-medium text-foreground">{group.name}</div>
                             <div className="truncate text-xxs text-slate-400">
                               {group.members.length} member{group.members.length === 1 ? '' : 's'}
                             </div>
@@ -208,7 +208,7 @@ function UserConfirmModal({
           <div className="mt-4 flex gap-2.5">
             <button
               onClick={onCancel}
-              className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+              className="h-9 flex-1 rounded-lg border border-border text-xs font-semibold text-slate-600 transition-colors hover:bg-surface-alt"
             >
               Cancel
             </button>
@@ -291,15 +291,15 @@ function PartnerDealGroupDialog({
         </DialogHeader>
         <div className="space-y-3 p-4">
           <div className="space-y-1.5">
-            <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Name</label>
+            <label className="eyebrow-label">Name</label>
             <Input value={name} onChange={event => setName(event.target.value)} placeholder="CPS" />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Description</label>
+            <label className="eyebrow-label">Description</label>
             <Textarea value={description} onChange={event => setDescription(event.target.value)} placeholder="Optional notes for Sales" />
           </div>
           <div className="space-y-2">
-            <label className="text-xxs font-medium uppercase tracking-[0.05em] text-slate-500">Members</label>
+            <label className="eyebrow-label">Members</label>
             {memberUserIds.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {memberUserIds.map(userId => {
@@ -308,13 +308,13 @@ function PartnerDealGroupDialog({
                   return (
                     <span
                       key={userId}
-                      className="inline-flex items-center gap-1 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-xxs font-medium text-slate-700 dark:bg-white/[.06] dark:text-slate-200"
+                      className="inline-flex items-center gap-1 rounded-md bg-secondary py-0.5 pl-2 pr-1 text-xxs font-medium text-foreground"
                     >
                       {label}
                       <button
                         type="button"
                         onClick={() => removeMember(userId)}
-                        className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-red-600 dark:hover:bg-white/[.08] dark:hover:text-red-300"
+                        className="rounded p-0.5 text-slate-400 transition-colors hover:bg-skeleton hover:text-red-600 dark:hover:text-red-300"
                         aria-label={`Remove ${label}`}
                       >
                         <X size={10} />
@@ -324,7 +324,7 @@ function PartnerDealGroupDialog({
                 })}
               </div>
             )}
-            <Command className="rounded-md border border-black/[.06] dark:border-white/[.08]">
+            <Command className="rounded-md border border-border">
               <CommandInput placeholder="Search approved partners..." className="text-ssm" />
               <CommandList className="h-[min(180px,28dvh)] max-h-[180px] overflow-y-auto">
                 <CommandEmpty>{availableUsers.length === 0 ? 'No approved partners available.' : 'No partners found.'}</CommandEmpty>
@@ -336,11 +336,11 @@ function PartnerDealGroupDialog({
                       onSelect={() => addMember(user.id)}
                       className="text-ssm"
                     >
-                      <div className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-atom font-semibold text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                      <div className="flex size-6 items-center justify-center rounded-full bg-secondary text-atom font-semibold text-muted-foreground">
                         {getDisplayName(user).slice(0, 1).toUpperCase()}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium text-slate-900 dark:text-white">{getDisplayName(user)}</div>
+                        <div className="truncate font-medium text-foreground">{getDisplayName(user)}</div>
                         <div className="truncate text-xxs text-slate-400">{user.email}</div>
                       </div>
                     </CommandItem>
@@ -353,7 +353,7 @@ function PartnerDealGroupDialog({
             <button
               type="button"
               onClick={onClose}
-              className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+              className="h-9 flex-1 rounded-lg border border-border text-xs font-semibold text-slate-600 transition-colors hover:bg-surface-alt"
             >
               Cancel
             </button>
@@ -384,14 +384,14 @@ function ArchivePartnerDealGroupDialog({ group, loading, onCancel, onConfirm }: 
           </div>
         </DialogHeader>
         <div className="p-4">
-          <p className="text-ssm leading-relaxed text-slate-600 dark:text-slate-400">
-            Archive <span className="font-semibold text-slate-900 dark:text-white">{group.name}</span>. Existing records stay in the database.
+          <p className="text-ssm leading-relaxed text-muted-foreground">
+            Archive <span className="font-semibold text-foreground">{group.name}</span>. Existing records stay in the database.
           </p>
           <div className="mt-4 flex gap-2.5">
             <button
               type="button"
               onClick={onCancel}
-              className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+              className="h-9 flex-1 rounded-lg border border-border text-xs font-semibold text-slate-600 transition-colors hover:bg-surface-alt"
             >
               Cancel
             </button>
@@ -454,14 +454,14 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
               </div>
             </DialogHeader>
             <div className="p-4">
-              <p className="text-ssm leading-relaxed text-slate-600 dark:text-slate-400">
-                Remove <span className="font-semibold text-slate-900 dark:text-white">{removeMemberTarget.member.name ?? removeMemberTarget.member.email}</span> from <span className="font-semibold text-slate-900 dark:text-white">{removeMemberTarget.group.name}</span>?
+              <p className="text-ssm leading-relaxed text-muted-foreground">
+                Remove <span className="font-semibold text-foreground">{removeMemberTarget.member.name ?? removeMemberTarget.member.email}</span> from <span className="font-semibold text-foreground">{removeMemberTarget.group.name}</span>?
               </p>
               <div className="mt-4 flex gap-2.5">
                 <button
                   type="button"
                   onClick={() => setRemoveMemberTarget(null)}
-                  className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+                  className="h-9 flex-1 rounded-lg border border-border text-xs font-semibold text-slate-600 transition-colors hover:bg-surface-alt"
                 >
                   Cancel
                 </button>
@@ -479,11 +479,11 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
           </DialogContent>
         </Dialog>
       )}
-      <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
-        <div className="flex flex-col gap-3 border-b border-black/[.06] px-4 py-3 dark:border-white/[.08] sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Partner deal groups</p>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-sm font-semibold text-foreground">Partner deal groups</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
               Containers like CPS, CAN, and ISV - Americas Google. Deals will be linked after the new flow is ready.
             </p>
           </div>
@@ -495,10 +495,10 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
           {isLoading ? (
             <DataTableSkeleton className="p-1.5 space-y-2" />
           ) : groups.length === 0 ? (
-            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-black/[.08] bg-slate-50/70 px-4 text-center dark:border-white/[.08] dark:bg-white/[.03]">
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-alt px-4 text-center">
               <UsersRound size={22} className="text-slate-400" />
-              <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">No partner deal groups</p>
-              <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">Create the containers before linking deals or partner users.</p>
+              <p className="mt-3 text-sm font-semibold text-foreground">No partner deal groups</p>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">Create the containers before linking deals or partner users.</p>
             </div>
           ) : (
             <Table>
@@ -506,6 +506,7 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                 <TableRow>
                   <TableHead>Group</TableHead>
                   <TableHead>Members</TableHead>
+                  <TableHead>Deals</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -515,12 +516,12 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                   <TableRow key={group.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="flex size-8 items-center justify-center rounded-md bg-slate-100 text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                        <div className="flex size-8 items-center justify-center rounded-md bg-secondary text-muted-foreground">
                           <UsersRound size={15} />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{group.name}</p>
-                          {group.description && <p className="truncate text-xs text-slate-500 dark:text-slate-400">{group.description}</p>}
+                          <p className="truncate text-ssm font-semibold text-foreground">{group.name}</p>
+                          {group.description && <p className="truncate text-xs text-muted-foreground">{group.description}</p>}
                         </div>
                       </div>
                     </TableCell>
@@ -534,14 +535,14 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                             return (
                               <span
                                 key={member.id}
-                                className="inline-flex items-center gap-1 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-xxs font-medium text-slate-700 dark:bg-white/[.06] dark:text-slate-200"
+                                className="inline-flex items-center gap-1 rounded-md bg-secondary py-0.5 pl-2 pr-1 text-xxs font-medium text-foreground"
                               >
                                 {label}
                                 <button
                                   type="button"
                                   onClick={() => setRemoveMemberTarget({ group, member })}
                                   disabled={updateGroup.isPending}
-                                  className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-red-600 disabled:opacity-50 dark:hover:bg-white/[.08] dark:hover:text-red-300"
+                                  className="rounded p-0.5 text-slate-400 transition-colors hover:bg-skeleton hover:text-red-600 disabled:opacity-50 dark:hover:text-red-300"
                                   aria-label={`Remove ${label} from ${group.name}`}
                                   title="Remove member"
                                 >
@@ -554,6 +555,11 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                       )}
                     </TableCell>
                     <TableCell>
+                      <span className="text-xs font-medium text-foreground tabular-nums">
+                        {group.dealCount}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <StatusPill tone={group.isActive ? 'emerald' : 'neutral'}>
                         {group.isActive ? 'Active' : 'Archived'}
                       </StatusPill>
@@ -563,7 +569,7 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                         <button
                           type="button"
                           onClick={() => setDialogState({ mode: 'edit', group })}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-white/[.06]"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-secondary hover:text-primary"
                           title="Edit"
                         >
                           <Pencil size={13} />
@@ -572,7 +578,7 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                           <button
                             type="button"
                             onClick={() => setArchiveTarget(group)}
-                            className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-red-600 dark:hover:bg-white/[.06] dark:hover:text-red-400"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-secondary hover:text-red-600 dark:hover:text-red-400"
                             title="Archive"
                           >
                             <Trash2 size={13} />
@@ -597,7 +603,7 @@ export function UserManagement() {
   const searchParams = useSearchParams()
   const { isSales, isLoading: userLoading } = useUser()
   const rawTab = searchParams.get('tab')
-  const tab: UserTab = rawTab === 'approved' ? 'active' : rawTab === 'groups' ? 'groups' : 'pending'
+  const tab: UserTab = rawTab === 'pending' ? 'pending' : rawTab === 'approved' ? 'active' : 'groups'
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null)
   const approve = useApproveExternalUser({ onSuccess: () => setConfirmTarget(null) })
   const reject = useRejectExternalUser({ onSuccess: () => setConfirmTarget(null) })
@@ -643,10 +649,10 @@ export function UserManagement() {
   if (!userLoading && !isSales) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-sm rounded-md border border-black/[.06] bg-white p-6 text-center shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+        <div className="max-w-sm rounded-md border border-border bg-card p-6 text-center shadow-[var(--shadow-card)]">
           <ShieldCheck size={24} className="mx-auto text-slate-400" />
-          <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">Sales access required</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-3 text-sm font-semibold text-foreground">Sales access required</p>
+          <p className="mt-1 text-xs text-muted-foreground">
             Only Sales users can review and approve external CRM accounts.
           </p>
         </div>
@@ -670,12 +676,18 @@ export function UserManagement() {
         />
       )}
       <div className="flex flex-col gap-3 p-4 md:px-6 pb-6">
+        <div className="flex flex-col gap-1">
+          <div className="text-ssm font-semibold text-foreground">Partnerships</div>
+          <div className="text-xxs text-slate-400 tabular-nums">
+            {pendingUsers.length} pending approval{pendingUsers.length !== 1 ? 's' : ''} · {activeUsers.length} approved user{activeUsers.length !== 1 ? 's' : ''} · {partnerDealGroups.length} partner deal group{partnerDealGroups.length !== 1 ? 's' : ''}
+          </div>
+        </div>
         <TabFilter items={tabItems} value={tab} onChange={setTab} className="self-start" />
 
         {tab === 'groups' ? (
           <PartnerDealGroupsPanel approvedUsers={activeUsers.filter(user => user.role === CrmUserRole.Partner)} />
         ) : (
-          <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+          <div className="rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
             <div className="overflow-x-auto p-2">
               {isLoading ? (
               <DataTableSkeleton className="p-1.5 space-y-2" />
@@ -700,17 +712,17 @@ export function UserManagement() {
                           {user.image ? (
                             <img src={user.image} alt="" className="size-8 rounded-full" />
                           ) : (
-                            <div className="flex size-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                            <div className="flex size-8 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-muted-foreground">
                               {getDisplayName(user).slice(0, 1).toUpperCase()}
                             </div>
                           )}
                           <div>
-                            <p className="text-ssm font-semibold text-slate-900 dark:text-white">{getDisplayName(user)}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{user.email}</p>
+                            <p className="text-ssm font-semibold text-foreground">{getDisplayName(user)}</p>
+                            <p className="text-xs text-muted-foreground">{user.email}</p>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-xs font-medium text-slate-600 dark:text-slate-300">{user.role ?? CrmUserRole.Partner}</TableCell>
+                      <TableCell className="text-xs font-medium text-muted-foreground">{user.role ?? CrmUserRole.Partner}</TableCell>
                       <TableCell><StatusBadge status={user.status} /></TableCell>
                       <TableCell>
                         {user.role === CrmUserRole.Partner ? (

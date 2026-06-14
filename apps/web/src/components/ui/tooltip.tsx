@@ -21,7 +21,7 @@ const TooltipContent = React.forwardRef<
       alignOffset={alignOffset}
       align={align}
       className={cn(
-        'z-50 overflow-hidden rounded-md bg-slate-900 px-2 py-1 text-xs font-medium text-white shadow-lg dark:bg-white dark:text-slate-900',
+        'z-50 overflow-hidden rounded-md bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg ring-1 ring-border-strong',
         className,
       )}
       {...props}

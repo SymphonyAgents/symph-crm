@@ -17,7 +17,7 @@ const SelectTrigger = React.forwardRef<
     data-slot="select-trigger"
     data-size={size}
     className={cn(
-      'flex w-full items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent px-2.5 text-sm whitespace-nowrap outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-8 data-[size=sm]:h-7 data-placeholder:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0',
+      'flex w-full items-center justify-between gap-1.5 rounded-control border border-input bg-card px-2.5 text-xs whitespace-nowrap outline-none transition-colors placeholder:text-muted-foreground hover:border-border-strong focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary-ring disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-[var(--control-height-md)] data-[size=sm]:h-[var(--control-height-sm)] data-placeholder:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0',
       className
     )}
     {...props}
@@ -41,7 +41,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       data-slot="select-content"
       className={cn(
-        'relative z-50 min-w-[8rem] overflow-hidden rounded-lg bg-popover text-popover-foreground ring-1 ring-foreground/10 shadow-md',
+        'relative z-50 min-w-[8rem] overflow-hidden rounded-md bg-popover text-popover-foreground ring-1 ring-border-strong shadow-md',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:duration-100 data-[state=closed]:duration-75 data-[state=open]:ease-out data-[state=closed]:ease-in',
         position === 'popper' && 'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
         className
@@ -67,7 +67,7 @@ const SelectItem = React.forwardRef<
     ref={ref}
     data-slot="select-item"
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-md py-1.5 px-2.5 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex w-full cursor-default select-none items-center rounded-control px-2.5 py-1.5 text-xs text-popover-foreground outline-none focus:bg-surface-hover focus:text-popover-foreground data-[highlighted]:bg-surface-hover data-[highlighted]:text-popover-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     {...props}
@@ -84,7 +84,7 @@ const SelectLabel = React.forwardRef<
   <SelectPrimitive.Label
     ref={ref}
     data-slot="select-label"
-    className={cn('px-2.5 py-1 text-xs text-muted-foreground', className)}
+    className={cn('px-2.5 py-1 eyebrow-label', className)}
     {...props}
   />
 ))

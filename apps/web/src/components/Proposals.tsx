@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
+import { SearchInput } from '@/components/ui/search-input'
 import { StatusPill, type StatusPillTone } from '@/components/ui/status-pill'
 import type { ApiProposalStatus, ApiProposalSummary, ApiProposalType, ApiProposalVersion } from '@/lib/types'
 
@@ -116,7 +117,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           aria-label="Proposal actions"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-black/[.08] bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-800 active:scale-[0.96] dark:border-white/[.1] dark:bg-white/[.04] dark:text-slate-300 dark:hover:bg-white/[.08] dark:hover:text-white"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-control border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-border-strong hover:bg-surface-hover hover:text-foreground active:scale-[0.96]"
         >
           <MoreVertical className="h-4 w-4" strokeWidth={1.8} />
         </button>
@@ -125,7 +126,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           onClick={onViewVersions}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
         >
           <History className="h-3.5 w-3.5" strokeWidth={1.8} />
           View versions
@@ -134,7 +135,7 @@ function ProposalActionsMenu({
           type="button"
           onClick={onDownloadHtml}
           disabled={isHtmlPending}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300 dark:text-slate-200 dark:hover:bg-white/[.06] dark:disabled:text-slate-600"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:text-text-faint"
         >
           {isHtmlPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Download className="h-3.5 w-3.5" strokeWidth={1.8} />}
           Download HTML
@@ -142,8 +143,8 @@ function ProposalActionsMenu({
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
           canUploadPdf && !isPdfPending
-            ? 'cursor-pointer text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
-            : 'cursor-not-allowed text-slate-300 dark:text-slate-600',
+            ? 'cursor-pointer text-popover-foreground hover:bg-surface-hover'
+            : 'cursor-not-allowed text-text-faint',
         )}>
           {isPdfPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />}
           {hasPdf ? 'Replace PDF' : 'Upload PDF'}
@@ -167,8 +168,8 @@ function ProposalActionsMenu({
           className={cn(
             'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-xs font-medium transition-colors',
             hasPdf
-              ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/[.06]'
-              : 'pointer-events-none text-slate-300 dark:text-slate-600',
+              ? 'text-popover-foreground hover:bg-surface-hover'
+              : 'pointer-events-none text-text-faint',
           )}
         >
           <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
@@ -205,19 +206,19 @@ function ProposalRow({
   return (
     <TableRow
       onClick={onOpen}
-      className="cursor-pointer transition-colors hover:bg-slate-50/70 dark:hover:bg-white/[.03]"
+      className="cursor-pointer transition-colors hover:bg-surface-alt"
     >
-      <TableCell className="py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-100 dark:bg-white/[.04]">
+      <TableCell className="py-3.5">
+        <div className="flex min-w-0 items-center gap-3.5">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-secondary">
             <FileIcon size={16} className="text-slate-400" />
           </div>
           <div className="min-w-0">
-            <div className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{p.title}</div>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xxs text-slate-500">
-              <AvatarRoot className="h-4 w-4 border border-black/[.06] dark:border-white/[.08]">
+            <div className="truncate text-ssm font-medium text-foreground">{p.title}</div>
+            <div className="mt-1.5 flex min-w-0 items-center gap-1.5 text-xxs text-slate-500">
+              <AvatarRoot className="h-4 w-4 border border-border">
                 {p.creatorImage && <AvatarImage src={p.creatorImage} alt={p.creatorName || p.creatorEmail || 'Creator'} />}
-                <AvatarFallback className="bg-slate-100 text-[8px] text-slate-500 dark:bg-white/[.06] dark:text-slate-300">
+                <AvatarFallback className="bg-secondary text-[8px] text-muted-foreground">
                   {initials(p.creatorName, p.creatorEmail)}
                 </AvatarFallback>
               </AvatarRoot>
@@ -233,30 +234,30 @@ function ProposalRow({
         </div>
       </TableCell>
       {showStatusControls && (
-        <TableCell className="w-[118px] py-3" onClick={(event) => event.stopPropagation()}>
+        <TableCell className="w-[118px] py-3.5" onClick={(event) => event.stopPropagation()}>
           <div className="flex items-center justify-end gap-1.5">
             {p.signedPdfFileName && <StatusPill tone="emerald">PDF</StatusPill>}
             <Select value={p.status} onValueChange={(value) => onStatusChange(value as ApiProposalStatus)} disabled={isStatusPending}>
               <SelectTrigger
                 aria-label="Proposal status"
                 size="sm"
-                className="h-7 w-auto gap-1 border-transparent bg-transparent p-0 text-xs font-semibold shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3"
+                className="h-7 w-auto gap-1 border-transparent bg-transparent p-0 text-xs font-medium shadow-none disabled:opacity-70 [&_svg]:h-3 [&_svg]:w-3"
               >
                 <StatusPill tone={STATUS_TONES[p.status]}>
                   <SelectValue />
                 </StatusPill>
               </SelectTrigger>
               <SelectContent align="start" className="min-w-[92px] rounded-md">
-                <SelectItem value="draft" className="text-xs font-semibold">Draft</SelectItem>
-                <SelectItem value="sent" className="text-xs font-semibold">Sent</SelectItem>
-                <SelectItem value="signed" className="text-xs font-semibold">Signed</SelectItem>
+                <SelectItem value="draft" className="text-xs font-medium">Draft</SelectItem>
+                <SelectItem value="sent" className="text-xs font-medium">Sent</SelectItem>
+                <SelectItem value="signed" className="text-xs font-medium">Signed</SelectItem>
               </SelectContent>
             </Select>
             {isStatusPending && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" strokeWidth={1.8} />}
           </div>
         </TableCell>
       )}
-      <TableCell className="w-[190px] py-3" onClick={(event) => event.stopPropagation()}>
+      <TableCell className="w-[190px] py-3.5" onClick={(event) => event.stopPropagation()}>
         <div className="flex items-center justify-end gap-1.5">
           <div className="hidden items-center gap-1.5 text-xxs text-slate-500 sm:flex">
             <span className="font-mono">v{p.currentVersion}</span>
@@ -305,33 +306,33 @@ function ProposalVersionsDialog({
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((item) => (
-                <div key={item} className="h-14 rounded-md bg-slate-100 dark:bg-white/[.06] animate-pulse" />
+                <div key={item} className="h-14 rounded-md bg-secondary animate-pulse" />
               ))}
             </div>
           ) : versions.length === 0 ? (
-            <div className="rounded-md border border-black/[.06] px-4 py-8 text-center dark:border-white/[.08]">
-              <History className="mx-auto mb-2 h-5 w-5 text-slate-300 dark:text-slate-600" strokeWidth={1.6} />
-              <p className="text-ssm font-semibold text-slate-700 dark:text-slate-200">No versions yet</p>
-              <p className="mt-1 text-xxs text-slate-500 dark:text-slate-400">Saved proposal versions will appear here.</p>
+            <div className="rounded-md border border-border px-4 py-8 text-center">
+              <History className="mx-auto mb-2 h-5 w-5 text-text-faint" strokeWidth={1.6} />
+              <p className="text-ssm font-medium text-foreground">No versions yet</p>
+              <p className="mt-1 text-xxs text-muted-foreground">Saved proposal versions will appear here.</p>
             </div>
           ) : (
             <div className="space-y-2">
               {versions.map((version) => (
-                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-black/[.06] bg-white px-3 py-2.5 dark:border-white/[.08] dark:bg-[#1c1c1f] sm:flex-row sm:items-center sm:justify-between">
+                <div key={version.id} className="flex flex-col gap-3 rounded-md border border-border bg-card px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-semibold text-slate-900 dark:text-white">v{version.version}</span>
+                      <span className="font-mono text-xs font-medium text-foreground">v{version.version}</span>
                       {version.wordCount != null && <span className="text-xxs text-slate-400 tabular-nums">{version.wordCount.toLocaleString()} words</span>}
                     </div>
-                    <p className="mt-0.5 truncate text-xxs text-slate-500 dark:text-slate-400">
+                    <p className="mt-0.5 truncate text-xxs text-muted-foreground">
                       {version.changeNote || version.excerpt || 'Saved version'}
                     </p>
-                    <p className="mt-1 text-atom text-slate-400 dark:text-slate-500">{relTime(version.createdAt)}</p>
+                    <p className="mt-1 text-atom text-text-faint">{relTime(version.createdAt)}</p>
                   </div>
                   <button
                     type="button"
                     onClick={() => onViewVersion(version)}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xxs font-semibold text-white transition-colors hover:bg-slate-700 active:scale-[0.96] dark:bg-white dark:text-slate-950 dark:hover:bg-slate-200"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xxs font-medium text-primary-foreground transition-colors hover:bg-primary-hover active:scale-[0.96]"
                   >
                     <Eye className="h-3.5 w-3.5" strokeWidth={1.8} />
                     View
@@ -431,36 +432,35 @@ export function Proposals() {
 
   return (
     <div className="p-4 md:px-6 pb-6 w-full">
+      <div className="mb-4 flex flex-col gap-1">
+        <div className="text-ssm font-medium text-foreground">Proposals</div>
+        <div className="text-xxs text-slate-400 tabular-nums">
+          {proposals.length} proposal{proposals.length !== 1 ? 's' : ''} · {statusCounts.signed} signed · Generated proposal versions across brands and deals
+        </div>
+      </div>
+
       <div className="mb-5 flex flex-wrap items-center gap-3">
         <TabFilter items={typeItems} value={typeFilter} onChange={(next) => updateFilters(next)} />
-        <div className="relative min-w-[260px] flex-1">
-          <svg
-            width={14} height={14} viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth={1.6}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
-          >
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            ref={searchInputRef}
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search proposals, brands, deals…"
-            className="w-full h-9 pl-9 pr-3 text-xs rounded-lg bg-slate-100 dark:bg-white/[.04] border border-transparent focus:border-primary/30 focus:bg-white dark:focus:bg-[#1c1c1f] outline-none placeholder:text-slate-400 text-slate-900 dark:text-white"
-          />
-        </div>
+        <SearchInput
+          ref={searchInputRef}
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          onClear={() => setSearch('')}
+          placeholder="Search proposals, brands, deals…"
+          containerClassName="min-w-[260px] flex-1"
+        />
         {showStatusControls && <TabFilter items={statusItems} value={statusFilter} onChange={(next) => updateFilters('formal', next)} />}
       </div>
 
       {/* Body */}
       {isLoading ? (
-        <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl shadow-[var(--shadow-card)] overflow-hidden">
+        <div className="bg-card border border-border rounded-md shadow-[var(--shadow-card)] overflow-hidden">
           <DataTableSkeleton />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white dark:bg-[#1c1c1f] border border-black/[.06] dark:border-white/[.08] rounded-xl py-16 text-center">
-          <FileIcon size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <div className="text-ssm font-semibold text-slate-700 dark:text-slate-200">
+        <div className="bg-card border border-border rounded-md py-16 text-center">
+          <FileIcon size={32} className="text-text-faint mx-auto mb-3" />
+          <div className="text-ssm font-medium text-foreground">
             {search ? 'No matches' : 'No proposals yet'}
           </div>
           <div className="text-xxs text-slate-500 mt-1">
@@ -468,7 +468,7 @@ export function Proposals() {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1c1c1f]">
+        <div className="overflow-hidden rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">

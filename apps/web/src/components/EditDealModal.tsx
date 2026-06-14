@@ -61,7 +61,7 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+      <label className="eyebrow-label">
         Deal Name <span className="text-red-400">*</span>
       </label>
       <div className="relative">
@@ -76,17 +76,17 @@ function DealNameInput({ value, onChange }: { value: string; onChange: (v: strin
           required
         />
         {showSuggestions && (
-          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-black/[.08] dark:border-white/[.1] bg-white dark:bg-[#1e1e21] shadow-lg py-1 max-h-[200px] overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg border border-border bg-card shadow-lg py-1 max-h-[200px] overflow-y-auto">
             {suggestions.map((s, i) => (
               <button
                 key={`${s.acronym}-${s.category}-${i}`}
                 type="button"
                 onMouseDown={e => { e.preventDefault(); applySuggestion(s) }}
-                className="w-full text-left px-3 py-1.5 text-xs hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors flex items-center gap-2"
+                className="w-full text-left px-3 py-1.5 text-xs hover:bg-surface-hover transition-colors flex items-center gap-2"
               >
-                <span className="font-semibold text-slate-900 dark:text-white">{s.acronym}</span>
+                <span className="font-semibold text-foreground">{s.acronym}</span>
                 <span className="text-slate-400 truncate">{s.fullName}</span>
-                <span className="ml-auto text-atom text-slate-300 dark:text-slate-600 shrink-0">{s.category}</span>
+                <span className="ml-auto text-atom text-text-faint shrink-0">{s.category}</span>
               </button>
             ))}
           </div>
@@ -115,7 +115,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
       <SelectContent>
         <SelectItem value="__none__" className="text-ssm text-slate-400">No service</SelectItem>
         {groups.services.length > 0 && <>
-          <div className="px-2 pt-2 pb-1 text-atom font-semibold text-slate-400 uppercase tracking-wider">Services</div>
+          <div className="px-2 pt-2 pb-1 eyebrow-label">Services</div>
           {groups.services.map(s => (
             <SelectItem key={s.id} value={s.slug ?? s.id} className="text-ssm">
               <CatalogRowLabel item={s} />
@@ -123,7 +123,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
           ))}
         </>}
         {groups.products.length > 0 && <>
-          <div className="px-2 pt-2 pb-1 text-atom font-semibold text-slate-400 uppercase tracking-wider">Internal Products</div>
+          <div className="px-2 pt-2 pb-1 eyebrow-label">Internal Products</div>
           {groups.products.map(p => (
             <SelectItem key={p.id} value={p.slug ?? p.id} className="text-ssm">
               <CatalogRowLabel item={p} />
@@ -131,7 +131,7 @@ function ServiceSelect({ value, onValueChange }: { value: string; onValueChange:
           ))}
         </>}
         {groups.resellers.length > 0 && <>
-          <div className="px-2 pt-2 pb-1 text-atom font-semibold text-slate-400 uppercase tracking-wider">Resellers</div>
+          <div className="px-2 pt-2 pb-1 eyebrow-label">Resellers</div>
           {groups.resellers.map(r => (
             <SelectItem key={r.id} value={r.slug ?? r.id} className="text-ssm">
               <CatalogRowLabel item={r} />
@@ -150,7 +150,7 @@ function CatalogRowLabel({ item }: { item: ApiCatalogItem }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={item.iconUrl} alt="" width={16} height={16} className="rounded-sm object-contain shrink-0" style={{ width: 16, height: 16 }} />
       ) : (
-        <span className="w-4 h-4 rounded-sm bg-slate-200 dark:bg-white/[.08] shrink-0" />
+        <span className="w-4 h-4 rounded-sm bg-skeleton shrink-0" />
       )}
       <span className="truncate">{item.name}</span>
     </div>
@@ -315,18 +315,18 @@ export function EditDealModal({ deal, onClose }: Props) {
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-lg border border-slate-200 dark:border-white/[.08] w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
+        className="bg-card rounded-lg shadow-lg border border-border w-full max-w-[460px] mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 fade-in-0 duration-150 ease-out"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between sticky top-0 bg-white dark:bg-[#1e1e21] z-10">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-card z-10">
           <div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-white">Edit Deal</div>
+            <div className="text-sm font-semibold text-foreground">Edit Deal</div>
             <div className="text-xs text-slate-400 mt-0.5">Update deal details</div>
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
               <path d="M18 6 6 18M6 6l12 12" />
@@ -341,7 +341,7 @@ export function EditDealModal({ deal, onClose }: Props) {
 
           {/* Brand / Company */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Brand <span className="text-slate-400">(optional)</span>
             </label>
             <Combobox
@@ -358,14 +358,14 @@ export function EditDealModal({ deal, onClose }: Props) {
 
           {/* Service Type */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Service</label>
+            <label className="eyebrow-label">Service</label>
             <ServiceSelect value={serviceType} onValueChange={setServiceType} />
           </div>
 
           {/* Internal Product — only when service is "internal_products" */}
           {serviceType === 'internal_products' && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Internal Product</label>
+              <label className="eyebrow-label">Internal Product</label>
               <Select
                 value={catalogItemId || '__none__'}
                 onValueChange={v => setCatalogItemId(v === '__none__' ? '' : v)}
@@ -392,7 +392,7 @@ export function EditDealModal({ deal, onClose }: Props) {
           {/* Stage + Outreach */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Stage</label>
+              <label className="eyebrow-label">Stage</label>
               <Combobox
                 options={STAGE_OPTIONS}
                 value={stage}
@@ -401,7 +401,7 @@ export function EditDealModal({ deal, onClose }: Props) {
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Outreach</label>
+              <label className="eyebrow-label">Outreach</label>
               <Select value={outreachCategory || '__none__'} onValueChange={v => setOutreachCategory(v === '__none__' ? '' : v)}>
                 <SelectTrigger className="h-11 sm:h-9 text-ssm">
                   <SelectValue placeholder="---" />
@@ -417,15 +417,15 @@ export function EditDealModal({ deal, onClose }: Props) {
           </div>
 
           {/* Revenue fields, all deal types */}
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 dark:border-white/[.08] p-3 bg-slate-50/50 dark:bg-white/[.02]">
+          <div className="flex flex-col gap-3 rounded-md border border-border p-3 bg-surface-alt">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-xxs font-semibold text-slate-400 uppercase tracking-wider">Revenue</div>
-              <label className="flex items-center gap-2 text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+              <div className="eyebrow-label">Revenue</div>
+              <label className="flex items-center gap-2 eyebrow-label">
                 Currency
                 <select
                   value={currency}
                   onChange={e => setCurrency(e.target.value as DealCurrency)}
-                  className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-ssm font-semibold text-slate-900 outline-none transition-colors focus:border-blue-500 dark:border-white/[.1] dark:bg-[#2a2d31] dark:text-white"
+                  className="h-8 rounded-lg border border-border bg-card px-2 text-ssm font-semibold text-slate-900 outline-none transition-colors focus:border-blue-500 bg-secondary"
                 >
                   {DEAL_CURRENCIES.map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -436,30 +436,30 @@ export function EditDealModal({ deal, onClose }: Props) {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">One-Time Fee ({currency})</label>
+                <label className="eyebrow-label">One-Time Fee ({currency})</label>
                 <Input
                   value={oneTimeFee}
                   onChange={e => setOneTimeFee(formatNumberWithCommas(e.target.value))}
                   placeholder="e.g. 1,214,000"
-                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-border bg-card bg-secondary text-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                <label className="eyebrow-label">
                   MRR ({currency}) <span className="text-slate-400 normal-case font-normal">monthly</span>
                 </label>
                 <Input
                   value={mrr}
                   onChange={e => setMrr(formatNumberWithCommas(e.target.value))}
                   placeholder="e.g. 50,000"
-                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-border bg-card bg-secondary text-foreground"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                <label className="eyebrow-label">
                   Contract Length <span className="text-slate-400 normal-case font-normal">months</span>
                 </label>
                 <Input
@@ -469,14 +469,14 @@ export function EditDealModal({ deal, onClose }: Props) {
                   value={contractLength}
                   onChange={e => setContractLength(e.target.value)}
                   placeholder="e.g. 12"
-                  className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                  className="h-11 sm:h-9 text-ssm border border-border bg-card bg-secondary text-foreground"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                <label className="eyebrow-label">
                   Total Value <span className="text-slate-400 normal-case font-normal">computed</span>
                 </label>
-                <div className="h-11 sm:h-9 flex items-center px-3 rounded-lg border border-slate-200 dark:border-white/[.06] bg-slate-100 dark:bg-white/[.04] text-ssm tabular-nums text-slate-600 dark:text-slate-400">
+                <div className="h-11 sm:h-9 flex items-center px-3 rounded-lg border border-border bg-secondary text-ssm tabular-nums text-muted-foreground">
                   {(() => {
                     const otf = parseFloat(oneTimeFee.replace(/,/g, '')) || 0
                     const mrrVal = parseFloat(mrr.replace(/,/g, '')) || 0
@@ -492,21 +492,21 @@ export function EditDealModal({ deal, onClose }: Props) {
 
           {/* Reseller revenue fields — only shown for reseller deals */}
           {isReseller && (
-            <div className="flex flex-col gap-3 rounded-xl border border-blue-200 dark:border-blue-800/40 p-3 bg-blue-50/40 dark:bg-blue-950/20">
-              <div className="text-xxs font-semibold text-blue-500 uppercase tracking-wider">Reseller Pricing</div>
+            <div className="flex flex-col gap-3 rounded-md border border-blue-200 dark:border-blue-800/40 p-3 bg-blue-50/40 dark:bg-blue-950/20">
+              <div className="eyebrow-label text-blue-500">Reseller Pricing</div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Cost Price ({currency})</label>
+                  <label className="eyebrow-label">Cost Price ({currency})</label>
                   <Input
                     value={costPrice}
                     onChange={e => setCostPrice(formatNumberWithCommas(e.target.value))}
                     placeholder="e.g. 500,000"
-                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                    className="h-11 sm:h-9 text-ssm border border-border bg-card bg-secondary text-foreground"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                  <label className="eyebrow-label">
                     Gross Margin <span className="text-slate-400 normal-case font-normal">%</span>
                   </label>
                   <Input
@@ -517,7 +517,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                     value={marginPercent}
                     onChange={e => setMarginPercent(e.target.value)}
                     placeholder="e.g. 15"
-                    className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+                    className="h-11 sm:h-9 text-ssm border border-border bg-card bg-secondary text-foreground"
                   />
                 </div>
               </div>
@@ -533,7 +533,7 @@ export function EditDealModal({ deal, onClose }: Props) {
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-blue-200 dark:border-blue-800/30">
                     <div>
                       <span className="text-slate-500">Billing price</span>
-                      <span className="ml-2 font-bold text-slate-900 dark:text-white">
+                      <span className="ml-2 font-bold text-foreground">
                         {formatMoney(billing, currency)}
                       </span>
                     </div>
@@ -551,20 +551,20 @@ export function EditDealModal({ deal, onClose }: Props) {
 
           {/* Close Date */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Expected Close Date <span className="text-slate-400">(optional)</span>
             </label>
             <Input
               type="date"
               value={closeDate}
               onChange={e => setCloseDate(e.target.value)}
-              className="h-11 sm:h-9 text-ssm border border-slate-200 dark:border-white/[.1] bg-white dark:bg-[#2a2d31] text-slate-900 dark:text-white"
+              className="h-11 sm:h-9 text-ssm border border-border bg-card bg-secondary text-foreground"
             />
           </div>
 
           {/* Sub Account Manager */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Sub Account Manager <span className="text-slate-400">(optional)</span>
             </label>
             <Select value={subAccountManagerId || '__none__'} onValueChange={v => setSubAccountManagerId(v === '__none__' ? '' : v)}>
@@ -584,7 +584,7 @@ export function EditDealModal({ deal, onClose }: Props) {
 
           {/* Builders */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+            <label className="eyebrow-label">
               Builders <span className="text-slate-400">(optional)</span>
             </label>
             <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -594,12 +594,12 @@ export function EditDealModal({ deal, onClose }: Props) {
                 builders.map(uid => {
                   const u = allUsers.find(x => x.id === uid)
                   return (
-                    <span key={uid} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xxs font-medium bg-slate-100 dark:bg-white/[.06] text-slate-700 dark:text-slate-200">
+                    <span key={uid} className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded text-xxs font-medium bg-secondary text-foreground">
                       {u?.name || u?.email || uid}
                       <button
                         type="button"
                         onClick={() => setBuilders(builders.filter(b => b !== uid))}
-                        className="ml-0.5 rounded hover:bg-slate-200 dark:hover:bg-white/[.08] p-0.5"
+                        className="ml-0.5 rounded hover:bg-skeleton p-0.5"
                       >
                         <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
                           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -634,7 +634,7 @@ export function EditDealModal({ deal, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+              className="flex-1 h-11 sm:h-9 rounded-lg border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               Cancel
             </button>

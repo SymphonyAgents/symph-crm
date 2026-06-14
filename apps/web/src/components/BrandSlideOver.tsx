@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { cn, getInitials, getBrandColor, timeAgo, formatDealTitle, toPascalCase } from '@/lib/utils'
+import { cn, getInitials, getBrandColor, timeAgo, formatDealTitle, formatBrandName, toPascalCase } from '@/lib/utils'
 import { formatCurrencyBreakdown, formatDealMoney, sumMoneyByCurrency } from '@/lib/currency'
 import { STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies, useGetContactsByCompany } from '@/lib/hooks/queries'
@@ -23,6 +23,13 @@ interface BrandSlideOverProps {
   onOpenDeal?: (dealId: string) => void
 }
 
+type BrandDetailRow = {
+  label: string
+  value: string
+  href?: string
+  copyValue?: string
+}
+
 const UNASSIGNED_ID = '__unassigned__'
 
 function CopyButton({ value }: { value: string }) {
@@ -39,7 +46,7 @@ function CopyButton({ value }: { value: string }) {
         'shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xxs font-medium transition-colors',
         copied
           ? 'border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-500/10'
-          : 'border-black/[.08] dark:border-white/[.1] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+          : 'border-border text-muted-foreground hover:bg-surface-hover',
       )}
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
@@ -65,14 +72,57 @@ function StagePill({ stage }: { stage: string }) {
 
 function StatCard({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div className="flex-1 min-w-0 bg-slate-50 dark:bg-white/[.03] rounded-lg px-3 py-2.5">
-      <div className="text-atom font-medium text-slate-400 uppercase tracking-wide">{label}</div>
+    <div className="flex-1 min-w-0 bg-surface-alt rounded-lg px-3 py-2.5">
+      <div className="eyebrow-label">{label}</div>
       <div
         className="text-sbase font-bold mt-0.5 tabular-nums truncate"
         style={color ? { color } : undefined}
       >
         {value}
       </div>
+    </div>
+  )
+}
+
+function formatBrandDate(value: string | null | undefined): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function getWebsiteHref(value: string): string {
+  return value.startsWith('http') ? value : `https://${value}`
+}
+
+function DetailRow({ label, value, href, copyValue }: { label: string; value: React.ReactNode; href?: string; copyValue?: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-border py-2.5 last:border-b-0">
+      <div className="eyebrow-label w-24 shrink-0 pt-0.5">{label}</div>
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2 text-right text-xs text-muted-foreground">
+        {href && typeof value === 'string' ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 truncate text-primary hover:underline"
+            onClick={e => e.stopPropagation()}
+          >
+            {value}
+          </a>
+        ) : (
+          <span className="min-w-0 truncate">{value}</span>
+        )}
+        {copyValue && <CopyButton value={copyValue} />}
+      </div>
+    </div>
+  )
+}
+
+function EmptyDetails() {
+  return (
+    <div className="rounded-lg border border-dashed border-border bg-surface-alt px-3 py-4 text-center text-xs text-muted-foreground">
+      No brand details saved yet
     </div>
   )
 }
@@ -241,6 +291,36 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
   const contactCount = people.length
   const brandColor = brand ? getBrandColor(brand.name) : '#94a3b8'
+  const latestActivityAt = useMemo(() => {
+    const timestamps = [
+      ...activities.map(activity => activity.createdAt),
+      ...brandDeals.map(deal => deal.lastActivityAt ?? deal.updatedAt ?? deal.createdAt),
+    ]
+      .filter(Boolean)
+      .map(value => new Date(value as string).getTime())
+      .filter(value => !Number.isNaN(value))
+
+    if (!timestamps.length) return null
+    return new Date(Math.max(...timestamps)).toISOString()
+  }, [activities, brandDeals])
+  const createdByName = brand?.createdBy ? userMap.get(brand.createdBy) : null
+  const detailRows = useMemo<BrandDetailRow[]>(() => {
+    if (!brand || isUnassigned) return []
+
+    const createdAt = formatBrandDate(brand.createdAt)
+    const rows: Array<BrandDetailRow | null> = [
+      brand.industry ? { label: 'Industry', value: toPascalCase(brand.industry) } : null,
+      brand.domain ? { label: 'Domain', value: brand.domain, copyValue: brand.domain } : null,
+      brand.website ? { label: 'Website', value: brand.website, href: getWebsiteHref(brand.website), copyValue: brand.website } : null,
+      brand.hqLocation ? { label: 'HQ', value: toPascalCase(brand.hqLocation) } : null,
+      { label: 'Contacts', value: `${contactCount} contact${contactCount !== 1 ? 's' : ''}` },
+      createdAt ? { label: 'Created', value: createdAt } : null,
+      createdByName ? { label: 'Created By', value: createdByName } : null,
+      latestActivityAt ? { label: 'Last Activity', value: timeAgo(latestActivityAt) } : null,
+    ]
+
+    return rows.filter((row): row is BrandDetailRow => Boolean(row))
+  }, [brand, contactCount, createdByName, isUnassigned, latestActivityAt])
 
   return (
     <>
@@ -257,7 +337,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
       <div
         className={cn(
           'fixed right-0 top-0 h-full w-full sm:w-[380px] md:w-[420px] z-40',
-          'bg-white dark:bg-[#1e1e21] border-l border-black/[.06] dark:border-white/[.08]',
+          'bg-card border-l border-border',
           'shadow-2xl flex flex-col',
           'transition-transform duration-200 ease-out',
           isOpen ? 'translate-x-0' : 'translate-x-full',
@@ -266,7 +346,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
         {brand && (
           <>
             {/* Header */}
-            <div className="shrink-0 px-5 pt-5 pb-4 border-b border-black/[.06] dark:border-white/[.08]">
+            <div className="shrink-0 px-5 pt-5 pb-4 border-b border-border">
               <div className="flex items-start gap-3">
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold shrink-0"
@@ -276,8 +356,8 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-sbase font-semibold text-slate-900 dark:text-white truncate">
-                    {toPascalCase(brand.name)}
+                  <h2 className="text-sbase font-semibold text-foreground truncate">
+                    {formatBrandName(brand.name)}
                   </h2>
                   {!isUnassigned && (
                     <div className="flex items-center gap-1 text-xs text-slate-400 mt-0.5 flex-wrap">
@@ -309,7 +389,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
                 <button
                   onClick={onClose}
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors shrink-0"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:text-foreground hover:bg-surface-hover transition-colors shrink-0"
                 >
                   <X size={14} />
                 </button>
@@ -322,9 +402,34 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
               <StatCard label="Open Value" value={openValueLabel} color={isUnassigned ? undefined : brandColor} />
             </div>
 
+            {!isUnassigned && (
+              <div className="shrink-0 px-5 pb-3">
+                <div className="rounded-lg border border-border bg-card px-3">
+                  <div className="border-b border-border py-2.5">
+                    <div className="eyebrow-label">Brand Details</div>
+                  </div>
+                  {detailRows.length > 0 ? (
+                    detailRows.map(row => (
+                      <DetailRow
+                        key={row.label}
+                        label={row.label}
+                        value={row.value}
+                        href={row.href}
+                        copyValue={row.copyValue}
+                      />
+                    ))
+                  ) : (
+                    <div className="py-3">
+                      <EmptyDetails />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Tab switcher — hide People tab for unassigned */}
             {!isUnassigned && (
-              <div className="shrink-0 px-5 flex gap-4 border-b border-black/[.06] dark:border-white/[.08]">
+              <div className="shrink-0 px-5 flex gap-4 border-b border-border">
                 {(['deals', 'people'] as const).map(t => (
                   <button
                     key={t}
@@ -333,7 +438,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                       'px-1 py-2.5 text-xs font-semibold border-b-2 transition-colors capitalize',
                       tab === t
                         ? 'border-primary text-primary'
-                        : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300',
+                        : 'border-transparent text-slate-400 hover:text-slate-600 hover:text-foreground',
                     )}
                   >
                     {t}
@@ -357,12 +462,12 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                         key={deal.id}
                         onClick={() => onOpenDeal?.(deal.id)}
                         className={cn(
-                          'px-3.5 py-3 rounded-lg transition-colors border border-black/[.06] dark:border-white/[.08]',
-                          onOpenDeal && 'cursor-pointer hover:border-black/[.12] dark:hover:border-white/[.15] hover:bg-slate-50 dark:hover:bg-white/[.02]',
+                          'px-3.5 py-3 rounded-lg transition-colors border border-border',
+                          onOpenDeal && 'cursor-pointer hover:border-border dark:hover:border-white/[.15] hover:bg-surface-hover',
                         )}
                       >
                         <div className="flex items-center justify-between gap-3">
-                          <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">
+                          <div className="text-ssm font-semibold text-foreground truncate">
                             {formatDealTitle(deal.title)}
                           </div>
                           <StagePill stage={deal.stage ?? ''} />
@@ -404,13 +509,13 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                   {!showAddPerson ? (
                     <button
                       onClick={() => setShowAddPerson(true)}
-                      className="flex items-center gap-1.5 w-full px-3.5 py-2.5 text-xs font-medium text-primary hover:bg-primary/[.06] rounded-lg border border-dashed border-black/[.1] dark:border-white/[.1] transition-colors"
+                      className="flex items-center gap-1.5 w-full px-3.5 py-2.5 text-xs font-medium text-primary hover:bg-primary/[.06] rounded-lg border border-dashed border-border transition-colors"
                     >
                       <Plus size={14} />
                       Add Person
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-3.5 space-y-2.5">
+                    <div className="rounded-lg border border-border bg-card p-3.5 space-y-2.5">
                       <Input
                         autoFocus
                         type="text"
@@ -479,7 +584,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                             setShowAddPerson(false)
                             setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
                           }}
-                          className="h-8 px-3.5 text-xs font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
+                          className="h-8 px-3.5 text-xs font-medium text-slate-500 hover:text-slate-700 hover:text-foreground transition-colors"
                         >
                           Cancel
                         </button>
@@ -498,7 +603,7 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                       return (
                         <div
                           key={person.id}
-                          className="rounded-lg border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4"
+                          className="rounded-lg border border-border bg-card p-4"
                         >
                           {/* Header: avatar + name + role + timestamp */}
                           <div className="flex items-center gap-3">
@@ -510,11 +615,11 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                <span className="text-sm font-semibold text-foreground truncate">
                                   {toPascalCase(person.name)}
                                 </span>
                                 {person.role && (
-                                  <span className="text-atom font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[.08] text-slate-500 dark:text-slate-400 whitespace-nowrap uppercase tracking-wide">
+                                  <span className="eyebrow-label rounded-md bg-secondary px-2 py-0.5 whitespace-nowrap">
                                     {person.role}
                                   </span>
                                 )}
@@ -529,21 +634,21 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
 
                           {/* Contact info sections */}
                           {(person.email || person.phone) && (
-                            <div className="mt-3 pt-3 border-t border-black/[.06] dark:border-white/[.06] space-y-3">
+                            <div className="mt-3 pt-3 border-t border-border space-y-3">
                               {person.email && (
                                 <div>
-                                  <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Email</div>
+                                  <div className="eyebrow-label mb-1">Email</div>
                                   <div className="flex items-center justify-between">
-                                    <span className="text-ssm text-slate-800 dark:text-white truncate">{person.email}</span>
+                                    <span className="text-ssm text-foreground truncate">{person.email}</span>
                                     <CopyButton value={person.email} />
                                   </div>
                                 </div>
                               )}
                               {person.phone && (
                                 <div>
-                                  <div className="text-atom font-semibold text-slate-400 uppercase tracking-wide mb-1">Phone</div>
+                                  <div className="eyebrow-label mb-1">Phone</div>
                                   <div className="flex items-center justify-between">
-                                    <span className="text-ssm text-slate-800 dark:text-white">{person.phone}</span>
+                                    <span className="text-ssm text-foreground">{person.phone}</span>
                                     <CopyButton value={person.phone} />
                                   </div>
                                 </div>

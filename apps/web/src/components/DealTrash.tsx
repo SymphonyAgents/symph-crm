@@ -11,6 +11,7 @@ import { formatDealName } from '@/lib/format-deal-name'
 import { formatDealMoney } from '@/lib/currency'
 import { Button } from '@/components/ui/button'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { ApiDeal } from '@/lib/types'
 
@@ -64,16 +65,16 @@ function TrashActionDialog({
           </div>
         </DialogHeader>
         <div className="p-4">
-          <p className="text-ssm leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="text-ssm leading-relaxed text-muted-foreground">
             {isDelete ? 'Permanently delete' : 'Restore'}{' '}
-            <span className="font-semibold text-slate-900 dark:text-white">{formatDealName(target.deal.title)}</span>
+            <span className="font-semibold text-foreground">{formatDealName(target.deal.title)}</span>
             {isDelete ? ' and remove its trashed record from CRM.' : '.'}
           </p>
           <div className="mt-4 flex gap-2.5">
             <button
               type="button"
               onClick={onCancel}
-              className="h-9 flex-1 rounded-lg border border-black/[.08] text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.04]"
+              className="h-9 flex-1 rounded-lg border border-border text-xs font-semibold text-slate-600 transition-colors hover:bg-surface-alt"
             >
               Cancel
             </button>
@@ -98,8 +99,8 @@ function TrashActionDialog({
 function DealInfo({ deal, companyName }: { deal: ApiDeal; companyName: string }) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{formatDealName(deal.title)}</p>
-      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+      <p className="truncate text-ssm font-semibold text-foreground">{formatDealName(deal.title)}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
         {companyName} {deal.stage ? `· ${deal.stage}` : ''}
       </p>
     </div>
@@ -160,14 +161,14 @@ export function DealTrash() {
           </div>
         </div>
 
-        <div className="rounded-md border border-black/[.06] bg-white shadow-[var(--shadow-card)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+        <div className="rounded-md border border-border bg-card shadow-[var(--shadow-card)]">
           {isLoading ? (
             <DataTableSkeleton className="p-3" />
           ) : deals.length === 0 ? (
-            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-black/[.08] bg-slate-50/70 px-4 text-center dark:border-white/[.08] dark:bg-white/[.03]">
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-alt px-4 text-center">
               <Trash2 size={22} className="text-slate-400" />
-              <p className="mt-3 text-sm font-semibold text-slate-900 dark:text-white">Trash is empty</p>
-              <p className="mt-1 max-w-sm text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-3 text-sm font-semibold text-foreground">Trash is empty</p>
+              <p className="mt-1 max-w-sm text-xs text-muted-foreground">
                 Deleted deals will appear here until Sales restores or permanently deletes them.
               </p>
             </div>
@@ -181,20 +182,20 @@ export function DealTrash() {
                       <DealInfo deal={deal} companyName={companyName} />
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <p className="text-xxs font-semibold uppercase tracking-wide text-slate-400">Value</p>
-                          <p className="mt-0.5 text-slate-700 dark:text-slate-300">{formatDealMoney(deal)}</p>
+                          <p className="eyebrow-label">Value</p>
+                          <p className="mt-0.5 text-muted-foreground">{formatDealMoney(deal)}</p>
                         </div>
                         <div>
-                          <p className="text-xxs font-semibold uppercase tracking-wide text-slate-400">Remaining</p>
-                          <p className="mt-0.5 text-slate-700 dark:text-slate-300">{daysRemaining(deal.deleteAfter)}</p>
+                          <p className="eyebrow-label">Remaining</p>
+                          <p className="mt-0.5 text-muted-foreground">{daysRemaining(deal.deleteAfter)}</p>
                         </div>
                         <div>
-                          <p className="text-xxs font-semibold uppercase tracking-wide text-slate-400">Trashed</p>
-                          <p className="mt-0.5 text-slate-700 dark:text-slate-300">{formatDate(deal.deletedAt)}</p>
+                          <p className="eyebrow-label">Trashed</p>
+                          <p className="mt-0.5 text-muted-foreground">{formatDate(deal.deletedAt)}</p>
                         </div>
                         <div>
-                          <p className="text-xxs font-semibold uppercase tracking-wide text-slate-400">Delete after</p>
-                          <p className="mt-0.5 text-slate-700 dark:text-slate-300">{formatDate(deal.deleteAfter)}</p>
+                          <p className="eyebrow-label">Delete after</p>
+                          <p className="mt-0.5 text-muted-foreground">{formatDate(deal.deleteAfter)}</p>
                         </div>
                       </div>
                       {deal.deletedBy && (
@@ -225,34 +226,34 @@ export function DealTrash() {
                 })}
               </div>
 
-              <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[900px] text-left">
-                  <thead>
-                    <tr className="border-b border-black/[.06] text-xxs font-semibold uppercase tracking-wider text-slate-400 dark:border-white/[.08]">
-                      <th className="px-4 py-2.5">Deal</th>
-                      <th className="px-4 py-2.5">Value</th>
-                      <th className="px-4 py-2.5">Trashed</th>
-                      <th className="px-4 py-2.5">Delete after</th>
-                      <th className="px-4 py-2.5">Remaining</th>
-                      <th className="px-4 py-2.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="hidden md:block">
+                <Table className="min-w-[900px]">
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Deal</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead>Trashed</TableHead>
+                      <TableHead>Delete after</TableHead>
+                      <TableHead>Remaining</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {deals.map(deal => {
                       const companyName = companyMap.get(deal.companyId) ?? deal.brandName ?? 'No brand'
                       return (
-                        <tr key={deal.id} className="border-b border-black/[.04] text-xs text-slate-600 last:border-b-0 dark:border-white/[.05] dark:text-slate-300">
-                          <td className="px-4 py-3">
+                        <TableRow key={deal.id} className="text-muted-foreground">
+                          <TableCell>
                             <DealInfo deal={deal} companyName={companyName} />
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">{formatDealMoney(deal)}</td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="tabular-nums">{formatDealMoney(deal)}</TableCell>
+                          <TableCell>
                             <div>{formatDate(deal.deletedAt)}</div>
                             {deal.deletedBy && <div className="mt-0.5 text-xxs text-slate-400">by {userMap.get(deal.deletedBy) ?? deal.deletedBy}</div>}
-                          </td>
-                          <td className="px-4 py-3">{formatDate(deal.deleteAfter)}</td>
-                          <td className="px-4 py-3">{daysRemaining(deal.deleteAfter)}</td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell>{formatDate(deal.deleteAfter)}</TableCell>
+                          <TableCell>{daysRemaining(deal.deleteAfter)}</TableCell>
+                          <TableCell>
                             <div className="flex items-center justify-end gap-2">
                               <Button
                                 type="button"
@@ -273,12 +274,12 @@ export function DealTrash() {
                                 <Trash2 size={13} /> Delete forever
                               </Button>
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </>
           )}

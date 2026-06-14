@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full overflow-x-auto bg-card">
       <table ref={ref} className={cn('w-full border-collapse', className)} {...props} />
     </div>
   )
@@ -40,7 +40,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'px-3 py-2 text-left text-xxs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border',
+      'h-[var(--row-height-table)] px-3 text-left font-mono text-[10px] leading-[1.3] font-medium tracking-[0.06em] normal-case text-text-faint border-b border-border bg-bg-subtle',
       className
     )}
     {...props}
@@ -52,7 +52,7 @@ const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => (
-  <td ref={ref} className={cn('px-3 py-2.5 border-b border-border', className)} {...props} />
+  <td ref={ref} className={cn('h-[var(--row-height-table)] px-3 border-b border-border text-xs', className)} {...props} />
 ))
 TableCell.displayName = 'TableCell'
 

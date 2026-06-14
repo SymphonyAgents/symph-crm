@@ -13,9 +13,10 @@ import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { Avatar } from './Avatar'
 import { ComposeWindow } from './ComposeWindow'
-import { MoreHorizontal, Archive, Trash2, Mail, X } from 'lucide-react'
+import { MoreHorizontal, Archive, Trash2, Mail } from 'lucide-react'
 import { useGetInbox, useGetGmailUser } from '@/lib/hooks/queries'
 import { useSendEmail, useArchiveEmailThread, useDeleteEmailThread, useMarkThreadRead } from '@/lib/hooks/mutations'
+import { SearchInput } from '@/components/ui/search-input'
 
 interface ComposeState {
   to: string[]
@@ -154,10 +155,10 @@ function ConversationRow({
       <button
         onClick={onClick}
         className={cn(
-          'w-full text-left px-3.5 py-3 border-b border-black/[.05] dark:border-white/[.04] transition-colors duration-150 flex items-start gap-3',
+          'w-full text-left px-3.5 py-3 border-b border-border transition-colors duration-150 flex items-start gap-3',
           selected
             ? 'bg-primary/[0.06] dark:bg-primary/[0.12]'
-            : 'hover:bg-slate-50 dark:hover:bg-white/[.03]',
+            : 'hover:bg-surface-alt',
         )}
       >
         <div className="relative shrink-0 mt-0.5">
@@ -171,19 +172,19 @@ function ConversationRow({
           <div className="flex items-center gap-2 mb-0.5 pr-8">
             <span className={cn(
               'text-sm truncate',
-              thread.unread ? 'font-semibold text-slate-900 dark:text-white' : 'font-medium text-slate-700 dark:text-slate-300',
+              thread.unread ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground',
             )}>
               {thread.contactName || thread.from}
             </span>
           </div>
           <div className={cn(
             'text-ssm truncate mb-0.5',
-            thread.unread ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400',
+            thread.unread ? 'font-medium text-foreground' : 'text-muted-foreground',
           )}>
             {thread.subject}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400 dark:text-slate-500 truncate leading-relaxed flex-1">{thread.snippet}</span>
+            <span className="text-xs text-text-faint truncate leading-relaxed flex-1">{thread.snippet}</span>
             <span className="text-xxs text-slate-400 shrink-0 tabular-nums">{formatRelativeDate(thread.latestDate)}</span>
           </div>
         </div>
@@ -196,7 +197,7 @@ function ConversationRow({
           onMenuToggle(isMenuOpen ? null : thread.id)
         }}
         className={cn(
-          'absolute right-2 top-3 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors',
+          'absolute right-2 top-3 w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors',
           isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
         )}
       >
@@ -208,14 +209,14 @@ function ConversationRow({
         <>
           {/* Backdrop to close menu on outside click */}
           <div className="fixed inset-0 z-40" onClick={() => onMenuToggle(null)} />
-          <div className="absolute right-2 top-10 z-50 min-w-[170px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+          <div className="absolute right-2 top-10 z-50 min-w-[170px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 onMarkRead(thread.id)
                 onMenuToggle(null)
               }}
-              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               <Mail size={13} className="text-slate-400" />
               {thread.unread ? 'Mark as read' : 'Mark as unread'}
@@ -226,7 +227,7 @@ function ConversationRow({
                 onArchive(thread.id)
                 onMenuToggle(null)
               }}
-              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+              className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
             >
               <Archive size={13} className="text-slate-400" />
               Archive
@@ -252,11 +253,11 @@ function ConversationRow({
 function DateSeparator({ date }: { date: string }) {
   return (
     <div className="flex items-center gap-3 px-5 py-3">
-      <div className="flex-1 h-px bg-black/[.06] dark:bg-white/[.06]" />
-      <span className="text-xxs font-medium text-slate-400 dark:text-slate-500 shrink-0">
+      <div className="flex-1 h-px bg-black/[.06]" />
+      <span className="text-xxs font-medium text-text-faint shrink-0">
         {formatDateSeparator(date)}
       </span>
-      <div className="flex-1 h-px bg-black/[.06] dark:bg-white/[.06]" />
+      <div className="flex-1 h-px bg-black/[.06]" />
     </div>
   )
 }
@@ -289,7 +290,7 @@ function ChatBubble({
       <div className={cn('flex flex-col max-w-[72%]', isMine ? 'items-end' : 'items-start')}>
         {/* Sender name — only for received, only when avatar shown */}
         {!isMine && showAvatar && (
-          <span className="text-xxs font-semibold text-slate-500 dark:text-slate-400 mb-1 px-0.5">
+          <span className="text-xxs font-semibold text-muted-foreground mb-1 px-0.5">
             {message.from}
           </span>
         )}
@@ -297,16 +298,16 @@ function ChatBubble({
         {/* Bubble */}
         <div
           className={cn(
-            'text-left rounded-2xl px-4 py-3 max-w-full transition-all duration-150',
+            'text-left rounded-md px-4 py-3 max-w-full transition-all duration-150',
             isMine
               ? 'bg-primary text-white rounded-br-sm hover:bg-primary/90'
-              : 'bg-card border border-black/[.07] dark:border-white/[.07] text-slate-800 dark:text-slate-200 rounded-bl-sm hover:bg-secondary shadow-[0_1px_2px_rgba(17,24,39,0.06)]',
+              : 'bg-card border border-border text-foreground rounded-bl-sm hover:bg-secondary shadow-[0_1px_2px_rgba(17,24,39,0.06)]',
           )}
         >
           {/* Message body — 16px desktop, 15px mobile for readability */}
           <p className={cn(
             'text-sm leading-[1.57] whitespace-pre-wrap break-words max-w-[460px]',
-            isMine ? 'text-white/95' : 'text-slate-800 dark:text-slate-200',
+            isMine ? 'text-white/95' : 'text-foreground',
           )}>
             {bodyContent}
           </p>
@@ -314,11 +315,11 @@ function ChatBubble({
 
         {/* Timestamp + CC indicator */}
         <div className={cn('flex items-center gap-1.5 mt-1 px-0.5', isMine ? 'flex-row-reverse' : 'flex-row')}>
-          <span className="text-xxs text-slate-400 dark:text-slate-500 tabular-nums">
+          <span className="text-xxs text-text-faint tabular-nums">
             {formatChatTime(message.date)}
           </span>
           {message.cc.length > 0 && (
-            <span className="text-xxs text-slate-400 dark:text-slate-500">
+            <span className="text-xxs text-text-faint">
               · {message.cc.length} CC
             </span>
           )}
@@ -385,9 +386,9 @@ function ReplyBox({
   }
 
   return (
-    <div className="shrink-0 border-t border-black/[.06] dark:border-white/[.06] bg-card px-4 py-3">
+    <div className="shrink-0 border-t border-border bg-card px-4 py-3">
       <div className={cn(
-        'flex items-end gap-2.5 rounded-xl border border-black/[.08] dark:border-white/[.08] bg-slate-50/60 dark:bg-white/[.03] px-3 py-2.5 transition-colors focus-within:border-primary/40 focus-within:bg-white dark:focus-within:bg-white/[.06]',
+        'flex items-end gap-2.5 rounded-md border border-border bg-surface-alt px-3 py-2.5 transition-colors focus-within:border-primary/40 focus-within:bg-card dark:focus-within:bg-white/[.06]',
       )}>
         {myEmail && (
           <Avatar name={myEmail.split('@')[0]} email={myEmail} size={26} />
@@ -399,7 +400,7 @@ function ReplyBox({
           onKeyDown={handleKeyDown}
           placeholder={`Reply to ${thread.contactName || thread.from}… (Ctrl+Enter to send)`}
           rows={1}
-          className="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-transparent outline-none border-none resize-none leading-[1.55] py-0.5 max-h-[120px]"
+          className="flex-1 min-w-0 text-sm text-foreground placeholder:text-slate-400 bg-transparent outline-none border-none resize-none leading-[1.55] py-0.5 max-h-[120px]"
         />
         <button
           onClick={handleSend}
@@ -408,7 +409,7 @@ function ReplyBox({
             'shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-150',
             body.trim() && !mutation.isPending
               ? 'bg-primary text-white hover:bg-primary/90 active:scale-95'
-              : 'bg-slate-100 dark:bg-white/[.06] text-slate-300',
+              : 'bg-secondary text-slate-300',
           )}
           title="Send (Ctrl+Enter)"
         >
@@ -481,14 +482,14 @@ function ThreadActionsMenu({
     <div ref={ref} className="relative">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen(o => !o); setDeleteConfirm(false) }}
-        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+        className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors"
         title="Thread actions"
       >
         <MoreHorizontal size={16} />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-9 z-50 min-w-[180px] bg-white dark:bg-[#1e1e21] border border-black/[.08] dark:border-white/[.1] rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div className="absolute right-0 top-9 z-50 min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
           <button
             onClick={() => {
               setOpen(false)
@@ -501,7 +502,7 @@ function ThreadActionsMenu({
                 mode: 'reply',
               })
             }}
-            className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors"
+            className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors"
           >
             <Mail size={13} className="text-slate-400" />
             Email
@@ -510,7 +511,7 @@ function ThreadActionsMenu({
           <button
             onClick={() => archiveMutation.mutate(thread.id)}
             disabled={archiveMutation.isPending}
-            className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.06] transition-colors disabled:opacity-50"
+            className="flex items-center gap-2.5 w-full px-3 py-1.5 text-ssm text-muted-foreground hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             <Archive size={13} className="text-slate-400" />
             <>{archiveMutation.isPending && <span className="inline-block w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />}Archive</>
@@ -525,12 +526,12 @@ function ThreadActionsMenu({
               Move to trash
             </button>
           ) : (
-            <div className="px-3 py-2 border-t border-black/[.04] dark:border-white/[.06]">
-              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Move to trash?</p>
+            <div className="px-3 py-2 border-t border-border">
+              <p className="text-xs text-muted-foreground mb-2">Move to trash?</p>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => setDeleteConfirm(false)}
-                  className="flex-1 px-2 py-1 text-xs rounded-md border border-black/[.06] dark:border-white/[.08] text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                  className="flex-1 px-2 py-1 text-xs rounded-md border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
                 >
                   Cancel
                 </button>
@@ -577,11 +578,11 @@ function ChatView({
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Chat header */}
-      <div className="shrink-0 px-3 sm:px-5 py-3.5 border-b border-black/[.06] dark:border-white/[.06] bg-card flex items-center gap-2 sm:gap-3">
+      <div className="shrink-0 px-3 sm:px-5 py-3.5 border-b border-border bg-card flex items-center gap-2 sm:gap-3">
         {onBack && (
           <button
             onClick={onBack}
-            className="sm:hidden shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors -ml-1"
+            className="sm:hidden shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-surface-hover transition-colors -ml-1"
             aria-label="Back to inbox"
           >
             <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -591,8 +592,8 @@ function ChatView({
         )}
         <Avatar name={thread.contactName || thread.from} email={thread.contactEmail || thread.fromEmail} size={36} />
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-white truncate">{thread.contactName || thread.from}</h2>
-          <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{thread.subject}</p>
+          <h2 className="text-sm font-semibold text-foreground truncate">{thread.contactName || thread.from}</h2>
+          <p className="text-xs text-text-faint truncate">{thread.subject}</p>
         </div>
         <button
           onClick={() =>
@@ -605,7 +606,7 @@ function ChatView({
               mode: 'reply',
             })
           }
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-primary border border-black/[.08] dark:border-white/[.08] hover:border-primary/40 rounded-lg transition-colors"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-primary border border-border hover:border-primary/40 rounded-lg transition-colors"
           title="Open full compose for this reply"
         >
           <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -675,15 +676,15 @@ function InboxSkeleton() {
   return (
     <div className="flex flex-col">
       {Array.from({ length: 7 }).map((_, i) => (
-        <div key={i} className="px-3.5 py-3 border-b border-black/[.05] dark:border-white/[.05] flex items-start gap-3 animate-pulse">
-          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/[.08] shrink-0 mt-0.5" />
+        <div key={i} className="px-3.5 py-3 border-b border-border flex items-start gap-3 animate-pulse">
+          <div className="w-9 h-9 rounded-full bg-secondary shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1.5">
-              <div className="h-3 w-24 bg-slate-100 dark:bg-white/[.08] rounded" />
-              <div className="h-2.5 w-10 bg-slate-100 dark:bg-white/[.08] rounded" />
+              <div className="h-3 w-24 bg-secondary rounded" />
+              <div className="h-2.5 w-10 bg-secondary rounded" />
             </div>
-            <div className="h-2.5 w-40 bg-slate-100 dark:bg-white/[.08] rounded mb-1.5" />
-            <div className="h-2.5 w-full bg-slate-100 dark:bg-white/[.08] rounded" />
+            <div className="h-2.5 w-40 bg-secondary rounded mb-1.5" />
+            <div className="h-2.5 w-full bg-secondary rounded" />
           </div>
         </div>
       ))}
@@ -698,7 +699,7 @@ function ChannelConnectState({ channel }: { channel: Exclude<InboxChannel, 'all'
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 gap-4">
       <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm"
+        className="w-14 h-14 rounded-md flex items-center justify-center shadow-sm"
         style={{ background: cfg.bgColor, color: cfg.color }}
       >
         <span style={{ transform: 'scale(1.6)', display: 'flex', alignItems: 'center' }}>
@@ -706,10 +707,10 @@ function ChannelConnectState({ channel }: { channel: Exclude<InboxChannel, 'all'
         </span>
       </div>
       <div className="text-center">
-        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">
+        <p className="text-sm font-semibold text-foreground mb-1">
           {cfg.label} not connected
         </p>
-        <p className="text-ssm text-slate-400 dark:text-slate-500 leading-relaxed max-w-[220px]">
+        <p className="text-ssm text-text-faint leading-relaxed max-w-[220px]">
           {cfg.label} integration is coming soon. Messages will appear here once connected.
         </p>
       </div>
@@ -841,18 +842,18 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
       <div className="flex-1 flex overflow-hidden">
         {/* ── Left panel — conversation list ──────────────────────────────── */}
         <div className={cn(
-          'w-full sm:w-[420px] shrink-0 sm:border-r border-black/[.06] dark:border-white/[.06] flex-col h-full bg-white dark:bg-card',
+          'w-full sm:w-[420px] shrink-0 sm:border-r border-border flex-col h-full bg-card',
           mobileView === 'chat' ? 'hidden sm:flex' : 'flex',
         )}>
 
           {/* ── Header ─────────────────────────────────────────────────────── */}
-          <div className="px-4 pt-4 pb-0 shrink-0 border-b border-black/[.05] dark:border-white/[.05]">
+          <div className="px-4 pt-4 pb-0 shrink-0 border-b border-border">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h1 className="text-ssm font-semibold text-slate-900 dark:text-white">Inbox</h1>
+                <h1 className="text-ssm font-semibold text-foreground">Inbox</h1>
                 {!isLoading && !needsReconnect && (channelTab === 'all' || channelTab === 'email') && (
                   <p className="text-xxs text-slate-400 mt-0.5 tabular-nums">
-                    {threads.length} conversation{threads.length !== 1 ? 's' : ''} this month
+                    {threads.length} conversation{threads.length !== 1 ? 's' : ''} this month · Unified messages and replies
                   </p>
                 )}
               </div>
@@ -889,7 +890,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
                       'w-[52px] py-2.5',
                       isActive
                         ? 'border-b-primary text-primary bg-primary/[0.04] dark:bg-primary/[0.08]'
-                        : 'border-b-transparent text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04]',
+                        : 'border-b-transparent text-text-faint hover:text-slate-600 hover:text-foreground hover:bg-surface-hover',
                     )}
                     title={ch.label}
                     aria-label={ch.label}
@@ -914,27 +915,15 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
 
           {/* ── Search + filter row — email/all channels only ─────────────── */}
           {(channelTab === 'all' || channelTab === 'email') && (
-            <div className="px-3 py-2.5 shrink-0 border-b border-black/[.04] dark:border-white/[.04]">
-              <div className="relative mb-2">
-                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                  <circle cx={11} cy={11} r={8} /><path d="M21 21l-4.35-4.35" />
-                </svg>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search conversations…"
-                  className="w-full pl-8 pr-7 py-[7px] text-ssm bg-slate-50 dark:bg-white/[.04] border border-black/[.07] dark:border-white/[.07] rounded-lg text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary/40 transition-colors"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
+            <div className="px-3 py-2.5 shrink-0 border-b border-border">
+              <SearchInput
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onClear={() => setSearch('')}
+                placeholder="Search conversations…"
+                containerClassName="mb-2 h-9"
+                className="text-ssm"
+              />
               <div className="flex gap-1">
                 {(['all', 'unread'] as FilterTab[]).map(tab => (
                   <button
@@ -944,7 +933,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
                       'px-3 py-1 rounded-full text-xs font-semibold capitalize transition-colors',
                       filter === tab
                         ? 'bg-primary text-white'
-                        : 'bg-slate-100 dark:bg-white/[.06] text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/[.10]',
+                        : 'bg-secondary text-muted-foreground hover:bg-skeleton',
                     )}
                   >
                     {tab}
@@ -967,7 +956,7 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
               <InboxSkeleton />
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center gap-3 py-16 px-6">
-                <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/[.06] flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center">
                   <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" className="text-slate-400">
                     <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -1065,14 +1054,14 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white dark:bg-card border border-black/[.06] dark:border-white/[.06] shadow-[0_1px_3px_rgba(17,24,39,0.06)] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-card border border-border shadow-[0_1px_3px_rgba(17,24,39,0.06)] flex items-center justify-center">
                 <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.4} strokeLinecap="round" className="text-slate-300">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>
               </div>
               <div className="text-center">
-                <div className="text-ssm font-semibold text-slate-400 dark:text-slate-500">Select a conversation</div>
-                <div className="text-xs text-slate-300 dark:text-slate-600 mt-1">or compose a new message</div>
+                <div className="text-ssm font-semibold text-text-faint">Select a conversation</div>
+                <div className="text-xs text-text-faint mt-1">or compose a new message</div>
               </div>
             </div>
           )}

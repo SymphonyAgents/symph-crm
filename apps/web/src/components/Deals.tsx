@@ -4,7 +4,8 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetCompanies, useGetDeals, useGetMyPartnerDealGroups, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
-import { cn, getInitials, getBrandColor, formatServiceType, formatDealTitle, toPascalCase } from '@/lib/utils'
+import { SearchInput } from '@/components/ui/search-input'
+import { cn, getInitials, getBrandColor, formatServiceType, formatDealTitle, formatBrandName, toPascalCase } from '@/lib/utils'
 import { formatCurrencyBreakdown, formatDealMoney, formatMoney, sumMoneyByCurrency, type CurrencyTotals } from '@/lib/currency'
 import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal, ApiPartnerDealGroup } from '@/lib/types'
@@ -15,7 +16,7 @@ import { EmptyState } from './EmptyState'
 import { CreateBrandModal } from './CreateBrandModal'
 import { CreateDealModal } from './CreateDealModal'
 import { BrandSlideOver } from './BrandSlideOver'
-import { Paperclip, Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useUpdateCompany, useDeleteCompany } from '@/lib/hooks/mutations'
 import { Combobox } from '@/components/ui/combobox'
 import { INDUSTRY_OPTIONS } from '@/lib/constants'
@@ -76,11 +77,11 @@ function BrandDetailModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-0 duration-200" onClick={onClose}>
       <div
-        className="bg-white dark:bg-[#1a1d21] rounded-xl shadow-2xl border border-black/[.08] dark:border-white/[.08] w-[90vw] max-w-[640px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
+        className="bg-card rounded-md shadow-2xl border border-border w-[90vw] max-w-[640px] max-h-[80vh] flex flex-col animate-in fade-in-0 zoom-in-95 duration-150"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal header */}
-        <div className="flex items-center gap-3 p-4 border-b border-black/[.06] dark:border-white/[.08] shrink-0">
+        <div className="flex items-center gap-3 p-4 border-b border-border shrink-0">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center text-sm font-semibold"
             style={{ background: `${group.color}15`, color: group.color }}
@@ -88,8 +89,8 @@ function BrandDetailModal({
             {getInitials(group.company.name)}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sbase font-semibold text-slate-900 dark:text-white truncate">
-              {group.company.name}
+            <div className="text-sbase font-semibold text-foreground truncate">
+              {formatBrandName(group.company.name)}
             </div>
             <div className="flex items-center gap-2 text-xxs text-slate-400 mt-0.5">
               {group.company.industry && <span>{group.company.industry}</span>}
@@ -109,21 +110,21 @@ function BrandDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.08] transition-colors"
+            className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors"
           >
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
 
         {/* Stats bar */}
-        <div className="flex items-center gap-4 px-4 py-2.5 border-b border-black/[.04] dark:border-white/[.06] bg-slate-50/50 dark:bg-white/[.02] shrink-0">
+        <div className="flex items-center gap-4 px-4 py-2.5 border-b border-border bg-surface-alt shrink-0">
           <div className="text-xs">
             <span className="text-slate-400">Deals:</span>{' '}
-            <span className="font-semibold text-slate-700 dark:text-slate-300">{group.deals.length}</span>
+            <span className="font-semibold text-muted-foreground">{group.deals.length}</span>
           </div>
           <div className="text-xs">
             <span className="text-slate-400">Active:</span>{' '}
-            <span className="font-semibold text-slate-700 dark:text-slate-300">{group.activeCount}</span>
+            <span className="font-semibold text-muted-foreground">{group.activeCount}</span>
           </div>
           <div className="text-xs">
             <span className="text-slate-400">Value:</span>{' '}
@@ -147,20 +148,20 @@ function BrandDetailModal({
                 <div
                   key={deal.id}
                   onClick={() => { onClose(); onOpenDeal(deal.id) }}
-                  className="flex items-center gap-3 px-4 py-3 border-b border-black/[.04] dark:border-white/[.06] cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[.03] transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-surface-hover transition-colors"
                 >
                   <div
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ background: STAGE_COLORS[deal.stage] || '#94a3b8' }}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-ssm font-medium text-slate-900 dark:text-white truncate">
+                    <div className="text-ssm font-medium text-foreground truncate">
                       {formatDealTitle(deal.title)}
                     </div>
                     {tags.length > 0 && (
                       <div className="flex gap-1 mt-0.5 flex-wrap items-center">
                         {tags.slice(0, 3).map(s => (
-                          <span key={s} className="text-atom font-medium px-1.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[.06] text-slate-500 whitespace-nowrap">
+                          <span key={s} className="text-atom font-medium px-1.5 py-0.5 rounded-lg bg-secondary text-slate-500 whitespace-nowrap">
                             {formatServiceType(s)}
                           </span>
                         ))}
@@ -173,7 +174,7 @@ function BrandDetailModal({
                     )}
                   </div>
                   <StagePill stage={deal.stage} />
-                  <div className="text-ssm font-medium text-slate-700 dark:text-slate-300 tabular-nums whitespace-nowrap">
+                  <div className="text-ssm font-medium text-muted-foreground tabular-nums whitespace-nowrap">
                     {formatDealMoney(deal)}
                   </div>
                 </div>
@@ -192,7 +193,7 @@ function LastActivityCell({ iso }: { iso: string | null }) {
   if (!iso) {
     return (
       <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+        <span className="w-2 h-2 rounded-full bg-text-ghost shrink-0" />
         <span className="text-xs text-slate-400">No activity</span>
       </div>
     )
@@ -206,7 +207,7 @@ function LastActivityCell({ iso }: { iso: string | null }) {
   return (
     <div className="flex items-center gap-1.5">
       <span className={cn('w-2 h-2 rounded-full shrink-0', dotColor)} />
-      <span className="text-xs text-slate-600 dark:text-slate-400 tabular-nums">
+      <span className="text-xs text-muted-foreground tabular-nums">
         {diffDays === 0 ? 'Today' : diffDays === 1 ? '1 day ago' : `${diffDays} days ago`}
       </span>
     </div>
@@ -242,23 +243,23 @@ function PartnerDealMobileCard({ row, onOpen }: { row: PartnerDealRow; onOpen: (
           onOpen()
         }
       }}
-      className="w-full rounded-md border border-black/[.06] bg-white p-4 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-transform active:scale-[0.99] dark:border-white/[.08] dark:bg-[#1e1e21]"
+      className="w-full rounded-md border border-border bg-card p-4 text-left shadow-card transition-transform active:scale-[0.99]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-slate-900 dark:text-white">{formatDealTitle(deal.title)}</div>
+          <div className="truncate text-sm font-semibold text-foreground">{formatDealTitle(deal.title)}</div>
           <div className="mt-1 truncate text-xs text-slate-400">{row.groupNames.join(', ') || deal.brandName || 'Shared deal'}</div>
         </div>
         <StagePill stage={deal.stage} />
       </div>
       <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
         <div>
-          <div className="text-xxs uppercase tracking-[0.05em] text-slate-400">Value</div>
-          <div className="mt-0.5 font-medium text-slate-700 dark:text-slate-300">{formatDealMoney(deal)}</div>
+          <div className="eyebrow-label">Value</div>
+          <div className="mt-0.5 font-medium text-muted-foreground">{formatDealMoney(deal)}</div>
         </div>
         <div>
-          <div className="text-xxs uppercase tracking-[0.05em] text-slate-400">Commission</div>
-          <div className="mt-0.5 text-slate-600 dark:text-slate-400">{formatPartnerCommission(deal, row.commissionAmount)}</div>
+          <div className="eyebrow-label">Commission</div>
+          <div className="mt-0.5 text-muted-foreground">{formatPartnerCommission(deal, row.commissionAmount)}</div>
         </div>
       </div>
     </div>
@@ -273,7 +274,7 @@ function PartnerDealsDataTable({ rows, search, onOpenDeal }: { rows: PartnerDeal
       header: ({ column }) => <SortableHeader column={column}>Deal</SortableHeader>,
       cell: ({ row }) => (
         <div className="min-w-0">
-          <div className="truncate text-ssm font-semibold text-slate-900 dark:text-white">{formatDealTitle(row.original.deal.title)}</div>
+          <div className="truncate text-ssm font-semibold text-foreground">{formatDealTitle(row.original.deal.title)}</div>
           <div className="mt-0.5 truncate text-xxs text-slate-400">{row.original.deal.brandName || 'No brand'}</div>
         </div>
       ),
@@ -284,7 +285,7 @@ function PartnerDealsDataTable({ rows, search, onOpenDeal }: { rows: PartnerDeal
       id: 'partnerGroup',
       header: ({ column }) => <SortableHeader column={column}>Partner group</SortableHeader>,
       cell: ({ row }) => (
-        <span className="text-ssm text-slate-600 dark:text-slate-300">{row.original.groupNames.join(', ') || 'Shared'}</span>
+        <span className="text-ssm text-muted-foreground">{row.original.groupNames.join(', ') || 'Shared'}</span>
       ),
       size: 180,
     },
@@ -292,7 +293,7 @@ function PartnerDealsDataTable({ rows, search, onOpenDeal }: { rows: PartnerDeal
       accessorKey: 'deal.value',
       id: 'value',
       header: () => <span>Value</span>,
-      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatDealMoney(row.original.deal)}</span>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-muted-foreground">{formatDealMoney(row.original.deal)}</span>,
       enableSorting: false,
       size: 120,
     },
@@ -300,7 +301,7 @@ function PartnerDealsDataTable({ rows, search, onOpenDeal }: { rows: PartnerDeal
       accessorFn: row => Number(row.commissionAmount ?? 0),
       id: 'commission',
       header: ({ column }) => <SortableHeader column={column}>Commission</SortableHeader>,
-      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-slate-700 dark:text-slate-300">{formatPartnerCommission(row.original.deal, row.original.commissionAmount)}</span>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-muted-foreground">{formatPartnerCommission(row.original.deal, row.original.commissionAmount)}</span>,
       size: 140,
     },
     {
@@ -345,18 +346,18 @@ function BrandMobileCard({
           onOpen()
         }
       }}
-      className="w-full text-left rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.99] transition-transform cursor-pointer"
+      className="w-full text-left rounded-md border border-border bg-card p-4 shadow-[0_1px_4px_rgba(0,0,0,0.04)] active:scale-[0.99] transition-transform cursor-pointer"
     >
       <div className="flex items-start gap-3">
         <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+          className="w-11 h-11 rounded-md flex items-center justify-center text-sm font-bold shrink-0"
           style={{ background: `${row.color}18`, color: row.color }}
         >
           {getInitials(row.company.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
-            {toPascalCase(row.company.name)}
+          <div className="text-sm font-semibold text-foreground truncate">
+            {formatBrandName(row.company.name)}
           </div>
           {(row.company.industry || row.company.domain) && (
             <div className="text-xs text-slate-400 truncate mt-0.5">
@@ -370,7 +371,7 @@ function BrandMobileCard({
               <button
                 type="button"
                 onClick={() => onEditBrand(row.company)}
-                className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:text-foreground hover:bg-surface-hover transition-colors"
                 title="Edit brand"
               >
                 <Pencil size={15} />
@@ -391,21 +392,21 @@ function BrandMobileCard({
       </div>
 
       <div className="grid grid-cols-3 gap-2 mt-4">
-        <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
-          <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Value</div>
-          <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1 truncate">
+        <div className="rounded-lg bg-surface-alt px-3 py-2">
+          <div className="eyebrow-label">Value</div>
+          <div className="text-xs font-semibold tabular-nums text-foreground mt-1 truncate">
             {row.totalLabel}
           </div>
         </div>
-        <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
-          <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Deals</div>
-          <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1">
+        <div className="rounded-lg bg-surface-alt px-3 py-2">
+          <div className="eyebrow-label">Deals</div>
+          <div className="text-xs font-semibold tabular-nums text-foreground mt-1">
             {row.dealCount}
           </div>
         </div>
-        <div className="rounded-lg bg-slate-50 dark:bg-white/[.04] px-3 py-2">
-          <div className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Files</div>
-          <div className="text-xs font-semibold tabular-nums text-slate-800 dark:text-slate-200 mt-1">
+        <div className="rounded-lg bg-surface-alt px-3 py-2">
+          <div className="eyebrow-label">Files</div>
+          <div className="text-xs font-semibold tabular-nums text-foreground mt-1">
             {row.documentCount}
           </div>
         </div>
@@ -460,18 +461,18 @@ function BrandsDataTable({
         return (
           <div className="flex items-center gap-2.5 py-0.5">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
+              className="w-8 h-10 rounded-sm flex items-center justify-center text-xs font-bold shrink-0"
               style={{ background: `${r.color}18`, color: r.color }}
             >
               {getInitials(r.company.name)}
             </div>
             <div className="min-w-0">
-              <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">
-                {toPascalCase(r.company.name)}
+              <div className="text-ssm font-medium text-foreground truncate">
+                {formatBrandName(r.company.name)}
               </div>
-              {(r.company.industry || r.company.domain) && (
+              {r.company.domain && (
                 <div className="text-xxs text-slate-400 truncate">
-                  {r.company.industry || r.company.domain}
+                  {r.company.domain}
                 </div>
               )}
             </div>
@@ -480,80 +481,42 @@ function BrandsDataTable({
       },
       size: 240,
     },
-    // 2. Pipeline Value (after Brand)
+    // 2. Industry
+    {
+      id: 'industry',
+      accessorFn: r => r.company.industry ?? '',
+      header: ({ column }) => <SortableHeader column={column}>Industry</SortableHeader>,
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground truncate">
+          {row.original.company.industry || '-'}
+        </span>
+      ),
+      size: 180,
+    },
+    // 3. Pipeline Value
     {
       id: 'totalValue',
       accessorKey: 'totalLabel',
       header: () => <span>Value</span>,
       cell: ({ row }) => (
-        <span className="text-ssm font-semibold tabular-nums text-slate-700 dark:text-slate-300">
+        <span className="text-ssm font-semibold tabular-nums text-muted-foreground">
           {row.original.totalLabel}
         </span>
       ),
       enableSorting: false,
       size: 140,
     },
-    // 3. # Deals
+    // 4. # Deals
     {
       id: 'dealCount',
       accessorKey: 'dealCount',
       header: ({ column }) => <SortableHeader column={column}>Deals</SortableHeader>,
       cell: ({ getValue }) => (
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+        <span className="text-xs font-semibold text-muted-foreground tabular-nums">
           {getValue<number>()}
         </span>
       ),
       size: 80,
-    },
-    // 3b. Current Stage
-    {
-      id: 'currentStage',
-      header: ({ column }) => <SortableHeader column={column}>Stage</SortableHeader>,
-      cell: ({ row }) => {
-        const stages = row.original.stageSummary
-        if (!stages.length) return <span className="text-xs text-slate-300 dark:text-slate-600">&mdash;</span>
-        return (
-          <div className="flex flex-wrap gap-1">
-            {stages.slice(0, 2).map(s => (
-              <span
-                key={s.id}
-                className="inline-block px-2 py-px rounded-full text-xxs font-medium leading-[18px] whitespace-nowrap dark:brightness-150"
-                style={{ background: s.bg, color: s.color }}
-              >
-                {s.label}
-              </span>
-            ))}
-            {stages.length > 2 && (
-              <span className="text-xxs text-slate-400">+{stages.length - 2}</span>
-            )}
-          </div>
-        )
-      },
-      size: 180,
-    },
-    // 4. # Resources
-    {
-      id: 'documentCount',
-      accessorKey: 'documentCount',
-      header: ({ column }) => (
-        <SortableHeader column={column}>
-          <Paperclip size={12} className="shrink-0" />
-          Resources
-        </SortableHeader>
-      ),
-      cell: ({ getValue }) => {
-        const n = getValue<number>()
-        return (
-          <div className="flex items-center gap-1">
-            {n > 0 ? (
-              <span className="text-xs font-semibold text-primary tabular-nums">{n}</span>
-            ) : (
-              <span className="text-xs text-slate-300 dark:text-slate-600">-</span>
-            )}
-          </div>
-        )
-      },
-      size: 100,
     },
     // 5. Last Activity
     {
@@ -574,7 +537,7 @@ function BrandsDataTable({
         return (
           <div className="flex items-center gap-1.5">
             {name !== '-' && <Avatar name={name} src={image ?? undefined} size={20} />}
-            <span className="text-xs text-slate-700 dark:text-slate-300">{name}</span>
+            <span className="text-xs text-muted-foreground">{name}</span>
           </div>
         )
       },
@@ -592,7 +555,7 @@ function BrandsDataTable({
             {onEditBrand && (
               <button
                 onClick={e => { e.stopPropagation(); onEditBrand(r.company) }}
-                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:text-foreground hover:bg-surface-hover transition-colors"
                 title="Edit brand"
               >
                 <Pencil size={13} />
@@ -626,6 +589,7 @@ function BrandsDataTable({
           ? 'bg-blue-50 dark:bg-blue-950/20'
           : undefined
       }
+      initialSorting={[{ id: 'lastActivity', desc: true }]}
       emptyMessage="No brands found"
       emptyDescription="Try adjusting your search"
     />
@@ -691,6 +655,9 @@ export function Deals({ onOpenDeal }: DealsProps) {
       })
     }
   }, [editingBrand?.id])
+
+  useEscapeKey(useCallback(() => setEditingBrand(null), []), Boolean(editingBrand))
+  useEscapeKey(useCallback(() => setDeletingBrand(null), []), Boolean(deletingBrand))
 
   const isLoading = loadingDeals || (!isPartner && loadingCompanies) || (isPartner && loadingPartnerDealGroups)
 
@@ -907,17 +874,17 @@ export function Deals({ onOpenDeal }: DealsProps) {
           onClick={() => setEditingBrand(null)}
         >
           <div
-            className="bg-white dark:bg-[#1e1e21] rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-black/[.06] dark:border-white/[.08] w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
+            className="bg-card rounded-lg shadow-[0_8px_40px_rgba(0,0,0,0.18)] border border-border w-full max-w-[400px] mx-4 animate-in zoom-in-95 fade-in-0 duration-200"
             onClick={e => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-black/[.06] dark:border-white/[.08] flex items-center justify-between">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
               <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-white">Edit Brand</div>
+                <div className="text-sm font-semibold text-foreground">Edit Brand</div>
                 <div className="text-xs text-slate-400 mt-0.5">Update brand details</div>
               </div>
               <button
                 onClick={() => setEditingBrand(null)}
-                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="w-11 h-11 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-surface-hover transition-colors"
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                   <path d="M18 6 6 18M6 6l12 12" />
@@ -943,7 +910,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
               className="p-4 flex flex-col gap-4"
             >
               <div className="flex flex-col gap-1.5">
-                <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+                <label className="eyebrow-label">
                   Brand Name <span className="text-red-400">*</span>
                 </label>
                 <Input
@@ -958,7 +925,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Industry</label>
+                  <label className="eyebrow-label">Industry</label>
                   <Combobox
                     options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
                     value={editForm.industry}
@@ -968,7 +935,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Domain</label>
+                  <label className="eyebrow-label">Domain</label>
                   <Input
                     value={editForm.domain}
                     onChange={e => setEditForm(f => ({ ...f, domain: e.target.value }))}
@@ -980,7 +947,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">Website</label>
+                  <label className="eyebrow-label">Website</label>
                   <Input
                     value={editForm.website}
                     onChange={e => setEditForm(f => ({ ...f, website: e.target.value }))}
@@ -989,7 +956,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">HQ Location</label>
+                  <label className="eyebrow-label">HQ Location</label>
                   <Input
                     value={editForm.hqLocation}
                     onChange={e => setEditForm(f => ({ ...f, hqLocation: e.target.value }))}
@@ -1009,14 +976,14 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 <button
                   type="button"
                   onClick={() => setEditingBrand(null)}
-                  className="flex-1 h-11 sm:h-9 rounded-lg border border-black/[.08] dark:border-white/[.08] text-ssm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors"
+                  className="flex-1 h-11 sm:h-9 rounded-control border border-border text-ssm font-medium text-muted-foreground hover:bg-surface-hover  transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updateCompany.isPending || !editForm.name.trim()}
-                  className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-lg text-ssm font-medium text-white transition-colors disabled:opacity-50"
+                  className="flex-1 h-11 sm:h-9 flex items-center justify-center gap-1.5 rounded-control text-ssm font-medium text-white transition-colors disabled:opacity-50"
                   style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                 >
                   <>{updateCompany.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Save Changes</>
@@ -1034,24 +1001,24 @@ export function Deals({ onOpenDeal }: DealsProps) {
           onClick={() => setDeletingBrand(null)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full rounded-md border border-border bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete brand?</p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
+            <p className="text-sm font-semibold text-foreground">Delete brand?</p>
+            <p className="text-ssm text-muted-foreground leading-relaxed mt-1">
               This will permanently delete <strong>{deletingBrand.name}</strong>. Associated deals will become unassigned.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setDeletingBrand(null)}
-                className="flex-1 h-11 sm:h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-11 sm:h-8 rounded-control text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => deleteCompany.mutate(deletingBrand.id)}
                 disabled={deleteCompany.isPending}
-                className="flex-1 h-11 sm:h-8 flex items-center justify-center gap-1.5 rounded-lg text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
+                className="flex-1 h-11 sm:h-8 flex items-center justify-center gap-1.5 rounded-control text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-60 transition-colors"
               >
                 <>{deleteCompany.isPending && <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}Delete</>
               </button>
@@ -1064,7 +1031,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 shrink-0">
           <div>
-            <div className="text-ssm font-semibold text-slate-900 dark:text-white">{isPartner ? partnerGroupTitle : 'Brands'}</div>
+            <div className="text-ssm font-semibold text-foreground">{isPartner ? partnerGroupTitle : 'Brands'}</div>
             <div className="text-xxs text-slate-400 mt-0.5">
               {isLoading
                 ? 'Loading…'
@@ -1077,34 +1044,22 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
           <div className="sm:ml-auto flex flex-wrap gap-2 items-center w-full sm:w-auto">
             {/* Search */}
-            <div className="relative flex-1 sm:flex-none sm:w-[200px] min-w-[160px]">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <Input
-                ref={searchInputRef}
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={isPartner ? 'Search deals…' : 'Search brands…'}
-                className="border border-black/[.06] dark:border-white/[.08] bg-slate-50 dark:bg-white/[.03] rounded-lg text-ssm text-slate-900 dark:text-white w-full placeholder:text-slate-400 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none pl-8 pr-7 py-[5px] min-h-11 sm:min-h-0 sm:h-auto shadow-none"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              ref={searchInputRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onClear={() => setSearch('')}
+              placeholder={isPartner ? 'Search deals…' : 'Search brands…'}
+              containerClassName="flex-1 sm:flex-none sm:w-[200px] min-w-[160px] h-11 sm:h-8"
+              className="text-ssm"
+            />
 
             {/* New Brand / New Deal */}
             {isSales && (
               <>
                 <button
                   onClick={() => setShowCreateBrand(true)}
-                  className="h-11 sm:h-[30px] px-3 rounded-lg border border-black/[.08] dark:border-white/[.08] text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[.04] dark:bg-white/[.03] transition-colors flex items-center gap-1.5"
+                  className="h-11 sm:h-[30px] px-3 rounded-control border border-border text-xs font-medium text-muted-foreground hover:bg-surface-hover  transition-colors flex items-center gap-1.5"
                 >
                   <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
                     <path d="M12 5v14M5 12h14" />
@@ -1115,7 +1070,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 {/* New Deal */}
                 <button
                   onClick={() => setShowCreateDeal(true)}
-                  className="h-11 sm:h-[30px] px-3 rounded-lg text-xs font-medium text-white transition-colors flex items-center gap-1.5"
+                  className="h-11 sm:h-[30px] px-3 rounded-control text-xs font-medium text-white transition-colors flex items-center gap-1.5"
                   style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
                 >
                   <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
@@ -1130,7 +1085,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
         {/* Loading */}
         {isLoading && (
-          <div className="flex-1 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+          <div className="flex-1 bg-card border border-border rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
             <DataTableSkeleton />
           </div>
         )}
@@ -1158,12 +1113,12 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   />
                 ))
               ) : (
-                <div className="flex-1 flex items-center justify-center rounded-md border border-dashed border-black/[.08] text-sm text-slate-400 dark:border-white/[.08]">
+                <div className="flex-1 flex items-center justify-center rounded-md border border-dashed border-border text-sm text-slate-400 border-border">
                   No deals found
                 </div>
               )}
             </div>
-            <div className="hidden md:block flex-1 overflow-auto rounded-md border border-black/[.06] bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)] dark:border-white/[.08] dark:bg-[#1e1e21]">
+            <div className="hidden md:block flex-1 overflow-auto rounded-md border border-border bg-card shadow-card">
               <div className="min-w-[760px]">
                 <PartnerDealsDataTable
                   rows={partnerDealRows}
@@ -1189,13 +1144,13 @@ export function Deals({ onOpenDeal }: DealsProps) {
                   />
                 ))
               ) : (
-                <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-black/[.08] dark:border-white/[.08] text-sm text-slate-400">
+                <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed border-border text-sm text-slate-400">
                   No brands found
                 </div>
               )}
             </div>
-            <div className="hidden md:block flex-1 overflow-auto bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-              <div className="min-w-[860px]">
+            <div className="hidden md:block flex-1 overflow-auto bg-card border border-border rounded-lg shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+              <div className="min-w-[760px]">
                 <BrandsDataTable
                   rows={filteredTableRows}
                   onRowClick={(row) => setSelectedBrand(row.company)}

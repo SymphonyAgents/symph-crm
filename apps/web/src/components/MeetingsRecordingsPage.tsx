@@ -7,7 +7,6 @@ import {
   Check,
   FileText,
   Loader2,
-  Search,
   Mic,
   MicOff,
   Square,
@@ -26,7 +25,7 @@ import { api } from '@/lib/api'
 import type { ApiDeal, ApiMeetingListItem, ApiMeetingStatus, ApiRecording } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
-import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { Combobox } from '@/components/ui/combobox'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { MeetingAttendeeIdentity, MeetingAttendeesPopover } from '@/components/MeetingAttendeesPopover'
@@ -70,12 +69,18 @@ export function MeetingsRecordingsPage({ initialTab }: { initialTab: ActiveTab }
   }
 
   if (!isAuthenticated) {
-    return <div className="p-6 text-ssm text-slate-600 dark:text-slate-400">Please sign in.</div>
+    return <div className="p-6 text-ssm text-muted-foreground">Please sign in.</div>
   }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="shrink-0 px-4 md:px-6 pt-3 pb-0">
+        <div className="mb-3 flex flex-col gap-1">
+          <div className="text-ssm font-medium text-foreground">Meetings</div>
+          <div className="text-xxs text-slate-400 tabular-nums">
+            {meetings.length} meeting{meetings.length !== 1 ? 's' : ''} · {recordings.length} recording{recordings.length !== 1 ? 's' : ''} · Review call notes and browser recordings
+          </div>
+        </div>
         <TabFilter items={tabItems} value={activeTab} onChange={handleTabChange} />
       </div>
 
@@ -143,26 +148,24 @@ function MeetingsTab() {
     <section className="min-w-0">
       <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <TabFilter items={statusItems} value={filter} onChange={handleFilterChange} />
-        <div className="relative w-full md:w-[280px]">
-          <Search size={14} strokeWidth={1.7} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search meetings"
-            className="h-8 rounded-lg pl-8 text-xs"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          onClear={() => setSearch('')}
+          placeholder="Search meetings"
+          containerClassName="w-full md:w-[280px] h-8"
+        />
       </div>
 
       {isLoading ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+        <div className="bg-card border border-border rounded-md overflow-hidden">
           <DataTableSkeleton />
         </div>
       ) : filteredMeetings.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
-          <FileText size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">{search ? 'No meetings found' : 'No meetings yet'}</div>
-          <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">
+        <div className="bg-card border border-border rounded-md px-6 py-10 text-center">
+          <FileText size={28} strokeWidth={1.4} className="text-text-faint mx-auto mb-3" />
+          <div className="text-ssm font-medium text-foreground">{search ? 'No meetings found' : 'No meetings yet'}</div>
+          <div className="text-xxs text-muted-foreground mt-1">
             {search ? 'Try another attendee, deal, or meeting title.' : 'Passive Circleback meetings will appear here after CRM ingest.'}
           </div>
         </div>
@@ -209,14 +212,14 @@ function MeetingRow({ meeting, deals, onDelete }: { meeting: ApiMeetingListItem;
   const primaryAttendee = meeting.attendeeDetails[0] ?? (meeting.attendees[0] ? { email: meeting.attendees[0], name: null, avatarUrl: null } : null)
 
   return (
-    <div className="w-full bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 transition-colors hover:border-slate-300 dark:hover:border-white/20">
+    <div className="w-full bg-card border border-border rounded-md px-4 py-3 transition-colors hover:border-border dark:hover:border-white/20">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <Link href={`/meetings/${meeting.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30">
-          <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-white/[.06] flex items-center justify-center shrink-0">
-            <FileText size={15} strokeWidth={1.7} className="text-slate-500 dark:text-slate-300" />
+          <div className="w-9 h-9 rounded-md bg-secondary flex items-center justify-center shrink-0">
+            <FileText size={15} strokeWidth={1.7} className="text-muted-foreground" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="min-w-0 truncate text-ssm font-semibold text-slate-900 dark:text-white">{meeting.title}</p>
+            <p className="min-w-0 truncate text-ssm font-medium text-foreground">{meeting.title}</p>
             {meeting.lastError && (
               <p className="text-xxs text-red-600 dark:text-red-400 mt-1 line-clamp-1">{meeting.lastError}</p>
             )}
@@ -224,15 +227,15 @@ function MeetingRow({ meeting, deals, onDelete }: { meeting: ApiMeetingListItem;
         </Link>
 
         <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
-          <span className={cn('border rounded-md px-1.5 py-0.5 text-atom font-semibold capitalize', statusTone(meeting.status))}>
+          <span className={cn('border rounded-md px-1.5 py-0.5 text-atom font-medium capitalize', statusTone(meeting.status))}>
             {meeting.status}
           </span>
           {meeting.actionPackageStatus && (
-            <span className="border border-primary/20 bg-primary/10 rounded-md px-1.5 py-0.5 text-atom font-semibold text-primary capitalize">
+            <span className="border border-primary/20 bg-primary/10 rounded-md px-1.5 py-0.5 text-atom font-medium text-primary capitalize">
               {meeting.actionPackageStatus.replaceAll('_', ' ')}
             </span>
           )}
-          <span className="text-xxs text-slate-500 dark:text-slate-400 tabular-nums">
+          <span className="text-xxs text-muted-foreground tabular-nums">
             {meeting.startedAt ? formatDate(meeting.startedAt) : formatDate(meeting.createdAt)}
           </span>
           {primaryAttendee && <MeetingAttendeeIdentity attendee={primaryAttendee} compact />}
@@ -268,15 +271,15 @@ function DeleteMeetingDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="mx-4 w-full max-w-sm rounded-lg p-4">
-        <DialogTitle className="text-sm font-semibold text-slate-950 dark:text-white">Delete meeting?</DialogTitle>
-        <DialogDescription className="mt-1 text-ssm leading-relaxed text-slate-500 dark:text-slate-400">
-          This will permanently delete <span className="font-semibold text-slate-700 dark:text-slate-200">{meetingTitle}</span> from CRM meetings. This cannot be undone.
+        <DialogTitle className="text-sm font-medium text-slate-950">Delete meeting?</DialogTitle>
+        <DialogDescription className="mt-1 text-ssm leading-relaxed text-muted-foreground">
+          This will permanently delete <span className="font-medium text-foreground">{meetingTitle}</span> from CRM meetings. This cannot be undone.
         </DialogDescription>
         <div className="mt-4 flex gap-2.5">
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="h-8 flex-1 rounded-lg border border-black/[.1] text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:scale-[0.96] dark:border-white/[.12] dark:text-slate-300 dark:hover:bg-white/[.06]"
+            className="h-8 flex-1 rounded-lg border border-border text-xs font-medium text-slate-700 transition-colors hover:bg-surface-alt active:scale-[0.96]"
           >
             Cancel
           </button>
@@ -284,7 +287,7 @@ function DeleteMeetingDialog({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className="h-8 flex-1 rounded-lg bg-red-600 text-xs font-semibold text-white transition-colors hover:bg-red-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
+            className="h-8 flex-1 rounded-lg bg-red-600 text-xs font-medium text-white transition-colors hover:bg-red-700 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPending ? 'Deleting...' : 'Delete permanently'}
           </button>
@@ -397,17 +400,17 @@ function RecordingsTab() {
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div>
-          <h2 className="text-sbase font-semibold text-slate-900 dark:text-white tracking-tight">Recordings</h2>
-          <p className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">Capture meetings and calls in the browser.</p>
+          <h2 className="text-sbase font-medium text-foreground tracking-tight">Recordings</h2>
+          <p className="text-xxs text-muted-foreground mt-0.5">Capture meetings and calls in the browser.</p>
         </div>
 
         <div className="flex items-center gap-2">
           {(isRecording || isPaused) && (
             <div className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold tabular-nums',
+              'flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium tabular-nums',
               isRecording
                 ? 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400'
-                : 'bg-slate-50 dark:bg-white/[.06] border-black/[.06] dark:border-white/[.08] text-slate-500',
+                : 'bg-surface-alt border-border text-slate-500',
             )}>
               <span className={cn('w-2 h-2 rounded-full', isRecording ? 'bg-red-500 animate-pulse' : 'bg-slate-400')} />
               {fmtDuration(isRecording ? recorder.duration : frozenDuration.current)}
@@ -416,14 +419,14 @@ function RecordingsTab() {
 
           {isIdle && (
             <button onClick={() => recorder.start()}
-              className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
+              className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-medium rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
               <Mic size={14} strokeWidth={2} /> New Recording
             </button>
           )}
 
           {isRecording && (
             <button onClick={handleStop}
-              className="bg-red-500 hover:bg-red-600 text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
+              className="bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
               <Square size={12} strokeWidth={2} fill="currentColor" /> Stop
             </button>
           )}
@@ -431,35 +434,35 @@ function RecordingsTab() {
           {isPaused && (
             <>
               <button onClick={() => recorder.resume()}
-                className="bg-white dark:bg-white/[.06] border border-black/[.08] dark:border-white/[.1] text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.1] text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
+                className="bg-card border border-border text-muted-foreground hover:bg-surface-hover text-xs font-medium rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
                 <Mic size={13} strokeWidth={2} /> Resume
               </button>
               <button onClick={handleDone}
-                className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
+                className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-medium rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98]">
                 <Check size={13} strokeWidth={2.5} /> Done
               </button>
               <button onClick={handleCancel}
-                className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 px-2 py-1.5 transition-colors">
+                className="text-xs text-slate-400 hover:text-slate-600 hover:text-foreground px-2 py-1.5 transition-colors">
                 Cancel
               </button>
             </>
           )}
 
           {isUploading && (
-            <div className="flex items-center gap-2 bg-slate-100 dark:bg-white/[.06] text-slate-600 dark:text-slate-300 text-xs font-medium rounded-lg px-3 py-1.5">
+            <div className="flex items-center gap-2 bg-secondary text-muted-foreground text-xs font-medium rounded-lg px-3 py-1.5">
               <Loader2 size={13} strokeWidth={2} className="animate-spin" /> Saving...
             </div>
           )}
         </div>
       </div>
 
-      <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 flex items-center gap-3">
+      <div className="mb-4 bg-card border border-border rounded-md px-4 py-3 flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-[rgba(108,99,255,0.08)] dark:bg-primary/[.12] flex items-center justify-center shrink-0">
           <Upload size={14} strokeWidth={1.6} className="text-[#6c63ff] dark:text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">Import recording to Circleback</div>
-          <div className="text-xxs text-slate-500 dark:text-slate-400 mt-0.5">
+          <div className="text-ssm font-medium text-foreground">Import recording to Circleback</div>
+          <div className="text-xxs text-muted-foreground mt-0.5">
             Upload an audio/video file. Circleback will transcribe and generate notes.
           </div>
         </div>
@@ -479,7 +482,7 @@ function RecordingsTab() {
         <button
           onClick={() => cbFileInputRef.current?.click()}
           disabled={cbUploading || cbStatus === 'processing'}
-          className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="bg-[#6c63ff] hover:bg-[#5b52e8] text-white text-xs font-medium rounded-lg px-3 py-1.5 flex items-center gap-1.5 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           {cbStatus === 'uploading' || cbStatus === 'processing' ? (
             <>
@@ -495,36 +498,36 @@ function RecordingsTab() {
       </div>
 
       {(isRecording || isPaused) && (
-        <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3">
-          <label className="text-atom font-semibold uppercase tracking-[0.06em] text-slate-400">Recording title</label>
+        <div className="mb-4 bg-card border border-border rounded-md px-4 py-3">
+          <label className="eyebrow-label">Recording title</label>
           <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
             placeholder="Give this recording a name (optional)"
-            className="mt-1 w-full bg-transparent text-ssm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none" />
+            className="mt-1 w-full bg-transparent text-ssm font-medium text-foreground placeholder:text-slate-400 focus:outline-none" />
         </div>
       )}
 
       {recorder.error && (
-        <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 flex items-center gap-2">
+        <div className="mb-4 bg-card border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 flex items-center gap-2">
           <MicOff size={14} className="text-red-500 shrink-0" />
           <div className="text-xs text-red-600 dark:text-red-400">{recorder.error}</div>
         </div>
       )}
 
       {uploadError && (
-        <div className="mb-4 bg-white dark:bg-[#1e1e21] border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 text-xs text-red-600 dark:text-red-400">
+        <div className="mb-4 bg-card border border-red-200 dark:border-red-500/20 rounded-md px-4 py-3 text-xs text-red-600 dark:text-red-400">
           {uploadError}
         </div>
       )}
 
       {isLoading ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md overflow-hidden">
+        <div className="bg-card border border-border rounded-md overflow-hidden">
           <DataTableSkeleton />
         </div>
       ) : recordings.length === 0 ? (
-        <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-6 py-10 text-center">
-          <Mic size={28} strokeWidth={1.4} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <div className="text-ssm font-semibold text-slate-900 dark:text-white">No recordings yet</div>
-          <div className="text-xxs text-slate-500 dark:text-slate-400 mt-1">Hit Record to capture your first meeting.</div>
+        <div className="bg-card border border-border rounded-md px-6 py-10 text-center">
+          <Mic size={28} strokeWidth={1.4} className="text-text-faint mx-auto mb-3" />
+          <div className="text-ssm font-medium text-foreground">No recordings yet</div>
+          <div className="text-xxs text-muted-foreground mt-1">Hit Record to capture your first meeting.</div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -541,13 +544,13 @@ function RecordingRow({ recording, pendingDelete, onDelete }: {
   recording: ApiRecording; pendingDelete: boolean; onDelete: () => void
 }) {
   return (
-    <div className="bg-white dark:bg-[#1e1e21] border border-black/[.06] dark:border-white/[.08] rounded-md px-4 py-3 flex items-center gap-3">
+    <div className="bg-card border border-border rounded-md px-4 py-3 flex items-center gap-3">
       <div className="w-8 h-8 rounded-lg bg-[rgba(108,99,255,0.08)] dark:bg-primary/[.12] flex items-center justify-center shrink-0">
         <Mic size={14} strokeWidth={1.6} className="text-[#6c63ff] dark:text-primary" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{recording.title}</div>
-        <div className="text-xxs text-slate-500 dark:text-slate-400 tabular-nums mt-0.5">
+        <div className="text-ssm font-medium text-foreground truncate">{recording.title}</div>
+        <div className="text-xxs text-muted-foreground tabular-nums mt-0.5">
           {formatDate(recording.createdAt)}
           {recording.duration !== null && <span className="ml-2">{fmtDuration(recording.duration)}</span>}
         </div>

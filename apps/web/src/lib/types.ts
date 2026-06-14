@@ -145,6 +145,7 @@ export type ApiPartnerDealGroup = {
   createdBy: string | null
   createdAt: string
   updatedAt: string
+  dealCount: number
   members: ApiPartnerDealGroupMember[]
 }
 

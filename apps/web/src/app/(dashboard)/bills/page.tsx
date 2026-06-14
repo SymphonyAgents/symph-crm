@@ -6,12 +6,13 @@ import { useQueryClient, useQueries } from '@tanstack/react-query'
 import { useGetDeals, useGetCompanies } from '@/lib/hooks/queries'
 import { useDeleteBilling } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
-import { cn, formatDealTitle, getInitials, getBrandColor, toPascalCase } from '@/lib/utils'
+import { formatDealTitle, getInitials, getBrandColor, formatBrandName } from '@/lib/utils'
 import { formatMoney } from '@/lib/currency'
 import { Pencil, Trash2 } from 'lucide-react'
 import type { ApiDeal, ApiBilling, DealCurrency } from '@/lib/types'
 import { BillingSection } from '@/components/BillingSection'
 import { DataTableSkeleton } from '@/components/ui/data-table'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { StatusPill } from '@/components/ui/status-pill'
 import { api } from '@/lib/api'
 
@@ -54,14 +55,14 @@ function BillRow({
   const totalMilestones = billing.milestones?.length ?? 0
 
   return (
-    <tr
+    <TableRow
       onClick={onClick}
-      className="border-b border-black/[.04] dark:border-white/[.05] hover:bg-slate-50 dark:hover:bg-white/[.02] cursor-pointer transition-colors"
+      className="hover:bg-surface-hover cursor-pointer transition-colors"
     >
-      <td className="px-4 py-3 text-xs font-medium text-slate-800 dark:text-white">
+      <TableCell className="font-medium text-foreground">
         {formatDealTitle(deal.title)}
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         {deal.companyId && companyMap.get(deal.companyId) ? (() => {
           const name = companyMap.get(deal.companyId)!
           const color = getBrandColor(name)
@@ -73,42 +74,42 @@ function BillRow({
               >
                 {getInitials(name)}
               </div>
-              <span className="text-xs text-slate-700 dark:text-slate-300 truncate">{toPascalCase(name)}</span>
+              <span className="text-xs text-muted-foreground truncate">{formatBrandName(name)}</span>
             </div>
           )
         })() : (
           <span className="text-xs text-slate-400">--</span>
         )}
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         <StatusPill tone="primary">{BILLING_TYPE_LABELS[billing.billingType] ?? billing.billingType}</StatusPill>
-      </td>
-      <td className="px-4 py-3 text-xs font-medium text-slate-800 dark:text-white tabular-nums text-right">
+      </TableCell>
+      <TableCell className="font-medium text-foreground tabular-nums text-right">
         {formatBillingMoney(billing.amount, deal.currency)}
-      </td>
-      <td className="px-4 py-3 text-xs text-slate-500 tabular-nums text-right">
+      </TableCell>
+      <TableCell className="text-muted-foreground tabular-nums text-right">
         {billing.monthlyDerived ? `${formatBillingMoney(billing.monthlyDerived, deal.currency)}/mo` : '--'}
-      </td>
-      <td className="px-4 py-3 text-xs text-slate-500">
+      </TableCell>
+      <TableCell className="text-muted-foreground">
         {billing.contractStart || billing.contractEnd
           ? `${formatDate(billing.contractStart)} - ${formatDate(billing.contractEnd)}`
           : '--'}
-      </td>
-      <td className="px-4 py-3 text-xs text-slate-500">
+      </TableCell>
+      <TableCell className="text-muted-foreground">
         {billing.billingType === 'milestone' && totalMilestones > 0
           ? (
             <span className="tabular-nums">
-              <span className="text-[#16a34a] font-medium">{paidCount}</span>
+              <span className="text-success-foreground font-medium">{paidCount}</span>
               <span className="text-slate-400">/{totalMilestones} paid</span>
             </span>
           )
           : '--'}
-      </td>
-      <td className="px-4 py-3">
+      </TableCell>
+      <TableCell>
         <div className="flex items-center gap-1 justify-end">
           <button
             onClick={e => { e.stopPropagation(); onEdit() }}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-surface-hover transition-colors"
           >
             <Pencil size={14} />
           </button>
@@ -119,8 +120,8 @@ function BillRow({
             <Trash2 size={14} />
           </button>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -172,56 +173,66 @@ export default function BillsPage() {
     wonDeals.forEach((d, i) => m.set(d.id, billingQueries[i]?.data))
     return m
   }, [wonDeals, billingQueries])
+  const billingRows = useMemo(
+    () => wonDeals.filter(deal => Boolean(billingByDealId.get(deal.id))),
+    [billingByDealId, wonDeals],
+  )
   const isAnyBillingLoading = billingQueries.some(q => q.isLoading)
   const isInitialLoading = isLoading || (wonDeals.length > 0 && isAnyBillingLoading)
+  const configuredBillingCount = billingRows.length
 
   return (
     <div className="p-4 md:px-6 pb-6">
-      <div className="bg-white dark:bg-[#1e1e21] rounded-xl border border-black/[.06] dark:border-white/[.08] shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="mb-4 flex flex-col gap-1">
+        <div className="text-ssm font-semibold text-foreground">Bills</div>
+        <div className="text-xxs text-slate-400 tabular-nums">
+          {isInitialLoading ? 'Loading billing records...' : `${wonDeals.length} won deal${wonDeals.length !== 1 ? 's' : ''} · ${configuredBillingCount} billing setup${configuredBillingCount !== 1 ? 's' : ''}`}
+        </div>
+      </div>
+
+      <div className="bg-card rounded-md border border-border shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
         {isInitialLoading ? (
           <DataTableSkeleton />
-        ) : wonDeals.length === 0 ? (
+        ) : wonDeals.length === 0 || billingRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} className="text-slate-300 dark:text-slate-600 mb-3">
+            <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} className="text-text-faint mb-3">
               <rect x="2" y="6" width="20" height="14" rx="2" />
               <path d="M2 10h20" />
               <path d="M6 14h4" />
             </svg>
-            <p className="text-ssm font-medium text-slate-400">No won deals yet</p>
-            <p className="text-xxs text-slate-300 dark:text-slate-600 mt-0.5">
-              Won deals with billing will appear here
+            <p className="text-ssm font-medium text-slate-400">{wonDeals.length === 0 ? 'No won deals yet' : 'No billing setups yet'}</p>
+            <p className="text-xxs text-text-faint mt-0.5">
+              {wonDeals.length === 0 ? 'Won deals with billing will appear here' : 'Add billing to won deals to populate this table'}
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px]">
-              <thead>
-                <tr className="border-b border-black/[.06] dark:border-white/[.08]">
-                  <th className="px-4 py-2.5 text-left text-xxs font-semibold text-slate-400 uppercase tracking-wider">Deal</th>
-                  <th className="px-4 py-2.5 text-left text-xxs font-semibold text-slate-400 uppercase tracking-wider">Company</th>
-                  <th className="px-4 py-2.5 text-left text-xxs font-semibold text-slate-400 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-2.5 text-right text-xxs font-semibold text-slate-400 uppercase tracking-wider">Value</th>
-                  <th className="px-4 py-2.5 text-right text-xxs font-semibold text-slate-400 uppercase tracking-wider">Monthly</th>
-                  <th className="px-4 py-2.5 text-left text-xxs font-semibold text-slate-400 uppercase tracking-wider">Period</th>
-                  <th className="px-4 py-2.5 text-left text-xxs font-semibold text-slate-400 uppercase tracking-wider">Milestones</th>
-                  <th className="px-4 py-2.5 text-right text-xxs font-semibold text-slate-400 uppercase tracking-wider w-20" />
-                </tr>
-              </thead>
-              <tbody>
-                {wonDeals.map(deal => (
-                  <BillRow
-                    key={deal.id}
-                    deal={deal}
-                    billing={billingByDealId.get(deal.id)}
-                    companyMap={companyMap}
-                    onClick={() => router.push(`/deals/${deal.id}?from=bills`)}
-                    onEdit={() => setEditTarget({ dealId: deal.id, dealTitle: deal.title, currency: deal.currency })}
-                    onDelete={() => setDeleteTarget({ dealId: deal.id, dealTitle: deal.title })}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table className="min-w-[780px]">
+            <TableHeader>
+              <TableRow className="hover:bg-transparent">
+                <TableHead>Deal</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Value</TableHead>
+                <TableHead className="text-right">Monthly</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead>Milestones</TableHead>
+                <TableHead className="w-20 text-right" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {billingRows.map(deal => (
+                <BillRow
+                  key={deal.id}
+                  deal={deal}
+                  billing={billingByDealId.get(deal.id)}
+                  companyMap={companyMap}
+                  onClick={() => router.push(`/deals/${deal.id}?from=bills`)}
+                  onEdit={() => setEditTarget({ dealId: deal.id, dealTitle: deal.title, currency: deal.currency })}
+                  onDelete={() => setDeleteTarget({ dealId: deal.id, dealTitle: deal.title })}
+                />
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
 
@@ -232,17 +243,17 @@ export default function BillsPage() {
           onClick={() => setEditTarget(null)}
         >
           <div
-            className="max-w-sm w-full max-h-[80vh] overflow-y-auto rounded-xl animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full max-h-[80vh] overflow-y-auto rounded-md animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-white dark:bg-[#1e1e21] rounded-t-xl border border-black/[.06] dark:border-white/[.08] border-b-0">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2 bg-card rounded-t-xl border border-border border-b-0">
               <div>
-                <p className="text-ssm font-semibold text-slate-900 dark:text-white">Edit Billing</p>
+                <p className="text-ssm font-semibold text-foreground">Edit Billing</p>
                 <p className="text-xxs text-slate-400 truncate max-w-[240px]">{formatDealTitle(editTarget.dealTitle)}</p>
               </div>
               <button
                 onClick={() => setEditTarget(null)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[.06] transition-colors"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:text-foreground hover:bg-surface-hover transition-colors"
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -261,17 +272,17 @@ export default function BillsPage() {
           onClick={() => setDeleteTarget(null)}
         >
           <div
-            className="max-w-sm w-full rounded-xl border border-black/[.06] dark:border-white/[.08] bg-white dark:bg-[#1e1e21] shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
+            className="max-w-sm w-full rounded-md border border-border bg-card shadow-2xl p-4 animate-in zoom-in-95 fade-in-0 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">Delete billing record?</p>
-            <p className="text-ssm text-slate-600 dark:text-slate-400 leading-relaxed mt-1">
-              Remove billing for <span className="font-semibold text-slate-900 dark:text-white">{formatDealTitle(deleteTarget.dealTitle)}</span>. This will delete the billing setup and all milestones.
+            <p className="text-sm font-semibold text-foreground">Delete billing record?</p>
+            <p className="text-ssm text-muted-foreground leading-relaxed mt-1">
+              Remove billing for <span className="font-semibold text-foreground">{formatDealTitle(deleteTarget.dealTitle)}</span>. This will delete the billing setup and all milestones.
             </p>
             <div className="flex gap-2.5 mt-4">
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-black/[.08] dark:border-white/[.1] text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/[.04] transition-colors"
+                className="flex-1 h-8 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover transition-colors"
               >
                 Cancel
               </button>

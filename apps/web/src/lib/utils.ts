@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from 'clsx'
 import { extendTailwindMerge } from 'tailwind-merge'
 import { BRAND_PALETTE, AVATAR_COLORS, STAGE_ORDER, KANBAN_STAGES, COLUMN_TO_STAGE, PROGRESS_STAGES, SERVICE_TYPES } from './constants'
 import { formatDealName } from './format-deal-name'
+import { formatBrandName } from './format-brand-name'
 
 // ─── Tailwind ────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,8 @@ export function getInitials(name: string): string {
     .substring(0, 2)
     .toUpperCase()
 }
+
+export { formatBrandName }
 
 export function toPascalCase(str: string): string {
   if (!str) return ''

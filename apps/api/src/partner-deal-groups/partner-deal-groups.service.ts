@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { and, asc, eq, inArray, isNull, notInArray } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNull, notInArray } from 'drizzle-orm'
 import { CrmUserRole, CrmUserStatus } from '@symph-crm/shared'
 import { dealPartnerDealGroups, deals, partnerDealCommissions, partnerDealGroupMembers, partnerDealGroups, users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
@@ -45,6 +45,22 @@ export class PartnerDealGroupsService {
     private auditLogs: AuditLogsService,
   ) {}
 
+  private async getDealCountByGroupId(groupIds: string[]) {
+    if (groupIds.length === 0) return new Map<string, number>()
+
+    const rows = await this.db
+      .select({ groupId: dealPartnerDealGroups.groupId, dealCount: count() })
+      .from(dealPartnerDealGroups)
+      .innerJoin(deals, eq(deals.id, dealPartnerDealGroups.dealId))
+      .where(and(
+        inArray(dealPartnerDealGroups.groupId, groupIds as [string, ...string[]]),
+        isNull(deals.deletedAt),
+      ))
+      .groupBy(dealPartnerDealGroups.groupId)
+
+    return new Map(rows.map(row => [row.groupId, Number(row.dealCount)]))
+  }
+
   async findAll() {
     const rows = await this.db
       .select({
@@ -64,7 +80,10 @@ export class PartnerDealGroupsService {
       if (row.memberUserId) existing.members.push({ id: row.memberUserId, name: row.memberName, email: row.memberEmail })
       byId.set(row.group.id, existing)
     }
-    return [...byId.values()]
+
+    const groups = [...byId.values()]
+    const dealCountByGroupId = await this.getDealCountByGroupId(groups.map(group => group.id))
+    return groups.map(group => ({ ...group, dealCount: dealCountByGroupId.get(group.id) ?? 0 }))
   }
 
   async findForUser(userId: string) {
@@ -90,7 +109,10 @@ export class PartnerDealGroupsService {
       if (row.memberUserId) existing.members.push({ id: row.memberUserId, name: row.memberName, email: row.memberEmail })
       byId.set(row.group.id, existing)
     }
-    return [...byId.values()]
+
+    const groups = [...byId.values()]
+    const dealCountByGroupId = await this.getDealCountByGroupId(groups.map(group => group.id))
+    return groups.map(group => ({ ...group, dealCount: dealCountByGroupId.get(group.id) ?? 0 }))
   }
 
   async findOne(id: string) {
@@ -108,8 +130,10 @@ export class PartnerDealGroupsService {
 
     const first = rows[0]
     if (!first) return null
+    const dealCountByGroupId = await this.getDealCountByGroupId([first.group.id])
     return {
       ...first.group,
+      dealCount: dealCountByGroupId.get(first.group.id) ?? 0,
       members: rows
         .filter(row => row.memberUserId)
         .map(row => ({ id: row.memberUserId as string, name: row.memberName, email: row.memberEmail })),

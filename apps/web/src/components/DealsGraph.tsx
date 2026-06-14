@@ -510,7 +510,7 @@ export function DealsGraph({ companies, deals, onOpenDeal, onOpenBrand, searchQu
           <svg ref={svgRef} className="w-full h-full" />
           {matchedNodeIds !== null && matchCount === 0 && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="text-center bg-[#1a1d27]/90 backdrop-blur-sm rounded-xl px-6 py-4 border border-white/[0.08]">
+              <div className="text-center bg-[#1a1d27]/90 backdrop-blur-sm rounded-md px-6 py-4 border border-white/[0.08]">
                 <div className="text-ssm text-white/50">No matches for &ldquo;{debouncedSearch}&rdquo;</div>
                 <div className="text-xxs text-white/25 mt-1">Try a different search term</div>
               </div>

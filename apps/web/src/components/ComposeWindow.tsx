@@ -85,10 +85,10 @@ function AddressInput({
 
   return (
     <div
-      className="flex items-start gap-1.5 px-3.5 py-2.5 border-b border-black/[.06] dark:border-white/[.06] cursor-text"
+      className="flex items-start gap-1.5 px-3.5 py-2.5 border-b border-border cursor-text"
       onClick={() => inputRef.current?.focus()}
     >
-      <span className="text-xxs font-semibold text-slate-400 uppercase tracking-wider mt-[3px] shrink-0 w-6">
+      <span className="eyebrow-label mt-[3px] shrink-0 w-6">
         {label}
       </span>
       <div className="flex-1 flex flex-wrap gap-1 min-w-0">
@@ -120,7 +120,7 @@ function AddressInput({
           onBlur={() => commit(value)}
           onPaste={handlePaste}
           placeholder={addresses.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[120px] text-ssm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-transparent outline-none border-none py-0.5"
+          className="flex-1 min-w-[120px] text-ssm text-foreground placeholder:text-slate-400 bg-transparent outline-none border-none py-0.5"
         />
       </div>
     </div>
@@ -204,7 +204,7 @@ export function ComposeWindow({
         // Mobile: full viewport overlay
         'inset-0',
         // Desktop: floating bottom-right widget
-        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-lg sm:shadow-[0_8px_40px_rgba(0,0,0,0.28)] sm:border sm:border-black/[.08] sm:dark:border-white/[.08]',
+        'sm:inset-auto sm:bottom-0 sm:right-6 sm:w-[520px] sm:max-w-[calc(100vw-1.5rem)] sm:rounded-lg sm:shadow-[0_8px_40px_rgba(0,0,0,0.28)] sm:border sm:border-border',
       )}
       onKeyDown={handleKeyDown}
     >
@@ -255,13 +255,13 @@ export function ComposeWindow({
           />
 
           {/* Subject */}
-          <div className="px-3.5 border-b border-black/[.06] dark:border-white/[.06]">
+          <div className="px-3.5 border-b border-border">
             <input
               type="text"
               value={subject}
               onChange={e => setSubject(e.target.value)}
               placeholder="Subject"
-              className="w-full py-2.5 text-ssm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-transparent outline-none border-none"
+              className="w-full py-2.5 text-ssm text-foreground placeholder:text-slate-400 bg-transparent outline-none border-none"
             />
           </div>
 
@@ -272,11 +272,11 @@ export function ComposeWindow({
             onChange={e => setBody(e.target.value)}
             placeholder="Write your message…"
             rows={8}
-            className="flex-1 min-h-[160px] px-3.5 py-3 text-ssm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 bg-card outline-none border-none resize-none leading-relaxed"
+            className="flex-1 min-h-[160px] px-3.5 py-3 text-ssm text-foreground placeholder:text-slate-400 bg-card outline-none border-none resize-none leading-relaxed"
           />
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-black/[.06] dark:border-white/[.06] bg-slate-50/60 dark:bg-white/[.03] shrink-0">
+          <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-border bg-surface-alt shrink-0">
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSend}
@@ -298,7 +298,7 @@ export function ComposeWindow({
                   </>
                 )}
               </button>
-              <span className="text-xxs text-slate-400 dark:text-slate-500">Ctrl+Enter to send</span>
+              <span className="text-xxs text-text-faint">Ctrl+Enter to send</span>
             </div>
             <button
               onClick={onClose}

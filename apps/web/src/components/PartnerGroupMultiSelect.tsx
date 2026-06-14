@@ -25,7 +25,7 @@ export function PartnerGroupMultiSelect({ groups, selected, onChange }: PartnerG
 
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xxs font-medium text-slate-500 uppercase tracking-[0.05em]">
+      <label className="eyebrow-label">
         Partner access <span className="text-slate-400 normal-case font-normal">groups</span>
       </label>
       {selectedGroups.length > 0 && (
@@ -33,13 +33,13 @@ export function PartnerGroupMultiSelect({ groups, selected, onChange }: PartnerG
           {selectedGroups.map(group => (
             <span
               key={group.id}
-              className="inline-flex items-center gap-1 rounded-md bg-slate-100 py-0.5 pl-2 pr-1 text-xxs font-medium text-slate-700 dark:bg-white/[.06] dark:text-slate-200"
+              className="inline-flex items-center gap-1 rounded-md bg-secondary py-0.5 pl-2 pr-1 text-xxs font-medium text-foreground"
             >
               {group.name}
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="rounded p-0.5 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-600 dark:hover:bg-white/[.08] dark:hover:text-slate-200"
+                className="rounded p-0.5 text-slate-400 transition-colors hover:bg-skeleton hover:text-slate-600"
                 aria-label={`Remove ${group.name}`}
               >
                 <X size={10} />
@@ -52,9 +52,9 @@ export function PartnerGroupMultiSelect({ groups, selected, onChange }: PartnerG
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex h-9 w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-left text-ssm text-slate-700 transition-colors hover:bg-slate-50 dark:border-white/[.1] dark:bg-[#2a2d31] dark:text-slate-200 dark:hover:bg-white/[.06]"
+            className="flex h-9 w-full items-center justify-between rounded-md border border-border bg-secondary px-3 text-left text-ssm text-foreground transition-colors hover:bg-surface-alt"
           >
-            <span className={cn('truncate', selected.length === 0 && 'text-slate-400')}>
+            <span className={cn('truncate', selected.length === 0 && 'text-muted-foreground')}>
               {selected.length === 0 ? 'Select partner groups...' : `${selected.length} group${selected.length === 1 ? '' : 's'} selected`}
             </span>
             <ChevronsUpDown size={14} className="shrink-0 text-slate-400" />
@@ -76,7 +76,7 @@ export function PartnerGroupMultiSelect({ groups, selected, onChange }: PartnerG
                       className="text-ssm"
                     >
                       <span className={cn(
-                        'flex size-4 items-center justify-center rounded border border-slate-300 dark:border-white/[.16]',
+                        'flex size-4 items-center justify-center rounded border border-border',
                         isSelected && 'border-primary bg-primary text-white',
                       )}>
                         {isSelected && <Check size={12} />}

@@ -30,7 +30,7 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
             return (
               <div
                 key={d.id}
-                className="grid grid-cols-[36px_1fr_auto] items-center gap-3 py-2.5 px-1 rounded cursor-pointer hover:bg-slate-100 dark:hover:bg-white/[.06] dark:bg-white/[.06] active:scale-[0.98] transition-colors duration-150"
+                className="grid grid-cols-[36px_1fr_auto] items-center gap-3 py-2.5 px-1 rounded cursor-pointer hover:bg-surface-hover  active:scale-[0.98] transition-colors duration-150"
               >
                 <div
                   className="w-9 h-9 rounded flex items-center justify-center text-xs font-bold shrink-0"
@@ -39,13 +39,13 @@ export function TopDeals({ deals, onViewAll }: TopDealsProps) {
                   {getInitials(d.title)}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-ssm font-semibold text-slate-900 dark:text-white truncate">{d.title}</div>
+                  <div className="text-ssm font-semibold text-foreground truncate">{d.title}</div>
                   <div className="text-xxs text-slate-400 mt-px">
                     {d.assignedTo || 'Unassigned'} &middot; <span className="capitalize">{(d.stage ?? '').replace(/_/g, ' ')}</span>
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-xs font-semibold text-slate-900 dark:text-white tabular-nums">
+                  <div className="text-xs font-semibold text-foreground tabular-nums">
                     {formatDealMoney(d)}
                   </div>
                 </div>

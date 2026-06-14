@@ -54,6 +54,11 @@ function RevenueInner() {
     return subTabs.some(t => t.id === itemId) ? itemId : null
   }, [showSubTabs, itemId, subTabs])
 
+  const activeRevenueDeals = useMemo(
+    () => allDeals.filter(deal => !['closed_lost', 'parked'].includes(deal.stage)).length,
+    [allDeals],
+  )
+
   const onTabChange = useCallback(
     (next: CatalogTabValue) => {
       const params = new URLSearchParams(searchParams.toString())
@@ -80,8 +85,14 @@ function RevenueInner() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Tabs strip */}
+      {/* Page header + tabs */}
       <div className="shrink-0 px-4 md:px-6 pt-3 pb-0">
+        <div className="mb-3 flex flex-col gap-1">
+          <div className="text-ssm font-semibold text-foreground">Revenue</div>
+          <div className="text-xxs text-slate-400 tabular-nums">
+            {activeRevenueDeals} active revenue deal{activeRevenueDeals !== 1 ? 's' : ''} · Track billing, monthly revenue, and reseller pricing
+          </div>
+        </div>
         <CatalogTabs value={tabValue} onChange={onTabChange} counts={counts} />
 
         {showSubTabs && subTabs.length > 0 && (

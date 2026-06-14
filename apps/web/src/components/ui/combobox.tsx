@@ -78,7 +78,7 @@ export function Combobox({
           className={cn(
             'flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-ssm shadow-sm transition-colors',
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            'dark:bg-transparent dark:border-white/10',
+            '',
             !value && 'text-muted-foreground',
             className,
           )}
@@ -100,12 +100,12 @@ export function Combobox({
                 <button
                   type="button"
                   onClick={() => select(query.trim())}
-                  className="w-full text-left px-2 py-1.5 text-ssm text-primary hover:bg-primary/10 rounded transition-colors"
+                  className="w-full text-left px-2 py-1.5 text-ssm text-primary hover:bg-primary/10 rounded-control transition-colors"
                 >
                   Use “{query.trim()}”
                 </button>
               ) : (
-                <span className="text-xs text-slate-400">No results</span>
+                <span className="text-xs text-muted-foreground">No results</span>
               )}
             </CommandEmpty>
             <CommandGroup>

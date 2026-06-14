@@ -26,13 +26,13 @@ export function MeetingAttendeeIdentity({ attendee, compact = false }: { attende
 
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <AvatarRoot className={cn(compact ? 'h-6 w-6' : 'h-7 w-7', 'ring-1 ring-black/10 dark:ring-white/10')}>
+      <AvatarRoot className={cn(compact ? 'h-6 w-6' : 'h-7 w-7', 'ring-1 ring-border-strong')}>
         {attendee.avatarUrl && <AvatarImage src={attendee.avatarUrl} alt={label} referrerPolicy="no-referrer" />}
-        <AvatarFallback className="bg-slate-100 text-[10px] text-slate-600 dark:bg-white/[.08] dark:text-slate-300">
+        <AvatarFallback className="bg-secondary text-[10px] text-muted-foreground">
           {initialsFor(label)}
         </AvatarFallback>
       </AvatarRoot>
-      <p className={cn('min-w-0 truncate font-medium text-slate-700 dark:text-slate-200', compact ? 'text-xxs' : 'text-xs')}>
+      <p className={cn('min-w-0 truncate font-medium text-foreground', compact ? 'text-xxs' : 'text-xs')}>
         {label}
       </p>
     </div>
@@ -53,7 +53,7 @@ export function MeetingAttendeesPopover({ attendees }: { attendees: ApiMeetingAt
   const visibleAttendees = uniqueAttendees(attendees)
 
   if (visibleAttendees.length === 0) {
-    return <span className="text-xxs text-slate-400 dark:text-slate-500">No attendees</span>
+    return <span className="text-xxs text-text-faint">No attendees</span>
   }
 
   return (
@@ -61,20 +61,20 @@ export function MeetingAttendeesPopover({ attendees }: { attendees: ApiMeetingAt
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-black/[.08] px-2 text-xxs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50 active:scale-[0.96] dark:border-white/[.1] dark:text-slate-300 dark:hover:bg-white/[.06]"
+          className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2 text-xxs font-medium text-slate-600 transition-colors duration-150 hover:bg-surface-alt active:scale-[0.96]"
           aria-label={`View ${visibleAttendees.length} attendees`}
         >
           <Info size={13} strokeWidth={1.7} />
           <span className="tabular-nums">{visibleAttendees.length}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-md bg-white p-2 shadow-lg ring-1 ring-black/10 dark:bg-[#1e1e21] dark:ring-white/10">
-        <div className="px-1.5 pb-2 pt-1 text-atom font-semibold uppercase tracking-[0.06em] text-slate-400 dark:text-slate-500">
+      <PopoverContent align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-md bg-card p-2 shadow-lg ring-1 ring-border-strong">
+        <div className="px-1.5 pb-2 pt-1 eyebrow-label">
           Attendees
         </div>
         <div className="max-h-[280px] space-y-1 overflow-auto">
           {visibleAttendees.map((attendee, index) => (
-            <div key={`${attendee.email || attendee.name || 'attendee'}-${index}`} className="rounded-md px-1.5 py-1.5 hover:bg-slate-50 dark:hover:bg-white/[.04]">
+            <div key={`${attendee.email || attendee.name || 'attendee'}-${index}`} className="rounded-md px-1.5 py-1.5 hover:bg-surface-hover">
               <MeetingAttendeeIdentity attendee={attendee} />
             </div>
           ))}

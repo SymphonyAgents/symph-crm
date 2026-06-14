@@ -64,7 +64,7 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        <div className="bg-card rounded-xl border border-border shadow-sm p-6">
+        <div className="bg-card rounded-md border border-border shadow-sm p-6">
           <div className="mb-6">
             <p className="text-ssm text-muted-foreground mb-0.5">Welcome,</p>
             <h1 className="text-lg font-semibold text-foreground">
@@ -82,7 +82,7 @@ export default function OnboardingPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-1.5">
-                <label className="block text-xxs font-medium text-muted-foreground uppercase tracking-wide">
+                <label className="block eyebrow-label">
                   Current Team
                 </label>
                 <Select value={currentTeam} onValueChange={setCurrentTeam}>
