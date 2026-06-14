@@ -1,5 +1,8 @@
 # New features
 
+## Partner deal group counts
+Partner group lists now show how many active deals are connected to each group, making partner coverage easier to scan without opening every group.
+
 ## Meeting assignment tools
 Meetings can now be assigned to the right CRM deal, then resolved into that deal's notes and activity trail.
 

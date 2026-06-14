@@ -1,5 +1,17 @@
 # Improvements
 
+## CRM interface polish
+The CRM now has a cleaner visual system across pages, with sharper spacing, softer surfaces, clearer cards, and more consistent dark-mode styling.
+
+## Cleaner deal workspace
+Deal detail, pipeline, trash, and deal editing views were polished so key deal information, actions, and related records are easier to scan.
+
+## Better table and search controls
+Core table, search, tab, filter, button, badge, dialog, and input components now use more consistent sizing and spacing across the CRM.
+
+## Proposal and revenue page polish
+Proposal, signed PDF, billing, catalog, revenue, and reports views now share a more consistent layout and visual treatment.
+
 ## Sendable meeting follow-up notes
 CRM meetings can now generate a sendable follow-up note with participant greetings, meeting title and date/time, key takeaways, summary, and proposed next steps. Gmail remains draft-only, no email is sent automatically.
 
