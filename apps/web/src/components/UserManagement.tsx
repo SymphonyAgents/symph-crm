@@ -506,6 +506,7 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                 <TableRow>
                   <TableHead>Group</TableHead>
                   <TableHead>Members</TableHead>
+                  <TableHead>Deals</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -554,6 +555,11 @@ function PartnerDealGroupsPanel({ approvedUsers }: { approvedUsers: ApiUser[] })
                       )}
                     </TableCell>
                     <TableCell>
+                      <span className="text-xs font-medium text-foreground tabular-nums">
+                        {group.dealCount}
+                      </span>
+                    </TableCell>
+                    <TableCell>
                       <StatusPill tone={group.isActive ? 'emerald' : 'neutral'}>
                         {group.isActive ? 'Active' : 'Archived'}
                       </StatusPill>
@@ -597,7 +603,7 @@ export function UserManagement() {
   const searchParams = useSearchParams()
   const { isSales, isLoading: userLoading } = useUser()
   const rawTab = searchParams.get('tab')
-  const tab: UserTab = rawTab === 'approved' ? 'active' : rawTab === 'groups' ? 'groups' : 'pending'
+  const tab: UserTab = rawTab === 'pending' ? 'pending' : rawTab === 'approved' ? 'active' : 'groups'
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null)
   const approve = useApproveExternalUser({ onSuccess: () => setConfirmTarget(null) })
   const reject = useRejectExternalUser({ onSuccess: () => setConfirmTarget(null) })

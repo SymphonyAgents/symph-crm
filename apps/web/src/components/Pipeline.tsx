@@ -33,8 +33,9 @@ import { usePatchDealStage, useDeleteDeal, useUpdateDeal } from '@/lib/hooks/mut
 import { useUser } from '@/lib/hooks/use-user'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { SubTabFilter } from '@/components/ui/sub-tab-filter'
+import { SearchInput } from '@/components/ui/search-input'
 import {
-  MoreHorizontal, Search, X, Trash2, ExternalLink,
+  MoreHorizontal, Search, Trash2, ExternalLink,
   ChevronDown, ChevronRight, User as UserIcon, Paperclip,
   Pencil, ArrowRight, ArrowLeft,
 } from 'lucide-react'
@@ -435,7 +436,7 @@ function DealCard({
     <div
       onClick={onClick}
       className={cn(
-        'group rounded-control border p-2.5 cursor-pointer shadow-[var(--shadow-card)] transition-[background-color,border-color,box-shadow] duration-100 hover:bg-[var(--kanban-card-hover)] hover:border-border-strong hover:shadow-[var(--shadow-md)]',
+        'group rounded-control border p-2.5 cursor-pointer shadow-[var(--shadow-card)] transition-[background-color,border-color,box-shadow] duration-100 hover:bg-[var(--kanban-card-hover)] hover:border-[var(--kanban-card-hover-border)] hover:ring-1 hover:ring-[var(--kanban-card-hover-ring)] hover:shadow-[var(--shadow-md)]',
         isWon
           ? 'border-success/20 bg-[var(--kanban-card)]'
           : isLost
@@ -1174,23 +1175,14 @@ export function Pipeline({
           )}
           {/* Search */}
           {searchOpen ? (
-            <div className="flex items-center gap-1.5 bg-card border border-border rounded-control px-2.5 py-[5px] w-[200px]">
-              <Search size={13} className="text-slate-400 shrink-0" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search deals…"
-                className="flex-1 bg-transparent text-xs text-foreground placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
-              />
-              <button
-                onClick={() => { setSearchOpen(false); setSearch('') }}
-                className="text-slate-400 hover:text-slate-600 hover:text-foreground"
-              >
-                <X size={13} />
-              </button>
-            </div>
+            <SearchInput
+              ref={searchInputRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onClear={() => { setSearchOpen(false); setSearch('') }}
+              placeholder="Search deals…"
+              containerClassName="w-[200px] h-8"
+            />
           ) : (
             <button
               onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50) }}
@@ -1404,20 +1396,14 @@ export function Pipeline({
             </div>
             <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
               {searchOpen ? (
-                <div className="flex items-center gap-1.5 bg-card border border-border rounded-control px-2.5 py-[5px] w-[160px]">
-                  <Search size={13} className="text-slate-400 shrink-0" />
-                  <input
-                    type="text"
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    placeholder="Search..."
-                    autoFocus
-                    className="flex-1 bg-transparent text-xs text-foreground placeholder:text-slate-400 min-w-0 outline-none focus:outline-none"
-                  />
-                  <button onClick={() => { setSearchOpen(false); setSearch('') }} className="text-slate-400 hover:text-slate-600 hover:text-foreground">
-                    <X size={13} />
-                  </button>
-                </div>
+                <SearchInput
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onClear={() => { setSearchOpen(false); setSearch('') }}
+                  placeholder="Search..."
+                  autoFocus
+                  containerClassName="w-[160px] h-11"
+                />
               ) : (
                 <button
                   onClick={() => setSearchOpen(true)}

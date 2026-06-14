@@ -13,9 +13,10 @@ import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { Avatar } from './Avatar'
 import { ComposeWindow } from './ComposeWindow'
-import { MoreHorizontal, Archive, Trash2, Mail, X } from 'lucide-react'
+import { MoreHorizontal, Archive, Trash2, Mail } from 'lucide-react'
 import { useGetInbox, useGetGmailUser } from '@/lib/hooks/queries'
 import { useSendEmail, useArchiveEmailThread, useDeleteEmailThread, useMarkThreadRead } from '@/lib/hooks/mutations'
+import { SearchInput } from '@/components/ui/search-input'
 
 interface ComposeState {
   to: string[]
@@ -915,26 +916,14 @@ export function Inbox({ onOpenDeal: _onOpenDeal }: { onOpenDeal: (id: string) =>
           {/* ── Search + filter row — email/all channels only ─────────────── */}
           {(channelTab === 'all' || channelTab === 'email') && (
             <div className="px-3 py-2.5 shrink-0 border-b border-border">
-              <div className="relative mb-2">
-                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-300" width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                  <circle cx={11} cy={11} r={8} /><path d="M21 21l-4.35-4.35" />
-                </svg>
-                <input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search conversations…"
-                  className="w-full pl-8 pr-7 py-[7px] text-ssm bg-surface-alt border border-border rounded-lg text-foreground placeholder:text-slate-400 focus:outline-none focus:border-primary/40 transition-colors"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hover:text-foreground"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onClear={() => setSearch('')}
+                placeholder="Search conversations…"
+                containerClassName="mb-2 h-9"
+                className="text-ssm"
+              />
               <div className="flex gap-1">
                 {(['all', 'unread'] as FilterTab[]).map(tab => (
                   <button

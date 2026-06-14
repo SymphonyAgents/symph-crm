@@ -5,7 +5,7 @@ import { useGetAuditLogs, useGetUsers } from '@/lib/hooks/queries'
 import { type ColumnDef } from '@tanstack/react-table'
 import { DataTable, SortableHeader, DataTableSkeleton } from './ui/data-table'
 import { Avatar } from './Avatar'
-import { Search, ChevronLeft, ChevronRight, X, Sparkles } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
 import {
   Select,
   SelectTrigger,
@@ -23,6 +23,7 @@ import {
 import { formatFullDate, describeAuditDetails, userDisplayName } from '@/lib/utils'
 import { AUDIT_ACTION_CONFIG, ENTITY_LABEL, AUDIT_PAGE_SIZE } from '@/lib/constants'
 import { CHANGELOG_OPEN_EVENT } from '@/lib/changelog-config'
+import { SearchInput } from './ui/search-input'
 import type { AuditLogEntry, AuditLogsResponse, ApiUser } from '@/lib/types'
 
 // ── Column definitions ──────────────────────────────────────────────────────
@@ -200,24 +201,13 @@ function AuditTab() {
           </button>
 
           {/* Search */}
-          <div className="relative flex-1 sm:flex-none sm:w-[200px] min-w-[140px]">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search logs..."
-              className="w-full bg-surface-alt border border-border rounded-lg pl-8 pr-7 py-[5px] text-xs text-foreground placeholder:text-slate-400 outline-none"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hover:text-foreground"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
+          <SearchInput
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            onClear={() => setSearch('')}
+            placeholder="Search logs..."
+            containerClassName="flex-1 sm:flex-none sm:w-[200px] min-w-[140px] h-8"
+          />
 
           {/* Entity type filter */}
           <Select

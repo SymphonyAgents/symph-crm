@@ -22,6 +22,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { SearchInput } from '@/components/ui/search-input'
 import { toast } from 'sonner'
 import {
   cn, formatNumberWithCommas, timeAgo, formatDate,
@@ -35,7 +36,7 @@ import {
   STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
   PROGRESS_STAGES, ACTIVITY_LABELS, DOC_TYPE_LABELS, ACCEPTED_FILE_TYPES,
 } from '@/lib/constants'
-import { Copy, Check, Plus, Trash2 } from 'lucide-react'
+import { Copy, Check, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Input } from './ui/input'
 import { DocumentViewerModal } from './DocumentViewerModal'
 import { PasteChip, PastePreviewModal } from './PasteChip'
@@ -180,10 +181,28 @@ function MobileStageProgress({ currentStage }: { currentStage: string }) {
   )
 }
 
-function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SidebarSection({
+  title,
+  action,
+  surface = 'flat',
+  children,
+}: {
+  title: string
+  action?: React.ReactNode
+  surface?: 'flat' | 'card'
+  children: React.ReactNode
+}) {
   return (
-    <div className="bg-card rounded-md border border-border shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3 sm:bg-transparent sm:rounded-none sm:border-0 sm:shadow-none sm:p-0">
-      <p className="eyebrow-label mb-3">{title}</p>
+    <div
+      className={cn(
+        'bg-card rounded-md border border-border shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-3',
+        surface === 'flat' && 'sm:bg-transparent sm:rounded-none sm:border-0 sm:shadow-none sm:p-0',
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="eyebrow-label">{title}</p>
+        {action}
+      </div>
       {children}
     </div>
   )
@@ -312,6 +331,43 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex items-start justify-between gap-2 py-1.5 border-b border-border last:border-0">
       <span className="text-xs text-slate-400 shrink-0">{label}</span>
       <span className="text-xs font-medium text-foreground text-right">{value}</span>
+    </div>
+  )
+}
+
+function normalizeHexColor(value: string) {
+  const trimmed = value.trim()
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`
+  return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toUpperCase() : null
+}
+
+function getBrandColorLayers(color: string | null | undefined) {
+  const colors = (color ?? '')
+    .split(/[\s,]+/)
+    .map(value => normalizeHexColor(value))
+    .filter(Boolean)
+    .slice(0, 5) as string[]
+
+  return colors.length > 0 ? colors : ['#FFFFFF', '#FFFFFF', '#FFFFFF']
+}
+
+function BrandColorLayers({ color }: { color: string | null | undefined }) {
+  const colors = getBrandColorLayers(color)
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex shrink-0 -space-x-1.5">
+        {colors.map((layerColor, index) => (
+          <span
+            key={`${layerColor}-${index}`}
+            className="h-5 w-5 rounded-full border border-border shadow-sm ring-1 ring-background"
+            style={{ background: layerColor }}
+          />
+        ))}
+      </span>
+      <span className="min-w-0 truncate font-mono text-xxs text-muted-foreground">
+        {color || 'Not set'}
+      </span>
     </div>
   )
 }
@@ -473,7 +529,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [removingBuilderId, setRemovingBuilderId] = useState<string | null>(null)
   const [editingBrandColor, setEditingBrandColor] = useState(false)
-  const [brandColorDraft, setBrandColorDraft] = useState('')
+  const [brandColorDrafts, setBrandColorDrafts] = useState<string[]>(['#FFFFFF', '#FFFFFF', '#FFFFFF'])
   const [editingProposalLink, setEditingProposalLink] = useState(false)
   const [proposalLinkDraft, setProposalLinkDraft] = useState('')
   const [editingDemoLink, setEditingDemoLink] = useState(false)
@@ -581,6 +637,21 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const daysInStage = deal ? getDaysInStage(activities, deal.createdAt) : 0
   const brandColor = getBrandColor(company?.name ?? deal?.companyId)
   const contactCount = dbContacts.length
+
+  const openBrandColorModal = useCallback(() => {
+    setBrandColorDrafts(getBrandColorLayers(deal?.clientBrandColor))
+    setEditingBrandColor(true)
+  }, [deal?.clientBrandColor])
+
+  const updateBrandColorDraft = useCallback((index: number, value: string) => {
+    setBrandColorDrafts(prev => prev.map((color, colorIndex) => (
+      colorIndex === index ? value.toUpperCase() : color
+    )))
+  }, [])
+
+  const addBrandColorDraft = useCallback(() => {
+    setBrandColorDrafts(prev => prev.length >= 5 ? prev : [...prev, '#FFFFFF'])
+  }, [])
 
   // ── User map + AM resolution ─────────────────────────────────────────────
   const userNameMap = useMemo(() => {
@@ -1028,6 +1099,68 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 >
                   {updateCommission.isPending && <span className="inline-block size-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
                   Save commission
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {editingBrandColor && (
+        <Dialog open onOpenChange={open => { if (!open) setEditingBrandColor(false) }}>
+          <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md">
+            <DialogHeader className="px-4">
+              <div>
+                <DialogTitle>Edit brand colors</DialogTitle>
+                <DialogDescription>
+                  Set up to five brand colors. Saving to the backend comes later.
+                </DialogDescription>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4 p-4">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+                {brandColorDrafts.map((color, index) => {
+                  const safeColor = normalizeHexColor(color) ?? '#FFFFFF'
+
+                  return (
+                    <div key={index} className="rounded-md border border-border bg-surface-alt p-2 text-center">
+                      <label className="relative mx-auto block h-12 w-12 cursor-pointer rounded-full border border-border shadow-sm ring-1 ring-background" style={{ background: safeColor }}>
+                        <Input
+                          type="color"
+                          value={safeColor}
+                          onChange={event => updateBrandColorDraft(index, event.target.value)}
+                          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                        />
+                      </label>
+                      <Input
+                        value={color}
+                        onChange={event => updateBrandColorDraft(index, event.target.value)}
+                        placeholder="#FFFFFF"
+                        className="mt-2 h-7 border-0 bg-transparent px-0 text-center font-mono text-[10px] shadow-none focus-visible:ring-0"
+                      />
+                    </div>
+                  )
+                })}
+                {brandColorDrafts.length < 5 && (
+                  <button
+                    type="button"
+                    onClick={addBrandColorDraft}
+                    className="flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-surface-alt p-2 text-center text-muted-foreground transition-colors hover:bg-surface-hover hover:text-primary"
+                  >
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full border border-dashed border-border bg-card">
+                      <Plus size={16} />
+                    </span>
+                    <span className="mt-2 text-[10px] font-medium">Add color</span>
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setEditingBrandColor(false)}
+                  className="h-9 flex-1 rounded-control border border-border text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-hover"
+                >
+                  Close
                 </button>
               </div>
             </div>
@@ -1556,25 +1689,14 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               <div className="hidden sm:flex items-center gap-1 shrink-0">
 
                 {/* Search input */}
-                <div className="flex items-center gap-1 h-7 bg-surface-alt border border-border rounded-md px-2">
-                  <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" className="text-slate-400 shrink-0">
-                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                  <input
-                    type="text"
-                    value={docSearch}
-                    onChange={e => setDocSearch(e.target.value)}
-                    placeholder="Search..."
-                    className="bg-transparent text-xxs text-muted-foreground placeholder:text-slate-400 outline-none w-[72px]"
-                  />
-                  {docSearch && (
-                    <button onClick={() => setDocSearch('')} className="text-slate-400 hover:text-slate-600 hover:text-foreground shrink-0">
-                      <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                <SearchInput
+                  value={docSearch}
+                  onChange={e => setDocSearch(e.target.value)}
+                  onClear={() => setDocSearch('')}
+                  placeholder="Search..."
+                  containerClassName="h-7 w-[112px]"
+                  className="text-xxs"
+                />
 
                 {/* Type / ext filter - shadcn Select */}
                 {activeTab === 'notes' && noteTypes.length > 1 && (
@@ -1903,7 +2025,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : (
                 /* List view */
-                <div className="divide-y divide-black/[.04] dark:divide-white/[.05]">
+                <div className="space-y-2 p-3">
                   {filteredNotes.map(doc => {
                     const docStage = parseDocStage(doc.tags)
                     const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
@@ -1912,89 +2034,58 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                     return (
                       <div
                         key={doc.id}
-                        className="flex items-start gap-3 px-4 py-3 w-full min-w-0 overflow-hidden hover:bg-surface-hover transition-colors group cursor-pointer"
+                        className="group rounded-md border border-border bg-card px-3 py-2 shadow-sm transition-colors hover:border-border-strong hover:bg-surface-hover cursor-pointer"
                         onClick={() => setViewingDoc(doc)}
                       >
-                        {/* Icon: mic for circleback meetings, file for others */}
-                        <div className="mt-0.5 shrink-0 text-text-faint group-hover:text-primary/50 transition-colors">
-                          {isCbMeeting ? (
-                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                              <line x1="12" y1="19" x2="12" y2="23" />
-                              <line x1="8" y1="23" x2="16" y2="23" />
-                            </svg>
-                          ) : (
-                            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="16" y1="13" x2="8" y2="13" />
-                              <line x1="16" y1="17" x2="8" y2="17" />
-                              <polyline points="10 9 9 9 8 9" />
-                            </svg>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          {/* Note name */}
-                          <p className="text-ssm font-semibold text-foreground truncate leading-tight group-hover:text-primary transition-colors">
-                            {doc.title}
-                          </p>
-                          {/* Excerpt */}
-                          {doc.excerpt ? (
-                            <p className="text-atom text-muted-foreground line-clamp-1 mt-0.5">
-                              {doc.excerpt}
-                            </p>
-                          ) : (
-                            <p className="text-atom text-text-faint italic mt-0.5">
-                              Empty note
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {authorUser && (
-                              <div className="flex items-center gap-1 shrink-0">
-                                <Avatar name={authorUser.name || authorUser.email} email={authorUser.email ?? undefined} src={authorUser.image ?? undefined} size={14} />
-                                <span className="text-atom text-slate-400">{authorName?.split(' ')[0] ?? 'AM'}</span>
-                              </div>
+                        <div className="mb-1 flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            {authorUser ? (
+                              <Avatar name={authorUser.name || authorUser.email} email={authorUser.email ?? undefined} src={authorUser.image ?? undefined} size={20} />
+                            ) : (
+                              <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-atom font-semibold text-primary">
+                                A
+                              </span>
                             )}
-                            <span className="text-atom font-medium px-1.5 py-0.5 rounded-md bg-secondary text-slate-500 shrink-0">
-                              {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
-                            </span>
-                            {docStage && <StagePill stage={docStage} />}
-                            <span className="text-atom text-slate-400">
+                            <span className="shrink-0 text-xs font-semibold text-foreground">{authorName?.split(' ')[0] ?? 'AM'}</span>
+                            <span className="shrink-0 text-xs text-text-faint">·</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">
                               {new Date(doc.createdAt).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
                             </span>
+                            <span className="shrink-0 rounded-control bg-secondary px-1.5 py-0.5 text-atom font-medium text-muted-foreground">
+                              {isCbMeeting ? 'Meeting Recording' : (DOC_TYPE_LABELS[doc.type] ?? doc.type)}
+                            </span>
+                            {docStage && <div className="shrink-0"><StagePill stage={docStage} /></div>}
                           </div>
-                        </div>
-                        {/* Actions */}
-                        <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">
-                          {isCbMeeting && (
+                          <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            {isCbMeeting && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
+                                className="h-5 w-5 rounded-control flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors"
+                                title="Play recording"
+                              >
+                                <svg width={12} height={12} viewBox="0 0 24 24" fill="currentColor">
+                                  <polygon points="5 3 19 12 5 21 5 3" />
+                                </svg>
+                              </button>
+                            )}
                             <button
-                              onClick={(e) => { e.stopPropagation(); void handleCbPlay(doc) }}
-                              className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/[.06] transition-colors"
-                              title="Play recording"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
+                              className="h-5 w-5 rounded-control flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"
+                              title="Delete"
                             >
-                              <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
-                                <polygon points="5 3 19 12 5 21 5 3" />
+                              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                               </svg>
                             </button>
-                          )}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteDoc(doc) }}
-                            className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-100 dark:hover:text-red-400 dark:hover:bg-red-500/15 transition-colors"
-                            title="Delete"
-                          >
-                            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                          <span className="text-atom font-medium text-primary flex items-center gap-0.5">
-                            View
-                            <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                              <polyline points="9 18 15 12 9 6" />
-                            </svg>
-                          </span>
+                            <button className="text-text-faint hover:text-foreground" type="button">
+                              <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+                            </button>
+                          </div>
                         </div>
+                        <p className="truncate text-xs leading-5 text-foreground">
+                          {doc.excerpt || doc.title || 'Empty note'}
+                        </p>
                       </div>
                     )
                   })}
@@ -2712,7 +2803,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
         </div>
 
         {/* ── Left assignment + actions rail ────────── */}
-        <div className="w-full sm:w-auto sm:col-start-1 sm:row-start-1 sm:shrink-0 flex flex-col gap-4 px-4 sm:px-4 pt-4 sm:py-5 bg-[var(--bg-subtle)] sm:border-r sm:border-border">
+        <div className="w-full sm:w-auto sm:col-start-1 sm:row-start-1 sm:shrink-0 px-4 sm:px-4 pb-4 sm:pb-5 bg-[var(--bg-subtle)] sm:border-r sm:border-border">
+          <div className="flex flex-col gap-4 rounded-b-md border border-t-0 border-border bg-card p-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
 
           {/* Account Manager */}
           <SidebarSection title="Account Manager">
@@ -2910,84 +3002,20 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
           </SidebarSection>
 
           {/* Client Brand Color */}
-          <SidebarSection title="Client Brand Color">
-            <div className="flex items-center gap-2.5">
+          <SidebarSection
+            title="Client Brand Color"
+            action={isSales && (
               <button
-                onClick={() => {
-                  setBrandColorDraft(deal.clientBrandColor || '#000000')
-                  setEditingBrandColor(true)
-                }}
-                className="w-7 h-7 rounded-full border border-border shrink-0 cursor-pointer transition-shadow hover:ring-2 hover:ring-primary/30"
-                style={{ background: deal.clientBrandColor || '#e2e8f0' }}
-                title={deal.clientBrandColor || 'Not set'}
-              />
-              {editingBrandColor ? (
-                <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                  <Input
-                    type="color"
-                    value={brandColorDraft}
-                    onChange={(e) => setBrandColorDraft(e.target.value)}
-                    className="w-8 h-8 p-0.5 border-none cursor-pointer"
-                  />
-                  <Input
-                    type="text"
-                    value={brandColorDraft}
-                    onChange={(e) => setBrandColorDraft(e.target.value)}
-                    placeholder="#000000"
-                    className="text-ssm flex-1 h-8 font-mono"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.currentTarget.blur()
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => {
-                      const color = brandColorDraft.trim() || null
-                      setEditingBrandColor(false)
-                      const prev = queryClient.getQueryData(queryKeys.deals.detail(dealId))
-                      queryClient.setQueryData(queryKeys.deals.detail(dealId), (old: any) =>
-                        old ? { ...old, clientBrandColor: color } : old
-                      )
-                      updateDeal.mutate({ id: dealId, data: { clientBrandColor: color } as any }, {
-                        onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
-                        onSettled: () => {
-                          queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-                        },
-                      })
-                    }}
-                    className="text-xs font-medium text-primary hover:underline shrink-0"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={() => setEditingBrandColor(false)}
-                    className="text-xs text-slate-400 hover:text-slate-600 hover:text-foreground shrink-0"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-ssm text-muted-foreground font-mono truncate">
-                    {deal.clientBrandColor || 'Not set'}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setBrandColorDraft(deal.clientBrandColor || '#000000')
-                      setEditingBrandColor(true)
-                    }}
-                    className="w-6 h-6 rounded flex items-center justify-center text-slate-400 hover:text-primary hover:bg-surface-hover transition-colors shrink-0"
-                    title="Edit color"
-                  >
-                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </button>
-                </div>
-              )}
-            </div>
+                type="button"
+                onClick={openBrandColorModal}
+                className="inline-flex items-center gap-1 rounded-control px-1.5 py-0.5 text-xxs font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-primary"
+              >
+                <Pencil size={10} />
+                Edit
+              </button>
+            )}
+          >
+            <BrandColorLayers color={deal.clientBrandColor} />
           </SidebarSection>
 
           {/* Quick Actions */}
@@ -3034,6 +3062,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
 
           </>
           )}
+          </div>
         </div>
       </div>
     </div>

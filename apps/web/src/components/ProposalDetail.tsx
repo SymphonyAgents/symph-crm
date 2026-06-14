@@ -107,7 +107,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           aria-label="Proposal actions"
-          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card text-slate-500 shadow-sm transition-colors hover:bg-secondary hover:text-slate-800 active:scale-[0.96] hover:text-foreground"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-control border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-border-strong hover:bg-surface-hover hover:text-foreground active:scale-[0.96]"
         >
           <MoreVertical className="h-4 w-4" strokeWidth={1.8} />
         </button>
@@ -116,7 +116,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           onClick={onViewVersions}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-secondary"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
         >
           <History className="h-3.5 w-3.5" strokeWidth={1.8} />
           View versions
@@ -124,7 +124,7 @@ function ProposalActionsMenu({
         <button
           type="button"
           onClick={onDownloadHtml}
-          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-slate-700 transition-colors hover:bg-secondary"
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
         >
           <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
           Download HTML
@@ -132,7 +132,7 @@ function ProposalActionsMenu({
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
           canUploadPdf && !isPdfPending
-            ? 'cursor-pointer text-slate-700 hover:bg-secondary'
+            ? 'cursor-pointer text-popover-foreground hover:bg-surface-hover'
             : 'cursor-not-allowed text-text-faint',
         )}>
           {isPdfPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />}
@@ -157,7 +157,7 @@ function ProposalActionsMenu({
           className={cn(
             'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-xs font-medium transition-colors',
             hasPdf
-              ? 'text-slate-700 hover:bg-secondary'
+              ? 'text-popover-foreground hover:bg-surface-hover'
               : 'pointer-events-none text-text-faint',
           )}
         >

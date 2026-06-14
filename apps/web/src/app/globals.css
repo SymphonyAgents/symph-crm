@@ -33,7 +33,9 @@
   --surface-hover: #f4f4f5;
   --surface-active: #e9e9ec;
   --kanban-card: var(--card);
-  --kanban-card-hover: var(--surface-hover);
+  --kanban-card-hover: #f8f8f9;
+  --kanban-card-hover-border: rgba(0, 0, 0, 0.22);
+  --kanban-card-hover-ring: rgba(0, 0, 0, 0.08);
   --skeleton: #e4e4e7;
   --border-strong: rgba(0, 0, 0, 0.12);
   --border-focus: rgba(0, 0, 0, 0.20);
@@ -113,7 +115,9 @@
   --surface-hover: #202026;
   --surface-active: #27272f;
   --kanban-card: var(--surface-hover);
-  --kanban-card-hover: var(--surface-active);
+  --kanban-card-hover: #24242a;
+  --kanban-card-hover-border: rgba(255, 255, 255, 0.22);
+  --kanban-card-hover-ring: rgba(255, 255, 255, 0.08);
   --skeleton: #25252c;
   --border-strong: rgba(255, 255, 255, 0.13);
   --border-focus: rgba(255, 255, 255, 0.24);
@@ -193,7 +197,9 @@
   --surface-hover: #181d2a;
   --surface-active: #1f2535;
   --kanban-card: var(--surface-hover);
-  --kanban-card-hover: var(--surface-active);
+  --kanban-card-hover: #1b2130;
+  --kanban-card-hover-border: rgba(150, 170, 210, 0.24);
+  --kanban-card-hover-ring: rgba(150, 170, 210, 0.09);
   --skeleton: #1a2030;
   --border-strong: rgba(150, 170, 210, 0.12);
   --border-focus: rgba(150, 170, 210, 0.25);

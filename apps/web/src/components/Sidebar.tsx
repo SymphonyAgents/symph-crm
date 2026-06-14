@@ -418,19 +418,17 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
               <div className="truncate text-sm font-semibold text-foreground">{user?.name || 'User'}</div>
               <div className="truncate text-xs text-text-faint">{user?.email || ''}</div>
             </div>
-            {!isPartner && (
-              <button
-                onClick={() => setShowLogoutConfirm(true)}
-                disabled={signingOut}
-                className={cn(
-                  'text-xs font-medium text-text-faint hover:text-foreground transition-colors disabled:opacity-40',
-                  collapsed && 'md:hidden',
-                )}
-                title="Sign out"
-              >
-                Sign out
-              </button>
-            )}
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              disabled={signingOut}
+              className={cn(
+                'text-xs font-medium text-text-faint hover:text-foreground transition-colors disabled:opacity-40',
+                collapsed && 'md:hidden',
+              )}
+              title="Sign out"
+            >
+              Sign out
+            </button>
           </div>
         </aside>
       </TooltipProvider>

@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useGetCompanies, useGetDeals, useGetMyPartnerDealGroups, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
+import { SearchInput } from '@/components/ui/search-input'
 import { cn, getInitials, getBrandColor, formatServiceType, formatDealTitle, formatBrandName, toPascalCase } from '@/lib/utils'
 import { formatCurrencyBreakdown, formatDealMoney, formatMoney, sumMoneyByCurrency, type CurrencyTotals } from '@/lib/currency'
 import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
@@ -15,7 +16,7 @@ import { EmptyState } from './EmptyState'
 import { CreateBrandModal } from './CreateBrandModal'
 import { CreateDealModal } from './CreateDealModal'
 import { BrandSlideOver } from './BrandSlideOver'
-import { Pencil, Trash2, X } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useUpdateCompany, useDeleteCompany } from '@/lib/hooks/mutations'
 import { Combobox } from '@/components/ui/combobox'
 import { INDUSTRY_OPTIONS } from '@/lib/constants'
@@ -1043,27 +1044,15 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
           <div className="sm:ml-auto flex flex-wrap gap-2 items-center w-full sm:w-auto">
             {/* Search */}
-            <div className="relative flex-1 sm:flex-none sm:w-[200px] min-w-[160px]">
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
-                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <Input
-                ref={searchInputRef}
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder={isPartner ? 'Search deals…' : 'Search brands…'}
-                className="border border-border bg-surface-alt rounded-control text-ssm text-foreground w-full placeholder:text-slate-400 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none pl-8 pr-7 py-[5px] min-h-11 sm:min-h-0 sm:h-auto shadow-none"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hover:text-foreground"
-                >
-                  <X size={12} />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              ref={searchInputRef}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onClear={() => setSearch('')}
+              placeholder={isPartner ? 'Search deals…' : 'Search brands…'}
+              containerClassName="flex-1 sm:flex-none sm:w-[200px] min-w-[160px] h-11 sm:h-8"
+              className="text-ssm"
+            />
 
             {/* New Brand / New Deal */}
             {isSales && (

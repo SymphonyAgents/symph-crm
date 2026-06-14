@@ -67,7 +67,7 @@ const SelectItem = React.forwardRef<
     ref={ref}
     data-slot="select-item"
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-control px-2.5 py-1.5 text-xs outline-none focus:bg-surface-hover focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex w-full cursor-default select-none items-center rounded-control px-2.5 py-1.5 text-xs text-popover-foreground outline-none focus:bg-surface-hover focus:text-popover-foreground data-[highlighted]:bg-surface-hover data-[highlighted]:text-popover-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     {...props}
