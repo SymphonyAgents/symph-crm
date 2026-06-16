@@ -1,10 +1,11 @@
-import { pgTable, uuid, text, numeric, integer, date, boolean, timestamp, jsonb } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, numeric, integer, date, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core'
 import { companies } from './companies'
 import { tiers } from './products'
 import { catalogItems } from './catalog-items'
 import { users } from './users'
 import { workspaces } from './workspaces'
 import { pipelineStages, amRoster } from './pipeline'
+import { leads } from './leads'
 
 export const deals = pgTable('deals', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -70,6 +71,10 @@ export const deals = pgTable('deals', {
   deleteAfter: timestamp('delete_after', { withTimezone: true }),
   workspaceId: uuid('workspace_id').references(() => workspaces.id),
 
+  sourceLeadId: uuid('source_lead_id').references(() => leads.id, { onDelete: 'set null' }),
+
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-})
+}, (t) => ({
+  sourceLeadIdx: index('deals_source_lead_idx').on(t.sourceLeadId),
+}))

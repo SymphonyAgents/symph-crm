@@ -40,9 +40,10 @@ export type DealWithMetadata = typeof deals.$inferSelect & {
   partnerCommissionAmount?: string | null
 }
 
-export type CreateDealData = Omit<typeof deals.$inferInsert, 'stageId' | 'dealTitleNormalized'> & {
+export type CreateDealData = Omit<typeof deals.$inferInsert, 'stageId' | 'dealTitleNormalized' | 'catalogItemId'> & {
   stage?: string | null
   stageId?: string | null
+  catalogItemId?: string | null
   pricingModel?: unknown
   tierId?: unknown
   partnerGroupIds?: unknown

@@ -5,8 +5,10 @@ export * from './contacts'
 export * from './products'       // tiers
 
 export * from './catalog-items'
+export * from './leads'
 export * from './deals'
 export * from './deal-contacts'
+export * from './lead-conversions'
 export * from './partner-groups'
 export * from './partner-deal-groups'
 export * from './partner-deal-commissions'
