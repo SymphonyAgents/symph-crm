@@ -2,8 +2,8 @@ import { Injectable, Inject, NotFoundException, BadRequestException, Logger } fr
 import * as fs from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import { eq } from 'drizzle-orm'
-import { deals } from '@symph-crm/database'
+import { eq, inArray } from 'drizzle-orm'
+import { deals, documents } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
@@ -369,11 +369,30 @@ export class DealNotesService {
     }
 
     const allNotes = Array.from(notesByContent.values())
+    await this.hydrateMissingAuthorsFromDocuments(allNotes)
 
     // Sort newest first by createdAt
     allNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
     return allNotes
+  }
+
+  private async hydrateMissingAuthorsFromDocuments(notes: NfsDealNote[]): Promise<void> {
+    const missingAuthorPaths = notes
+      .filter(note => !note.authorId)
+      .map(note => note.storagePath)
+
+    if (missingAuthorPaths.length === 0) return
+
+    const rows = await this.db
+      .select({ storagePath: documents.storagePath, authorId: documents.authorId })
+      .from(documents)
+      .where(inArray(documents.storagePath, missingAuthorPaths))
+
+    const authorByStoragePath = new Map(rows.map(row => [row.storagePath, row.authorId]))
+    for (const note of notes) {
+      if (!note.authorId) note.authorId = authorByStoragePath.get(note.storagePath) ?? null
+    }
   }
 
   async saveNote(dealId: string, type: string, title: string, content: string, authorId?: string | null): Promise<NfsDealNote> {

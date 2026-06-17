@@ -8,6 +8,30 @@ import { AuditLogsService } from '../audit-logs/audit-logs.service'
 
 export type DocumentType = typeof documents.$inferInsert['type']
 
+const DEAL_NOTE_PATH_PATTERN = /^deals\/[^/]+\/(general|meeting|notes|discovery|transcript|proposal)\/[^/]+\.md$/
+
+function hasAuthorFrontmatter(content: string): boolean {
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n/)
+  if (!match) return false
+  return /^authorId:\s*(?!null\s*$).+/m.test(match[1])
+    || /^crm_user_id:\s*(?!null\s*$).+/m.test(match[1])
+    || /^crmUserId:\s*(?!null\s*$).+/m.test(match[1])
+}
+
+function withDealNoteAuthorFrontmatter(storagePath: string, content: string, authorId: string | null | undefined): string {
+  if (!authorId || !DEAL_NOTE_PATH_PATTERN.test(storagePath) || hasAuthorFrontmatter(content)) return content
+
+  return [
+    '---',
+    `authorId: ${authorId}`,
+    `crm_user_id: ${authorId}`,
+    `createdAt: ${new Date().toISOString()}`,
+    '---',
+    '',
+    content,
+  ].join('\n')
+}
+
 @Injectable()
 export class DocumentsService {
   constructor(
@@ -77,14 +101,18 @@ export class DocumentsService {
     // Auto-derive storage path if not supplied
     const storagePath = rest.storagePath ?? this.derivePath(rest)
 
+    const contentToWrite = content
+      ? withDealNoteAuthorFrontmatter(storagePath, content, rest.authorId)
+      : content
+
     let excerpt: string | undefined
     let wordCount = 0
-    if (content) {
-      const extracted = StorageService.extractExcerpt(content)
+    if (contentToWrite) {
+      const extracted = StorageService.extractExcerpt(contentToWrite)
       excerpt = extracted.excerpt
       wordCount = extracted.wordCount
       if (!skipContentWrite) {
-        await this.storage.writeMarkdown(storagePath, content)
+        await this.storage.writeMarkdown(storagePath, contentToWrite)
       }
     }
 
