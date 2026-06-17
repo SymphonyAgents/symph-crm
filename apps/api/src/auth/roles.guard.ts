@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, Inject, SetMetadata, ForbiddenException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { eq } from 'drizzle-orm'
+import type { Response } from 'express'
 import { users } from '@symph-crm/database'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
@@ -60,14 +61,14 @@ export class RolesGuard implements CanActivate {
 
     if (SESSIONLESS_AUTH_PATHS.has(pathname)) return true
 
-    const backendUserId = this.resolveBackendSessionUserId(request)
+    const backendSession = this.resolveBackendSession(request)
 
     const requiredRoles = this.reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, [
       context.getHandler(),
       context.getClass(),
     ])
 
-    const userId = backendUserId
+    const userId = backendSession.userId
     if (!userId) {
       throw new ForbiddenException('You do not have permission to access the CRM.')
     }
@@ -87,6 +88,11 @@ export class RolesGuard implements CanActivate {
       role: user.role as CrmUserRole,
       status: user.status as CrmUserStatus,
       isActive: user.isActive,
+    }
+
+    if (backendSession.shouldRefresh && user.email) {
+      const response = context.switchToHttp().getResponse<Response>()
+      this.tokens.issueSession(response, { id: userId, email: user.email })
     }
 
     if (!STATUS_EXEMPT_PATHS.has(pathname) && (user.status !== CrmUserStatus.Active || !user.isActive)) {
@@ -111,11 +117,21 @@ export class RolesGuard implements CanActivate {
     throw new ForbiddenException('You do not have permission to make CRM changes.')
   }
 
-  private resolveBackendSessionUserId(request: CrmAuthenticatedRequest): string | null {
+  private resolveBackendSession(request: CrmAuthenticatedRequest): { userId: string | null; shouldRefresh: boolean } {
     try {
-      return this.tokens.getAccessPayload(request)?.sub ?? null
+      const accessPayload = this.tokens.getAccessPayload(request)
+      if (accessPayload?.sub) return { userId: accessPayload.sub, shouldRefresh: false }
     } catch {
-      return null
+      // Access token may be expired or malformed. Fall through to refresh token.
     }
+
+    try {
+      const refreshPayload = this.tokens.getRefreshPayload(request)
+      if (refreshPayload?.sub) return { userId: refreshPayload.sub, shouldRefresh: true }
+    } catch {
+      return { userId: null, shouldRefresh: false }
+    }
+
+    return { userId: null, shouldRefresh: false }
   }
 }
