@@ -10,6 +10,7 @@
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test:wiki-frontmatter": "node scripts/wiki-frontmatter-regression.js",
     "test:auth-guard": "node scripts/auth-guard-regression.js",
+    "test:users-role": "node scripts/users-role-regression.js",
     "test:inbound-email": "node scripts/inbound-email-regression.js",
     "test:meeting-actions": "node scripts/meeting-actions-regression.js"
   },

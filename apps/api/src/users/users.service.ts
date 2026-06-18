@@ -21,6 +21,7 @@ const SALES_EMAILS = new Set([
   'chelle.gray@symph.co',
   'lyra.gemparo@symph.co',
   'kate.labra@symph.co',
+  'frances@symph.co',
   'vince.tapdasan@symph.co',
   'xian.baylin@symph.co',
   'ferlie@symph.co',
