@@ -17,6 +17,7 @@ import {
   ChevronsUpDown,
   ClipboardList,
   Columns3,
+  FileStack,
   FileText,
   Grid2X2,
   Inbox,
@@ -28,6 +29,7 @@ import {
   ReceiptText,
   Search,
   Settings,
+  Target,
   Sparkles,
   Sun,
   TrendingUp,
@@ -61,6 +63,7 @@ type NavItem = {
   badge?: number
   badgeColor?: string
   icon: LucideIcon
+  children?: Array<Pick<NavItem, 'path' | 'label' | 'icon' | 'badge' | 'badgeColor'>>
 }
 
 type NavSection = {
@@ -162,7 +165,15 @@ function getNavSections(role?: CrmUserRole): NavSection[] {
       items: [
         { path: '/chat', label: 'Chat', icon: MessageCircle },
         { path: '/', label: 'Dashboard', icon: Grid2X2 },
-        { path: '/pipeline', label: 'Pipeline', icon: Columns3 },
+        {
+          path: '/pipeline',
+          label: 'Pipeline',
+          icon: Columns3,
+          children: [
+            { path: '/pipeline?view=deals', label: 'Deals', icon: FileStack },
+            { path: '/pipeline?view=leads', label: 'Leads', icon: Target },
+          ],
+        },
         { path: '/deals', label: 'Brands', icon: BookOpen },
         { path: '/wiki', label: 'Wiki', icon: BookMarked },
       ],
@@ -196,7 +207,26 @@ function getNavSections(role?: CrmUserRole): NavSection[] {
 function isActive(itemPath: string, pathname: string): boolean {
   if (itemPath === '/') return pathname === '/'
   if (itemPath === '/meetings') return pathname === '/meetings' || pathname === '/recordings' || pathname.startsWith('/meetings/')
+  if (itemPath === '/pipeline') return pathname === '/pipeline' || pathname.startsWith('/pipeline/') || pathname === '/leads' || pathname.startsWith('/leads/')
   return pathname === itemPath || pathname.startsWith(itemPath + '/')
+}
+
+function splitNavPath(itemPath: string) {
+  const [path, query = ''] = itemPath.split('?')
+  return { path, query }
+}
+
+function isExactActive(itemPath: string, pathname: string, queryString: string): boolean {
+  const item = splitNavPath(itemPath)
+  if (item.path === '/') return pathname === '/'
+  if (item.path === '/pipeline' && item.query) {
+    const itemView = new URLSearchParams(item.query).get('view')
+    const currentView = new URLSearchParams(queryString).get('view')
+    if (itemView === 'deals') return pathname === '/pipeline' && currentView !== 'leads'
+    return pathname === '/pipeline' && currentView === itemView
+  }
+  if (item.query) return pathname === item.path && queryString === item.query
+  return pathname === item.path || pathname.startsWith(item.path + '/')
 }
 
 function LogoutConfirmModal({
@@ -245,6 +275,11 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
   const [signingOut, setSigningOut] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const navSections = isLoading ? [] : getNavSections(role)
+  const [queryString, setQueryString] = useState('')
+
+  useEffect(() => {
+    setQueryString(window.location.search.replace(/^\?/, ''))
+  }, [pathname])
 
   async function handleSignOut() {
     setShowLogoutConfirm(false)
@@ -328,8 +363,11 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
                     const linkEl = (
                       <Link
                         key={item.path}
-                        href={item.path}
-                        onClick={() => onClose?.()}
+                        href={item.children ? `${item.path}?view=deals` : item.path}
+                        onClick={() => {
+                          if (item.children) setQueryString('view=deals')
+                          onClose?.()
+                        }}
                         onMouseEnter={() => setHoveredPath(item.path)}
                         onMouseLeave={() => setHoveredPath(null)}
                         className={cn(
@@ -357,7 +395,35 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
                       </Link>
                     )
 
-                    if (!collapsed) return <div key={item.path}>{linkEl}</div>
+                    const childLinks = item.children && !collapsed ? (
+                      <div className="ml-[21px] border-l border-border py-1">
+                        {item.children.map(child => {
+                          const ChildIcon = child.icon
+                          const childActive = isExactActive(child.path, pathname, queryString)
+                          return (
+                            <Link
+                              key={child.path}
+                              href={child.path}
+                              onClick={() => {
+                                setQueryString(splitNavPath(child.path).query)
+                                onClose?.()
+                              }}
+                              className={cn(
+                                'flex h-8 items-center gap-2 rounded-control px-2 text-[length:var(--v-size-nav)] leading-[var(--v-lh-nav)] font-[var(--v-wt-nav)] transition-colors',
+                                childActive
+                                  ? 'bg-card text-foreground ring-1 ring-border'
+                                  : 'text-muted-foreground hover:bg-surface-hover hover:text-foreground',
+                              )}
+                            >
+                              <ChildIcon size={16} strokeWidth={1.55} className="shrink-0" />
+                              <span className="min-w-0 flex-1 truncate">{child.label}</span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    ) : null
+
+                    if (!collapsed) return <div key={item.path}>{linkEl}{childLinks}</div>
 
                     return (
                       <Tooltip key={item.path}>

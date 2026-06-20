@@ -87,14 +87,18 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+        onWheel={event => event.stopPropagation()}
+      >
         <Command shouldFilter={!allowCustom} value={activeValue} onValueChange={setActiveValue}>
           <CommandInput
             placeholder={placeholder}
             value={query}
             onValueChange={setQuery}
           />
-          <CommandList ref={listRef}>
+          <CommandList ref={listRef} className="max-h-[240px] overscroll-contain">
             <CommandEmpty>
               {allowCustom && query.trim() ? (
                 <button

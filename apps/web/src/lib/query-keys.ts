@@ -8,6 +8,16 @@
  *   e.g. invalidate(queryKeys.companies.all) also invalidates .detail() and .deals()
  */
 
+type LeadsFilterParams = {
+  workspaceId?: string
+  status?: string
+  sourceName?: string
+  segment?: string
+  search?: string
+  limit?: number
+  offset?: number
+}
+
 type DealsFilterParams = {
   stage?: string
   companyId?: string
@@ -31,6 +41,13 @@ type MeetingsFilterParams = {
 }
 
 export const queryKeys = {
+  leads: {
+    all: ['leads'] as const,
+    filtered: (params: LeadsFilterParams) => ['leads', params] as const,
+    infinite: (params: LeadsFilterParams) => ['leads', 'infinite', params] as const,
+    detail: (id: string) => ['leads', id] as const,
+    conversions: (id: string) => ['leads', id, 'conversions'] as const,
+  },
   companies: {
     all: ['companies'] as const,
     search: (q: string) => ['companies', 'search', q] as const,

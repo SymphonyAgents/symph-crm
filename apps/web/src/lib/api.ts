@@ -1,5 +1,6 @@
 import posthog from 'posthog-js'
 import { BACKEND_API_URL } from '@/lib/backend-url'
+import type { ApiLead, ApiLeadConversion, ApiLeadsListResponse, LeadConversionResult, LeadStatus } from '@/lib/types'
 
 const API_BASE = BACKEND_API_URL
 
@@ -60,6 +61,54 @@ async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
   return JSON.parse(text)
 }
 
+// ─── Domain request types ─────────────────────────────────────────────────────
+
+type LeadsListParams = {
+  workspaceId?: string
+  status?: LeadStatus | 'all'
+  sourceName?: string
+  segment?: string
+  search?: string
+  limit?: number
+  offset?: number
+}
+
+type CreateLeadInput = {
+  sourceName?: string
+  sourceFileName?: string | null
+  sourceRowNumber?: number | null
+  segment?: string | null
+  personName?: string | null
+  personTitle?: string | null
+  companyName?: string | null
+  industry?: string | null
+  companySize?: string | null
+  location?: string | null
+  email?: string | null
+  emailStatus?: string | null
+  linkedinUrl?: string | null
+  phone?: string | null
+  status?: LeadStatus
+  score?: number
+  notes?: string | null
+  rawPayload?: Record<string, unknown> | null
+  matchedCompanyId?: string | null
+  matchedContactId?: string | null
+}
+
+type UpdateLeadInput = Partial<CreateLeadInput>
+
+type ConvertLeadInput = {
+  companyId?: string
+  companyName?: string
+  contactId?: string
+  assignedTo?: string
+  dealTitle?: string
+  catalogItemId?: string
+  serviceTag?: string
+  conversionNotes?: string
+}
+
 // ─── Public API client ────────────────────────────────────────────────────────
 
 export const api = {
@@ -84,4 +133,18 @@ export const api = {
   /** POST with FormData (file uploads). */
   upload: <T>(path: string, formData: FormData) =>
     fetcher<T>(path, { method: 'POST', body: formData }),
+  leads: {
+    list: (params?: LeadsListParams) => {
+      const query = params?.status === 'all' ? { ...params, status: undefined } : params
+      return api.get<ApiLeadsListResponse>('/leads', query)
+    },
+    detail: (id: string) => api.get<ApiLead>(`/leads/${id}`),
+    conversions: (id: string) => api.get<ApiLeadConversion[]>(`/leads/${id}/conversions`),
+    create: (input: CreateLeadInput) => api.post<ApiLead>('/leads', input),
+    update: (id: string, input: UpdateLeadInput) => api.patch<ApiLead>(`/leads/${id}`, input),
+    convert: (id: string, input: ConvertLeadInput) => api.post<LeadConversionResult>(`/leads/${id}/convert`, input),
+    remove: (id: string) => api.delete<ApiLead>(`/leads/${id}`),
+  },
 }
+
+export type { LeadsListParams, CreateLeadInput, UpdateLeadInput, ConvertLeadInput }

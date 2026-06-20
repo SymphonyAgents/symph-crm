@@ -7,7 +7,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { useCreateCompany } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
-import { INDUSTRY_OPTIONS } from '@/lib/constants'
+import { STANDARD_INDUSTRY_OPTIONS } from '@/lib/constants'
 
 type Props = {
   onClose: () => void
@@ -89,7 +89,7 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
             <div className="flex flex-col gap-1.5">
               <label className="eyebrow-label">Industry</label>
               <Combobox
-                options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
+                options={STANDARD_INDUSTRY_OPTIONS}
                 value={industry}
                 onValueChange={setIndustry}
                 placeholder="Search industry..."
