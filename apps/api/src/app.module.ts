@@ -30,6 +30,7 @@ import { MeetingsModule } from './meetings/meetings.module'
 import { PartnerGroupsModule } from './partner-groups/partner-groups.module'
 import { PartnerDealGroupsModule } from './partner-deal-groups/partner-deal-groups.module'
 import { InboundEmailModule } from './inbound-email/inbound-email.module'
+import { LeadsModule } from './leads/leads.module'
 
 @Module({
   providers: [
@@ -66,6 +67,7 @@ import { InboundEmailModule } from './inbound-email/inbound-email.module'
     PartnerGroupsModule,
     PartnerDealGroupsModule,
     InboundEmailModule,
+    LeadsModule,
   ],
 })
 export class AppModule {}

@@ -49,7 +49,7 @@ export function SortableHeader({
   return (
     <button
       type="button"
-      className="-ml-1 flex items-center gap-1 rounded-control px-1 py-0.5 normal-case transition-colors hover:text-foreground"
+      className="-ml-1 flex items-center gap-1 rounded-control px-1 py-0.5 capitalize transition-colors hover:text-foreground"
       onClick={() => column.toggleSorting(sorted === 'asc')}
     >
       {label}

@@ -13,7 +13,7 @@ import {
 } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
-import { INDUSTRY_OPTIONS } from '@/lib/constants'
+import { STANDARD_INDUSTRY_OPTIONS } from '@/lib/constants'
 import { DataTable, SortableHeader, DataTableSkeleton } from '@/components/ui/data-table'
 import { Combobox } from '@/components/ui/combobox'
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
@@ -398,7 +398,7 @@ function CatalogItemFormModal({
                 Industry <span className="text-slate-400">(optional)</span>
               </label>
               <Combobox
-                options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
+                options={STANDARD_INDUSTRY_OPTIONS}
                 value={industry}
                 onValueChange={setIndustry}
                 placeholder="Search industry..."

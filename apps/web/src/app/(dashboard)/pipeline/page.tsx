@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { Pipeline } from '@/components/Pipeline'
+import { Leads } from '@/components/Leads'
 import {
   CatalogTabs,
   tabValueFromSlug,
@@ -14,7 +15,7 @@ import { useGetDeals, useGetCatalogItems } from '@/lib/hooks/queries'
 import { CLOSED_STAGE_IDS } from '@/lib/constants'
 import { formatCurrencyBreakdown, sumMoneyByCurrency } from '@/lib/currency'
 
-function PipelineInner() {
+function PipelineDealsView() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -76,6 +77,7 @@ function PipelineInner() {
       const slug = tabSlugFromValue(next)
       if (slug === 'all') params.delete('tab')
       else params.set('tab', slug)
+      params.set('view', 'deals')
       params.delete('item') // clear sub-tab filter when switching parent tabs
       const qs = params.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
@@ -86,6 +88,7 @@ function PipelineInner() {
   const onSubTabChange = useCallback(
     (nextItemId: string | null) => {
       const params = new URLSearchParams(searchParams.toString())
+      params.set('view', 'deals')
       if (nextItemId) params.set('item', nextItemId)
       else params.delete('item')
       const qs = params.toString()
@@ -122,6 +125,14 @@ function PipelineInner() {
       </div>
     </div>
   )
+}
+
+function PipelineInner() {
+  const searchParams = useSearchParams()
+  const view = searchParams.get('view')
+
+  if (view === 'leads') return <Leads />
+  return <PipelineDealsView />
 }
 
 export default function PipelinePage() {

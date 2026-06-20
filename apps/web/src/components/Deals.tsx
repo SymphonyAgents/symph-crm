@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
 import { cn, getInitials, getBrandColor, formatServiceType, formatDealTitle, formatBrandName, toPascalCase } from '@/lib/utils'
 import { formatCurrencyBreakdown, formatDealMoney, formatMoney, sumMoneyByCurrency, type CurrencyTotals } from '@/lib/currency'
-import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
+import { STAGE_DISPLAY, STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS, STANDARD_INDUSTRY_OPTIONS } from '@/lib/constants'
 import type { ApiCompanyDetail, ApiDeal, ApiPartnerDealGroup } from '@/lib/types'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable, SortableHeader, DataTableSkeleton } from './ui/data-table'
@@ -19,7 +19,6 @@ import { BrandSlideOver } from './BrandSlideOver'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useUpdateCompany, useDeleteCompany } from '@/lib/hooks/mutations'
 import { Combobox } from '@/components/ui/combobox'
-import { INDUSTRY_OPTIONS } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
@@ -927,7 +926,7 @@ export function Deals({ onOpenDeal }: DealsProps) {
                 <div className="flex flex-col gap-1.5">
                   <label className="eyebrow-label">Industry</label>
                   <Combobox
-                    options={INDUSTRY_OPTIONS.map(i => ({ value: i, label: i }))}
+                    options={STANDARD_INDUSTRY_OPTIONS}
                     value={editForm.industry}
                     onValueChange={v => setEditForm(f => ({ ...f, industry: v }))}
                     placeholder="Search industry..."

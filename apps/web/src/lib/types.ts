@@ -5,6 +5,69 @@ import { CrmUserRole, CrmUserStatus, PartnerCommissionStatus } from '@symph-crm/
 // Canonical types for all API responses. Components import from here —
 // never define local ApiXxx types.
 
+// ── Leads ────────────────────────────────────────────────────────────────────
+
+export type LeadStatus = 'new' | 'reviewing' | 'contacted' | 'interested' | 'not_fit' | 'duplicate' | 'converted'
+
+export type ApiLead = {
+  id: string
+  workspaceId: string
+  sourceName: string
+  sourceFileName: string | null
+  sourceRowNumber: number | null
+  segment: string | null
+  personName: string | null
+  personTitle: string | null
+  companyName: string | null
+  industry: string | null
+  companySize: string | null
+  location: string | null
+  email: string | null
+  emailStatus: string | null
+  linkedinUrl: string | null
+  phone: string | null
+  status: LeadStatus
+  score: number
+  notes: string | null
+  rawPayload: Record<string, unknown> | null
+  matchedCompanyId: string | null
+  matchedContactId: string | null
+  createdBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type ApiLeadsListResponse = {
+  items: ApiLead[]
+  count: number
+  stats: {
+    active: number
+    interested: number
+    converted: number
+  }
+  segmentCounts: Record<string, number>
+}
+
+export type ApiLeadConversion = {
+  id: string
+  workspaceId: string
+  leadId: string
+  companyId: string | null
+  contactId: string | null
+  dealId: string | null
+  convertedBy: string | null
+  conversionNotes: string | null
+  createdAt: string
+}
+
+export type LeadConversionResult = {
+  lead: ApiLead
+  conversion: ApiLeadConversion
+  company: ApiCompanyDetail
+  contactId: string | null
+  deal: ApiDeal
+}
+
 // ── Deals ────────────────────────────────────────────────────────────────────
 
 export type DealCurrency = 'PHP' | 'USD' | 'SGD'
@@ -12,6 +75,7 @@ export type DealCurrency = 'PHP' | 'USD' | 'SGD'
 export type ApiDeal = {
   id: string
   companyId: string
+  sourceLeadId?: string | null
   title: string
   stage: string
   value: string | null
