@@ -28,6 +28,7 @@ import {
 } from '@/lib/constants'
 import { cn, formatNumberWithCommas } from '@/lib/utils'
 import { DEAL_CURRENCIES, DEFAULT_DEAL_CURRENCY } from '@/lib/currency'
+import { buildCreateDealPayload } from '@/lib/payloads/deal-payload'
 import type { ApiCompanyDetail, ApiCatalogItem, ApiUser, DealCurrency } from '@/lib/types'
 
 type Props = {
@@ -334,14 +335,12 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
           { dealId: data.id, authorId: userId, files: pendingFiles, dealStage: stage },
           {
             onSettled: () => {
-              qc.invalidateQueries({ queryKey: queryKeys.deals.all })
               if (brandId) qc.invalidateQueries({ queryKey: queryKeys.companies.deals(brandId) })
               onCreated?.()
             },
           },
         )
       } else {
-        qc.invalidateQueries({ queryKey: queryKeys.deals.all })
         if (brandId) qc.invalidateQueries({ queryKey: queryKeys.companies.deals(brandId) })
         onCreated?.()
       }
@@ -351,8 +350,6 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
-
-    const tags = serviceType ? [serviceType] : []
 
     // Resolve brand:
     // 1. User selected from list → brandId already set
@@ -369,25 +366,23 @@ export function CreateDealModal({ companies = [], onClose, onCreated, defaultDea
       }
     }
 
-    createDeal.mutate({
-      title: title.trim(),
+    createDeal.mutate(buildCreateDealPayload({
+      title,
       companyId: resolvedCompanyId,
-      productId: null,
-      tierId: null,
       stage,
-      value: value.replace(/,/g, '').trim() || null,
+      value,
       currency,
-      outreachCategory: outreachCategory || null,
-      pricingModel: pricingModel || null,
-      servicesTags: tags,
-      createdBy: userId,
-      assignedTo: assignedToId || userId,
-      subAccountManagerId: subAccountManagerId || null,
-      builders: builders.length > 0 ? builders : undefined,
+      outreachCategory,
+      pricingModel,
+      serviceType,
+      userId,
+      assignedToId,
+      subAccountManagerId,
+      builders,
       partnerDealGroupIds,
-      catalogItemId: serviceType === 'internal_products' ? (catalogItemId || null) : null,
-      dealType: defaultDealType ?? 'agency',
-    })
+      catalogItemId,
+      defaultDealType,
+    }))
   }
 
   // Product + tier are now optional — only title is required
