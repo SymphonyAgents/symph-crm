@@ -6,9 +6,10 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { CrmUserRole, PartnerCommissionStatus } from '@symph-crm/shared'
 import { BACKEND_API_URL } from '@/lib/backend-url'
 import { queryKeys } from '@/lib/query-keys'
-import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useCirclebackUpload, useUpdatePartnerDealCommission } from '@/lib/hooks/mutations'
+import { usePatchDealStage, useSaveDealNote, useUploadDocumentFile, useUpdateDeal, useDeleteDealNote, useDeleteDocument, useCreateContact, useDeleteContact, useDeleteDeal, useRetryCirclebackUpload, useUpdatePartnerDealCommission, useGetCirclebackPlayback, useGetDocumentDownloadUrl } from '@/lib/hooks/mutations'
 import { useGetDeal, useGetCompany, useGetActivitiesByDeal, useGetDealNotesFlat, useGetDocumentsByDeal, useGetUsers, useGetContactsByCompany, useGetProposalsByDeal, useGetPartnerDealGroups } from '@/lib/hooks/queries'
 import { useUser } from '@/lib/hooks/use-user'
+import { useCirclebackProcessing } from '@/lib/hooks/use-circleback-processing'
 import { EmptyState } from './EmptyState'
 import { Avatar } from './Avatar'
 import { UserOption } from './UserOption'
@@ -30,7 +31,6 @@ import {
 } from '@/lib/utils'
 import { formatDealMoneyFull, formatMoney } from '@/lib/currency'
 import { getMimeLabel, supportsWordCount, isImage } from '@/lib/utils/document-utils'
-import { api } from '@/lib/api'
 import type { ApiDealDetail, ApiCompanyDetail, ApiDocument, ApiPartnerDealCommission, NfsDealNote } from '@/lib/types'
 import {
   STAGE_LABELS, STAGE_COLORS, STAGE_ADVANCE_MAP,
@@ -537,9 +537,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const fileInputRef = useRef<HTMLInputElement>(null)
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null)
   const circlebackFileRef = useRef<HTMLInputElement>(null)
-  const [cbCorrelationKey, setCbCorrelationKey] = useState<string | null>(null)
-  const [cbUploadDocId, setCbUploadDocId] = useState<string | null>(null)
-  const [cbPushStatus, setCbPushStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>('idle')
+
   const [editingCommissionGroupId, setEditingCommissionGroupId] = useState<string | null>(null)
   const [commissionDraft, setCommissionDraft] = useState('')
   const [commissionStatusDraft, setCommissionStatusDraft] = useState<PartnerCommissionStatus>(PartnerCommissionStatus.Pending)
@@ -551,11 +549,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
     onSuccess: () => setEditingCommissionGroupId(null),
   })
   const deleteDeal = useDeleteDeal({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.trash })
-      onBack()
-    },
+    onSuccess: () => onBack(),
   })
 
   // ── Queries ──────────────────────────────────────────────────────────────
@@ -616,7 +610,6 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const { data: dbContacts = [] } = useGetContactsByCompany(deal?.companyId ?? undefined)
   const createContact = useCreateContact({
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(deal?.companyId ?? '') })
       setShowAddPerson(false)
       setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
     },
@@ -774,45 +767,23 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
   const saveNote = useSaveDealNote({
     onSuccess: () => { setNoteText(''); setNotePasteChips([]); void refetchDocs() },
   })
+  const retryCirclebackUpload = useRetryCirclebackUpload()
+  const getCirclebackPlayback = useGetCirclebackPlayback()
+  const getDocumentDownloadUrl = useGetDocumentDownloadUrl()
 
-  const { mutate: uploadToCircleback, isPending: cbUploading } = useCirclebackUpload({
-    onSuccess: (data) => {
-      setCbCorrelationKey(data.correlationKey)
-      setCbUploadDocId(data.uploadDocId)
-      setCbPushStatus('processing')
-      toast.success('Recording uploaded, transcript and notes will appear here in a few minutes')
-    },
-    onError: (err) => {
-      setCbPushStatus('failed')
-      toast.error(`Upload failed: ${err.message}`)
-    },
+  const {
+    status: circlebackStatus,
+    uploadDocId: cbUploadDocId,
+    uploadToCircleback,
+    setStatus: setCirclebackStatus,
+    isUploading: cbUploading,
+  } = useCirclebackProcessing({
+    uploadSuccessMessage: 'Recording uploaded, transcript and notes will appear here in a few minutes',
+    doneMessage: 'Meeting notes and transcript are ready!',
+    failedMessage: 'Circleback processing failed, you can retry below',
+    onDone: () => { void refetchDocs() },
   })
-
-  // Poll Circleback processing status while a recording is in flight
-  useEffect(() => {
-    if (!cbCorrelationKey || cbPushStatus !== 'processing') return
-    const interval = setInterval(async () => {
-      try {
-        const result = await api.get<{ status: string; crmPushStatus?: string; uploadDocId?: string }>(
-          `/recordings/circleback-status?correlationKey=${encodeURIComponent(cbCorrelationKey)}`,
-        )
-        if (result.crmPushStatus === 'done') {
-          setCbPushStatus('done')
-          setCbCorrelationKey(null)
-          void refetchDocs()
-          toast.success('Meeting notes and transcript are ready!')
-          clearInterval(interval)
-        } else if (result.crmPushStatus === 'failed') {
-          setCbPushStatus('failed')
-          clearInterval(interval)
-          toast.error('Circleback processing failed, you can retry below')
-        }
-      } catch {
-        // keep polling on transient errors
-      }
-    }, 15000)
-    return () => clearInterval(interval)
-  }, [cbCorrelationKey, cbPushStatus, refetchDocs])
+  const cbPushStatus = circlebackStatus
 
   const handleCbPlay = useCallback(async (doc: { tags?: string[] | null }) => {
     const fileTag = doc.tags?.find((t: string) => t.startsWith('file:'))
@@ -822,14 +793,12 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
     }
     const fileName = fileTag.replace('file:', '')
     try {
-      const { playbackUrl } = await api.get<{ playbackUrl: string }>(
-        `/recordings/circleback-play?fileName=${encodeURIComponent(fileName)}`,
-      )
+      const { playbackUrl } = await getCirclebackPlayback.mutateAsync(fileName)
       window.open(playbackUrl, '_blank')
     } catch {
       toast.error('Could not load recording')
     }
-  }, [])
+  }, [getCirclebackPlayback])
 
   const uploadFiles = useUploadDocumentFile({
     onSuccess: () => { void refetchResourceDocs() },
@@ -884,10 +853,6 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
     )
     updateDeal.mutate({ id: dealId, data: { assignedTo: newValue } }, {
       onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
-      onSettled: () => {
-        queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-      },
     })
   }, [dealId, updateDeal, queryClient])
 
@@ -925,7 +890,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
       const isVoice = doc.tags?.some(t => AUDIO_TAGS.includes(t))
       if (isVoice) {
         // Voice recordings are in Supabase Storage - need a signed URL
-        const data = await api.get<{ url: string; filename: string }>(`/documents/${doc.id}/download`)
+        const data = await getDocumentDownloadUrl.mutateAsync(doc.id)
         const a = document.createElement('a')
         a.href = data.url
         a.download = data.filename
@@ -945,7 +910,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
     } catch {
       toast.error('Download failed')
     }
-  }, [])
+  }, [getDocumentDownloadUrl])
 
   // ── Render: loading / error ───────────────────────────────────────────────
 
@@ -1428,11 +1393,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   onClick={() => {
                     const next = (deal.builders ?? []).filter(b => b !== removingBuilderId)
                     updateDeal.mutate({ id: dealId, data: { builders: next } }, {
-                      onSettled: () => {
-                        queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-                        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-                        setRemovingBuilderId(null)
-                      },
+                      onSettled: () => setRemovingBuilderId(null),
                     })
                   }}
                   disabled={updateDeal.isPending}
@@ -1797,8 +1758,8 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   <button
                     onClick={async () => {
                       try {
-                        await api.post('/recordings/circleback-retry', { uploadDocId: cbUploadDocId })
-                        setCbPushStatus('processing')
+                        await retryCirclebackUpload.mutateAsync({ uploadDocId: cbUploadDocId })
+                        setCirclebackStatus('processing')
                         toast.info('Retrying...')
                       } catch {
                         toast.error('Retry failed')
@@ -1868,7 +1829,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (!file) return
-                        setCbPushStatus('uploading')
+                        setCirclebackStatus('uploading')
                         uploadToCircleback({ file, dealId })
                         e.target.value = ''
                       }}
@@ -2322,7 +2283,6 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         )
                         updateDeal.mutate({ id: dealId, data: { proposalLink: url } as any }, {
                           onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
-                          onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) }),
                         })
                       }}
                     />
@@ -2386,7 +2346,6 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                         )
                         updateDeal.mutate({ id: dealId, data: { demoLink: url } as any }, {
                           onError: () => queryClient.setQueryData(queryKeys.deals.detail(dealId), prev),
-                          onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) }),
                         })
                       }}
                     />
@@ -2926,12 +2885,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 value={deal.subAccountManagerId ?? null}
                 users={users.filter(u => u.role === CrmUserRole.Sales)}
                 onChange={(uid) => {
-                  updateDeal.mutate({ id: dealId, data: { subAccountManagerId: uid } }, {
-                    onSettled: () => {
-                      queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-                      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-                    },
-                  })
+                  updateDeal.mutate({ id: dealId, data: { subAccountManagerId: uid } })
                 }}
               />
             ) : (() => {
@@ -2989,12 +2943,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   selected={deal.builders ?? []}
                   onAdd={(uid) => {
                     const next = [...(deal.builders ?? []), uid]
-                    updateDeal.mutate({ id: dealId, data: { builders: next } }, {
-                      onSettled: () => {
-                        queryClient.invalidateQueries({ queryKey: queryKeys.deals.detail(dealId) })
-                        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-                      },
-                    })
+                    updateDeal.mutate({ id: dealId, data: { builders: next } })
                   }}
                 />
               )}

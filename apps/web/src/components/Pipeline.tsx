@@ -948,10 +948,7 @@ export function Pipeline({
   const confirmDelete = useCallback(() => {
     if (!isSales || !deleteConfirmDealId) return
     deleteDeal.mutate(deleteConfirmDealId, {
-      onSettled: () => {
-        setDeleteConfirmDealId(null)
-        queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-      },
+      onSettled: () => setDeleteConfirmDealId(null),
     })
   }, [deleteConfirmDealId, deleteDeal, isSales, queryClient])
 
@@ -1059,7 +1056,6 @@ export function Pipeline({
     // Send the actual user UUID to the API (FK constraint requires UUID)
     updateDeal.mutate({ id: dealId, data: { assignedTo: userId } }, {
       onError: () => queryClient.setQueryData(queryKeys.deals.all, previousDeals),
-      onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.deals.all }),
     })
   }, [isSales, updateDeal, queryClient])
 
@@ -1142,19 +1138,13 @@ export function Pipeline({
         <CreateDealModal
           companies={companies}
           onClose={() => setShowCreateDeal(false)}
-          onCreated={() => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-            setShowCreateDeal(false)
-          }}
+          onCreated={() => setShowCreateDeal(false)}
         />
       )}
       {showCreateBrand && (
         <CreateBrandModal
           onClose={() => setShowCreateBrand(false)}
-          onCreated={() => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.companies.all })
-            setShowCreateBrand(false)
-          }}
+          onCreated={() => setShowCreateBrand(false)}
         />
       )}
 
