@@ -1,6 +1,6 @@
 import posthog from 'posthog-js'
 import { BACKEND_API_URL } from '@/lib/backend-url'
-import type { ApiLead, ApiLeadConversion, ApiLeadsListResponse, LeadConversionResult, LeadStatus } from '@/lib/types'
+import type { ApiLead, ApiLeadConversion, ApiLeadsListResponse, ConvertLeadInput, CreateLeadInput, LeadConversionResult, LeadsListParams, UpdateLeadInput } from '@/lib/types'
 
 const API_BASE = BACKEND_API_URL
 
@@ -61,58 +61,10 @@ async function fetcher<T>(path: string, init?: RequestInit): Promise<T> {
   return JSON.parse(text)
 }
 
-// ─── Domain request types ─────────────────────────────────────────────────────
-
-type LeadsListParams = {
-  workspaceId?: string
-  status?: LeadStatus | 'all'
-  sourceName?: string
-  segment?: string
-  search?: string
-  limit?: number
-  offset?: number
-}
-
-type CreateLeadInput = {
-  sourceName?: string
-  sourceFileName?: string | null
-  sourceRowNumber?: number | null
-  segment?: string | null
-  personName?: string | null
-  personTitle?: string | null
-  companyName?: string | null
-  industry?: string | null
-  companySize?: string | null
-  location?: string | null
-  email?: string | null
-  emailStatus?: string | null
-  linkedinUrl?: string | null
-  phone?: string | null
-  status?: LeadStatus
-  score?: number
-  notes?: string | null
-  rawPayload?: Record<string, unknown> | null
-  matchedCompanyId?: string | null
-  matchedContactId?: string | null
-}
-
-type UpdateLeadInput = Partial<CreateLeadInput>
-
-type ConvertLeadInput = {
-  companyId?: string
-  companyName?: string
-  contactId?: string
-  assignedTo?: string
-  dealTitle?: string
-  catalogItemId?: string
-  serviceTag?: string
-  conversionNotes?: string
-}
-
 // ─── Public API client ────────────────────────────────────────────────────────
 
 export const api = {
-  /** GET with optional query params. Params with undefined/null values are omitted. */
+  // GET with optional query params. Params with undefined/null values are omitted.
   get: <T>(path: string, query?: Record<string, string | number | boolean | null | undefined>) => {
     if (query) {
       const defined = Object.entries(query).filter(([, v]) => v !== undefined && v !== null)
@@ -130,7 +82,7 @@ export const api = {
     fetcher<T>(path, { method: 'PATCH', body: JSON.stringify(body) }),
   delete: <T = void>(path: string) =>
     fetcher<T>(path, { method: 'DELETE' }),
-  /** POST with FormData (file uploads). */
+  // POST with FormData for file uploads.
   upload: <T>(path: string, formData: FormData) =>
     fetcher<T>(path, { method: 'POST', body: formData }),
   leads: {
@@ -146,5 +98,3 @@ export const api = {
     remove: (id: string) => api.delete<ApiLead>(`/leads/${id}`),
   },
 }
-
-export type { LeadsListParams, CreateLeadInput, UpdateLeadInput, ConvertLeadInput }

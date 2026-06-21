@@ -1,8 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { api, type ConvertLeadInput, type CreateLeadInput, type LeadsListParams, type UpdateLeadInput } from '@/lib/api'
+import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { ApiLead, ApiLeadConversion, ApiLeadsListResponse, LeadConversionResult } from '@/lib/types'
+import type { ApiLead, ApiLeadConversion, ApiLeadsListResponse, ConvertLeadInput, CreateLeadInput, LeadConversionResult, LeadsListParams, UpdateLeadInput } from '@/lib/types'
 
 export function useLeadsList(
   params: LeadsListParams = {},
