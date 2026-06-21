@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useQueryClient, useQueries } from '@tanstack/react-query'
-import { useGetDeals, useGetCompanies } from '@/lib/hooks/queries'
+import { getBillingByDealQueryOptions, useGetCompanies, useGetDeals } from '@/lib/hooks/queries'
 import { useDeleteBilling } from '@/lib/hooks/mutations'
 import { queryKeys } from '@/lib/query-keys'
 import { formatDealTitle, getInitials, getBrandColor, formatBrandName } from '@/lib/utils'
@@ -14,7 +14,6 @@ import { BillingSection } from '@/components/BillingSection'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { StatusPill } from '@/components/ui/status-pill'
-import { api } from '@/lib/api'
 
 const BILLING_TYPE_LABELS: Record<string, string> = {
   annual: 'Annual',
@@ -159,14 +158,7 @@ export default function BillsPage() {
   // Fetch billing for every won deal in one place. Parent owns the combined
   // loading state so the table doesn't render half-skeleton rows progressively.
   const billingQueries = useQueries({
-    queries: wonDeals.map(d => ({
-      queryKey: queryKeys.billing.byDeal(d.id),
-      queryFn: async () => {
-        const res = await api.get<ApiBilling | { billing: null }>(`/deals/${d.id}/billing`)
-        if ('billing' in res && (res as { billing: null }).billing === null) return null
-        return res as ApiBilling
-      },
-    })),
+    queries: wonDeals.map(d => getBillingByDealQueryOptions(d.id)),
   })
   const billingByDealId = useMemo(() => {
     const m = new Map<string, ApiBilling | null | undefined>()

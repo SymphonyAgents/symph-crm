@@ -4,7 +4,7 @@ import { useEffect, useState, type ComponentType } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Avatar } from './Avatar'
-import { api } from '@/lib/api'
+import { useLogout } from '@/lib/hooks/mutations'
 import { useUser } from '@/lib/hooks/use-user'
 import { cn } from '@/lib/utils'
 import { CrmUserRole } from '@symph-crm/shared'
@@ -276,6 +276,11 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const navSections = isLoading ? [] : getNavSections(role)
   const [queryString, setQueryString] = useState('')
+  const logout = useLogout({
+    onSettled: () => {
+      window.location.href = '/login'
+    },
+  })
 
   useEffect(() => {
     setQueryString(window.location.search.replace(/^\?/, ''))
@@ -284,8 +289,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
   async function handleSignOut() {
     setShowLogoutConfirm(false)
     setSigningOut(true)
-    await api.post('/auth/logout', {})
-    window.location.href = '/login'
+    logout.mutate()
   }
 
   const collapsedWidth = 'md:w-[52px] w-[var(--sidebar-width)]'

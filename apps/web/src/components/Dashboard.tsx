@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
 import { MetricCard } from './MetricCard'
 import { StageFunnelChart } from './StageFunnelChart'
 import { TopDeals } from './TopDeals'
@@ -16,14 +15,12 @@ import {
 } from './Skeletons'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { useGetUsers } from '@/lib/hooks/queries'
-import { queryKeys } from '@/lib/query-keys'
+import { useGetDashboardDeals, useGetDashboardSummary, useGetUsers } from '@/lib/hooks/queries'
 import { timeAgo, formatDealTitle } from '@/lib/utils'
 import { DEAL_CURRENCIES, formatCurrencyBreakdown, formatDealMoney, moneyValue, normalizeDealCurrency, sumMoneyByCurrency } from '@/lib/currency'
 import { convertMoney, formatConversionRateNote, formatConvertedMoney, sumConvertedMoney } from '@/lib/currency-conversion'
-import { api } from '@/lib/api'
 import { MONTHS } from '@/lib/constants'
-import type { ApiDeal, DealCurrency, PipelineSummary } from '@/lib/types'
+import type { DealCurrency } from '@/lib/types'
 
 // ─── Filter helpers ───────────────────────────────────────────────────────────
 
@@ -64,18 +61,9 @@ export function Dashboard() {
 
   const { from, to } = getDateRange(filter)
 
-  const { data: summary, isLoading: loadingSummary, isError: errorSummary } = useQuery<PipelineSummary>({
-    queryKey: queryKeys.pipeline.summaryFiltered({ from, to }),
-    queryFn: () => api.get<PipelineSummary>('/pipeline/summary', { from, to }),
-    staleTime: 60_000,
-    retry: false,
-  })
+  const { data: summary, isLoading: loadingSummary, isError: errorSummary } = useGetDashboardSummary({ from, to })
 
-  const { data: deals = [], isLoading: loadingDeals, isError: errorDeals } = useQuery<ApiDeal[]>({
-    queryKey: [...queryKeys.deals.all, { from, to }],
-    queryFn: () => api.get<ApiDeal[]>('/deals', { from, to }),
-    retry: false,
-  })
+  const { data: deals = [], isLoading: loadingDeals, isError: errorDeals } = useGetDashboardDeals({ from, to })
 
 
 

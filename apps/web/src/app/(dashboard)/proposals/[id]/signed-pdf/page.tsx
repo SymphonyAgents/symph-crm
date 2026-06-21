@@ -1,36 +1,17 @@
 'use client'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
-
-type SignedPdfResponse = {
-  url: string
-  fileName: string | null
-  storagePath: string
-  dealId: string | null
-  proposalId: string
-  slug: string | null
-}
+import { useGetSignedProposalPdf } from '@/lib/hooks/queries'
 
 export default function SignedProposalPdfPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
+  const { data, error } = useGetSignedProposalPdf(id)
 
   useEffect(() => {
-    let cancelled = false
-    api.get<SignedPdfResponse>(`/proposals/${id}/signed-pdf`)
-      .then((res) => {
-        if (cancelled) return
-        window.location.replace(res.url)
-      })
-      .catch((err: Error) => {
-        if (cancelled) return
-        setError(err.message || 'Signed PDF not found')
-      })
-    return () => { cancelled = true }
-  }, [id])
+    if (data?.url) window.location.replace(data.url)
+  }, [data?.url])
 
   return (
     <div className="flex min-h-[60dvh] items-center justify-center bg-surface-alt px-6 text-center">
@@ -38,7 +19,7 @@ export default function SignedProposalPdfPage({ params }: { params: Promise<{ id
         {error ? (
           <>
             <p className="text-sm font-semibold text-foreground">Signed PDF unavailable</p>
-            <p className="mt-2 text-xs text-muted-foreground">{error}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{error.message || 'Signed PDF not found'}</p>
             <button
               type="button"
               onClick={() => router.push(`/proposals/${id}`)}
