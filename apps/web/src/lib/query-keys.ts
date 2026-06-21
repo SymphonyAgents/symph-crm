@@ -23,6 +23,8 @@ type DealsFilterParams = {
   companyId?: string
   limit?: number
   dealType?: string
+  from?: string
+  to?: string
 }
 
 type AuditFilterParams = {
@@ -94,6 +96,7 @@ export const queryKeys = {
   },
   calendar: {
     status: ['calendar', 'status'] as const,
+    eventsAll: ['calendar', 'events'] as const,
     events: (params: { from?: string; to?: string; dealId?: string }) =>
       ['calendar', 'events', params] as const,
     teamDemos: (params: { from?: string; to?: string }) =>
@@ -139,6 +142,7 @@ export const queryKeys = {
     versions: (id: string) => ['proposals', id, 'versions'] as const,
     version: (id: string, vid: string) => ['proposals', id, 'versions', vid] as const,
     shares: (id: string) => ['proposals', id, 'shares'] as const,
+    signedPdf: (id: string) => ['proposals', id, 'signed-pdf'] as const,
   },
   notifications: {
     all: ['notifications'] as const,
