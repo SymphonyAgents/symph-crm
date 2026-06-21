@@ -13,15 +13,13 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useGetDeals, useGetMeetings, useGetRecordings } from '@/lib/hooks/queries'
-import { useAssignMeetingDeal, useCirclebackUpload, useDeleteMeeting, useDeleteRecording } from '@/lib/hooks/mutations'
+import { useAssignMeetingDeal, useDeleteMeeting, useDeleteRecording, useUploadRecordingFile } from '@/lib/hooks/mutations'
 import { useRecorder } from '@/lib/hooks/use-recorder'
 import { useUser } from '@/lib/hooks/use-user'
+import { useCirclebackProcessing } from '@/lib/hooks/use-circleback-processing'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { queryKeys } from '@/lib/query-keys'
-import { api } from '@/lib/api'
 import type { ApiDeal, ApiMeetingListItem, ApiMeetingStatus, ApiRecording } from '@/lib/types'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { TabFilter, type TabFilterItem } from '@/components/ui/tab-filter'
@@ -298,10 +296,10 @@ function DeleteMeetingDialog({
 }
 
 function RecordingsTab() {
-  const qc = useQueryClient()
   const { data: recordings = [], isLoading } = useGetRecordings()
   const recorder = useRecorder()
   const deleteRecording = useDeleteRecording()
+  const uploadRecording = useUploadRecordingFile()
 
   const [title, setTitle] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -309,44 +307,16 @@ function RecordingsTab() {
   const frozenDuration = useRef(0)
 
   const cbFileInputRef = useRef<HTMLInputElement>(null)
-  const [cbCorrelationKey, setCbCorrelationKey] = useState<string | null>(null)
-  const [cbStatus, setCbStatus] = useState<'idle' | 'uploading' | 'processing' | 'done' | 'failed'>('idle')
-
-  const { mutate: uploadToCircleback, isPending: cbUploading } = useCirclebackUpload({
-    onSuccess: (data) => {
-      setCbCorrelationKey(data.correlationKey)
-      setCbStatus('processing')
-      toast.success('Recording uploaded, Circleback is processing it. Notes will appear in the deal once attached.')
-    },
-    onError: (err) => {
-      setCbStatus('failed')
-      toast.error(`Upload failed: ${err.message}`)
-    },
+  const {
+    status: cbStatus,
+    uploadToCircleback,
+    setStatus: setCbStatus,
+    isUploading: cbUploading,
+  } = useCirclebackProcessing({
+    uploadSuccessMessage: 'Recording uploaded, Circleback is processing it. Notes will appear in the deal once attached.',
+    doneMessage: 'Meeting transcript and notes are ready!',
+    failedMessage: 'Circleback processing failed.',
   })
-
-  useEffect(() => {
-    if (!cbCorrelationKey || cbStatus !== 'processing') return
-    const interval = setInterval(async () => {
-      try {
-        const result = await api.get<{ status: string; crmPushStatus?: string }>(
-          `/recordings/circleback-status?correlationKey=${encodeURIComponent(cbCorrelationKey)}`,
-        )
-        if (result.crmPushStatus === 'done') {
-          setCbStatus('done')
-          setCbCorrelationKey(null)
-          toast.success('Meeting transcript and notes are ready!')
-          clearInterval(interval)
-        } else if (result.crmPushStatus === 'failed') {
-          setCbStatus('failed')
-          clearInterval(interval)
-          toast.error('Circleback processing failed.')
-        }
-      } catch {
-        // Keep polling.
-      }
-    }, 15000)
-    return () => clearInterval(interval)
-  }, [cbCorrelationKey, cbStatus])
 
   async function handleDone() {
     setUploadError(null)
@@ -358,8 +328,7 @@ function RecordingsTab() {
       form.append('file', blob, `recording.${ext}`)
       form.append('title', title.trim() || `Recording ${new Date().toLocaleString('en-PH')}`)
       form.append('duration', String(dur))
-      await api.upload('/recordings/upload', form)
-      await qc.invalidateQueries({ queryKey: queryKeys.recordings.all })
+      await uploadRecording.mutateAsync(form)
       recorder.reset()
       setTitle('')
       frozenDuration.current = 0
