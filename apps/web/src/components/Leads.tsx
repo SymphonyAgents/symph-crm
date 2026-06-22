@@ -13,40 +13,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { StatusPill } from '@/components/ui/status-pill'
 import { SubTabFilter, type SubTabFilterItem } from '@/components/ui/sub-tab-filter'
 import { Textarea } from '@/components/ui/textarea'
+import { LeadStatus, LEGACY_LEAD_STATUS_MAP } from '@symph-crm/shared'
 import { LEAD_SEGMENT_OPTIONS, LeadSegmentOption, STANDARD_INDUSTRY_OPTIONS } from '@/lib/constants'
 import { formatNameWithAcronyms } from '@/lib/format-deal-name'
 import { useDebouncedValue } from '@/lib/hooks/use-debounced-value'
 import { useGetCatalogItems, useGetCompanies } from '@/lib/hooks/queries'
 import { useConvertLead, useCreateLead, useDeleteLead, useInfiniteLeadsList, useUpdateLead } from '@/lib/hooks/useLeadsQuery'
 import { cn } from '@/lib/utils'
-import type { ApiLead, ConvertLeadInput, CreateLeadInput, LeadStatus } from '@/lib/types'
+import type { ApiLead, ConvertLeadInput, CreateLeadInput } from '@/lib/types'
 
 const LEAD_STATUS_OPTIONS: Array<{ value: LeadStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All leads' },
-  { value: 'new', label: 'New' },
-  { value: 'reviewing', label: 'Reviewing' },
-  { value: 'contacted', label: 'Contacted' },
-  { value: 'interested', label: 'Interested' },
-  { value: 'not_fit', label: 'Not fit' },
-  { value: 'duplicate', label: 'Duplicate' },
-  { value: 'converted', label: 'Converted' },
+  { value: LeadStatus.ToContact, label: 'To Contact' },
+  { value: LeadStatus.Contacted, label: 'Contacted' },
+  { value: LeadStatus.FollowedUp, label: 'Followed Up' },
+  { value: LeadStatus.Lost, label: 'Lost' },
+  { value: LeadStatus.Converted, label: 'Converted' },
 ]
 
 const LEAD_STATUS_META: Record<LeadStatus, { label: string; className: string }> = {
-  new: { label: 'New', className: 'bg-sky-500/12 text-sky-700 dark:text-sky-300' },
-  reviewing: { label: 'Reviewing', className: 'bg-violet-500/12 text-violet-700 dark:text-violet-300' },
-  contacted: { label: 'Contacted', className: 'bg-blue-500/12 text-blue-700 dark:text-blue-300' },
-  interested: { label: 'Interested', className: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' },
-  not_fit: { label: 'Not fit', className: 'bg-slate-500/12 text-slate-700 dark:text-slate-300' },
-  duplicate: { label: 'Duplicate', className: 'bg-orange-500/12 text-orange-700 dark:text-orange-300' },
-  converted: { label: 'Converted', className: 'bg-green-500/12 text-green-700 dark:text-green-300' },
+  [LeadStatus.ToContact]: { label: 'To Contact', className: 'bg-sky-500/12 text-sky-700 dark:text-sky-300' },
+  [LeadStatus.Contacted]: { label: 'Contacted', className: 'bg-blue-500/12 text-blue-700 dark:text-blue-300' },
+  [LeadStatus.FollowedUp]: { label: 'Followed Up', className: 'bg-violet-500/12 text-violet-700 dark:text-violet-300' },
+  [LeadStatus.Lost]: { label: 'Lost', className: 'bg-slate-500/12 text-slate-700 dark:text-slate-300' },
+  [LeadStatus.Converted]: { label: 'Converted', className: 'bg-green-500/12 text-green-700 dark:text-green-300' },
 }
 
 const LEADS_PAGE_SIZE = 20
 
 const INITIAL_FORM: CreateLeadInput = {
   sourceName: 'manual',
-  status: 'new',
+  status: LeadStatus.ToContact,
+  followUpCount: 0,
   score: 0,
   personName: '',
   personTitle: '',
@@ -89,8 +87,15 @@ function cleanLeadInput(input: CreateLeadInput): CreateLeadInput {
   ) as CreateLeadInput
 }
 
-function StatusBadge({ status, loading = false }: { status: LeadStatus; loading?: boolean }) {
-  const meta = LEAD_STATUS_META[status]
+function normalizeLeadStatus(status: LeadStatus | string | null | undefined): LeadStatus {
+  if (!status) return LeadStatus.ToContact
+  if (status in LEAD_STATUS_META) return status as LeadStatus
+  return LEGACY_LEAD_STATUS_MAP[status] ?? LeadStatus.ToContact
+}
+
+function StatusBadge({ status, loading = false }: { status: LeadStatus | string; loading?: boolean }) {
+  const normalizedStatus = normalizeLeadStatus(status)
+  const meta = LEAD_STATUS_META[normalizedStatus]
   return (
     <StatusPill className={cn('rounded-full', meta.className)}>
       {loading && <Loader2 size={11} className="mr-1 animate-spin" />}
@@ -523,7 +528,7 @@ function LeadActionConfirmDialog({
           <div className="mb-4 flex items-center gap-2">
             <StatusBadge status={lead.status} />
             <ChevronDown size={14} className="-rotate-90 text-text-faint" />
-            <StatusBadge status="not_fit" />
+            <StatusBadge status={LeadStatus.Lost} />
           </div>
           <p className="text-sm font-semibold text-foreground">Delete lead?</p>
           <p className="mt-1 text-ssm leading-relaxed text-muted-foreground">
@@ -551,11 +556,11 @@ function LeadActionConfirmDialog({
           <div className="mb-3 flex items-center gap-2">
             <StatusBadge status={lead.status} />
             <ChevronDown size={14} className="-rotate-90 text-text-faint" />
-            <StatusBadge status="converted" />
+            <StatusBadge status={LeadStatus.Converted} />
           </div>
-          <p className="text-sm font-semibold text-foreground">Convert lead?</p>
+          <p className="text-sm font-semibold text-foreground">Move to sales pipeline?</p>
           <p className="mt-1 text-ssm text-muted-foreground">
-            Create a pipeline deal from <span className="font-semibold text-foreground">{leadName}</span>.
+            Convert <span className="font-semibold text-foreground">{leadName}</span> into a sales pipeline deal.
           </p>
         </div>
 
@@ -676,11 +681,20 @@ function LeadRow({
   onOpenDetails: (lead: ApiLead) => void
 }) {
   const [pendingStatus, setPendingStatus] = useState<LeadStatus | null>(null)
+  const [pendingFollowUpCount, setPendingFollowUpCount] = useState<number | null>(null)
   const updateLead = useUpdateLead({
-    onSuccess: () => setPendingStatus(null),
-    onError: () => setPendingStatus(null),
+    onSuccess: () => {
+      setPendingStatus(null)
+      setPendingFollowUpCount(null)
+    },
+    onError: () => {
+      setPendingStatus(null)
+      setPendingFollowUpCount(null)
+    },
   })
-  const canConvert = lead.status !== 'converted' && lead.status !== 'duplicate' && lead.status !== 'not_fit'
+  const currentStatus = pendingStatus ?? normalizeLeadStatus(lead.status)
+  const currentFollowUpCount = pendingFollowUpCount ?? lead.followUpCount
+  const canConvert = currentStatus !== LeadStatus.Converted && currentStatus !== LeadStatus.Lost
 
   return (
     <tr className="cursor-pointer border-b border-border transition-colors hover:bg-surface-hover" onClick={() => onOpenDetails(lead)}>
@@ -697,34 +711,64 @@ function LeadRow({
         <div className="text-xs text-foreground">{lead.email || lead.phone || 'No contact'}</div>
       </td>
       <td className="px-4 py-3 align-top" onClick={event => event.stopPropagation()}>
-        <Select
-          value={lead.status}
-          disabled={updateLead.isPending}
-          onValueChange={(value) => {
-            const nextStatus = value as LeadStatus
-            if (nextStatus === lead.status) return
-            setPendingStatus(nextStatus)
-            updateLead.mutate({ id: lead.id, data: { status: nextStatus } })
-          }}
-        >
-          <SelectTrigger size="sm" className="w-[122px] border-transparent bg-transparent px-0 hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-100">
-            <StatusBadge status={pendingStatus ?? lead.status} loading={updateLead.isPending} />
-          </SelectTrigger>
-          <SelectContent className="w-[180px]">
-            {LEAD_STATUS_OPTIONS.filter(option => option.value !== 'all').map(option => {
-              const optionStatus = option.value as LeadStatus
-              return (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  className="cursor-pointer px-2 py-2 focus:bg-surface-hover data-[highlighted]:bg-surface-hover"
-                >
-                  <StatusBadge status={optionStatus} />
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select
+            value={currentStatus}
+            disabled={updateLead.isPending}
+            onValueChange={(value) => {
+              const nextStatus = value as LeadStatus
+              if (nextStatus === currentStatus) return
+              const nextFollowUpCount = nextStatus === LeadStatus.FollowedUp ? Math.max(lead.followUpCount || 1, 1) : 0
+              setPendingStatus(nextStatus)
+              setPendingFollowUpCount(nextFollowUpCount)
+              updateLead.mutate({
+                id: lead.id,
+                data: {
+                  status: nextStatus,
+                  followUpCount: nextFollowUpCount,
+                },
+              })
+            }}
+          >
+            <SelectTrigger size="sm" className="w-[132px] border-transparent bg-transparent px-0 hover:bg-transparent focus-visible:border-transparent focus-visible:ring-0 disabled:opacity-100">
+              <StatusBadge status={currentStatus} loading={updateLead.isPending} />
+            </SelectTrigger>
+            <SelectContent className="w-[180px]">
+              {LEAD_STATUS_OPTIONS.filter(option => option.value !== 'all').map(option => {
+                const optionStatus = option.value as LeadStatus
+                return (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    className="cursor-pointer px-2 py-2 focus:bg-surface-hover data-[highlighted]:bg-surface-hover"
+                  >
+                    <StatusBadge status={optionStatus} />
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+          {currentStatus === LeadStatus.FollowedUp && (
+            <Select
+              value={String(currentFollowUpCount || 1)}
+              disabled={updateLead.isPending}
+              onValueChange={(value) => {
+                const nextFollowUpCount = Number(value)
+                setPendingFollowUpCount(nextFollowUpCount)
+                updateLead.mutate({ id: lead.id, data: { status: LeadStatus.FollowedUp, followUpCount: nextFollowUpCount } })
+              }}
+            >
+              <SelectTrigger size="sm" className="h-7 w-[58px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5].map(count => (
+                  <SelectItem key={count} value={String(count)}>{count} {count === 1 ? 'time' : 'times'}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </td>
       <td className="hidden w-[190px] px-4 py-3 align-top xl:table-cell">
         <span className="inline-flex max-w-none whitespace-nowrap rounded-full border border-border bg-secondary px-2 py-0.5 text-xxs font-medium text-muted-foreground">
@@ -781,7 +825,7 @@ export function Leads() {
   } = useInfiniteLeadsList(params, LEADS_PAGE_SIZE)
   const leads = useMemo(() => data?.pages.flatMap(page => page.items) ?? [], [data])
   const totalLeadCount = data?.pages[0]?.count ?? 0
-  const stats = data?.pages[0]?.stats ?? { active: 0, interested: 0, converted: 0 }
+  const stats = data?.pages[0]?.stats ?? { active: 0, followedUp: 0, converted: 0 }
   const segmentCounts = data?.pages[0]?.segmentCounts ?? {}
   const segmentTabs = useMemo<SubTabFilterItem<LeadSegmentOption | 'all'>[]>(() => [
     { id: 'all', label: 'All', count: Object.values(segmentCounts).reduce((sum, count) => sum + count, 0) },
@@ -850,8 +894,8 @@ export function Leads() {
               <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">{stats.active}</p>
             </div>
             <div className="rounded-md border border-border bg-card px-3 py-2">
-              <p className="text-atom uppercase tracking-[0.14em] text-text-faint">Interested</p>
-              <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">{stats.interested}</p>
+              <p className="text-atom uppercase tracking-[0.14em] text-text-faint">Followed Up</p>
+              <p className="mt-1 text-sm font-semibold text-foreground tabular-nums">{stats.followedUp}</p>
             </div>
             <div className="rounded-md border border-border bg-card px-3 py-2">
               <p className="text-atom uppercase tracking-[0.14em] text-text-faint">Converted</p>

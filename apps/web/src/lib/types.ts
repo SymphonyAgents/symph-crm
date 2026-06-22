@@ -1,4 +1,4 @@
-import { CrmUserRole, CrmUserStatus, PartnerCommissionStatus } from '@symph-crm/shared'
+import { CrmUserRole, CrmUserStatus, LeadStatus, PartnerCommissionStatus } from '@symph-crm/shared'
 
 // ─── API Entity Types ─────────────────────────────────────────────────────────
 //
@@ -7,7 +7,7 @@ import { CrmUserRole, CrmUserStatus, PartnerCommissionStatus } from '@symph-crm/
 
 // ── Leads ────────────────────────────────────────────────────────────────────
 
-export type LeadStatus = 'new' | 'reviewing' | 'contacted' | 'interested' | 'not_fit' | 'duplicate' | 'converted'
+export { LeadStatus }
 
 export type ApiLead = {
   id: string
@@ -27,6 +27,7 @@ export type ApiLead = {
   linkedinUrl: string | null
   phone: string | null
   status: LeadStatus
+  followUpCount: number
   score: number
   notes: string | null
   rawPayload: Record<string, unknown> | null
@@ -42,7 +43,7 @@ export type ApiLeadsListResponse = {
   count: number
   stats: {
     active: number
-    interested: number
+    followedUp: number
     converted: number
   }
   segmentCounts: Record<string, number>
@@ -94,6 +95,7 @@ export type CreateLeadInput = {
   linkedinUrl?: string | null
   phone?: string | null
   status?: LeadStatus
+  followUpCount?: number
   score?: number
   notes?: string | null
   rawPayload?: Record<string, unknown> | null

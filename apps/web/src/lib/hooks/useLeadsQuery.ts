@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData, type UseMutationOptions, type UseQueryOptions } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
@@ -56,6 +56,44 @@ function refreshLeadLists(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: queryKeys.leads.all })
 }
 
+function isInfiniteLeadsData(data: ApiLeadsListResponse | InfiniteData<ApiLeadsListResponse>): data is InfiniteData<ApiLeadsListResponse> {
+  return 'pages' in data
+}
+
+function patchLeadItem(lead: ApiLead, id: string, patch: UpdateLeadInput) {
+  if (lead.id !== id) return lead
+  return { ...lead, ...patch }
+}
+
+function patchLeadListData(data: ApiLeadsListResponse, id: string, patch: UpdateLeadInput): ApiLeadsListResponse {
+  return {
+    ...data,
+    items: data.items.map(lead => patchLeadItem(lead, id, patch)),
+  }
+}
+
+function patchLeadQueries(queryClient: ReturnType<typeof useQueryClient>, id: string, patch: UpdateLeadInput) {
+  queryClient.setQueryData<ApiLead>(queryKeys.leads.detail(id), previous => (previous ? patchLeadItem(previous, id, patch) : previous))
+  queryClient.setQueriesData<ApiLeadsListResponse | InfiniteData<ApiLeadsListResponse>>(
+    {
+      predicate: query => {
+        const key = query.queryKey
+        return key[0] === 'leads' && (key[1] === 'infinite' || typeof key[1] === 'object')
+      },
+    },
+    previous => {
+      if (!previous) return previous
+      if (isInfiniteLeadsData(previous)) {
+        return {
+          ...previous,
+          pages: previous.pages.map(page => patchLeadListData(page, id, patch)),
+        }
+      }
+      return patchLeadListData(previous, id, patch)
+    },
+  )
+}
+
 export function useCreateLead(
   options?: UseMutationOptions<ApiLead, Error, CreateLeadInput>,
 ) {
@@ -80,14 +118,22 @@ export function useUpdateLead(
   const queryClient = useQueryClient()
   return useMutation<ApiLead, Error, { id: string; data: UpdateLeadInput }>({
     mutationFn: ({ id, data }) => api.leads.update(id, data),
+    onMutate: async (variables) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.leads.all })
+      await queryClient.cancelQueries({ queryKey: queryKeys.leads.detail(variables.id) })
+      patchLeadQueries(queryClient, variables.id, variables.data)
+    },
     onSuccess: (data, variables, context) => {
       toast.success('Lead updated')
+      patchLeadQueries(queryClient, variables.id, data)
       refreshLeadLists(queryClient)
       queryClient.invalidateQueries({ queryKey: queryKeys.leads.detail(variables.id) })
       options?.onSuccess?.(data, variables, context, undefined as never)
     },
     onError: (error, variables, context) => {
       toast.error(error.message || 'Lead update failed')
+      refreshLeadLists(queryClient)
+      queryClient.invalidateQueries({ queryKey: queryKeys.leads.detail(variables.id) })
       options?.onError?.(error, variables, context, undefined as never)
     },
   })
