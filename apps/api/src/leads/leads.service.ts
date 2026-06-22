@@ -1,10 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
-import { sql } from 'drizzle-orm'
+import { companies, contacts, leadConversions, leads, workspaces } from '@symph-crm/database'
+import { LeadStatus, LEGACY_LEAD_STATUS_MAP } from '@symph-crm/shared'
+import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { DealsService } from '../deals/deals.service'
-
-type LeadStatus = 'new' | 'reviewing' | 'contacted' | 'interested' | 'not_fit' | 'duplicate' | 'converted'
 
 type LeadRow = {
   id: string
@@ -24,6 +24,7 @@ type LeadRow = {
   linkedinUrl: string | null
   phone: string | null
   status: LeadStatus
+  followUpCount: number
   score: number
   notes: string | null
   rawPayload: Record<string, unknown> | null
@@ -49,7 +50,7 @@ type LeadsListResponse = {
   count: number
   stats: {
     active: number
-    interested: number
+    followedUp: number
     converted: number
   }
   segmentCounts: Record<string, number>
@@ -71,6 +72,7 @@ type LeadInput = {
   linkedinUrl?: string | null
   phone?: string | null
   status?: LeadStatus
+  followUpCount?: number
   score?: number
   notes?: string | null
   rawPayload?: Record<string, unknown> | null
@@ -89,33 +91,11 @@ type ConvertLeadInput = {
   conversionNotes?: string | null
 }
 
-const LEAD_SELECT = sql`
-  id,
-  workspace_id AS "workspaceId",
-  source_name AS "sourceName",
-  source_file_name AS "sourceFileName",
-  source_row_number AS "sourceRowNumber",
-  segment,
-  person_name AS "personName",
-  person_title AS "personTitle",
-  company_name AS "companyName",
-  industry,
-  company_size AS "companySize",
-  location,
-  email,
-  email_status AS "emailStatus",
-  linkedin_url AS "linkedinUrl",
-  phone,
-  status,
-  score,
-  notes,
-  raw_payload AS "rawPayload",
-  matched_company_id AS "matchedCompanyId",
-  matched_contact_id AS "matchedContactId",
-  created_by AS "createdBy",
-  created_at AS "createdAt",
-  updated_at AS "updatedAt"
-`
+type LeadDbRow = typeof leads.$inferSelect
+
+type LeadConversionRow = typeof leadConversions.$inferSelect
+
+const LEGACY_LEAD_STATUS_VALUES = Object.keys(LEGACY_LEAD_STATUS_MAP)
 
 @Injectable()
 export class LeadsService {
@@ -133,109 +113,44 @@ export class LeadsService {
     const segment = params.segment || null
     const search = params.search?.trim() || null
 
-    const rows = await this.db.execute(sql`
-      SELECT ${LEAD_SELECT}
-      FROM leads
-      WHERE workspace_id = ${workspaceId}::uuid
-        AND (${status}::text IS NULL OR status = ${status})
-        AND (${sourceName}::text IS NULL OR source_name = ${sourceName})
-        AND (${segment}::text IS NULL OR segment = ${segment})
-        AND (
-          ${search}::text IS NULL
-          OR person_name ILIKE '%' || ${search} || '%'
-          OR person_title ILIKE '%' || ${search} || '%'
-          OR company_name ILIKE '%' || ${search} || '%'
-          OR industry ILIKE '%' || ${search} || '%'
-          OR company_size ILIKE '%' || ${search} || '%'
-          OR location ILIKE '%' || ${search} || '%'
-          OR email ILIKE '%' || ${search} || '%'
-          OR email_status ILIKE '%' || ${search} || '%'
-          OR linkedin_url ILIKE '%' || ${search} || '%'
-          OR phone ILIKE '%' || ${search} || '%'
-          OR segment ILIKE '%' || ${search} || '%'
-        )
-      ORDER BY updated_at DESC, created_at DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `)
+    const listWhere = this.buildLeadWhere({ workspaceId, status, sourceName, segment, search })
+    const statsWhere = this.buildLeadWhere({ workspaceId, sourceName, segment, search })
+    const segmentWhere = this.buildLeadWhere({ workspaceId, status, sourceName, search })
 
-    const [countRow] = await this.db.execute<{ count: number }>(sql`
-      SELECT COUNT(*)::int AS count
-      FROM leads
-      WHERE workspace_id = ${workspaceId}::uuid
-        AND (${status}::text IS NULL OR status = ${status})
-        AND (${sourceName}::text IS NULL OR source_name = ${sourceName})
-        AND (${segment}::text IS NULL OR segment = ${segment})
-        AND (
-          ${search}::text IS NULL
-          OR person_name ILIKE '%' || ${search} || '%'
-          OR person_title ILIKE '%' || ${search} || '%'
-          OR company_name ILIKE '%' || ${search} || '%'
-          OR industry ILIKE '%' || ${search} || '%'
-          OR company_size ILIKE '%' || ${search} || '%'
-          OR location ILIKE '%' || ${search} || '%'
-          OR email ILIKE '%' || ${search} || '%'
-          OR email_status ILIKE '%' || ${search} || '%'
-          OR linkedin_url ILIKE '%' || ${search} || '%'
-          OR phone ILIKE '%' || ${search} || '%'
-          OR segment ILIKE '%' || ${search} || '%'
-        )
-    `)
+    const rows = await this.db
+      .select()
+      .from(leads)
+      .where(listWhere)
+      .orderBy(desc(leads.updatedAt), desc(leads.createdAt))
+      .limit(limit)
+      .offset(offset)
 
-    const [statsRow] = await this.db.execute<{ active: number; interested: number; converted: number }>(sql`
-      SELECT
-        COUNT(*) FILTER (WHERE status NOT IN ('converted', 'not_fit', 'duplicate'))::int AS active,
-        COUNT(*) FILTER (WHERE status = 'interested')::int AS interested,
-        COUNT(*) FILTER (WHERE status = 'converted')::int AS converted
-      FROM leads
-      WHERE workspace_id = ${workspaceId}::uuid
-        AND (${sourceName}::text IS NULL OR source_name = ${sourceName})
-        AND (${segment}::text IS NULL OR segment = ${segment})
-        AND (
-          ${search}::text IS NULL
-          OR person_name ILIKE '%' || ${search} || '%'
-          OR person_title ILIKE '%' || ${search} || '%'
-          OR company_name ILIKE '%' || ${search} || '%'
-          OR industry ILIKE '%' || ${search} || '%'
-          OR company_size ILIKE '%' || ${search} || '%'
-          OR location ILIKE '%' || ${search} || '%'
-          OR email ILIKE '%' || ${search} || '%'
-          OR email_status ILIKE '%' || ${search} || '%'
-          OR linkedin_url ILIKE '%' || ${search} || '%'
-          OR phone ILIKE '%' || ${search} || '%'
-          OR segment ILIKE '%' || ${search} || '%'
-        )
-    `)
+    const [countRow] = await this.db
+      .select({ count: count() })
+      .from(leads)
+      .where(listWhere)
 
-    const segmentRows = await this.db.execute<{ segment: string | null; count: number }>(sql`
-      SELECT segment, COUNT(*)::int AS count
-      FROM leads
-      WHERE workspace_id = ${workspaceId}::uuid
-        AND (${status}::text IS NULL OR status = ${status})
-        AND (${sourceName}::text IS NULL OR source_name = ${sourceName})
-        AND (
-          ${search}::text IS NULL
-          OR person_name ILIKE '%' || ${search} || '%'
-          OR person_title ILIKE '%' || ${search} || '%'
-          OR company_name ILIKE '%' || ${search} || '%'
-          OR industry ILIKE '%' || ${search} || '%'
-          OR company_size ILIKE '%' || ${search} || '%'
-          OR location ILIKE '%' || ${search} || '%'
-          OR email ILIKE '%' || ${search} || '%'
-          OR email_status ILIKE '%' || ${search} || '%'
-          OR linkedin_url ILIKE '%' || ${search} || '%'
-          OR phone ILIKE '%' || ${search} || '%'
-          OR segment ILIKE '%' || ${search} || '%'
-        )
-      GROUP BY segment
-    `)
+    const [statsRow] = await this.db
+      .select({
+        active: sql<number>`count(*) filter (where ${leads.status} not in ('converted', 'lost', 'not_fit', 'duplicate'))::int`,
+        followedUp: sql<number>`count(*) filter (where ${leads.status} = 'followed_up')::int`,
+        converted: sql<number>`count(*) filter (where ${leads.status} = 'converted')::int`,
+      })
+      .from(leads)
+      .where(statsWhere)
+
+    const segmentRows = await this.db
+      .select({ segment: leads.segment, count: count() })
+      .from(leads)
+      .where(segmentWhere)
+      .groupBy(leads.segment)
 
     return {
-      items: rows as unknown as LeadRow[],
+      items: rows.map(row => this.toLeadRow(row)),
       count: Number(countRow?.count ?? 0),
       stats: {
         active: Number(statsRow?.active ?? 0),
-        interested: Number(statsRow?.interested ?? 0),
+        followedUp: Number(statsRow?.followedUp ?? 0),
         converted: Number(statsRow?.converted ?? 0),
       },
       segmentCounts: Object.fromEntries(segmentRows.map(row => [row.segment ?? 'unknown', Number(row.count ?? 0)])),
@@ -243,130 +158,103 @@ export class LeadsService {
   }
 
   async findOne(id: string): Promise<LeadRow> {
-    const [lead] = await this.db.execute(sql`
-      SELECT ${LEAD_SELECT}
-      FROM leads
-      WHERE id = ${id}::uuid
-      LIMIT 1
-    `)
+    const [lead] = await this.db
+      .select()
+      .from(leads)
+      .where(eq(leads.id, id))
+      .limit(1)
     if (!lead) throw new NotFoundException('Lead not found')
-    return lead as LeadRow
+    return this.toLeadRow(lead)
   }
 
   async conversions(id: string) {
     await this.findOne(id)
-    return this.db.execute(sql`
-      SELECT
-        id,
-        workspace_id AS "workspaceId",
-        lead_id AS "leadId",
-        company_id AS "companyId",
-        contact_id AS "contactId",
-        deal_id AS "dealId",
-        converted_by AS "convertedBy",
-        conversion_notes AS "conversionNotes",
-        created_at AS "createdAt"
-      FROM lead_conversions
-      WHERE lead_id = ${id}::uuid
-      ORDER BY created_at DESC
-    `)
+    const rows = await this.db
+      .select()
+      .from(leadConversions)
+      .where(eq(leadConversions.leadId, id))
+      .orderBy(desc(leadConversions.createdAt))
+    return rows.map(row => this.toLeadConversionRow(row))
   }
 
   async create(input: LeadInput, userId?: string): Promise<LeadRow> {
     const workspaceId = await this.getDefaultWorkspaceId()
-    const [lead] = await this.db.execute(sql`
-      INSERT INTO leads (
-        workspace_id,
-        source_name,
-        source_file_name,
-        source_row_number,
-        segment,
-        person_name,
-        person_title,
-        company_name,
-        industry,
-        company_size,
-        location,
-        email,
-        email_status,
-        linkedin_url,
-        phone,
+    const status = input.status ?? LeadStatus.ToContact
+    const [lead] = await this.db
+      .insert(leads)
+      .values({
+        workspaceId,
+        sourceName: input.sourceName ?? 'manual',
+        sourceFileName: input.sourceFileName ?? null,
+        sourceRowNumber: input.sourceRowNumber ?? null,
+        segment: input.segment ?? null,
+        personName: input.personName ?? null,
+        personTitle: input.personTitle ?? null,
+        companyName: input.companyName ?? null,
+        industry: input.industry ?? null,
+        companySize: input.companySize ?? null,
+        location: input.location ?? null,
+        email: input.email ?? null,
+        emailStatus: input.emailStatus ?? null,
+        linkedinUrl: input.linkedinUrl ?? null,
+        phone: input.phone ?? null,
         status,
-        score,
-        notes,
-        raw_payload,
-        matched_company_id,
-        matched_contact_id,
-        created_by
-      ) VALUES (
-        ${workspaceId}::uuid,
-        COALESCE(${input.sourceName ?? null}, 'manual'),
-        ${input.sourceFileName ?? null},
-        ${input.sourceRowNumber ?? null},
-        ${input.segment ?? null},
-        ${input.personName ?? null},
-        ${input.personTitle ?? null},
-        ${input.companyName ?? null},
-        ${input.industry ?? null},
-        ${input.companySize ?? null},
-        ${input.location ?? null},
-        ${input.email ?? null},
-        ${input.emailStatus ?? null},
-        ${input.linkedinUrl ?? null},
-        ${input.phone ?? null},
-        COALESCE(${input.status ?? null}, 'new'),
-        COALESCE(${input.score ?? null}, 0),
-        ${input.notes ?? null},
-        ${input.rawPayload ? JSON.stringify(input.rawPayload) : null}::jsonb,
-        ${input.matchedCompanyId ?? null}::uuid,
-        ${input.matchedContactId ?? null}::uuid,
-        ${userId ?? null}
-      )
-      RETURNING ${LEAD_SELECT}
-    `)
-    return lead as LeadRow
+        followUpCount: this.resolveFollowUpCount(status, input.followUpCount),
+        score: input.score ?? 0,
+        notes: input.notes ?? null,
+        rawPayload: input.rawPayload ?? null,
+        matchedCompanyId: input.matchedCompanyId ?? null,
+        matchedContactId: input.matchedContactId ?? null,
+        createdBy: userId ?? null,
+      })
+      .returning()
+    return this.toLeadRow(lead)
   }
 
   async update(id: string, input: LeadInput): Promise<LeadRow> {
-    await this.findOne(id)
-    const [lead] = await this.db.execute(sql`
-      UPDATE leads
-      SET
-        source_name = COALESCE(${input.sourceName ?? null}, source_name),
-        source_file_name = COALESCE(${input.sourceFileName ?? null}, source_file_name),
-        source_row_number = COALESCE(${input.sourceRowNumber ?? null}, source_row_number),
-        segment = COALESCE(${input.segment ?? null}, segment),
-        person_name = COALESCE(${input.personName ?? null}, person_name),
-        person_title = COALESCE(${input.personTitle ?? null}, person_title),
-        company_name = COALESCE(${input.companyName ?? null}, company_name),
-        industry = COALESCE(${input.industry ?? null}, industry),
-        company_size = COALESCE(${input.companySize ?? null}, company_size),
-        location = COALESCE(${input.location ?? null}, location),
-        email = COALESCE(${input.email ?? null}, email),
-        email_status = COALESCE(${input.emailStatus ?? null}, email_status),
-        linkedin_url = COALESCE(${input.linkedinUrl ?? null}, linkedin_url),
-        phone = COALESCE(${input.phone ?? null}, phone),
-        status = COALESCE(${input.status ?? null}, status),
-        score = COALESCE(${input.score ?? null}, score),
-        notes = COALESCE(${input.notes ?? null}, notes),
-        raw_payload = COALESCE(${input.rawPayload ? JSON.stringify(input.rawPayload) : null}::jsonb, raw_payload),
-        matched_company_id = COALESCE(${input.matchedCompanyId ?? null}::uuid, matched_company_id),
-        matched_contact_id = COALESCE(${input.matchedContactId ?? null}::uuid, matched_contact_id),
-        updated_at = now()
-      WHERE id = ${id}::uuid
-      RETURNING ${LEAD_SELECT}
-    `)
-    return lead as LeadRow
+    const existing = await this.findOne(id)
+    const nextStatus = input.status ?? existing.status
+    const updateData: Partial<typeof leads.$inferInsert> = {
+      updatedAt: new Date(),
+      followUpCount: this.resolveFollowUpCount(nextStatus, input.followUpCount, existing.followUpCount),
+    }
+
+    if (input.sourceName != null) updateData.sourceName = input.sourceName
+    if (input.sourceFileName != null) updateData.sourceFileName = input.sourceFileName
+    if (input.sourceRowNumber != null) updateData.sourceRowNumber = input.sourceRowNumber
+    if (input.segment != null) updateData.segment = input.segment
+    if (input.personName != null) updateData.personName = input.personName
+    if (input.personTitle != null) updateData.personTitle = input.personTitle
+    if (input.companyName != null) updateData.companyName = input.companyName
+    if (input.industry != null) updateData.industry = input.industry
+    if (input.companySize != null) updateData.companySize = input.companySize
+    if (input.location != null) updateData.location = input.location
+    if (input.email != null) updateData.email = input.email
+    if (input.emailStatus != null) updateData.emailStatus = input.emailStatus
+    if (input.linkedinUrl != null) updateData.linkedinUrl = input.linkedinUrl
+    if (input.phone != null) updateData.phone = input.phone
+    if (input.status != null) updateData.status = input.status
+    if (input.score != null) updateData.score = input.score
+    if (input.notes != null) updateData.notes = input.notes
+    if (input.rawPayload != null) updateData.rawPayload = input.rawPayload
+    if (input.matchedCompanyId != null) updateData.matchedCompanyId = input.matchedCompanyId
+    if (input.matchedContactId != null) updateData.matchedContactId = input.matchedContactId
+
+    const [lead] = await this.db
+      .update(leads)
+      .set(updateData)
+      .where(eq(leads.id, id))
+      .returning()
+    return this.toLeadRow(lead)
   }
 
   async remove(id: string): Promise<LeadRow> {
     await this.findOne(id)
-    const [lead] = await this.db.execute(sql`
-      DELETE FROM leads
-      WHERE id = ${id}::uuid
-      RETURNING ${LEAD_SELECT}
-    `)
-    return lead as LeadRow
+    const [lead] = await this.db
+      .delete(leads)
+      .where(eq(leads.id, id))
+      .returning()
+    return this.toLeadRow(lead)
   }
 
   async convert(id: string, input: ConvertLeadInput, userId?: string) {
@@ -390,30 +278,33 @@ export class LeadsService {
       sourceLeadId: lead.id,
     } as never, userId)
 
-    await this.db.execute(sql`
-      UPDATE leads
-      SET status = 'converted', matched_company_id = ${companyId}::uuid, matched_contact_id = ${contactId}::uuid, updated_at = now()
-      WHERE id = ${id}::uuid
-    `)
+    await this.db
+      .update(leads)
+      .set({
+        status: LeadStatus.Converted,
+        followUpCount: 0,
+        matchedCompanyId: companyId,
+        matchedContactId: contactId,
+        updatedAt: new Date(),
+      })
+      .where(eq(leads.id, id))
 
-    const [conversion] = await this.db.execute(sql`
-      INSERT INTO lead_conversions (workspace_id, lead_id, company_id, contact_id, deal_id, converted_by, conversion_notes)
-      VALUES (${workspaceId}::uuid, ${id}::uuid, ${companyId}::uuid, ${contactId}::uuid, ${deal.id}::uuid, ${userId ?? null}, ${input.conversionNotes ?? null})
-      RETURNING
-        id,
-        workspace_id AS "workspaceId",
-        lead_id AS "leadId",
-        company_id AS "companyId",
-        contact_id AS "contactId",
-        deal_id AS "dealId",
-        converted_by AS "convertedBy",
-        conversion_notes AS "conversionNotes",
-        created_at AS "createdAt"
-    `)
+    const [conversion] = await this.db
+      .insert(leadConversions)
+      .values({
+        workspaceId,
+        leadId: id,
+        companyId,
+        contactId,
+        dealId: deal.id,
+        convertedBy: userId ?? null,
+        conversionNotes: input.conversionNotes ?? null,
+      })
+      .returning()
 
     return {
       lead: await this.findOne(id),
-      conversion,
+      conversion: this.toLeadConversionRow(conversion),
       company: { id: companyId, name: lead.companyName || lead.personName || 'Converted lead' },
       contactId,
       deal,
@@ -421,9 +312,11 @@ export class LeadsService {
   }
 
   private async getDefaultWorkspaceId(): Promise<string> {
-    const [workspace] = await this.db.execute<{ id: string }>(sql`
-      SELECT id FROM workspaces ORDER BY created_at ASC LIMIT 1
-    `)
+    const [workspace] = await this.db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .orderBy(asc(workspaces.createdAt))
+      .limit(1)
     if (!workspace) throw new BadRequestException('No workspace found')
     return workspace.id
   }
@@ -432,43 +325,140 @@ export class LeadsService {
     const companyName = overrideName?.trim() || lead.companyName?.trim() || lead.personName?.trim()
     if (!companyName) throw new BadRequestException('Lead needs a company or person name before conversion')
 
-    const [existing] = await this.db.execute<{ id: string }>(sql`
-      SELECT id
-      FROM companies
-      WHERE lower(name) = lower(${companyName})
-      LIMIT 1
-    `)
+    const [existing] = await this.db
+      .select({ id: companies.id })
+      .from(companies)
+      .where(and(eq(companies.workspaceId, lead.workspaceId), ilike(companies.name, companyName)))
+      .limit(1)
     if (existing) return existing.id
 
-    const [company] = await this.db.execute<{ id: string }>(sql`
-      INSERT INTO companies (name, industry, headcount_range, hq_location, linkedin_url, workspace_id, created_by)
-      VALUES (${companyName}, ${lead.industry}, ${lead.companySize}, ${lead.location}, ${lead.linkedinUrl}, ${lead.workspaceId}::uuid, ${userId ?? null})
-      RETURNING id
-    `)
+    const [company] = await this.db
+      .insert(companies)
+      .values({
+        name: companyName,
+        industry: lead.industry,
+        headcountRange: lead.companySize,
+        hqLocation: lead.location,
+        linkedinUrl: lead.linkedinUrl,
+        workspaceId: lead.workspaceId,
+        createdBy: userId ?? null,
+      })
+      .returning({ id: companies.id })
     return company.id
   }
 
   private async findOrCreateContact(lead: LeadRow, companyId: string): Promise<string> {
     const personName = lead.personName?.trim() || lead.email?.trim() || 'Unknown contact'
-    const [existing] = await this.db.execute<{ id: string }>(sql`
-      SELECT id
-      FROM contacts
-      WHERE company_id = ${companyId}::uuid
-        AND (
-          (${lead.email}::text IS NOT NULL AND lower(email) = lower(${lead.email}))
-          OR lower(name) = lower(${personName})
-        )
-      LIMIT 1
-    `)
+    const matchConditions: SQL[] = [ilike(contacts.name, personName)]
+    if (lead.email) matchConditions.unshift(ilike(contacts.email, lead.email))
+
+    const [existing] = await this.db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.companyId, companyId), or(...matchConditions)))
+      .limit(1)
     if (existing) return existing.id
 
-    const [contact] = await this.db.execute<{ id: string }>(sql`
-      INSERT INTO contacts (company_id, name, email, phone, title, linkedin_url, is_primary)
-      VALUES (${companyId}::uuid, ${personName}, ${lead.email}, ${lead.phone}, ${lead.personTitle}, ${lead.linkedinUrl}, true)
-      RETURNING id
-    `)
+    const [contact] = await this.db
+      .insert(contacts)
+      .values({
+        companyId,
+        name: personName,
+        email: lead.email,
+        phone: lead.phone,
+        title: lead.personTitle,
+        linkedinUrl: lead.linkedinUrl,
+        isPrimary: true,
+      })
+      .returning({ id: contacts.id })
     return contact.id
+  }
+
+  private buildLeadWhere(params: {
+    workspaceId: string
+    status?: LeadStatus | null
+    sourceName?: string | null
+    segment?: string | null
+    search?: string | null
+  }) {
+    const conditions: SQL[] = [eq(leads.workspaceId, params.workspaceId)]
+
+    if (params.status) conditions.push(this.buildStatusCondition(params.status))
+    if (params.sourceName) conditions.push(eq(leads.sourceName, params.sourceName))
+    if (params.segment) conditions.push(eq(leads.segment, params.segment))
+
+    if (params.search) {
+      const pattern = `%${params.search}%`
+      conditions.push(or(
+        ilike(leads.personName, pattern),
+        ilike(leads.personTitle, pattern),
+        ilike(leads.companyName, pattern),
+        ilike(leads.industry, pattern),
+        ilike(leads.companySize, pattern),
+        ilike(leads.location, pattern),
+        ilike(leads.email, pattern),
+        ilike(leads.emailStatus, pattern),
+        ilike(leads.linkedinUrl, pattern),
+        ilike(leads.phone, pattern),
+        ilike(leads.segment, pattern),
+      )!)
+    }
+
+    return and(...conditions)
+  }
+
+  private buildStatusCondition(status: LeadStatus): SQL {
+    const legacyStatuses = LEGACY_LEAD_STATUS_VALUES.filter(value => LEGACY_LEAD_STATUS_MAP[value] === status)
+    const statusConditions: SQL[] = [eq(leads.status, status)]
+    for (const legacyStatus of legacyStatuses) {
+      statusConditions.push(eq(leads.status, legacyStatus as LeadStatus))
+    }
+    return or(...statusConditions)!
+  }
+
+  private resolveFollowUpCount(status: LeadStatus, countValue?: number | null, fallback = 0) {
+    if (status !== LeadStatus.FollowedUp) return 0
+    const countToClamp = countValue ?? (fallback > 0 ? fallback : 1)
+    return Math.min(Math.max(countToClamp, 1), 5)
+  }
+
+  private normalizeLeadStatus(status: LeadStatus | string | null | undefined): LeadStatus {
+    if (!status) return LeadStatus.ToContact
+    if (Object.values(LeadStatus).includes(status as LeadStatus)) return status as LeadStatus
+    return LEGACY_LEAD_STATUS_MAP[status] ?? LeadStatus.ToContact
+  }
+
+  private toLeadRow(row: LeadDbRow): LeadRow {
+    return {
+      ...row,
+      workspaceId: row.workspaceId ?? '',
+      status: this.normalizeLeadStatus(row.status),
+      followUpCount: this.resolveFollowUpCount(this.normalizeLeadStatus(row.status), row.followUpCount),
+      score: row.score ?? 0,
+      rawPayload: row.rawPayload ?? null,
+      createdAt: this.formatTimestamp(row.createdAt),
+      updatedAt: this.formatTimestamp(row.updatedAt),
+    }
+  }
+
+  private toLeadConversionRow(row: LeadConversionRow) {
+    return {
+      ...row,
+      workspaceId: row.workspaceId ?? null,
+      leadId: row.leadId ?? null,
+      companyId: row.companyId ?? null,
+      contactId: row.contactId ?? null,
+      dealId: row.dealId ?? null,
+      convertedBy: row.convertedBy ?? null,
+      conversionNotes: row.conversionNotes ?? null,
+      createdAt: this.formatTimestamp(row.createdAt),
+    }
+  }
+
+  private formatTimestamp(value: Date | string): string {
+    return value instanceof Date ? value.toISOString() : value
   }
 }
 
-export type { LeadInput, LeadsListParams, LeadsListResponse, ConvertLeadInput, LeadStatus }
+export { LeadStatus }
+export type { LeadInput, LeadsListParams, LeadsListResponse, ConvertLeadInput }
