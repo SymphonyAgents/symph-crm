@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
@@ -9,7 +8,6 @@ import { BACKEND_API_URL } from '@/lib/backend-url'
 import { useGetDocumentContent, useGetDocumentPreview } from '@/lib/hooks/queries'
 import { useUpdateDocument } from '@/lib/hooks/mutations'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
-import { queryKeys } from '@/lib/query-keys'
 import type { ApiDocument } from '@/lib/types'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -84,7 +82,6 @@ type DocumentViewerModalProps = {
 }
 
 export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initialContent }: DocumentViewerModalProps) {
-  const qc = useQueryClient()
   const isMarkdown = isMarkdownDoc(doc)
   const isImage = isImageDoc(doc)
   const isAudio = isAudioDoc(doc)
@@ -112,10 +109,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
   )
 
   const updateDocument = useUpdateDocument({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.documents.content(doc.id) })
-      setIsEditing(false)
-    },
+    onSuccess: () => setIsEditing(false),
   })
 
   // Escape: cancel edit if editing, otherwise close modal

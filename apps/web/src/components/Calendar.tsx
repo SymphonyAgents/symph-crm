@@ -1116,7 +1116,7 @@ export function Calendar({ onOpenDeal }: CalendarProps = {}) {
         <CreateEventModal
           defaultDate={clickedDate}
           onClose={() => setShowCreateModal(false)}
-          onCreated={() => qc.invalidateQueries({ queryKey: ['calendar', 'events'] })}
+          onCreated={() => qc.invalidateQueries({ queryKey: queryKeys.calendar.eventsAll })}
           userId={userId}
         />
       )}

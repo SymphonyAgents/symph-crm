@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import { Combobox } from '@/components/ui/combobox'
 import { useCreateCompany } from '@/lib/hooks/mutations'
-import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import { STANDARD_INDUSTRY_OPTIONS } from '@/lib/constants'
 
@@ -23,13 +21,8 @@ export function CreateBrandModal({ onClose, onCreated }: Props) {
   const [hqLocation, setHqLocation] = useState('')
   const [domain, setDomain] = useState('')
 
-  const qc = useQueryClient()
-
   const { mutate, isPending, error } = useCreateCompany({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.companies.all })
-      onCreated()
-    },
+    onSuccess: onCreated,
   })
 
   function handleSubmit(e: React.FormEvent) {

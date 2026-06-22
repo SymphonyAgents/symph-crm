@@ -32,7 +32,7 @@ apps/web/src/
 ## Conventions
 
 ### Brand Identity Reference
-- Before making frontend UI changes, read `/Users/vincetapdasan/Work/Symph CRM-revamp look (LLM).html` and use it as the visual source of truth for Symph CRM.
+- Before making frontend UI changes, read `docs/frontend-visual-reference.md` and use it as the repo-owned visual source of truth for Symph CRM.
 - Follow its Attio-density, Linear-restraint direction: compact rows, restrained borders, neutral surfaces, mono accents, and minimal decorative styling.
 - Card/container surfaces use `rounded-md` unless the revamp reference or a component primitive requires a different token.
 - Keep mock UI states visually identical to the real component state they represent.
@@ -106,71 +106,111 @@ Custom classes (`text-atom`, `text-xxs`, `text-ssm`, `text-sbase`) are defined i
 Data flow is strictly one-directional:
 
 ```
-Component → Custom Hook → API Client → Backend REST API
+Component → Domain Hook → API Client → Backend REST API
 ```
 
-Each layer has a single responsibility. **No layer skips another.**
+Each layer has one responsibility. **No layer skips another.** New frontend code must follow the domain hook structure below.
 
 #### Layer 1 — API Client (`lib/api.ts`)
 
-- Single source of truth for all backend communication.
-- Every backend endpoint is wrapped in a **typed async function**.
-- Attaches auth headers to every request; centralizes base URL via env var.
+- Owns the low-level backend transport boundary.
+- Attaches auth headers to every request and centralizes the backend URL.
 - Parses error responses into a consistent error shape with extracted `message`.
-- Returns typed data so consumers get full TypeScript safety.
-- Methods are grouped by domain: `api.deals.list()`, `api.deals.create(dto)`, etc.
+- Exposes typed `api.get`, `api.post`, `api.put`, `api.patch`, `api.delete`, and `api.upload` helpers.
+- Existing domain namespaces such as `api.leads.*` may remain. Do not force new namespaces unless the domain already uses that style or the change needs one.
 
 Rules:
 - No TanStack Query imports in this file.
 - No React hooks or component logic.
-- No caching, retry logic, or toast notifications.
-- Every method must have typed params and typed return value.
+- No caching, retry logic, invalidation, or toast notifications.
+- Keep request and response types in `lib/types.ts` unless a type is private to `api.ts`.
 
-#### Layer 2 — Custom Hooks (`lib/hooks/` directory)
+#### Layer 2 — Domain Hooks (`lib/hooks/queries/` and `lib/hooks/mutations/`)
 
-- Encapsulate all TanStack Query logic and user feedback in dedicated hook files.
-- One file per domain: `useDealsQuery.ts`, `useContactsQuery.ts`, etc.
-- Each file can export multiple hooks: `useDealsList`, `useDealDetail`, `useCreateDeal`, `useUpdateDeal`.
+Domain hooks own server state, cache keys, default invalidation, and mutation feedback.
 
 **Query hooks:**
-- Accept filter params that feed into both the query key and the api call.
-- Use query key arrays that include all filter dependencies: `['deals', filters]`.
+- Place query hooks in `apps/web/src/lib/hooks/queries/{domain}-queries.ts`.
+- Export every query hook through `apps/web/src/lib/hooks/queries.ts`.
+- Use query keys from `apps/web/src/lib/query-keys.ts` only.
+- Include every variable that affects the response in the query key.
+- For `useQueries`, export query option helpers from the same domain query file, such as `getBillingByDealQueryOptions`.
 
 **Mutation hooks:**
-- Call the corresponding `api.ts` method in `mutationFn`.
-- Invalidate related query keys in `onSuccess` so lists refresh automatically.
-- Show `toast.success` on success and `toast.error(err.message)` on failure.
-- Accept optional per-call `onSuccess`/`onError` callbacks for component-specific side effects (close dialog, navigate).
+- Place mutation hooks in `apps/web/src/lib/hooks/mutations/{domain}-mutations.ts`.
+- Export every mutation hook through `apps/web/src/lib/hooks/mutations.ts`.
+- Call the API client in `mutationFn`.
+- Own default cache invalidation in `onSuccess` for data the mutation changes.
+- Own default success and error toasts for user-triggered mutations.
+- Accept optional per-call `onSuccess`, `onError`, and `onSettled` callbacks for UI-only side effects.
+- Spread caller `options` before hook-owned `onSuccess` when the hook must guarantee default invalidation.
+
+**Shared flow hooks:**
+- Put reusable UI/server orchestration in `apps/web/src/lib/hooks/use-{flow}.ts`.
+- Use this for multi-step flows shared by components, such as Circleback upload polling.
+- Flow hooks may compose query and mutation hooks but must not render JSX.
 
 Rules:
-- No JSX or rendering logic.
-- No direct `fetch()` calls — always go through `lib/api.ts`.
-- Query keys must be deterministic and include all variables that affect the response.
-- **Toast messages belong here, not in components.**
+- No JSX or rendering logic in hooks.
+- No direct `fetch()` calls. Use `lib/api.ts`.
+- Query keys must be deterministic.
+- Toast messages for mutation results belong in mutation hooks, not components.
+- Do not duplicate hook-owned invalidation in components.
 
 #### Layer 3 — Components
 
-- Import and call custom hooks from `lib/hooks/`.
-- Destructure hook returns: `{ data, isLoading, mutate, isPending }`.
-- Show loading and error states based on hook status.
-- Pass per-call callbacks to mutations when needed (close dialog, reset form).
+Components own local UI flow only.
+
+Allowed component responsibilities:
+- Render UI and local state.
+- Close modals, reset forms, focus inputs, and navigate after mutations.
+- Handle optimistic cache writes and rollback when the UI owns the interaction.
+- Show loading and error states from hook results.
+- Pass per-call callbacks for local flow only.
 
 Rules:
-- **Never import from `lib/api.ts` directly.**
-- **Never write `useQuery` or `useMutation` inline in the component.**
-- **Never define query keys in components.**
-- **Never call `toast` for mutation results — the hook owns that feedback.**
-- Keep data transformation minimal — push complex transforms into the hook or a utility.
+- **Never import `api` from `lib/api.ts` directly in components without an explicit documented exception.**
+- **Never write `useQuery` or `useMutation` inline in components.** Use a domain hook or query option helper.
+- **Never define query keys in components except for optimistic cache reads/writes tied to UI-owned flows.**
+- **Never duplicate invalidation already owned by hooks.**
+- **Never call `toast` for standard mutation success/error.** Hooks own that feedback.
+- Keep data transformation minimal. Move complex transforms to hooks, payload helpers, or utilities.
 
-#### Adding a New Feature — Checklist
+#### Invalidation Ownership Rules
 
-When adding a new domain (e.g., "invoices"):
+- Mutation hooks own default invalidation for their domain.
+- Components keep invalidation only when the hook cannot know the UI context.
+- Example: `useCreateDeal` owns `queryKeys.deals.all`; `CreateDealModal` may still invalidate `queryKeys.companies.deals(brandId)` because only the modal knows the source brand context.
+- Stage transitions are an allowed exception. The UI may own invalidation when it owns optimistic multi-step stage movement and stage-specific toast text.
+- Imperative signed URL/download flows may use mutation hooks even when the backend call is read-like because the user action triggers a browser side effect.
 
-1. **Backend:** create the REST endpoints.
-2. **API Client:** add an `invoices` namespace to the `api` object in `lib/api.ts` with typed methods.
-3. **Types:** add the `Invoice` type to the shared types file.
-4. **Hooks:** create `lib/hooks/useInvoicesQuery.ts` with query and mutation hooks, including toast notifications for all mutations.
-5. **Components:** build UI that consumes only the hooks from step 4.
+#### Payload Shaping Rules
+
+- Do not build large create/update DTOs inline inside components.
+- Put reusable payload shaping in `apps/web/src/lib/payloads/{domain}-payload.ts`.
+- Payload helpers must be pure functions.
+- Components may collect form state, then call a payload helper before invoking a mutation hook.
+
+#### Adding a New Frontend Domain — Checklist
+
+When adding a new domain, such as `invoices`:
+
+1. Add or reuse response and request types in `apps/web/src/lib/types.ts`.
+2. Add deterministic query keys in `apps/web/src/lib/query-keys.ts`.
+3. Add query hooks in `apps/web/src/lib/hooks/queries/{domain}-queries.ts`.
+4. Add mutation hooks in `apps/web/src/lib/hooks/mutations/{domain}-mutations.ts`.
+5. Export hooks through `apps/web/src/lib/hooks/queries.ts` and `apps/web/src/lib/hooks/mutations.ts`.
+6. Add payload helpers in `apps/web/src/lib/payloads/{domain}-payload.ts` when form DTO shaping is non-trivial.
+7. Build components that consume only hooks, query option helpers, payload helpers, constants, and types.
+8. Run `pnpm --filter @symph-crm/web exec tsc --noEmit` and `pnpm --filter @symph-crm/web build` after code changes.
+
+#### Current Direct API Exceptions
+
+These component-level `api` imports are known legacy exceptions and should not be copied:
+- `Chat.tsx`
+- `app/(auth)/onboarding/page.tsx`
+
+When touching either file, prefer migrating the direct API calls into domain hooks instead of adding new direct calls.
 
 ### Styling
 - **Tailwind only** — no inline `style={}` unless truly dynamic (e.g., colors from data).
@@ -199,7 +239,9 @@ When adding a new domain (e.g., "invoices"):
 - Route folders: `kebab-case` (e.g., `pipeline/`, `deals/`).
 - Feature components: `PascalCase.tsx` (e.g., `DealDetail.tsx`).
 - UI components: `kebab-case.tsx` (e.g., `button.tsx`, `select.tsx`).
-- Hooks: `use{Feature}.ts` (e.g., `useDeals.ts`, `usePipeline.ts`).
+- Query hook files: `{domain}-queries.ts` under `lib/hooks/queries/` (e.g., `deal-queries.ts`, `billing-queries.ts`).
+- Mutation hook files: `{domain}-mutations.ts` under `lib/hooks/mutations/` (e.g., `deal-mutations.ts`, `billing-mutations.ts`).
+- Shared flow hooks: `use-{flow}.ts` under `lib/hooks/` (e.g., `use-circleback-processing.ts`).
 - Types/interfaces: `PascalCase` (e.g., `Deal`, `Stage`, `NoteEntry`).
 
 ## What NOT to Do
@@ -211,7 +253,7 @@ When adding a new domain (e.g., "invoices"):
 - Do NOT use default exports for components (only pages use default exports, as required by Next.js).
 - Do NOT install new UI component libraries (Material UI, Chakra, etc.). Extend the existing Radix-based `components/ui/` system.
 - Do NOT use `useEffect` for data fetching — use React Query.
-- Do NOT hardcode API URLs — use the `api` client which reads `NEXT_PUBLIC_API_URL`.
+- Do NOT hardcode API URLs. Use hooks backed by the `api` client and `BACKEND_API_URL` where an imperative browser URL is required.
 - Do NOT commit `.env` or `.env.local` files.
 
 ## Dark / Light Mode (MANDATORY)

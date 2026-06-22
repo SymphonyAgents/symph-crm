@@ -2,11 +2,9 @@
 
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, RotateCcw, Trash2 } from 'lucide-react'
 import { useGetTrashedDeals, useGetCompanies, useGetUsers } from '@/lib/hooks/queries'
 import { useRestoreDeal, usePermanentlyDeleteDeal } from '@/lib/hooks/mutations'
-import { queryKeys } from '@/lib/query-keys'
 import { formatDealName } from '@/lib/format-deal-name'
 import { formatDealMoney } from '@/lib/currency'
 import { Button } from '@/components/ui/button'
@@ -108,7 +106,6 @@ function DealInfo({ deal, companyName }: { deal: ApiDeal; companyName: string })
 }
 
 export function DealTrash() {
-  const queryClient = useQueryClient()
   const { data: deals = [], isLoading } = useGetTrashedDeals()
   const { data: companies = [] } = useGetCompanies()
   const { data: users = [] } = useGetUsers()
@@ -118,19 +115,11 @@ export function DealTrash() {
   const userMap = useMemo(() => new Map(users.map(user => [user.id, user.name || user.email])), [users])
 
   const restoreDeal = useRestoreDeal({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.trash })
-      setActionTarget(null)
-    },
+    onSuccess: () => setActionTarget(null),
   })
 
   const permanentlyDeleteDeal = usePermanentlyDeleteDeal({
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.deals.trash })
-      setActionTarget(null)
-    },
+    onSuccess: () => setActionTarget(null),
   })
 
   function confirmAction() {

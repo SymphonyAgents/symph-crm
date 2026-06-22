@@ -6,10 +6,8 @@ import { useQueries } from '@tanstack/react-query'
 import { cn, getBrandColor, getInitials } from '@/lib/utils'
 import { STAGE_COLORS } from '@/lib/constants'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useGetDealNotes, useGetDocumentsByDeal } from '@/lib/hooks/queries'
-import { queryKeys } from '@/lib/query-keys'
-import { api } from '@/lib/api'
-import type { ApiCompanyDetail, ApiDeal, ApiDocument, DealNoteFile, DealNotesResponse } from '@/lib/types'
+import { getDealNotesQueryOptions, getDocumentsByDealQueryOptions, useGetDealNotes, useGetDocumentsByDeal } from '@/lib/hooks/queries'
+import type { ApiCompanyDetail, ApiDeal, DealNoteFile } from '@/lib/types'
 
 export type WikiView = 'list' | 'graph'
 
@@ -276,17 +274,13 @@ export function WikiSidebar({
 
   const noteQueries = useQueries({
     queries: deals.map(d => ({
-      queryKey: queryKeys.deals.notes(d.id),
-      queryFn: () => api.get<DealNotesResponse>(`/deals/${d.id}/notes`),
-      enabled: searchActive,
+      ...getDealNotesQueryOptions(d.id, searchActive),
       staleTime: 60_000,
     })),
   })
   const docQueries = useQueries({
     queries: deals.map(d => ({
-      queryKey: queryKeys.documents.byDeal(d.id),
-      queryFn: () => api.get<ApiDocument[]>('/documents', { dealId: d.id }),
-      enabled: searchActive,
+      ...getDocumentsByDealQueryOptions(d.id, searchActive),
       staleTime: 60_000,
     })),
   })

@@ -1025,11 +1025,7 @@ export function RevenueGeneration({ catalogProductType, catalogItemId }: Revenue
   const [resellerTableView, setResellerTableView] = useState<ResellerTableView>('pricing')
   const [billingDeal, setBillingDeal] = useState<ApiDeal | null>(null)
 
-  const updateDeal = useUpdateDeal({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-    },
-  })
+  const updateDeal = useUpdateDeal()
   const upsertBilling = useUpsertBilling()
 
   const userById = useMemo(() => {

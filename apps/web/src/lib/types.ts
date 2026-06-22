@@ -68,6 +68,52 @@ export type LeadConversionResult = {
   deal: ApiDeal
 }
 
+export type LeadsListParams = {
+  workspaceId?: string
+  status?: LeadStatus | 'all'
+  sourceName?: string
+  segment?: string
+  search?: string
+  limit?: number
+  offset?: number
+}
+
+export type CreateLeadInput = {
+  sourceName?: string
+  sourceFileName?: string | null
+  sourceRowNumber?: number | null
+  segment?: string | null
+  personName?: string | null
+  personTitle?: string | null
+  companyName?: string | null
+  industry?: string | null
+  companySize?: string | null
+  location?: string | null
+  email?: string | null
+  emailStatus?: string | null
+  linkedinUrl?: string | null
+  phone?: string | null
+  status?: LeadStatus
+  score?: number
+  notes?: string | null
+  rawPayload?: Record<string, unknown> | null
+  matchedCompanyId?: string | null
+  matchedContactId?: string | null
+}
+
+export type UpdateLeadInput = Partial<CreateLeadInput>
+
+export type ConvertLeadInput = {
+  companyId?: string
+  companyName?: string
+  contactId?: string
+  assignedTo?: string
+  dealTitle?: string
+  catalogItemId?: string
+  serviceTag?: string
+  conversionNotes?: string
+}
+
 // ── Deals ────────────────────────────────────────────────────────────────────
 
 export type DealCurrency = 'PHP' | 'USD' | 'SGD'

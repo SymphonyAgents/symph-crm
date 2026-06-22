@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback, useMemo } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { CrmUserRole } from '@symph-crm/shared'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,13 +15,13 @@ import { UserOption } from '@/components/UserOption'
 import { PartnerGroupMultiSelect } from '@/components/PartnerGroupMultiSelect'
 import { useUpdateDeal, useAssignDealBrand, useCreateCompany } from '@/lib/hooks/mutations'
 import { useGetCompanies, useGetUsers, useGetCatalogItems, useGetPartnerDealGroups } from '@/lib/hooks/queries'
-import { queryKeys } from '@/lib/query-keys'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
 import {
   STAGE_OPTIONS, OUTREACH_OPTIONS, SYSTEM_TYPES,
 } from '@/lib/constants'
 import { formatNumberWithCommas } from '@/lib/utils'
 import { DEAL_CURRENCIES, formatMoney, normalizeDealCurrency } from '@/lib/currency'
+import { buildDealUpdatePayload } from '@/lib/payloads/deal-payload'
 import type { ApiDealDetail, ApiCatalogItem, DealCurrency } from '@/lib/types'
 
 type Props = {
@@ -168,8 +167,6 @@ export function EditDealModal({ deal, onClose }: Props) {
   const { data: catalogItems = [] } = useGetCatalogItems({ activeOnly: true, type: 'internal' })
   const { data: partnerDealGroups = [] } = useGetPartnerDealGroups()
   const salesUsers = useMemo(() => allUsers.filter(u => u.role === CrmUserRole.Sales), [allUsers])
-  const qc = useQueryClient()
-
   // ── Form state, pre-populated from deal ──────────────────────────────────
   const [title, setTitle] = useState(deal.title)
   const [companyId, setCompanyId] = useState(deal.companyId ?? '')
@@ -195,9 +192,6 @@ export function EditDealModal({ deal, onClose }: Props) {
 
   const updateDeal = useUpdateDeal({
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-      qc.invalidateQueries({ queryKey: queryKeys.deals.detail(deal.id) })
-      qc.invalidateQueries({ queryKey: queryKeys.pipeline.summary })
       onClose()
     },
   })
@@ -205,74 +199,32 @@ export function EditDealModal({ deal, onClose }: Props) {
   const createCompany = useCreateCompany()
 
   const assignBrand = useAssignDealBrand({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-      qc.invalidateQueries({ queryKey: queryKeys.deals.detail(deal.id) })
-      qc.invalidateQueries({ queryKey: queryKeys.pipeline.summary })
-      onClose()
-    },
+    onSuccess: () => onClose(),
   })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!title.trim()) return
 
-    // Build the changed-fields-only payload
-    const changes: Record<string, unknown> = {}
-
-    if (title.trim() !== deal.title) changes.title = title.trim()
-    if (stage !== deal.stage) changes.stage = stage
-    if (currency !== normalizeDealCurrency(deal.currency)) changes.currency = currency
-
-    const cleanValue = value.replace(/,/g, '').trim() || null
-    if (cleanValue !== deal.value) changes.value = cleanValue
-
-    const cleanOneTimeFee = oneTimeFee.replace(/,/g, '').trim() || null
-    if (cleanOneTimeFee !== (deal.oneTimeFee ?? null)) changes.oneTimeFee = cleanOneTimeFee
-
-    const cleanMrr = mrr.replace(/,/g, '').trim() || null
-    if (cleanMrr !== (deal.mrr ?? null)) changes.mrr = cleanMrr
-
-    // Reseller revenue fields
-    const cleanCostPrice = costPrice.replace(/,/g, '').trim() || null
-    if (cleanCostPrice !== (deal.costPrice ?? null)) changes.costPrice = cleanCostPrice
-    const cleanMarginPercent = marginPercent.trim() || null
-    if (cleanMarginPercent !== (deal.marginPercent ?? null)) changes.marginPercent = cleanMarginPercent
-
-    const cleanContractLength = contractLength ? parseInt(contractLength, 10) || null : null
-    if (cleanContractLength !== (deal.contractLength ?? null)) changes.contractLength = cleanContractLength
-
-    if ((outreachCategory || null) !== (deal.outreachCategory || null)) {
-      changes.outreachCategory = outreachCategory || null
-    }
-
-    const newTags = serviceType ? [serviceType] : []
-    const oldTags = deal.servicesTags ?? []
-    if (JSON.stringify(newTags) !== JSON.stringify(oldTags)) {
-      changes.servicesTags = newTags
-    }
-
-    const newCloseDate = closeDate || null
-    const oldCloseDate = deal.closeDate ? deal.closeDate.slice(0, 10) : null
-    if (newCloseDate !== oldCloseDate) changes.closeDate = newCloseDate
-
-    const newSubAm = subAccountManagerId || null
-    if (newSubAm !== (deal.subAccountManagerId ?? null)) changes.subAccountManagerId = newSubAm
-
-    const oldBuilders = deal.builders ?? []
-    if (JSON.stringify(builders) !== JSON.stringify(oldBuilders)) {
-      changes.builders = builders
-    }
-
-    const oldPartnerDealGroupIds = deal.partnerDealGroupIds ?? []
-    if (JSON.stringify([...partnerDealGroupIds].sort()) !== JSON.stringify([...oldPartnerDealGroupIds].sort())) {
-      changes.partnerDealGroupIds = partnerDealGroupIds
-    }
-
-    const newCatalogItemId = serviceType === 'internal_products' ? (catalogItemId || null) : null
-    if (newCatalogItemId !== (deal.catalogItemId ?? null)) {
-      changes.catalogItemId = newCatalogItemId
-    }
+    const changes = buildDealUpdatePayload({
+      deal,
+      title,
+      stage,
+      value,
+      currency,
+      oneTimeFee,
+      mrr,
+      costPrice,
+      marginPercent,
+      contractLength,
+      outreachCategory,
+      serviceType,
+      closeDate,
+      subAccountManagerId,
+      builders,
+      partnerDealGroupIds,
+      catalogItemId,
+    })
 
     // companyId is handled separately via useAssignDealBrand.
     // If user typed a free-text name (not a UUID), create the company first.
@@ -284,7 +236,6 @@ export function EditDealModal({ deal, onClose }: Props) {
       try {
         const created = await createCompany.mutateAsync({ name: rawCompanyId })
         resolvedCompanyId = created.id
-        qc.invalidateQueries({ queryKey: queryKeys.companies.all })
       } catch {
         // createCompany error is already toasted by withToast — stop submit
         return

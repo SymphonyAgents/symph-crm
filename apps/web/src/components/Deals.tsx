@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useGetCompanies, useGetDeals, useGetMyPartnerDealGroups, useGetUsers } from '@/lib/hooks/queries'
 import { Input } from '@/components/ui/input'
 import { SearchInput } from '@/components/ui/search-input'
@@ -19,7 +18,6 @@ import { BrandSlideOver } from './BrandSlideOver'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useUpdateCompany, useDeleteCompany } from '@/lib/hooks/mutations'
 import { Combobox } from '@/components/ui/combobox'
-import { queryKeys } from '@/lib/query-keys'
 import { useUser } from '@/lib/hooks/use-user'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
@@ -619,8 +617,6 @@ export function Deals({ onOpenDeal }: DealsProps) {
   // Cmd/Ctrl+F focuses the search input (matches Pipeline behavior).
   useSearchHotkey({ inputRef: searchInputRef })
 
-  const qc = useQueryClient()
-
   const { data: companies = [], isLoading: loadingCompanies } = useGetCompanies({ enabled: !isPartner })
   const { data: deals = [], isLoading: loadingDeals } = useGetDeals(isPartner ? undefined : { dealType: 'agency' })
   const { data: users = [] } = useGetUsers({ enabled: !isPartner })
@@ -628,18 +624,10 @@ export function Deals({ onOpenDeal }: DealsProps) {
 
   // Edit/delete mutations
   const updateCompany = useUpdateCompany({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.companies.all })
-      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-      setEditingBrand(null)
-    },
+    onSuccess: () => setEditingBrand(null),
   })
   const deleteCompany = useDeleteCompany({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.companies.all })
-      qc.invalidateQueries({ queryKey: queryKeys.deals.all })
-      setDeletingBrand(null)
-    },
+    onSuccess: () => setDeletingBrand(null),
   })
 
   // Populate edit form when editingBrand changes
@@ -850,7 +838,6 @@ export function Deals({ onOpenDeal }: DealsProps) {
         <CreateBrandModal
           onClose={() => setShowCreateBrand(false)}
           onCreated={() => {
-            qc.invalidateQueries({ queryKey: ['companies'] })
             setShowCreateBrand(false)
           }}
         />
@@ -860,7 +847,6 @@ export function Deals({ onOpenDeal }: DealsProps) {
           companies={companies}
           onClose={() => setShowCreateDeal(false)}
           onCreated={() => {
-            qc.invalidateQueries({ queryKey: ['deals'] })
             setShowCreateDeal(false)
           }}
         />

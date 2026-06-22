@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { z } from 'zod'
 import { Building2, CheckCircle2, ChevronDown, CircleDashed, ExternalLink, Filter, Gauge, Loader2, Mail, MapPin, Pencil, Phone, Plus, Search, Send, Trash2, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
@@ -20,8 +19,7 @@ import { useDebouncedValue } from '@/lib/hooks/use-debounced-value'
 import { useGetCatalogItems, useGetCompanies } from '@/lib/hooks/queries'
 import { useConvertLead, useCreateLead, useDeleteLead, useInfiniteLeadsList, useUpdateLead } from '@/lib/hooks/useLeadsQuery'
 import { cn } from '@/lib/utils'
-import type { ApiLead, LeadStatus } from '@/lib/types'
-import type { ConvertLeadInput, CreateLeadInput } from '@/lib/api'
+import type { ApiLead, ConvertLeadInput, CreateLeadInput, LeadStatus } from '@/lib/types'
 
 const LEAD_STATUS_OPTIONS: Array<{ value: LeadStatus | 'all'; label: string }> = [
   { value: 'all', label: 'All leads' },
@@ -45,10 +43,6 @@ const LEAD_STATUS_META: Record<LeadStatus, { label: string; className: string }>
 }
 
 const LEADS_PAGE_SIZE = 20
-
-const leadConversionSchema = z.object({
-  catalogItemId: z.string().min(1),
-})
 
 const INITIAL_FORM: CreateLeadInput = {
   sourceName: 'manual',
@@ -492,8 +486,7 @@ function LeadActionConfirmDialog({
       label: item.industry ? `${item.name} · ${item.industry}` : item.name,
     })), [catalog])
   const selectedService = useMemo(() => catalog.find(item => item.id === catalogItemId), [catalog, catalogItemId])
-  const conversionValidation = leadConversionSchema.safeParse({ catalogItemId })
-  const canConvert = conversionValidation.success
+  const canConvert = Boolean(catalogItemId.trim())
 
   useEffect(() => {
     if (!lead || target?.action !== 'convert') return
@@ -510,8 +503,7 @@ function LeadActionConfirmDialog({
   const accentClass = isDelete ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-primary text-primary-foreground hover:bg-primary/90'
 
   function submitConversion() {
-    const validation = leadConversionSchema.safeParse({ catalogItemId })
-    if (!lead || !validation.success) return
+    if (!lead || !catalogItemId.trim()) return
     onConfirm({
       companyId: brandId || undefined,
       companyName: brandId ? undefined : brandInput.trim() || lead.companyName || undefined,

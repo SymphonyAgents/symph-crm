@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -12,7 +11,6 @@ import {
 } from '@/components/ui/select'
 import { useUpdateContact } from '@/lib/hooks/mutations'
 import { useEscapeKey } from '@/lib/hooks/use-escape-key'
-import { queryKeys } from '@/lib/query-keys'
 import type { ApiContact } from '@/lib/hooks/queries'
 
 type Props = {
@@ -36,7 +34,6 @@ function parseTitle(raw: string | null): { role: string; notes: string } {
 export function EditContactModal({ contact, onClose }: Props) {
   useEscapeKey(useCallback(onClose, [onClose]))
 
-  const qc = useQueryClient()
 
   const { role: initialRole, notes: initialNotes } = parseTitle(contact.title)
   const [name, setName] = useState(contact.name)
@@ -46,10 +43,7 @@ export function EditContactModal({ contact, onClose }: Props) {
   const [notes, setNotes] = useState(initialNotes)
 
   const updateContact = useUpdateContact({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(contact.companyId) })
-      onClose()
-    },
+    onSuccess: onClose,
   })
 
   function handleSubmit(e: React.FormEvent) {
@@ -60,6 +54,7 @@ export function EditContactModal({ contact, onClose }: Props) {
 
     updateContact.mutate({
       id: contact.id,
+      companyId: contact.companyId,
       name: name.trim(),
       phone: phone.trim() || null,
       email: email.trim() || null,

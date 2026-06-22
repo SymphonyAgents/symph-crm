@@ -1,14 +1,12 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { cn, getInitials, getBrandColor, timeAgo, formatDealTitle, formatBrandName, toPascalCase } from '@/lib/utils'
 import { formatCurrencyBreakdown, formatDealMoney, sumMoneyByCurrency } from '@/lib/currency'
 import { STAGE_COLORS, STAGE_LABELS, CLOSED_STAGE_IDS } from '@/lib/constants'
 import { useGetDeals, useGetActivitiesByCompany, useGetUsers, useGetCompanies, useGetContactsByCompany } from '@/lib/hooks/queries'
 import { useAssignDealBrand, useCreateContact } from '@/lib/hooks/mutations'
 import type { ApiCompanyDetail, ApiDeal, Activity } from '@/lib/types'
-import { queryKeys } from '@/lib/query-keys'
 import { X, Plus, Copy, Check } from 'lucide-react'
 import { Avatar } from './Avatar'
 import { Input } from './ui/input'
@@ -138,13 +136,8 @@ function AssignBrandSelect({
   companies: ApiCompanyDetail[]
   onAssigned: () => void
 }) {
-  const qc = useQueryClient()
   const assign = useAssignDealBrand({
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['deals'] })
-      qc.invalidateQueries({ queryKey: ['companies'] })
-      onAssigned()
-    },
+    onSuccess: () => onAssigned(),
   })
 
   const sorted = useMemo(
@@ -229,10 +222,8 @@ export function BrandSlideOver({ brand, onClose, onOpenDeal }: BrandSlideOverPro
   const { data: dbContacts = [] } = useGetContactsByCompany(brand?.id !== UNASSIGNED_ID ? brand?.id : undefined)
 
   // Mutations
-  const qc = useQueryClient()
   const createContact = useCreateContact({
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.contacts.byCompany(brand?.id ?? '') })
       setShowAddPerson(false)
       setPersonForm({ name: '', phone: '', email: '', title: '', role: '' })
     },

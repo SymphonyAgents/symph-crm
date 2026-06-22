@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
 import { Avatar } from './Avatar'
-import { api } from '@/lib/api'
 import { BACKEND_API_URL } from '@/lib/backend-url'
 import { useUser } from '@/lib/hooks/use-user'
 import { queryKeys } from '@/lib/query-keys'
 import { useGetCalendarStatus } from '@/lib/hooks/queries'
+import { useDisconnectGoogleCalendar } from '@/lib/hooks/mutations'
 import { cn } from '@/lib/utils'
 import {
   Check,
@@ -70,8 +70,11 @@ export function Settings() {
 
   // Only query after userId is resolved so calendar status waits for backend auth session hydration.
   const { data: calendarStatus, isLoading: statusLoading } = useGetCalendarStatus({ enabled: !!userId })
-  const [disconnecting, setDisconnecting] = useState(false)
   const [banner, setBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const disconnectGoogleCalendar = useDisconnectGoogleCalendar({
+    onSuccess: () => setBanner({ type: 'success', message: 'Google account disconnected.' }),
+    onError: () => setBanner({ type: 'error', message: 'Failed to disconnect. Please try again.' }),
+  })
 
   // Handle ?connected=true or ?oauth_error=... from OAuth callback
   useEffect(() => {
@@ -95,17 +98,8 @@ export function Settings() {
     }
   }, [queryClient])
 
-  async function handleDisconnect() {
-    setDisconnecting(true)
-    try {
-      await api.delete('/auth/google-calendar/disconnect')
-      queryClient.invalidateQueries({ queryKey: queryKeys.calendar.status })
-      setBanner({ type: 'success', message: 'Google account disconnected.' })
-    } catch {
-      setBanner({ type: 'error', message: 'Failed to disconnect. Please try again.' })
-    } finally {
-      setDisconnecting(false)
-    }
+  function handleDisconnect() {
+    disconnectGoogleCalendar.mutate()
   }
 
   const connectUrl = `${BACKEND_API_URL}/auth/google-calendar/connect?returnTo=%2Fsettings`
@@ -207,15 +201,15 @@ export function Settings() {
               ) : calendarStatus?.connected ? (
                 <button
                   onClick={handleDisconnect}
-                  disabled={disconnecting}
+                  disabled={disconnectGoogleCalendar.isPending}
                   className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold border border-border text-muted-foreground hover:bg-surface-hover hover:text-red-600 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-400/20 transition-colors disabled:opacity-50"
                 >
-                  {disconnecting ? (
+                  {disconnectGoogleCalendar.isPending ? (
                     <Loader2 size={12} className="animate-spin" />
                   ) : (
                     <Link2Off size={12} />
                   )}
-                  {disconnecting ? 'Disconnecting...' : 'Disconnect'}
+                  {disconnectGoogleCalendar.isPending ? 'Disconnecting...' : 'Disconnect'}
                 </button>
               ) : (
                 <a

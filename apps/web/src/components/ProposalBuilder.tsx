@@ -1,22 +1,11 @@
 'use client'
 
-/**
- * ProposalBuilder — proposal list + Tiptap editor container.
- *
- * Architecture:
- *   ProposalBuilder (this file) — server-safe shell, handles list + selection
- *     └── ProposalEditor (dynamic import, ssr:false) — Tiptap, browser-only
- *
- * Data flow:
- *   List: GET /api/documents?dealId=&type=proposal (filter client-side by type)
- *   Create: POST /api/documents → new proposal document row
- *   Edit: ProposalEditor auto-saves to PUT /api/documents/:id every 2s
- *   Version: POST /api/documents with parentId = current documentId
- */
+// ProposalBuilder handles the proposal list and Tiptap editor container.
+// ProposalEditor uses ProseMirror, so this component loads it as a browser-only child.
+// List, create, edit, and version flows stay backed by document hooks.
 
 import { useState, useMemo, useCallback } from 'react'
 import dynamic from 'next/dynamic'
-import { useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from './EmptyState'
@@ -32,7 +21,6 @@ import {
 import type { ApiDocument } from '@/lib/types'
 import { useGetDeals, useGetDeal, useGetProposals, useGetDocumentContent } from '@/lib/hooks/queries'
 import { useCreateDocument } from '@/lib/hooks/mutations'
-import { queryKeys } from '@/lib/query-keys'
 
 // Dynamic import — Tiptap uses ProseMirror (browser DOM only, SSR breaks)
 const ProposalEditor = dynamic(() => import('./ProposalEditor'), {
@@ -133,7 +121,6 @@ function NewProposalModal({
 
 export function ProposalBuilder() {
   const { userId } = useUser()
-  const qc = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
@@ -274,10 +261,7 @@ export function ProposalBuilder() {
                 dealId={selected?.dealId ?? ''}
                 clientBrandColor={selectedDeal?.clientBrandColor ?? null}
                 initialContent={contentData?.content ?? ''}
-                onVersionSaved={() => {
-                  qc.invalidateQueries({ queryKey: queryKeys.documents.proposals })
-                  setShowVersions(true)
-                }}
+                onVersionSaved={() => setShowVersions(true)}
               />
             </div>
           </>
@@ -287,10 +271,7 @@ export function ProposalBuilder() {
       {showNewModal && (
         <NewProposalModal
           onClose={() => setShowNewModal(false)}
-          onCreated={(doc) => {
-            qc.invalidateQueries({ queryKey: queryKeys.documents.proposals })
-            setSelectedId(doc.id)
-          }}
+          onCreated={(doc) => setSelectedId(doc.id)}
           userId={userId}
         />
       )}
