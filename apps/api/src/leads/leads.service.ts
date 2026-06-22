@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { companies, contacts, leadConversions, leads, workspaces } from '@symph-crm/database'
 import { LeadStatus, LEGACY_LEAD_STATUS_MAP } from '@symph-crm/shared'
-import { and, asc, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
+import { and, asc, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { DealsService } from '../deals/deals.service'
@@ -130,8 +130,12 @@ export class LeadsService {
       .from(leads)
       .where(listWhere)
 
-    const statsRows = await this.db
-      .select({ status: leads.status })
+    const [statsRow] = await this.db
+      .select({
+        active: sql<number>`count(*) filter (where ${leads.status} not in ('converted', 'lost', 'not_fit', 'duplicate'))::int`,
+        followedUp: sql<number>`count(*) filter (where ${leads.status} = 'followed_up')::int`,
+        converted: sql<number>`count(*) filter (where ${leads.status} = 'converted')::int`,
+      })
       .from(leads)
       .where(statsWhere)
 
@@ -144,7 +148,11 @@ export class LeadsService {
     return {
       items: rows.map(row => this.toLeadRow(row)),
       count: Number(countRow?.count ?? 0),
-      stats: this.calculateStats(statsRows.map(row => row.status)),
+      stats: {
+        active: Number(statsRow?.active ?? 0),
+        followedUp: Number(statsRow?.followedUp ?? 0),
+        converted: Number(statsRow?.converted ?? 0),
+      },
       segmentCounts: Object.fromEntries(segmentRows.map(row => [row.segment ?? 'unknown', Number(row.count ?? 0)])),
     }
   }
@@ -406,16 +414,6 @@ export class LeadsService {
       statusConditions.push(eq(leads.status, legacyStatus as LeadStatus))
     }
     return or(...statusConditions)!
-  }
-
-  private calculateStats(statuses: Array<LeadStatus | string>) {
-    return statuses.reduce((stats, status) => {
-      const normalizedStatus = this.normalizeLeadStatus(status)
-      if (normalizedStatus !== LeadStatus.Converted && normalizedStatus !== LeadStatus.Lost) stats.active += 1
-      if (normalizedStatus === LeadStatus.FollowedUp) stats.followedUp += 1
-      if (normalizedStatus === LeadStatus.Converted) stats.converted += 1
-      return stats
-    }, { active: 0, followedUp: 0, converted: 0 })
   }
 
   private resolveFollowUpCount(status: LeadStatus, countValue?: number | null, fallback = 0) {
