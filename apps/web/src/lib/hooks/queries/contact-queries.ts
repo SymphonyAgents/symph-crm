@@ -1,41 +1,8 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type {
-  ApiDeal,
-  ApiDealDetail,
-  ApiCompanyDetail,
-  ApiUser,
-  ApiProduct,
-  ApiTier,
-  Activity,
-  ApiDocument,
-  ApiBilling,
-  PipelineSummary,
-  FunnelResponse,
-  AuditLogsResponse,
-  ApiCalendarEvent,
-  ApiTeamDemoEvent,
-  CalendarStatus,
-  InboxResponse,
-  ApiNotification,
-  DealNotesResponse,
-  DealSummaryMeta,
-  DealSummaryFull,
-  ContactNotesResponse,
-  NfsDealNote,
-  ApiCatalogItem,
-  ApiProposalListItem,
-  ApiProposalSummary,
-  ApiProposalHead,
-  ApiProposalVersion,
-  ApiProposalShareLink,
-  ApiRecording,
-  ApiMeetingDetail,
-  ApiMeetingListItem,
-  ApiPartnerGroup,
-  ApiPartnerDealGroup,
-} from '@/lib/types'
+import type { ContactNotesResponse } from '@/lib/types'
+
 
 // ─── Contacts ─────────────────────────────────────────────────────────────────
 
@@ -60,6 +27,18 @@ export function useGetContactsByCompany(
     queryKey: queryKeys.contacts.byCompany(companyId ?? ''),
     queryFn: () => api.get<ApiContact[]>('/contacts', { companyId }),
     enabled: !!companyId,
+    ...options,
+  })
+}
+
+export function useGetContactNotes(
+  contactId: string | null,
+  options?: Partial<UseQueryOptions<ContactNotesResponse>>,
+) {
+  return useQuery<ContactNotesResponse>({
+    queryKey: queryKeys.contacts.notes(contactId ?? ''),
+    queryFn: () => api.get<ContactNotesResponse>(`/contacts/${contactId}/notes`),
+    enabled: !!contactId,
     ...options,
   })
 }

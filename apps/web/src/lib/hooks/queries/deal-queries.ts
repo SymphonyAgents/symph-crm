@@ -1,41 +1,8 @@
 import { useQuery, type UseQueryOptions } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type {
-  ApiDeal,
-  ApiDealDetail,
-  ApiCompanyDetail,
-  ApiUser,
-  ApiProduct,
-  ApiTier,
-  Activity,
-  ApiDocument,
-  ApiBilling,
-  PipelineSummary,
-  FunnelResponse,
-  AuditLogsResponse,
-  ApiCalendarEvent,
-  ApiTeamDemoEvent,
-  CalendarStatus,
-  InboxResponse,
-  ApiNotification,
-  DealNotesResponse,
-  DealSummaryMeta,
-  DealSummaryFull,
-  ContactNotesResponse,
-  NfsDealNote,
-  ApiCatalogItem,
-  ApiProposalListItem,
-  ApiProposalSummary,
-  ApiProposalHead,
-  ApiProposalVersion,
-  ApiProposalShareLink,
-  ApiRecording,
-  ApiMeetingDetail,
-  ApiMeetingListItem,
-  ApiPartnerGroup,
-  ApiPartnerDealGroup,
-} from '@/lib/types'
+import type { ApiDeal, ApiDealDetail, DealNotesResponse, DealSummaryMeta, DealSummaryFull, NfsDealNote } from '@/lib/types'
+
 
 // ─── Deals ────────────────────────────────────────────────────────────────────
 
@@ -124,18 +91,6 @@ export function useGetDealSummaryLatest(
     queryKey: ['deals', dealId, 'summaries', latestFilename] as const,
     queryFn: () => api.get<DealSummaryFull>(`/deals/${dealId}/summaries/${latestFilename}`),
     enabled: !!dealId && !!latestFilename,
-    ...options,
-  })
-}
-
-export function useGetContactNotes(
-  contactId: string | null,
-  options?: Partial<UseQueryOptions<ContactNotesResponse>>,
-) {
-  return useQuery<ContactNotesResponse>({
-    queryKey: queryKeys.contacts.notes(contactId ?? ''),
-    queryFn: () => api.get<ContactNotesResponse>(`/contacts/${contactId}/notes`),
-    enabled: !!contactId,
     ...options,
   })
 }

@@ -32,7 +32,7 @@ apps/web/src/
 ## Conventions
 
 ### Brand Identity Reference
-- Before making frontend UI changes, read `/Users/vincetapdasan/Work/Symph CRM-revamp look (LLM).html` and use it as the visual source of truth for Symph CRM.
+- Before making frontend UI changes, read `docs/frontend-visual-reference.md` and use it as the repo-owned visual source of truth for Symph CRM.
 - Follow its Attio-density, Linear-restraint direction: compact rows, restrained borders, neutral surfaces, mono accents, and minimal decorative styling.
 - Card/container surfaces use `rounded-md` unless the revamp reference or a component primitive requires a different token.
 - Keep mock UI states visually identical to the real component state they represent.
