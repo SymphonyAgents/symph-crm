@@ -118,12 +118,14 @@ function getScoreCellTone(score: number) {
 
 function HeatmapCell({ score, isTotal = false }: { score: number; isTotal?: boolean }) {
   return (
-    <div className={cn(
-      'flex h-11 items-center justify-center rounded-md text-xs font-semibold tabular-nums sm:h-12 sm:text-sm',
-      getScoreCellTone(score),
-      isTotal && 'ring-1 ring-blue-950/10 dark:ring-white/20',
-    )}>
-      {score}
+    <div className="flex justify-center">
+      <div className={cn(
+        'flex h-7 w-7 items-center justify-center rounded-[6px] text-atom font-semibold tabular-nums shadow-sm sm:h-8 sm:w-8 sm:text-xxs',
+        getScoreCellTone(score),
+        isTotal && 'ring-1 ring-blue-950/10 dark:ring-white/20',
+      )}>
+        {score}
+      </div>
     </div>
   )
 }
@@ -135,19 +137,27 @@ function HeatmapLegend() {
       <span>Cold</span>
       <div className="flex items-center gap-1">
         {swatches.map(score => (
-          <span key={score} className={cn('h-4 w-8 rounded', getScoreCellTone(score))} />
+          <span key={score} className={cn('h-3 w-5 rounded-sm', getScoreCellTone(score))} />
         ))}
       </div>
       <span>Hot</span>
-      <span className="ml-0 text-text-faint sm:ml-3">score 0-100 · darker = stronger signal</span>
+      <span className="ml-0 text-text-faint sm:ml-2">0-100 signal</span>
     </div>
   )
 }
 
+function heatmapGridClassName() {
+  return 'grid min-w-[820px] grid-cols-[44px_minmax(320px,1fr)_repeat(5,76px)] items-center'
+}
+
+function heatmapRowClassName(extraClassName?: string) {
+  return cn(heatmapGridClassName(), 'gap-2 px-4', extraClassName)
+}
+
 function HeatmapHeader() {
   return (
-    <div className="grid min-w-[920px] grid-cols-[44px_minmax(230px,1.6fr)_repeat(5,minmax(108px,1fr))] items-center gap-1.5 px-4 pb-2 text-xs font-semibold text-muted-foreground">
-      <div />
+    <div className={heatmapRowClassName('border-b border-border py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground')}>
+      <div>#</div>
       <div>Deal</div>
       {HEATMAP_SIGNALS.map(signal => <div key={signal.key} className="text-center">{signal.label}</div>)}
       <div className="text-center">Score</div>
@@ -161,11 +171,11 @@ function HeatmapRow({ item, index, onOpenDeal }: { item: HeatmapDealScore; index
     <button
       type="button"
       onClick={() => onOpenDeal(item.deal.id)}
-      className="grid min-w-[920px] grid-cols-[44px_minmax(230px,1.6fr)_repeat(5,minmax(108px,1fr))] items-center gap-1.5 rounded-lg px-4 py-1 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-ring"
+      className={heatmapRowClassName('min-h-[48px] border-b border-border/80 py-1.5 text-left transition-colors last:border-b-0 odd:bg-muted/15 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-ring')}
     >
-      <div className="text-sm font-semibold tabular-nums text-text-faint">{index + 1}</div>
+      <div className="text-xs font-medium tabular-nums text-text-faint">{index + 1}</div>
       <div className="min-w-0 pr-3">
-        <div className="truncate text-sm font-semibold text-foreground">{formatDealName(item.deal.title)}</div>
+        <div className="truncate text-xs font-semibold text-foreground">{formatDealName(item.deal.title)}</div>
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-atom text-text-faint">
           <span className="truncate">{item.companyName}</span>
           <span>·</span>
@@ -191,11 +201,11 @@ export function DealHeatmap({ deals, companyMap, onOpenDeal }: DealHeatmapProps)
 
   return (
     <div className="px-4 pb-4">
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-border bg-gradient-to-b from-secondary/70 to-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="overflow-hidden rounded-md border border-border bg-card">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Deal temperature heatmap</h2>
-            <p className="mt-1 text-xxs text-muted-foreground">Scaffolded with grounded CRM signals. AI intelligence can replace these scores later.</p>
+            <p className="mt-1 text-xxs text-muted-foreground">Grounded CRM signals, sorted by strongest current opportunity.</p>
           </div>
           <HeatmapLegend />
         </div>
@@ -206,13 +216,11 @@ export function DealHeatmap({ deals, companyMap, onOpenDeal }: DealHeatmapProps)
             <p className="mt-1 text-xxs text-text-faint">Change the AM filter or search term to widen the heatmap.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto py-3">
+          <div className="overflow-x-auto">
             <HeatmapHeader />
-            <div className="space-y-0.5">
-              {scoredDeals.map((item, index) => (
-                <HeatmapRow key={item.deal.id} item={item} index={index} onOpenDeal={onOpenDeal} />
-              ))}
-            </div>
+            {scoredDeals.map((item, index) => (
+              <HeatmapRow key={item.deal.id} item={item} index={index} onOpenDeal={onOpenDeal} />
+            ))}
           </div>
         )}
       </div>
