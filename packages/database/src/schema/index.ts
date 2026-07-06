@@ -6,6 +6,7 @@ export * from './products'       // tiers
 
 export * from './catalog-items'
 export * from './deals'
+export * from './deal-intelligence'
 export * from './deal-contacts'
 export * from './partner-groups'
 export * from './partner-deal-groups'
