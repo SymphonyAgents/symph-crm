@@ -17,7 +17,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { formatDistanceToNow } from 'date-fns'
 import { useGetDeals, useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { cn, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
+import { cn, formatServiceType, getAdvanceTargets, getMoveBackTargets } from '@/lib/utils'
 import { formatDealMoney, formatCurrencyBreakdown, hasMultipleCurrencies, sumMoneyByCurrency } from '@/lib/currency'
 import { formatDealName } from '@/lib/format-deal-name'
 import type { ApiDeal, ApiCompany, ApiUser } from '@/lib/types'
@@ -39,6 +39,7 @@ import { SearchInput } from '@/components/ui/search-input'
 import { DataTable, SortableHeader } from '@/components/ui/data-table'
 import { StagePill } from '@/components/StagePill'
 import { usePipelineViewStore } from '@/lib/stores/pipeline-view-store'
+import { DealHeatmap } from '@/components/pipeline/DealHeatmap'
 import {
   MoreHorizontal, Search, Trash2, ExternalLink,
   ChevronDown, ChevronRight, User as UserIcon, Paperclip,
@@ -137,53 +138,6 @@ function getRecentActivityTime(deal: ApiDeal) {
   if (!value) return 0
   const time = new Date(value).getTime()
   return Number.isNaN(time) ? 0 : time
-}
-
-type Temperature = 'cold' | 'cool' | 'warm' | 'hot'
-
-type TemperatureScore = {
-  value: Temperature
-  score: number
-}
-
-const TEMPERATURE_META: Record<Temperature, { label: string; min: number; max: number }> = {
-  cold: { label: 'Cold', min: 1, max: 4 },
-  cool: { label: 'Cool', min: 5, max: 8 },
-  warm: { label: 'Warm', min: 9, max: 12 },
-  hot: { label: 'Hot', min: 13, max: 16 },
-}
-
-function hashDealTemperatureSeed(deal: ApiDeal) {
-  const input = `${deal.id}:${deal.title}`
-  let hash = 0
-  for (let i = 0; i < input.length; i++) {
-    hash = (hash * 31 + input.charCodeAt(i)) % 997
-  }
-  return hash
-}
-
-function getTemperatureFromScore(score: number): Temperature {
-  if (score >= TEMPERATURE_META.hot.min) return 'hot'
-  if (score >= TEMPERATURE_META.warm.min) return 'warm'
-  if (score >= TEMPERATURE_META.cool.min) return 'cool'
-  return 'cold'
-}
-
-function getMockDealTemperatureScore(deal: ApiDeal): TemperatureScore {
-  const seed = hashDealTemperatureSeed(deal)
-  const stageBase: Record<string, number> = {
-    closed_won: 15,
-    proposal: 14,
-    demo: 13,
-    assessment: 11,
-    discovery: 10,
-    lead: 7,
-    parked: 3,
-    closed_lost: 2,
-  }
-  const base = stageBase[deal.stage] ?? 6
-  const score = Math.max(1, Math.min(16, base + (seed % 5) - 2))
-  return { value: getTemperatureFromScore(score), score }
 }
 
 function AssigneeStack({ assignees, cardBgVar = 'var(--kanban-card)' }: { assignees: DealAssignee[]; cardBgVar?: string }) {
@@ -864,104 +818,6 @@ function MobileActionSheet({
   )
 }
 
-type PipelineHeatmapViewProps = {
-  deals: ApiDeal[]
-  companyMap: Map<string, string>
-  onOpenDeal: (id: string) => void
-}
-
-function PipelineHeatmapView({ deals, companyMap, onOpenDeal }: PipelineHeatmapViewProps) {
-  const scoredDeals = useMemo(() => {
-    return deals
-      .map(deal => ({ deal, temperature: getMockDealTemperatureScore(deal) }))
-      .sort((a, b) => {
-        const tempDelta = b.temperature.score - a.temperature.score
-        if (tempDelta !== 0) return tempDelta
-        const activityDelta = getRecentActivityTime(b.deal) - getRecentActivityTime(a.deal)
-        if (activityDelta !== 0) return activityDelta
-        return formatDealName(a.deal.title).localeCompare(formatDealName(b.deal.title))
-      })
-  }, [deals])
-
-  const cellIndexes = Array.from({ length: 16 }, (_, index) => index + 1)
-  const dealsByScore = useMemo(() => {
-    const buckets = new Map<number, typeof scoredDeals>()
-    for (const index of cellIndexes) buckets.set(index, [])
-    for (const item of scoredDeals) {
-      buckets.get(item.temperature.score)?.push(item)
-    }
-    return buckets
-  }, [cellIndexes, scoredDeals])
-
-  function getCellClass(index: number) {
-    if (index <= 4) return 'bg-blue-500/80 dark:bg-blue-400/80'
-    if (index <= 8) return 'bg-violet-500/80 dark:bg-violet-400/80'
-    if (index <= 12) return 'bg-pink-500/80 dark:bg-pink-400/80'
-    return 'bg-rose-500/85 dark:bg-rose-400/85'
-  }
-
-  return (
-    <div className="px-4 pb-4">
-      <div className="overflow-hidden rounded-md border border-border bg-card">
-        {scoredDeals.length === 0 ? (
-          <div className="py-14 text-center">
-            <p className="text-ssm text-muted-foreground">No deals found</p>
-            <p className="mt-1 text-xxs text-text-faint">Change the AM filter or search term to widen the heatmap.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <div className="min-w-[1120px]">
-              <div className="sticky top-0 z-10 grid grid-cols-[repeat(16,minmax(70px,1fr))] border-b border-border bg-card">
-                {cellIndexes.map(index => (
-                  <div key={index} className="border-r border-border px-1.5 py-1 text-center text-atom font-medium tabular-nums text-text-faint last:border-r-0">
-                    {index}
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid min-h-[420px] grid-cols-[repeat(16,minmax(70px,1fr))] bg-card">
-                {cellIndexes.map(index => {
-                  const items = dealsByScore.get(index) ?? []
-                  return (
-                    <div key={index} className="flex flex-col justify-end gap-1 border-r border-border px-1.5 py-2 last:border-r-0">
-                      {items.map(({ deal, temperature }) => (
-                        <button
-                          key={deal.id}
-                          type="button"
-                          onClick={() => onOpenDeal(deal.id)}
-                          className="group min-w-0 rounded-sm px-1 py-0.5 text-left transition-colors hover:bg-surface-hover"
-                          title={`${formatDealName(deal.title)} · ${STAGE_LABELS[deal.stage] ?? toPascalCase(deal.stage)} · ${companyMap.get(deal.companyId) ?? 'No Brand'} · ${temperature.score}/16`}
-                        >
-                          <span className="block truncate text-atom font-medium leading-4 text-foreground group-hover:text-primary">
-                            {formatDealName(deal.title)}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="grid grid-cols-[repeat(16,minmax(70px,1fr))] border-y border-border">
-                {cellIndexes.map(index => (
-                  <div key={index} className={cn('h-7 border-r border-card/70 last:border-r-0 dark:border-black/25', getCellClass(index))} />
-                ))}
-              </div>
-
-              <div className="grid grid-cols-4 bg-card text-center text-xxs font-medium text-muted-foreground">
-                <div className="border-r border-border px-2 py-2">Cold 1-4</div>
-                <div className="border-r border-border px-2 py-2">Cool 5-8</div>
-                <div className="border-r border-border px-2 py-2">Warm 9-12</div>
-                <div className="px-2 py-2">Hot 13-16</div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // --- Pipeline ---
 export function Pipeline({
   onOpenDeal,
@@ -1604,7 +1460,7 @@ export function Pipeline({
             ))}
           </div>
         ) : viewMode === 'heatmap' ? (
-          <PipelineHeatmapView deals={filteredDeals} companyMap={companyMap} onOpenDeal={onOpenDeal} />
+          <DealHeatmap deals={filteredDeals} companyMap={companyMap} onOpenDeal={onOpenDeal} />
         ) : viewMode === 'list' ? (
           <div className="px-4 pb-4">
             <div className="overflow-hidden rounded-md border border-border bg-card">
