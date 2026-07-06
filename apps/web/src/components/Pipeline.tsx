@@ -13,6 +13,8 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { useQueryClient } from '@tanstack/react-query'
+import type { ColumnDef } from '@tanstack/react-table'
+import { formatDistanceToNow } from 'date-fns'
 import { useGetDeals, useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { cn, formatServiceType, getAdvanceTargets, getMoveBackTargets, toPascalCase } from '@/lib/utils'
@@ -34,10 +36,13 @@ import { useUser } from '@/lib/hooks/use-user'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { SubTabFilter } from '@/components/ui/sub-tab-filter'
 import { SearchInput } from '@/components/ui/search-input'
+import { DataTable, SortableHeader } from '@/components/ui/data-table'
+import { StagePill } from '@/components/StagePill'
+import { usePipelineViewStore } from '@/lib/stores/pipeline-view-store'
 import {
   MoreHorizontal, Search, Trash2, ExternalLink,
   ChevronDown, ChevronRight, User as UserIcon, Paperclip,
-  Pencil, ArrowRight, ArrowLeft,
+  Pencil, ArrowRight, ArrowLeft, LayoutGrid, List, Flame,
 } from 'lucide-react'
 
 function stageToast(fromStage: string, toStage: string, dealTitle: string) {
@@ -117,6 +122,68 @@ function getDealAssigneeSearchText(deal: ApiDeal, users: ApiUser[] = []) {
     })
     .filter(Boolean)
     .join(' ')
+}
+
+function formatRecentActivity(deal: ApiDeal) {
+  const value = deal.lastActivityAt ?? deal.updatedAt ?? deal.createdAt
+  if (!value) return 'No activity yet'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'No activity yet'
+  return formatDistanceToNow(date, { addSuffix: true })
+}
+
+function getRecentActivityTime(deal: ApiDeal) {
+  const value = deal.lastActivityAt ?? deal.updatedAt ?? deal.createdAt
+  if (!value) return 0
+  const time = new Date(value).getTime()
+  return Number.isNaN(time) ? 0 : time
+}
+
+type Temperature = 'cold' | 'cool' | 'warm' | 'hot'
+
+type TemperatureScore = {
+  value: Temperature
+  score: number
+}
+
+const TEMPERATURE_META: Record<Temperature, { label: string; min: number; max: number }> = {
+  cold: { label: 'Cold', min: 1, max: 4 },
+  cool: { label: 'Cool', min: 5, max: 8 },
+  warm: { label: 'Warm', min: 9, max: 12 },
+  hot: { label: 'Hot', min: 13, max: 16 },
+}
+
+function hashDealTemperatureSeed(deal: ApiDeal) {
+  const input = `${deal.id}:${deal.title}`
+  let hash = 0
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) % 997
+  }
+  return hash
+}
+
+function getTemperatureFromScore(score: number): Temperature {
+  if (score >= TEMPERATURE_META.hot.min) return 'hot'
+  if (score >= TEMPERATURE_META.warm.min) return 'warm'
+  if (score >= TEMPERATURE_META.cool.min) return 'cool'
+  return 'cold'
+}
+
+function getMockDealTemperatureScore(deal: ApiDeal): TemperatureScore {
+  const seed = hashDealTemperatureSeed(deal)
+  const stageBase: Record<string, number> = {
+    closed_won: 15,
+    proposal: 14,
+    demo: 13,
+    assessment: 11,
+    discovery: 10,
+    lead: 7,
+    parked: 3,
+    closed_lost: 2,
+  }
+  const base = stageBase[deal.stage] ?? 6
+  const score = Math.max(1, Math.min(16, base + (seed % 5) - 2))
+  return { value: getTemperatureFromScore(score), score }
 }
 
 function AssigneeStack({ assignees, cardBgVar = 'var(--kanban-card)' }: { assignees: DealAssignee[]; cardBgVar?: string }) {
@@ -252,7 +319,7 @@ function CardActionsMenu({
         <MoreHorizontal size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
+        <div data-search-escape-blocker="true" className="absolute right-0 top-7 z-50 min-w-[180px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100">
           {/* Assign, locked for won/lost deals */}
           {isSales && isTerminal ? (
             <div
@@ -477,7 +544,7 @@ function DealCard({
       </div>
 
       {/* Deal title */}
-      <div className="text-xs font-semibold text-foreground leading-snug mb-2.5">
+      <div className="text-xs font-medium text-foreground leading-snug mb-2.5">
         {formatDealName(deal.title)}
       </div>
 
@@ -797,6 +864,104 @@ function MobileActionSheet({
   )
 }
 
+type PipelineHeatmapViewProps = {
+  deals: ApiDeal[]
+  companyMap: Map<string, string>
+  onOpenDeal: (id: string) => void
+}
+
+function PipelineHeatmapView({ deals, companyMap, onOpenDeal }: PipelineHeatmapViewProps) {
+  const scoredDeals = useMemo(() => {
+    return deals
+      .map(deal => ({ deal, temperature: getMockDealTemperatureScore(deal) }))
+      .sort((a, b) => {
+        const tempDelta = b.temperature.score - a.temperature.score
+        if (tempDelta !== 0) return tempDelta
+        const activityDelta = getRecentActivityTime(b.deal) - getRecentActivityTime(a.deal)
+        if (activityDelta !== 0) return activityDelta
+        return formatDealName(a.deal.title).localeCompare(formatDealName(b.deal.title))
+      })
+  }, [deals])
+
+  const cellIndexes = Array.from({ length: 16 }, (_, index) => index + 1)
+  const dealsByScore = useMemo(() => {
+    const buckets = new Map<number, typeof scoredDeals>()
+    for (const index of cellIndexes) buckets.set(index, [])
+    for (const item of scoredDeals) {
+      buckets.get(item.temperature.score)?.push(item)
+    }
+    return buckets
+  }, [cellIndexes, scoredDeals])
+
+  function getCellClass(index: number) {
+    if (index <= 4) return 'bg-blue-500/80 dark:bg-blue-400/80'
+    if (index <= 8) return 'bg-violet-500/80 dark:bg-violet-400/80'
+    if (index <= 12) return 'bg-pink-500/80 dark:bg-pink-400/80'
+    return 'bg-rose-500/85 dark:bg-rose-400/85'
+  }
+
+  return (
+    <div className="px-4 pb-4">
+      <div className="overflow-hidden rounded-md border border-border bg-card">
+        {scoredDeals.length === 0 ? (
+          <div className="py-14 text-center">
+            <p className="text-ssm text-muted-foreground">No deals found</p>
+            <p className="mt-1 text-xxs text-text-faint">Change the AM filter or search term to widen the heatmap.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[1120px]">
+              <div className="sticky top-0 z-10 grid grid-cols-[repeat(16,minmax(70px,1fr))] border-b border-border bg-card">
+                {cellIndexes.map(index => (
+                  <div key={index} className="border-r border-border px-1.5 py-1 text-center text-atom font-medium tabular-nums text-text-faint last:border-r-0">
+                    {index}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid min-h-[420px] grid-cols-[repeat(16,minmax(70px,1fr))] bg-card">
+                {cellIndexes.map(index => {
+                  const items = dealsByScore.get(index) ?? []
+                  return (
+                    <div key={index} className="flex flex-col justify-end gap-1 border-r border-border px-1.5 py-2 last:border-r-0">
+                      {items.map(({ deal, temperature }) => (
+                        <button
+                          key={deal.id}
+                          type="button"
+                          onClick={() => onOpenDeal(deal.id)}
+                          className="group min-w-0 rounded-sm px-1 py-0.5 text-left transition-colors hover:bg-surface-hover"
+                          title={`${formatDealName(deal.title)} · ${STAGE_LABELS[deal.stage] ?? toPascalCase(deal.stage)} · ${companyMap.get(deal.companyId) ?? 'No Brand'} · ${temperature.score}/16`}
+                        >
+                          <span className="block truncate text-atom font-medium leading-4 text-foreground group-hover:text-primary">
+                            {formatDealName(deal.title)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="grid grid-cols-[repeat(16,minmax(70px,1fr))] border-y border-border">
+                {cellIndexes.map(index => (
+                  <div key={index} className={cn('h-7 border-r border-card/70 last:border-r-0 dark:border-black/25', getCellClass(index))} />
+                ))}
+              </div>
+
+              <div className="grid grid-cols-4 bg-card text-center text-xxs font-medium text-muted-foreground">
+                <div className="border-r border-border px-2 py-2">Cold 1-4</div>
+                <div className="border-r border-border px-2 py-2">Cool 5-8</div>
+                <div className="border-r border-border px-2 py-2">Warm 9-12</div>
+                <div className="px-2 py-2">Hot 13-16</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // --- Pipeline ---
 export function Pipeline({
   onOpenDeal,
@@ -808,9 +973,14 @@ export function Pipeline({
   onSubTabChange,
 }: PipelineProps) {
   const [activeDealId, setActiveDealId] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
+  const viewMode = usePipelineViewStore(state => state.viewMode)
+  const setViewMode = usePipelineViewStore(state => state.setViewMode)
+  const search = usePipelineViewStore(state => state.search)
+  const setSearch = usePipelineViewStore(state => state.setSearch)
+  const amFilter = usePipelineViewStore(state => state.assigneeFilterUserId)
+  const setAmFilter = usePipelineViewStore(state => state.setAssigneeFilterUserId)
+  const defaultSearchForUser = usePipelineViewStore(state => state.defaultSearchForUser)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [amFilter, setAmFilter] = useState<string | null>(null)
   const [amDropdownOpen, setAmDropdownOpen] = useState(false)
   const [deleteConfirmDealId, setDeleteConfirmDealId] = useState<string | null>(null)
   const [moveConfirm, setMoveConfirm] = useState<{ dealId: string; currentStage: string; targetStage: string; dealTitle: string } | null>(null)
@@ -825,11 +995,12 @@ export function Pipeline({
   const [mobileShowAssign, setMobileShowAssign] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const amDropdownRef = useRef<HTMLDivElement>(null)
+  const defaultedSearchRef = useRef(false)
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const router = useRouter()
   const scrolledRef = useRef(false)
-  const { isSales } = useUser()
+  const { isSales, userId, user } = useUser()
 
   const { data: allDeals = [], isLoading: dealsLoading } = useGetDeals()
   // Tab + sub-tab filters are purely client-side — one cached request, instant swaps.
@@ -873,12 +1044,25 @@ export function Pipeline({
   const patchStage = usePatchDealStage()
   const updateDeal = useUpdateDeal()
 
+  const currentUserSearchLabel = useMemo(() => {
+    if (!userId) return ''
+    const matchingUser = users.find(u => u.id === userId)
+    return getUserLabel(matchingUser, user?.name ?? user?.email ?? userId)
+  }, [userId, user?.name, user?.email, users])
+
+  useEffect(() => {
+    if (!userId || !currentUserSearchLabel || defaultedSearchRef.current) return
+    defaultedSearchRef.current = true
+    defaultSearchForUser(userId, currentUserSearchLabel)
+    setSearchOpen(true)
+  }, [currentUserSearchLabel, defaultSearchForUser, userId])
+
   // Cmd/Ctrl+F opens the search panel + focuses; Escape closes + clears.
   // Panel mounts the input lazily, so we need a small focus delay.
   useSearchHotkey({
     inputRef: searchInputRef,
     onTrigger: () => setSearchOpen(true),
-    onClear: searchOpen ? () => { setSearchOpen(false); setSearch('') } : undefined,
+    onClear: search ? () => { setSearchOpen(false); setSearch('') } : undefined,
     focusDelay: 50,
   })
 
@@ -895,6 +1079,7 @@ export function Pipeline({
   // amOptions: unique primary and sub-assigned AMs across all deals, UUIDs resolved to display names
   const amOptions = useMemo(() => {
     const ids = new Set<string>()
+    if (userId) ids.add(userId)
     for (const d of deals) {
       for (const id of getDealAssigneeIds(d)) ids.add(id)
     }
@@ -904,7 +1089,7 @@ export function Pipeline({
         return { id, label: getUserLabel(user, id) }
       })
       .sort((a, b) => a.label.localeCompare(b.label))
-  }, [deals, users])
+  }, [deals, userId, users])
 
   const filteredDeals = useMemo(() => {
     let result = deals
@@ -1092,6 +1277,100 @@ export function Pipeline({
     }
   })
 
+  const recentActivityDeals = useMemo(
+    () => [...filteredDeals].sort((a, b) => getRecentActivityTime(b) - getRecentActivityTime(a)),
+    [filteredDeals],
+  )
+
+  const listColumns = useMemo<ColumnDef<ApiDeal>[]>(() => [
+    {
+      id: 'number',
+      header: () => <span>#</span>,
+      cell: ({ row }) => <span className="text-xxs tabular-nums text-text-faint">{row.index + 1}</span>,
+      enableSorting: false,
+      size: 44,
+    },
+    {
+      accessorFn: deal => formatDealName(deal.title),
+      id: 'deal',
+      header: ({ column }) => <SortableHeader column={column}>Deal</SortableHeader>,
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <div className="truncate text-ssm font-medium text-foreground">{formatDealName(row.original.title)}</div>
+          <div className="mt-0.5 truncate text-xxs text-slate-400">{companyMap.get(row.original.companyId) ?? 'No Brand'}</div>
+        </div>
+      ),
+      size: 280,
+    },
+    {
+      accessorFn: deal => getRecentActivityTime(deal),
+      id: 'recentActivity',
+      header: ({ column }) => <SortableHeader column={column}>Recent activity</SortableHeader>,
+      cell: ({ row }) => <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{formatRecentActivity(row.original)}</span>,
+      size: 180,
+    },
+    {
+      accessorFn: deal => deal.stage,
+      id: 'stage',
+      header: ({ column }) => <SortableHeader column={column}>Stage</SortableHeader>,
+      cell: ({ row }) => <StagePill stage={row.original.stage} />,
+      size: 140,
+    },
+    {
+      accessorFn: deal => formatDealMoney(deal),
+      id: 'value',
+      header: () => <span>Value</span>,
+      cell: ({ row }) => <span className="text-ssm font-medium tabular-nums text-muted-foreground">{formatDealMoney(row.original)}</span>,
+      enableSorting: false,
+      size: 140,
+    },
+    {
+      accessorFn: deal => getDealAssigneeSearchText(deal, users),
+      id: 'assignees',
+      header: () => <span>AM</span>,
+      cell: ({ row }) => <AssigneeStack assignees={getDealAssignees(row.original, users)} cardBgVar="var(--card)" />,
+      enableSorting: false,
+      size: 180,
+    },
+    {
+      accessorFn: deal => deal.catalogItemName ?? '',
+      id: 'service',
+      header: ({ column }) => <SortableHeader column={column}>Service</SortableHeader>,
+      cell: ({ row }) => (
+        <span className="text-ssm text-muted-foreground">
+          {row.original.catalogItemName ?? row.original.servicesTags?.[0] ?? 'Uncategorized'}
+        </span>
+      ),
+      size: 180,
+    },
+    {
+      id: 'actions',
+      header: () => null,
+      cell: ({ row }) => {
+        const deal = row.original
+        return (
+          <div className="flex justify-end">
+            <CardActionsMenu
+              deal={deal}
+              currentStage={deal.stage}
+              onDelete={() => handleDeleteDeal(deal.id)}
+              onAdvance={() => handleAdvanceDeal(deal.id, deal.stage)}
+              onAdvanceTo={(stage) => handleAdvanceTo(deal.id, stage)}
+              onMoveTo={(stage) => handleMoveTo(deal.id, stage)}
+              onAssign={(id, name) => handleAssignDeal(deal.id, id, name)}
+              onEdit={() => setEditingDeal(deal)}
+              isSales={isSales}
+              users={users}
+              isAdvancing={advancingDealId === deal.id}
+            />
+          </div>
+        )
+      },
+      enableSorting: false,
+      size: 52,
+    },
+  ], [advancingDealId, companyMap, handleAdvanceDeal, handleAdvanceTo, handleAssignDeal, handleDeleteDeal, handleMoveTo, isSales, users])
+
   const activeDeal = activeDealId ? deals.find(d => d.id === activeDealId) ?? null : null
   const activeDealColColor = activeDeal
     ? (KANBAN_STAGES.find(c => c.matches.includes(activeDeal.stage))?.color ?? '#94a3b8')
@@ -1150,98 +1429,133 @@ export function Pipeline({
 
       {/* ── Desktop action row — parent tabs left, actions right ── */}
       <div className="hidden md:flex flex-col gap-2 px-4 py-2.5 shrink-0">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 overflow-x-auto">
-            {parentTabs}
+        <div className="flex items-end justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="flex items-center gap-2">
+              {/* New Deal / New Brand (sales only) */}
+              {isSales && (
+                <>
+                  <button
+                    onClick={() => setShowCreateDeal(true)}
+                    className="rounded-control px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
+                    style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
+                  >
+                    + New Deal
+                  </button>
+                  <button
+                    onClick={() => setShowCreateBrand(true)}
+                    className="bg-card border border-border rounded-control px-3 py-[5px] text-xs font-medium text-muted-foreground hover:bg-surface-hover transition-colors flex items-center gap-1.5"
+                  >
+                    + New Brand
+                  </button>
+                </>
+              )}
+
+              {/* AM filter dropdown */}
+              <div ref={amDropdownRef} className="relative">
+                <button
+                  onClick={() => setAmDropdownOpen(o => !o)}
+                  className={cn(
+                    'bg-card border rounded-control px-3 py-[5px] text-xs font-medium hover:bg-surface-hover transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
+                    amFilter
+                      ? 'border-primary/30 text-primary'
+                      : 'border-border text-muted-foreground',
+                  )}
+                >
+                  {amFilter ? (amOptions.find(o => o.id === amFilter)?.label ?? 'AM') : 'All AMs'}
+                  <ChevronDown size={12} />
+                </button>
+                {amDropdownOpen && (
+                  <div data-search-escape-blocker="true" className="absolute left-0 top-9 z-50 min-w-[160px] bg-card border border-border rounded-md shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
+                    <button
+                      onClick={() => { setAmFilter(null); setAmDropdownOpen(false) }}
+                      className={cn(
+                        'w-full px-3 py-1.5 text-xs text-left hover:bg-surface-hover transition-colors',
+                        !amFilter ? 'font-semibold text-primary' : 'text-muted-foreground',
+                      )}
+                    >
+                      All AMs
+                    </button>
+                    {amOptions.map(o => (
+                      <button
+                        key={o.id}
+                        onClick={() => { setAmFilter(o.id); setAmDropdownOpen(false) }}
+                        className={cn(
+                          'w-full px-3 py-1.5 text-xs text-left hover:bg-surface-hover transition-colors',
+                          amFilter === o.id ? 'font-semibold text-primary' : 'text-muted-foreground',
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="min-w-0 overflow-x-auto">
+              {parentTabs}
+            </div>
           </div>
 
-          {/* Actions (right) */}
-          <div className="flex gap-2 items-center shrink-0">
-          {/* Search result count — only when actively searching */}
-          {search.trim() && (
-            <span className="text-xs text-muted-foreground mr-1">
-              Showing <span className="font-semibold text-primary tabular-nums">{filteredDeals.length}</span> result{filteredDeals.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          {/* Search */}
-          {searchOpen ? (
+          {/* View/search controls (right) */}
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="flex items-center rounded-control border border-border bg-card p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('kanban')}
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-xs font-medium transition-colors',
+                  viewMode === 'kanban'
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                aria-pressed={viewMode === 'kanban'}
+              >
+                <LayoutGrid size={12} /> Board
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-xs font-medium transition-colors',
+                  viewMode === 'list'
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                aria-pressed={viewMode === 'list'}
+              >
+                <List size={12} /> List
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('heatmap')}
+                className={cn(
+                  'inline-flex h-7 items-center gap-1.5 rounded-control px-2 text-xs font-medium transition-colors',
+                  viewMode === 'heatmap'
+                    ? 'bg-secondary text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                aria-pressed={viewMode === 'heatmap'}
+              >
+                <Flame size={12} /> Heatmap
+              </button>
+            </div>
+
+            {/* Search result count — only when actively searching */}
+            {search.trim() && (
+              <span className="text-xs text-muted-foreground mr-1">
+                Showing <span className="font-semibold text-primary tabular-nums">{filteredDeals.length}</span> result{filteredDeals.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {/* Search */}
             <SearchInput
               ref={searchInputRef}
               value={search}
               onChange={e => setSearch(e.target.value)}
-              onClear={() => { setSearchOpen(false); setSearch('') }}
+              onClear={() => setSearch('')}
               placeholder="Search deals…"
-              containerClassName="w-[200px] h-8"
+              containerClassName="w-[220px] h-8"
             />
-          ) : (
-            <button
-              onClick={() => { setSearchOpen(true); setTimeout(() => searchInputRef.current?.focus(), 50) }}
-              className="bg-card border border-border rounded-control px-3 py-[5px] text-xs font-medium text-muted-foreground hover:bg-surface-hover transition-colors duration-150 cursor-pointer flex items-center gap-1.5"
-              title="Search (Ctrl+F)"
-            >
-              <Search size={12} /> Search
-            </button>
-          )}
-
-          {/* New Deal / New Brand (sales only) */}
-          {isSales && (
-            <>
-              <button
-                onClick={() => setShowCreateBrand(true)}
-                className="bg-card border border-border rounded-control px-3 py-[5px] text-xs font-medium text-muted-foreground hover:bg-surface-hover transition-colors flex items-center gap-1.5"
-              >
-                + New Brand
-              </button>
-              <button
-                onClick={() => setShowCreateDeal(true)}
-                className="rounded-control px-3 py-[5px] text-xs font-medium text-white transition-colors flex items-center gap-1.5"
-                style={{ background: 'linear-gradient(135deg, var(--primary), var(--color-primary-accent))' }}
-              >
-                + New Deal
-              </button>
-            </>
-          )}
-
-          {/* AM filter dropdown */}
-          <div ref={amDropdownRef} className="relative">
-            <button
-              onClick={() => setAmDropdownOpen(o => !o)}
-              className={cn(
-                'bg-card border rounded-control px-3 py-[5px] text-xs font-medium hover:bg-surface-hover transition-colors duration-150 cursor-pointer flex items-center gap-1.5',
-                amFilter
-                  ? 'border-primary/30 text-primary'
-                  : 'border-border text-muted-foreground'
-              )}
-            >
-              {amFilter ? (amOptions.find(o => o.id === amFilter)?.label ?? 'AM') : 'All AMs'}
-              <ChevronDown size={12} />
-            </button>
-            {amDropdownOpen && (
-              <div className="absolute right-0 top-9 z-50 min-w-[160px] bg-card border border-border rounded-lg shadow-lg py-1 animate-in fade-in-0 zoom-in-95 duration-100 max-h-[240px] overflow-y-auto">
-                <button
-                  onClick={() => { setAmFilter(null); setAmDropdownOpen(false) }}
-                  className={cn(
-                    'w-full px-3 py-1.5 text-xs text-left hover:bg-surface-hover transition-colors',
-                    !amFilter ? 'font-semibold text-primary' : 'text-muted-foreground'
-                  )}
-                >
-                  All AMs
-                </button>
-                {amOptions.map(o => (
-                  <button
-                    key={o.id}
-                    onClick={() => { setAmFilter(o.id); setAmDropdownOpen(false) }}
-                    className={cn(
-                      'w-full px-3 py-1.5 text-xs text-left hover:bg-surface-hover transition-colors',
-                      amFilter === o.id ? 'font-semibold text-primary' : 'text-muted-foreground'
-                    )}
-                  >
-                    {o.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           </div>
         </div>
 
@@ -1256,7 +1570,7 @@ export function Pipeline({
         )}
       </div>
 
-      {/* ── Desktop board (hidden on mobile) ── */}
+      {/* ── Desktop board/list (hidden on mobile) ── */}
       <div className="hidden md:block flex-1 overflow-auto">
         {isLoading ? (
           <div className="flex gap-2.5 px-4 pb-4" style={{ minWidth: 'max-content' }}>
@@ -1288,6 +1602,31 @@ export function Pipeline({
                 </div>
               </div>
             ))}
+          </div>
+        ) : viewMode === 'heatmap' ? (
+          <PipelineHeatmapView deals={filteredDeals} companyMap={companyMap} onOpenDeal={onOpenDeal} />
+        ) : viewMode === 'list' ? (
+          <div className="px-4 pb-4">
+            <div className="overflow-hidden rounded-md border border-border bg-card">
+              <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
+                <div>
+                  <div className="text-ssm font-semibold text-foreground">Recent activity</div>
+                  <div className="mt-0.5 text-xxs text-slate-400">Newest deal movement first, filtered by the selected AM.</div>
+                </div>
+                <span className="rounded-full border border-border bg-secondary px-2 py-0.5 text-xxs font-semibold tabular-nums text-muted-foreground">
+                  {recentActivityDeals.length}
+                </span>
+              </div>
+              <DataTable
+                columns={listColumns}
+                data={recentActivityDeals}
+                emptyMessage="No deals found"
+                emptyDescription="Change the AM filter or search term to widen the list."
+                rowClassName={() => 'odd:bg-card even:bg-bg-subtle/60 dark:odd:bg-card dark:even:bg-white/[0.03] hover:!bg-surface-hover'}
+                cellClassName="py-1"
+                onRowClick={(deal) => onOpenDeal(deal.id)}
+              />
+            </div>
           </div>
         ) : (
           <DndContext
@@ -1536,7 +1875,7 @@ export function Pipeline({
                     </div>
 
                     {/* Deal title */}
-                    <p className="text-sm font-semibold text-foreground leading-snug mb-1.5">
+                    <p className="text-sm font-medium text-foreground leading-snug mb-1.5">
                       {formatDealName(d.title)}
                     </p>
 

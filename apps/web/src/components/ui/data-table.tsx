@@ -91,6 +91,8 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void
   /** Optional callback to add extra class names to a row */
   rowClassName?: (row: TData) => string | undefined
+  /** Optional class names for every body cell */
+  cellClassName?: string | ((row: TData) => string | undefined)
   initialSorting?: SortingState
 }
 
@@ -102,6 +104,7 @@ export function DataTable<TData, TValue>({
   emptyDescription,
   onRowClick,
   rowClassName,
+  cellClassName,
   initialSorting,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting ?? [])
@@ -146,14 +149,18 @@ export function DataTable<TData, TValue>({
             <TableRow
               key={row.id}
               className={cn(
-                'hover:bg-surface-hover transition-colors',
-                onRowClick && 'cursor-pointer',
+                'transition-colors',
                 rowClassName?.(row.original),
+                onRowClick && 'cursor-pointer',
+                'hover:bg-surface-hover',
               )}
               onClick={onRowClick ? () => onRowClick(row.original) : undefined}
             >
               {row.getVisibleCells().map(cell => (
-                <TableCell key={cell.id}>
+                <TableCell
+                  key={cell.id}
+                  className={typeof cellClassName === 'function' ? cellClassName(row.original) : cellClassName}
+                >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </TableCell>
               ))}

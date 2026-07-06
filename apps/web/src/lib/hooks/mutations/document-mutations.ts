@@ -127,6 +127,7 @@ export function useSaveDealNote(
       onSuccess: (data, vars, ctx) => {
         qc.invalidateQueries({ queryKey: queryKeys.deals.notes(vars.dealId) })
         qc.invalidateQueries({ queryKey: queryKeys.deals.notesFlat(vars.dealId) })
+        qc.invalidateQueries({ queryKey: queryKeys.deals.all })
         ;(options?.onSuccess as any)?.(data, vars, ctx)
       },
     }),

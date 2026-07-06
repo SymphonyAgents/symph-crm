@@ -419,6 +419,7 @@ export class DealNotesService {
 
     const fullContent = `${frontmatter}\n\n# ${title}\n\n${content}`
     await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+    await this.touchDealActivity(dealId)
 
     // Audit log — fire and forget (enrich with deal name)
     const dealName = await this.getDealName(dealId)
@@ -478,6 +479,7 @@ export class DealNotesService {
 
     const fullContent = `${frontmatter}\n\n# ${title}\n\n${content}`
     await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+    await this.touchDealActivity(dealId)
 
     const dealName = await this.getDealName(dealId)
     this.auditLogs.log({
@@ -588,6 +590,13 @@ export class DealNotesService {
     }).catch(() => {})
 
     return { deleted: true }
+  }
+
+  private async touchDealActivity(dealId: string): Promise<void> {
+    await this.db
+      .update(deals)
+      .set({ lastActivityAt: new Date(), updatedAt: new Date() })
+      .where(eq(deals.id, dealId))
   }
 
   // ── Summary Generation (async via Aria — crm-summarize-deal skill) ────────
