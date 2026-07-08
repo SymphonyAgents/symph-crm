@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { cn, toPascalCase } from '@/lib/utils'
 import { formatDealName } from '@/lib/format-deal-name'
 import { STAGE_LABELS } from '@/lib/constants'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { ApiDeal } from '@/lib/types'
 
 type DealHeatmapProps = {
@@ -118,14 +119,12 @@ function getScoreCellTone(score: number) {
 
 function HeatmapCell({ score, isTotal = false }: { score: number; isTotal?: boolean }) {
   return (
-    <div className="flex justify-center">
-      <div className={cn(
-        'flex h-7 w-7 items-center justify-center rounded-[6px] text-atom font-semibold tabular-nums shadow-sm sm:h-8 sm:w-8 sm:text-xxs',
-        getScoreCellTone(score),
-        isTotal && 'ring-1 ring-blue-950/10 dark:ring-white/20',
-      )}>
-        {score}
-      </div>
+    <div className={cn(
+      'flex min-h-[42px] w-full items-center justify-center text-xxs font-semibold tabular-nums',
+      getScoreCellTone(score),
+      isTotal && 'shadow-[inset_0_0_0_1px_rgba(148,163,184,0.35)]',
+    )}>
+      {score}
     </div>
   )
 }
@@ -146,45 +145,48 @@ function HeatmapLegend() {
   )
 }
 
-function heatmapGridClassName() {
-  return 'grid min-w-[820px] grid-cols-[44px_minmax(320px,1fr)_repeat(5,76px)] items-center'
-}
-
-function heatmapRowClassName(extraClassName?: string) {
-  return cn(heatmapGridClassName(), 'gap-2 px-4', extraClassName)
-}
-
 function HeatmapHeader() {
   return (
-    <div className={heatmapRowClassName('border-b border-border py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground')}>
-      <div>#</div>
-      <div>Deal</div>
-      {HEATMAP_SIGNALS.map(signal => <div key={signal.key} className="text-center">{signal.label}</div>)}
-      <div className="text-center">Score</div>
-    </div>
+    <TableHeader>
+      <TableRow className="hover:bg-transparent">
+        <TableHead className="w-[44px]">#</TableHead>
+        <TableHead>Deal</TableHead>
+        {HEATMAP_SIGNALS.map(signal => (
+          <TableHead key={signal.key} className="w-[58px] px-0 text-center">
+            {signal.label}
+          </TableHead>
+        ))}
+        <TableHead className="w-[58px] px-0 text-center">Score</TableHead>
+      </TableRow>
+    </TableHeader>
   )
 }
 
 function HeatmapRow({ item, index, onOpenDeal }: { item: HeatmapDealScore; index: number; onOpenDeal: (id: string) => void }) {
   const stageLabel = STAGE_LABELS[item.deal.stage] ?? toPascalCase(item.deal.stage)
   return (
-    <button
-      type="button"
+    <TableRow
       onClick={() => onOpenDeal(item.deal.id)}
-      className={heatmapRowClassName('min-h-[48px] border-b border-border/80 py-1.5 text-left transition-colors last:border-b-0 odd:bg-muted/15 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-ring')}
+      className="cursor-pointer transition-colors odd:bg-muted/15 hover:bg-surface-hover"
     >
-      <div className="text-xs font-medium tabular-nums text-text-faint">{index + 1}</div>
-      <div className="min-w-0 pr-3">
-        <div className="truncate text-xs font-semibold text-foreground">{formatDealName(item.deal.title)}</div>
+      <TableCell className="w-[44px] text-xs font-medium tabular-nums text-text-faint">{index + 1}</TableCell>
+      <TableCell className="min-w-[320px] py-1.5">
+        <div className="truncate text-ssm font-medium text-foreground">{formatDealName(item.deal.title)}</div>
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-atom text-text-faint">
           <span className="truncate">{item.companyName}</span>
           <span>·</span>
           <span className="shrink-0">{stageLabel}</span>
         </div>
-      </div>
-      {HEATMAP_SIGNALS.map(signal => <HeatmapCell key={signal.key} score={item.signals[signal.key]} />)}
-      <HeatmapCell score={item.score} isTotal />
-    </button>
+      </TableCell>
+      {HEATMAP_SIGNALS.map(signal => (
+        <TableCell key={signal.key} className="w-[58px] p-[1px] align-stretch">
+          <HeatmapCell score={item.signals[signal.key]} />
+        </TableCell>
+      ))}
+      <TableCell className="w-[58px] p-[1px] align-stretch">
+        <HeatmapCell score={item.score} isTotal />
+      </TableCell>
+    </TableRow>
   )
 }
 
@@ -201,11 +203,11 @@ export function DealHeatmap({ deals, companyMap, onOpenDeal }: DealHeatmapProps)
 
   return (
     <div className="px-4 pb-4">
-      <div className="overflow-hidden rounded-md border border-border bg-card">
-        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="w-[1320px] max-w-full overflow-hidden rounded-md border border-border bg-card">
+        <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Deal temperature heatmap</h2>
-            <p className="mt-1 text-xxs text-muted-foreground">Grounded CRM signals, sorted by strongest current opportunity.</p>
+            <h2 className="text-ssm font-semibold text-foreground">Deal temperature heatmap</h2>
+            <p className="mt-0.5 text-xxs text-slate-400">Grounded CRM signals, sorted by strongest current opportunity.</p>
           </div>
           <HeatmapLegend />
         </div>
@@ -216,12 +218,14 @@ export function DealHeatmap({ deals, companyMap, onOpenDeal }: DealHeatmapProps)
             <p className="mt-1 text-xxs text-text-faint">Change the AM filter or search term to widen the heatmap.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <Table className="w-[1320px] max-w-full table-fixed">
             <HeatmapHeader />
-            {scoredDeals.map((item, index) => (
-              <HeatmapRow key={item.deal.id} item={item} index={index} onOpenDeal={onOpenDeal} />
-            ))}
-          </div>
+            <TableBody>
+              {scoredDeals.map((item, index) => (
+                <HeatmapRow key={item.deal.id} item={item} index={index} onOpenDeal={onOpenDeal} />
+              ))}
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>
