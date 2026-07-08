@@ -13,7 +13,7 @@ type UserStatus = CrmUserStatus
 
 // Emails that are auto-assigned the SALES role on sign-in.
 // Non-Symph emails enter a pending PARTNER flow for Sales review.
-const SALES_EMAILS = new Set([
+const DEFAULT_SALES_EMAILS = [
   'mary.amora@symph.co',
   'gee@symph.co',
   'gee.quidet@symph.co',
@@ -22,14 +22,26 @@ const SALES_EMAILS = new Set([
   'lyra.gemparo@symph.co',
   'kate.labra@symph.co',
   'frances@symph.co',
+  'jarrhey@symph.co',
   'vince.tapdasan@symph.co',
   'xian.baylin@symph.co',
   'ferlie@symph.co',
   'dave@symph.co',
-])
+] as const
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
+}
+
+function parseEmailList(value: string | undefined) {
+  return (value ?? '')
+    .split(/[;,]/)
+    .map(email => normalizeEmail(email))
+    .filter(Boolean)
+}
+
+function getSalesEmails() {
+  return new Set([...DEFAULT_SALES_EMAILS, ...parseEmailList(process.env.SALES_EMAILS)])
 }
 
 function getInternalEmailDomains() {
@@ -46,7 +58,7 @@ function isInternalEmail(email: string) {
 
 function roleForEmail(email: string): UserRole {
   const normalizedEmail = normalizeEmail(email)
-  if (SALES_EMAILS.has(normalizedEmail)) return CrmUserRole.Sales
+  if (getSalesEmails().has(normalizedEmail)) return CrmUserRole.Sales
   if (isInternalEmail(normalizedEmail)) return CrmUserRole.Build
   return CrmUserRole.Partner
 }

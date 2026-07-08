@@ -14,6 +14,7 @@ const requiredSalesEmails = [
   'lyra.gemparo@symph.co',
   'kate.labra@symph.co',
   'frances@symph.co',
+  'jarrhey@symph.co',
   'vince.tapdasan@symph.co',
   'xian.baylin@symph.co',
   'ferlie@symph.co',
@@ -22,13 +23,19 @@ const requiredSalesEmails = [
 
 const checks = [
   {
-    name: 'Sales allowlist exists in UsersService',
-    pass: source.includes('const SALES_EMAILS = new Set(['),
+    name: 'Default sales allowlist exists in UsersService',
+    pass: source.includes('const DEFAULT_SALES_EMAILS = ['),
+  },
+  {
+    name: 'Sales env allowlist is merged with default sales emails',
+    pass: source.includes("parseEmailList(process.env.SALES_EMAILS)")
+      && source.includes('split(/[;,]/)')
+      && source.includes('new Set([...DEFAULT_SALES_EMAILS,'),
   },
   {
     name: 'Sales allowlist returns CrmUserRole.Sales before internal BUILD fallback',
-    pass: source.indexOf('if (SALES_EMAILS.has(normalizedEmail)) return CrmUserRole.Sales') > -1
-      && source.indexOf('if (SALES_EMAILS.has(normalizedEmail)) return CrmUserRole.Sales') < source.indexOf('if (isInternalEmail(normalizedEmail)) return CrmUserRole.Build'),
+    pass: source.indexOf('if (getSalesEmails().has(normalizedEmail)) return CrmUserRole.Sales') > -1
+      && source.indexOf('if (getSalesEmails().has(normalizedEmail)) return CrmUserRole.Sales') < source.indexOf('if (isInternalEmail(normalizedEmail)) return CrmUserRole.Build'),
   },
   ...requiredSalesEmails.map(email => ({
     name: `${email} stays in SALES_EMAILS`,

@@ -1,5 +1,7 @@
 # Symph CRM — API Design Rules
 
+> Auto-maintained by Aria. Last updated: 2026-07-08 14:04 PHT.
+
 Every endpoint in this NestJS backend MUST follow these patterns.
 
 ## DTOs (Data Transfer Objects) — Non-Negotiable
@@ -94,6 +96,11 @@ src/
 - All date fields returned as ISO strings
 - All monetary values returned as strings (avoid float precision)
 - Nullable fields explicitly typed as `string | null`, not `undefined`
+
+## Environment and RBAC Notes
+
+- `SALES_EMAILS` is a comma- or semicolon-separated allowlist merged with the default sales emails in `users.service.ts`; listed users are auto-assigned the `SALES` role on sign-in before the internal `BUILD` fallback.
+- When adding a sales user, update `DEFAULT_SALES_EMAILS`, `.env.example`, `cloudbuild.yaml`, and `apps/api/scripts/users-role-regression.js` together.
 
 ## NEVER
 
