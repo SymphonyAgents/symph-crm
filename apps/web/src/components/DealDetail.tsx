@@ -1889,6 +1889,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
               </div>
 
               {/* Notes list / grid */}
+              <div className="min-h-[180px] max-h-[52vh] overflow-y-auto overscroll-contain p-3 sm:max-h-[calc(100vh-430px)]">
               {loadingDocs ? (
                 <div className="p-8 flex items-center justify-center">
                   <div className="w-5 h-5 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
@@ -1904,7 +1905,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : viewMode === 'grid' ? (
                 /* Grid view */
-                <div className="p-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredNotes.map(doc => {
                     const docStage = parseDocStage(doc.tags)
                     const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
@@ -1986,7 +1987,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                 </div>
               ) : (
                 /* List view */
-                <div className="space-y-2 p-3">
+                <div className="space-y-2">
                   {filteredNotes.map(doc => {
                     const docStage = parseDocStage(doc.tags)
                     const authorName = doc.authorId ? (userNameMap.get(doc.authorId) ?? null) : null
@@ -2052,6 +2053,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: D
                   })}
                 </div>
               )}
+              </div>
             </div>
           )}
 

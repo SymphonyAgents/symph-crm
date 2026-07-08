@@ -2,6 +2,15 @@
 
 import { useEffect, type RefObject } from 'react'
 
+function hasOpenOverlayElement() {
+  return Boolean(document.querySelector([
+    '[role="dialog"]',
+    '[aria-modal="true"]',
+    '[data-state="open"]',
+    '[data-search-escape-blocker="true"]',
+  ].join(',')))
+}
+
 /**
  * useSearchHotkey — Cmd/Ctrl+F focuses an in-page search input.
  *
@@ -64,6 +73,7 @@ export function useSearchHotkey(opts: {
         return
       }
       if (e.key === 'Escape' && onClear) {
+        if (hasOpenOverlayElement()) return
         onClear()
       }
     }

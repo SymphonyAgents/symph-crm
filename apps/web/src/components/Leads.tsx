@@ -702,7 +702,7 @@ function LeadRow({
         {rowNumber}
       </td>
       <td className="px-4 py-3 align-top">
-        <div className="truncate text-ssm font-semibold text-foreground">{leadIdentity(lead)}</div>
+        <div className="truncate text-ssm font-medium text-foreground">{leadIdentity(lead)}</div>
       </td>
       <td className="hidden px-4 py-3 align-top lg:table-cell">
         <div className="text-xs text-foreground">{lead.companyName || 'No company'}</div>
