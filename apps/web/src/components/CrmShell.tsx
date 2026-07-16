@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { CommandPalette } from './CommandPalette'
@@ -11,10 +11,16 @@ export function CrmShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [userCollapsedSidebar, setUserCollapsedSidebar] = useState(false)
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const isProposalPresentation = pathname.startsWith('/proposals/') && searchParams.get('present') === '1'
   const routeCollapsedSidebar = pathname === '/chat' || pathname.startsWith('/wiki')
   const sidebarCollapsed = routeCollapsedSidebar || userCollapsedSidebar
   const isChat = pathname === '/chat'
   const { toggle: toggleChatSidebar } = useChatSidebar()
+
+  if (isProposalPresentation) {
+    return <div className="h-dvh overflow-hidden bg-background">{children}</div>
+  }
 
   return (
     <div className="flex h-dvh overflow-hidden bg-background">

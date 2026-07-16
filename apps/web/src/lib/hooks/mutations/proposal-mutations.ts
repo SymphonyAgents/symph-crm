@@ -42,6 +42,7 @@ export function useCreateProposal(
       ...options,
       onSuccess: (data, vars, ctx) => {
         qc.invalidateQueries({ queryKey: queryKeys.proposals.byDeal(vars.dealId) })
+        qc.invalidateQueries({ queryKey: queryKeys.proposals.all })
         ;(options?.onSuccess as any)?.(data, vars, ctx)
       },
     }),

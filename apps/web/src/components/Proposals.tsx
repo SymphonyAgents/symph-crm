@@ -13,8 +13,9 @@ import { useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Download, Eye, History, Loader2, MoreVertical, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useGetAllProposals, useGetProposalVersions } from '@/lib/hooks/queries'
-import { useDownloadProposalHtml, useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
+import { getProposalTitleFromUploadFile, isHtmlProposalFile } from '@/lib/utils/proposal-utils'
+import { useGetAllProposals, useGetDeals, useGetProposalVersions } from '@/lib/hooks/queries'
+import { useCreateProposal, useDownloadProposalHtml, useSaveProposalVersion, useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
 import { useSearchHotkey } from '@/lib/hooks/use-search-hotkey'
 import { DataTableSkeleton } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -25,7 +26,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AvatarFallback, AvatarImage, AvatarRoot } from '@/components/ui/avatar'
 import { SearchInput } from '@/components/ui/search-input'
 import { StatusPill, type StatusPillTone } from '@/components/ui/status-pill'
-import type { ApiProposalStatus, ApiProposalSummary, ApiProposalType, ApiProposalVersion } from '@/lib/types'
+import { Combobox } from '@/components/ui/combobox'
+import type { ApiDeal, ApiProposalStatus, ApiProposalSummary, ApiProposalType, ApiProposalVersion } from '@/lib/types'
 
 function FileIcon({ size = 28, className }: { size?: number; className?: string }) {
   return (
@@ -97,6 +99,7 @@ function ProposalActionsMenu({
   p,
   onViewVersions,
   onDownloadHtml,
+  onUploadHtmlVersion,
   onSignedPdfUpload,
   isHtmlPending,
   isPdfPending,
@@ -104,6 +107,7 @@ function ProposalActionsMenu({
   p: ApiProposalSummary
   onViewVersions: () => void
   onDownloadHtml: () => void
+  onUploadHtmlVersion: () => void
   onSignedPdfUpload: (file: File) => void
   isHtmlPending: boolean
   isPdfPending: boolean
@@ -139,6 +143,14 @@ function ProposalActionsMenu({
         >
           {isHtmlPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} /> : <Download className="h-3.5 w-3.5" strokeWidth={1.8} />}
           Download HTML
+        </button>
+        <button
+          type="button"
+          onClick={onUploadHtmlVersion}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
+        >
+          <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Upload HTML version
         </button>
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
@@ -186,6 +198,7 @@ function ProposalRow({
   onViewVersions,
   onStatusChange,
   onDownloadHtml,
+  onUploadHtmlVersion,
   onSignedPdfUpload,
   showStatusControls,
   isStatusPending,
@@ -197,6 +210,7 @@ function ProposalRow({
   onViewVersions: () => void
   onStatusChange: (status: ApiProposalStatus) => void
   onDownloadHtml: () => void
+  onUploadHtmlVersion: () => void
   onSignedPdfUpload: (file: File) => void
   showStatusControls: boolean
   isStatusPending: boolean
@@ -268,6 +282,7 @@ function ProposalRow({
             p={p}
             onViewVersions={onViewVersions}
             onDownloadHtml={onDownloadHtml}
+            onUploadHtmlVersion={onUploadHtmlVersion}
             onSignedPdfUpload={onSignedPdfUpload}
             isHtmlPending={isHtmlPending}
             isPdfPending={isPdfPending}
@@ -347,6 +362,264 @@ function ProposalVersionsDialog({
   )
 }
 
+type UploadHtmlVersionDialogProps = {
+  proposal: ApiProposalSummary | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  isPending: boolean
+  onUpload: (input: { html: string; changeNote: string }) => void
+}
+
+function UploadHtmlVersionDialog({ proposal, open, onOpenChange, isPending, onUpload }: UploadHtmlVersionDialogProps) {
+  const [file, setFile] = useState<File | null>(null)
+  const [changeNote, setChangeNote] = useState('Uploaded HTML version')
+  const [fileError, setFileError] = useState<string | null>(null)
+  const isValidHtml = isHtmlProposalFile(file)
+  const canSubmit = Boolean(proposal && file && isValidHtml) && !isPending
+
+  function reset() {
+    setFile(null)
+    setChangeNote('Uploaded HTML version')
+    setFileError(null)
+  }
+
+  function handleFileChange(nextFile: File | null) {
+    setFile(nextFile)
+    if (!nextFile) {
+      setFileError(null)
+      return
+    }
+    if (!isHtmlProposalFile(nextFile)) {
+      setFileError('Upload an HTML file only (.html or .htm).')
+      return
+    }
+    setFileError(null)
+  }
+
+  async function handleSubmit() {
+    if (!canSubmit || !file) return
+    const html = await file.text()
+    onUpload({ html, changeNote: changeNote.trim() || 'Uploaded HTML version' })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) reset() }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="min-w-0">
+            <DialogTitle>Upload HTML version</DialogTitle>
+            <DialogDescription className="mt-1 truncate">{proposal?.title ?? 'Select a proposal'}</DialogDescription>
+          </div>
+        </DialogHeader>
+        <div className="space-y-4 p-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">HTML file</label>
+            <input
+              type="file"
+              accept=".html,.htm,text/html"
+              onChange={event => handleFileChange(event.target.files?.[0] ?? null)}
+              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground file:mr-3 file:rounded-control file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-foreground hover:bg-surface-hover"
+            />
+            {fileError && <p className="mt-1 text-xxs text-danger-foreground">{fileError}</p>}
+            {file && !fileError && <p className="mt-1 truncate text-xxs text-text-faint">{file.name}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Change note</label>
+            <input
+              value={changeNote}
+              onChange={event => setChangeNote(event.target.value)}
+              className="h-9 w-full rounded-md border border-border bg-card px-3 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-primary-ring"
+              placeholder="Uploaded HTML version"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border-t border-border p-4">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 flex-1 rounded-md border border-border text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-hover"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => { void handleSubmit() }}
+            disabled={!canSubmit}
+            className={cn(
+              'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+              canSubmit && 'bg-primary hover:bg-primary/90',
+              !canSubmit && 'bg-secondary text-muted-foreground',
+            )}
+          >
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />}
+            Upload version
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+type UploadProposalDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  deals: ApiDeal[]
+  dealsLoading: boolean
+  onCreated: (proposalId: string) => void
+}
+
+function UploadProposalDialog({ open, onOpenChange, deals, dealsLoading, onCreated }: UploadProposalDialogProps) {
+  const createProposal = useCreateProposal()
+  const [file, setFile] = useState<File | null>(null)
+  const [dealId, setDealId] = useState('')
+  const [title, setTitle] = useState('')
+  const [type, setType] = useState<ApiProposalType>('formal')
+  const [changeNote, setChangeNote] = useState('Uploaded HTML proposal')
+  const [fileError, setFileError] = useState<string | null>(null)
+  const isValidHtml = isHtmlProposalFile(file)
+  const dealOptions = useMemo(() => deals.map(deal => ({
+    value: deal.id,
+    label: `${deal.title}${deal.brandName ? ` · ${deal.brandName}` : ''}`,
+  })), [deals])
+  const canSubmit = Boolean(file && isValidHtml && dealId && title.trim()) && !createProposal.isPending
+
+  function reset() {
+    setFile(null)
+    setDealId('')
+    setTitle('')
+    setType('formal')
+    setChangeNote('Uploaded HTML proposal')
+    setFileError(null)
+  }
+
+  function handleFileChange(nextFile: File | null) {
+    setFile(nextFile)
+    if (!nextFile) {
+      setFileError(null)
+      setTitle('')
+      return
+    }
+    if (!isHtmlProposalFile(nextFile)) {
+      setFileError('Upload an HTML file only (.html or .htm).')
+      setTitle('')
+      return
+    }
+    setFileError(null)
+    setTitle(getProposalTitleFromUploadFile(nextFile.name))
+  }
+
+  async function handleSubmit() {
+    if (!canSubmit || !file) return
+    const html = await file.text()
+    createProposal.mutate(
+      {
+        dealId,
+        title: title.trim(),
+        type,
+        html,
+        changeNote: changeNote.trim() || 'Uploaded HTML proposal',
+      },
+      {
+        onSuccess: proposal => {
+          reset()
+          onOpenChange(false)
+          onCreated(proposal.id)
+        },
+      },
+    )
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) reset() }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <div>
+            <DialogTitle>Upload HTML proposal</DialogTitle>
+            <DialogDescription>Choose an HTML file and assign it to a deal.</DialogDescription>
+          </div>
+        </DialogHeader>
+        <div className="space-y-4 p-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">HTML file</label>
+            <input
+              type="file"
+              accept=".html,.htm,text/html"
+              onChange={event => handleFileChange(event.target.files?.[0] ?? null)}
+              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground file:mr-3 file:rounded-control file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-foreground hover:bg-surface-hover"
+            />
+            {fileError && <p className="mt-1 text-xxs text-danger-foreground">{fileError}</p>}
+            {file && !fileError && <p className="mt-1 text-xxs text-text-faint">{file.name}</p>}
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Deal</label>
+            <Combobox
+              options={dealOptions}
+              value={dealId}
+              onValueChange={setDealId}
+              placeholder={dealsLoading ? 'Loading deals...' : 'Search deals...'}
+              className={cn('h-9 text-xs', dealsLoading && 'pointer-events-none opacity-60')}
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Title from filename</label>
+            <div className="flex h-9 items-center rounded-md border border-border bg-secondary px-3 text-xs text-muted-foreground">
+              <span className="truncate">{title || 'Select an HTML file to generate the title'}</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-foreground">Type</label>
+              <Select value={type} onValueChange={value => setType(value as ApiProposalType)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="formal" className="text-xs">Formal</SelectItem>
+                  <SelectItem value="presentation" className="text-xs">Presentation</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-foreground">Change note</label>
+              <input
+                value={changeNote}
+                onChange={event => setChangeNote(event.target.value)}
+                className="h-9 w-full rounded-md border border-border bg-card px-3 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-primary-ring"
+                placeholder="Uploaded HTML proposal"
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border-t border-border p-4">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 flex-1 rounded-md border border-border text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-hover"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => { void handleSubmit() }}
+            disabled={!canSubmit}
+            className={cn(
+              'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+              canSubmit && 'bg-primary hover:bg-primary/90',
+              !canSubmit && 'bg-secondary text-muted-foreground',
+            )}
+          >
+            {createProposal.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Upload proposal
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Main ───────────────────────────────────────────────────────────────────
 
 export function Proposals() {
@@ -354,8 +627,10 @@ export function Proposals() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { data: proposals = [], isLoading } = useGetAllProposals()
+  const { data: deals = [], isLoading: dealsLoading } = useGetDeals()
   const updateProposal = useUpdateProposalMeta()
   const downloadProposalHtml = useDownloadProposalHtml()
+  const saveVersion = useSaveProposalVersion()
   const uploadSignedPdf = useUploadSignedProposalPdf()
   const [search, setSearch] = useState('')
   const pathType = pathname.split('/').filter(Boolean).at(-1)
@@ -367,6 +642,8 @@ export function Proposals() {
   const [pdfPendingId, setPdfPendingId] = useState<string | null>(null)
   const [versionProposal, setVersionProposal] = useState<ApiProposalSummary | null>(null)
   const [versionsOpen, setVersionsOpen] = useState(false)
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [uploadVersionProposal, setUploadVersionProposal] = useState<ApiProposalSummary | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   useSearchHotkey({
@@ -450,6 +727,13 @@ export function Proposals() {
           containerClassName="min-w-[260px] flex-1"
         />
         {showStatusControls && <TabFilter items={statusItems} value={statusFilter} onChange={(next) => updateFilters('formal', next)} />}
+        <button
+          type="button"
+          onClick={() => setUploadOpen(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground"
+        >
+          <Upload size={14} /> Upload Proposal
+        </button>
       </div>
 
       {/* Body */}
@@ -495,6 +779,7 @@ export function Proposals() {
                       onSettled: () => setHtmlPendingId(null),
                     })
                   }}
+                  onUploadHtmlVersion={() => setUploadVersionProposal(p)}
                   onSignedPdfUpload={(file) => {
                     setPdfPendingId(p.id)
                     uploadSignedPdf.mutate({ proposalId: p.id, file }, { onSettled: () => setPdfPendingId(null) })
@@ -509,6 +794,28 @@ export function Proposals() {
           </Table>
         </div>
       )}
+
+      <UploadProposalDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        deals={deals}
+        dealsLoading={dealsLoading}
+        onCreated={(proposalId) => open(proposalId)}
+      />
+
+      <UploadHtmlVersionDialog
+        proposal={uploadVersionProposal}
+        open={Boolean(uploadVersionProposal)}
+        onOpenChange={(next) => { if (!next) setUploadVersionProposal(null) }}
+        isPending={saveVersion.isPending}
+        onUpload={(input) => {
+          if (!uploadVersionProposal) return
+          saveVersion.mutate(
+            { proposalId: uploadVersionProposal.id, html: input.html, changeNote: input.changeNote },
+            { onSuccess: () => setUploadVersionProposal(null) },
+          )
+        }}
+      />
 
       <ProposalVersionsDialog
         proposal={versionProposal}
