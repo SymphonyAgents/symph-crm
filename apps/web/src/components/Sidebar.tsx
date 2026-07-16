@@ -14,9 +14,7 @@ import {
   BookOpen,
   Box,
   Check,
-  ChevronsUpDown,
   ClipboardList,
-  Columns3,
   FileStack,
   FileText,
   Grid2X2,
@@ -165,16 +163,9 @@ function getNavSections(role?: CrmUserRole): NavSection[] {
       items: [
         { path: '/chat', label: 'Chat', icon: MessageCircle },
         { path: '/', label: 'Dashboard', icon: Grid2X2 },
-        {
-          path: '/pipeline',
-          label: 'Pipeline',
-          icon: Columns3,
-          children: [
-            { path: '/pipeline?view=deals', label: 'Deals', icon: FileStack },
-            { path: '/pipeline?view=leads', label: 'Leads', icon: Target },
-          ],
-        },
-        { path: '/deals', label: 'Brands', icon: BookOpen },
+        { path: '/leads', label: 'Leads', icon: Target },
+        { path: '/deals', label: 'Deals', icon: FileStack },
+        { path: '/brands', label: 'Brands', icon: BookOpen },
         { path: '/wiki', label: 'Wiki', icon: BookMarked },
       ],
     },
@@ -207,7 +198,6 @@ function getNavSections(role?: CrmUserRole): NavSection[] {
 function isActive(itemPath: string, pathname: string): boolean {
   if (itemPath === '/') return pathname === '/'
   if (itemPath === '/meetings') return pathname === '/meetings' || pathname === '/recordings' || pathname.startsWith('/meetings/')
-  if (itemPath === '/pipeline') return pathname === '/pipeline' || pathname.startsWith('/pipeline/') || pathname === '/leads' || pathname.startsWith('/leads/')
   return pathname === itemPath || pathname.startsWith(itemPath + '/')
 }
 
@@ -219,12 +209,6 @@ function splitNavPath(itemPath: string) {
 function isExactActive(itemPath: string, pathname: string, queryString: string): boolean {
   const item = splitNavPath(itemPath)
   if (item.path === '/') return pathname === '/'
-  if (item.path === '/pipeline' && item.query) {
-    const itemView = new URLSearchParams(item.query).get('view')
-    const currentView = new URLSearchParams(queryString).get('view')
-    if (itemView === 'deals') return pathname === '/pipeline' && currentView !== 'leads'
-    return pathname === '/pipeline' && currentView === itemView
-  }
   if (item.query) return pathname === item.path && queryString === item.query
   return pathname === item.path || pathname.startsWith(item.path + '/')
 }
@@ -320,16 +304,26 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
           collapsed ? collapsedWidth : expandedWidth,
         )}>
           <div className={cn(
-            'h-[var(--topbar-height)] border-b border-border flex items-center gap-2',
-            collapsed ? 'md:justify-center md:px-0 px-3.5' : 'px-3.5',
+            'h-[var(--topbar-height)] border-b border-border flex items-center justify-between gap-2',
+            collapsed ? 'md:px-2 px-3.5' : 'px-3.5',
           )}>
-            <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold text-primary-foreground bg-primary shrink-0 tracking-tight">
-              S
-            </div>
-            <div className={cn('min-w-0 flex-1 flex items-center gap-2', collapsed && 'md:hidden')}>
+            <div className={cn('flex min-w-0 items-center gap-2', collapsed && 'md:hidden')}>
+              <div className="w-8 h-8 rounded-md flex items-center justify-center text-sm font-bold text-primary-foreground bg-primary shrink-0 tracking-tight">
+                S
+              </div>
               <span className="truncate text-sbase font-semibold tracking-[-0.02em] text-foreground">Symph</span>
-              <ChevronsUpDown size={13} strokeWidth={1.5} className="ml-auto text-text-faint" />
             </div>
+            <button
+              type="button"
+              onClick={() => onCollapsedChange?.(!collapsed)}
+              className={cn(
+                'flex h-8 w-8 shrink-0 items-center justify-center rounded-control text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
+                collapsed && 'md:mx-auto',
+              )}
+              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.55} /> : <PanelLeftClose size={16} strokeWidth={1.55} />}
+            </button>
           </div>
 
           <div className={cn('border-b border-border', collapsed ? 'md:px-0 px-2 py-2' : 'px-2 py-2')}>
@@ -461,17 +455,7 @@ export function Sidebar({ isOpen, onClose, collapsed = false, onCollapsedChange 
                 <ThemeSelector collapsed={collapsed} />
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => onCollapsedChange?.(!collapsed)}
-              className={cn(
-                'flex h-8 w-full items-center gap-3 rounded-control px-2 text-[length:var(--v-size-nav)] leading-[var(--v-lh-nav)] font-[var(--v-wt-nav)] text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground',
-                collapsed && 'md:mx-auto md:h-8 md:w-8 md:justify-center md:px-0',
-              )}
-            >
-              {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.55} /> : <PanelLeftClose size={16} strokeWidth={1.55} />}
-              <span className={cn(collapsed && 'md:hidden')}>{collapsed ? 'Expand' : 'Collapse'}</span>
-            </button>
+
           </div>
 
           <div className={cn(

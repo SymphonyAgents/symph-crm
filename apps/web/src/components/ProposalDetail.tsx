@@ -18,10 +18,11 @@
  * modals, and downloads so proposals can either open print or save a PDF.
  */
 
-import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { Download, Eye, History, Loader2, MoreVertical, Upload } from 'lucide-react'
+import { useCallback, useEffect, useState, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Download, Eye, History, Loader2, Maximize2, MoreVertical, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { isHtmlProposalFile } from '@/lib/utils/proposal-utils'
 import { useGetProposalHead, useGetProposalVersion, useGetProposalVersions } from '@/lib/hooks/queries'
 import { useSaveProposalVersion, useUpdateProposalMeta, useUploadSignedProposalPdf } from '@/lib/hooks/mutations'
 import { DataTableSkeleton } from '@/components/ui/data-table'
@@ -87,7 +88,9 @@ function ProposalActionsMenu({
   status,
   hasPdf,
   onViewVersions,
+  onPresent,
   onDownloadHtml,
+  onUploadHtmlVersion,
   onSignedPdfUpload,
   isPdfPending,
 }: {
@@ -95,7 +98,9 @@ function ProposalActionsMenu({
   status: ApiProposalStatus
   hasPdf: boolean
   onViewVersions: () => void
+  onPresent: () => void
   onDownloadHtml: () => void
+  onUploadHtmlVersion: () => void
   onSignedPdfUpload: (file: File) => void
   isPdfPending: boolean
 }) {
@@ -123,11 +128,27 @@ function ProposalActionsMenu({
         </button>
         <button
           type="button"
+          onClick={onPresent}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
+        >
+          <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Present
+        </button>
+        <button
+          type="button"
           onClick={onDownloadHtml}
           className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
         >
           <Download className="h-3.5 w-3.5" strokeWidth={1.8} />
           Download HTML
+        </button>
+        <button
+          type="button"
+          onClick={onUploadHtmlVersion}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-popover-foreground transition-colors hover:bg-surface-hover"
+        >
+          <Upload className="h-3.5 w-3.5" strokeWidth={1.8} />
+          Upload HTML version
         </button>
         <label className={cn(
           'flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium transition-colors',
@@ -242,6 +263,104 @@ function ProposalVersionsDialog({
   )
 }
 
+type UploadHtmlVersionDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  proposalTitle: string
+  isPending: boolean
+  onUpload: (input: { html: string; changeNote: string }) => void
+}
+
+function UploadHtmlVersionDialog({ open, onOpenChange, proposalTitle, isPending, onUpload }: UploadHtmlVersionDialogProps) {
+  const [file, setFile] = useState<File | null>(null)
+  const [changeNote, setChangeNote] = useState('Uploaded HTML version')
+  const [fileError, setFileError] = useState<string | null>(null)
+  const isValidHtml = isHtmlProposalFile(file)
+  const canSubmit = Boolean(file && isValidHtml) && !isPending
+
+  function reset() {
+    setFile(null)
+    setChangeNote('Uploaded HTML version')
+    setFileError(null)
+  }
+
+  function handleFileChange(nextFile: File | null) {
+    setFile(nextFile)
+    if (!nextFile) {
+      setFileError(null)
+      return
+    }
+    if (!isHtmlProposalFile(nextFile)) {
+      setFileError('Upload an HTML file only (.html or .htm).')
+      return
+    }
+    setFileError(null)
+  }
+
+  async function handleSubmit() {
+    if (!canSubmit || !file) return
+    const html = await file.text()
+    onUpload({ html, changeNote: changeNote.trim() || 'Uploaded HTML version' })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) reset() }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <div className="min-w-0">
+            <DialogTitle>Upload HTML version</DialogTitle>
+            <DialogDescription className="mt-1 truncate">{proposalTitle}</DialogDescription>
+          </div>
+        </DialogHeader>
+        <div className="space-y-4 p-4">
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">HTML file</label>
+            <input
+              type="file"
+              accept=".html,.htm,text/html"
+              onChange={event => handleFileChange(event.target.files?.[0] ?? null)}
+              className="block w-full rounded-md border border-border bg-card px-3 py-2 text-xs text-muted-foreground file:mr-3 file:rounded-control file:border-0 file:bg-secondary file:px-2.5 file:py-1 file:text-xs file:font-medium file:text-foreground hover:bg-surface-hover"
+            />
+            {fileError && <p className="mt-1 text-xxs text-danger-foreground">{fileError}</p>}
+            {file && !fileError && <p className="mt-1 truncate text-xxs text-text-faint">{file.name}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-foreground">Change note</label>
+            <input
+              value={changeNote}
+              onChange={event => setChangeNote(event.target.value)}
+              className="h-9 w-full rounded-md border border-border bg-card px-3 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-ring focus:ring-1 focus:ring-primary-ring"
+              placeholder="Uploaded HTML version"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2 border-t border-border p-4">
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="h-9 flex-1 rounded-md border border-border text-xs font-medium text-muted-foreground transition-colors hover:bg-surface-hover"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => { void handleSubmit() }}
+            disabled={!canSubmit}
+            className={cn(
+              'flex h-9 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+              canSubmit && 'bg-primary hover:bg-primary/90',
+              !canSubmit && 'bg-secondary text-muted-foreground',
+            )}
+          >
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.8} />}
+            Upload version
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 interface ProposalDetailProps {
   proposalId: string
   versionId?: string
@@ -251,11 +370,14 @@ interface ProposalDetailProps {
 
 export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: ProposalDetailProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isPresenting = searchParams.get('present') === '1'
   const { data, isLoading, error } = useGetProposalHead(proposalId)
   const { data: selectedVersion, isLoading: isVersionLoading, error: versionError } = useGetProposalVersion(proposalId, versionId, { enabled: !!versionId })
   const { data: versions = [], isLoading: isVersionsLoading } = useGetProposalVersions(proposalId)
   const [isEditing, setIsEditing] = useState(false)
   const [showVersions, setShowVersions] = useState(false)
+  const [showUploadVersion, setShowUploadVersion] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const saveVersion = useSaveProposalVersion()
   const updateProposal = useUpdateProposalMeta()
@@ -305,6 +427,45 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
     uploadSignedPdf.mutate({ proposalId, file })
   }
 
+  const setPresentationMode = useCallback((enabled: boolean) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (enabled) params.set('present', '1')
+    else params.delete('present')
+    const query = params.toString()
+    router.replace(`/proposals/${proposalId}${query ? `?${query}` : ''}`)
+  }, [proposalId, router, searchParams])
+
+  function handlePresent() {
+    setPresentationMode(true)
+  }
+
+  function handleExitPresentation() {
+    setPresentationMode(false)
+  }
+
+  function handleHtmlVersionUpload(input: { html: string; changeNote: string }) {
+    saveVersion.mutate(
+      { proposalId, html: input.html, changeNote: input.changeNote },
+      {
+        onSuccess: () => {
+          setShowUploadVersion(false)
+          if (versionId) router.push(`/proposals/${proposalId}`)
+        },
+      },
+    )
+  }
+
+  useEffect(() => {
+    if (!isPresenting) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setPresentationMode(false)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isPresenting, setPresentationMode])
+
   function injectContentEditable() {
     const iframeDoc = iframeRef.current?.contentDocument
     if (!iframeDoc || !isEditing) return
@@ -353,16 +514,16 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
   const activeVersion = selectedVersion ?? data.version
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-surface-alt">
-      {/* Sticky header */}
+    <div className={cn('h-full flex flex-col overflow-hidden bg-surface-alt', isPresenting && 'h-dvh bg-black')}>
+      {!isPresenting && (
       <div className="shrink-0 bg-card border-b border-border">
         <div className="flex flex-col gap-3 px-4 py-3 md:mx-auto md:w-full md:max-w-[1400px] md:flex-row md:items-center md:px-6">
           <button
             onClick={onBack}
-            className="shrink-0 flex items-center gap-1.5 h-7 px-2 -ml-2 rounded-md text-xs font-medium text-slate-500 hover:text-slate-900 hover:text-foreground hover:bg-secondary transition-colors duration-150"
+            aria-label="Back to proposals"
+            className="shrink-0 flex h-8 w-8 items-center justify-center -ml-2 rounded-md text-slate-400 hover:text-foreground hover:bg-secondary transition-colors duration-150"
           >
-            <ChevronLeftIcon size={14} />
-            <span>Proposals</span>
+            <ChevronLeftIcon size={19} />
           </button>
 
           <div className="hidden h-5 w-px shrink-0 bg-black/[.08] md:block" />
@@ -403,10 +564,6 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
             </div>
           </div>
 
-          <div className="hidden lg:block text-xxs text-slate-400 shrink-0 font-mono">
-            {fmtDate(data.updatedAt)}
-          </div>
-
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2 md:w-auto md:flex-nowrap md:justify-end">
             {!isEditing && (
               <div className="flex items-center gap-2">
@@ -436,7 +593,9 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
                 status={data.status}
                 hasPdf={Boolean(data.signedPdfFileName)}
                 onViewVersions={() => setShowVersions(true)}
+                onPresent={handlePresent}
                 onDownloadHtml={() => downloadHtmlFile(data.title, activeVersion.html ?? '')}
+                onUploadHtmlVersion={() => setShowUploadVersion(true)}
                 onSignedPdfUpload={handleSignedPdfUpload}
                 isPdfPending={uploadSignedPdf.isPending}
               />
@@ -497,6 +656,7 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
           </div>
         </div>
       </div>
+      )}
 
       <ProposalVersionsDialog
         title={data.title}
@@ -511,8 +671,24 @@ export function ProposalDetail({ proposalId, versionId, onBack, onOpenDeal }: Pr
         }}
       />
 
+      <UploadHtmlVersionDialog
+        open={showUploadVersion}
+        onOpenChange={setShowUploadVersion}
+        proposalTitle={data.title}
+        isPending={saveVersion.isPending}
+        onUpload={handleHtmlVersionUpload}
+      />
+
       {/* Full-width iframe */}
-      <div className="flex-1 min-h-0 bg-secondary relative">
+      <div className={cn('flex-1 min-h-0 bg-secondary relative', isPresenting && 'bg-black')}>
+        {isPresenting && (
+          <button
+            onClick={handleExitPresentation}
+            className="absolute left-3 top-3 z-10 h-8 rounded-lg bg-black/70 px-3 text-xs font-semibold text-white shadow-lg hover:bg-black/80 transition-colors"
+          >
+            Exit
+          </button>
+        )}
         {isEditing && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 bg-primary/90 text-white text-xxs font-medium px-3 py-1 rounded-full shadow-md pointer-events-none">
             Click any text to edit

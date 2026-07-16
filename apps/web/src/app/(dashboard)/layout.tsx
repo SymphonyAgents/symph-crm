@@ -16,7 +16,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <AuthUserProvider>
       <ChatTypingProvider>
         <ChatSidebarProvider>
-          <CrmShell>{children}</CrmShell>
+          <Suspense>
+            <CrmShell>{children}</CrmShell>
+          </Suspense>
           <Suspense>
             <ChangelogDialog />
           </Suspense>

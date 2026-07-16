@@ -17,8 +17,9 @@ type CommandItem = {
 const INTERNAL_ROUTES: CommandItem[] = [
   { id: 'chat', label: 'Chat', path: '/chat', section: 'Pages' },
   { id: 'dashboard', label: 'Dashboard', path: '/', section: 'Pages' },
-  { id: 'pipeline', label: 'Pipeline', path: '/pipeline', section: 'Pages' },
+  { id: 'leads', label: 'Leads', path: '/leads', section: 'Pages' },
   { id: 'deals', label: 'Deals', path: '/deals', section: 'Pages' },
+  { id: 'brands', label: 'Brands', path: '/brands', section: 'Pages' },
   { id: 'inbox', label: 'Inbox', path: '/inbox', section: 'Pages' },
   { id: 'proposals', label: 'Proposals', path: '/proposals', section: 'Pages' },
 ]

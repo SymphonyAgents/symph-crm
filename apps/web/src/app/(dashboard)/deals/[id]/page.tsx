@@ -10,7 +10,8 @@ function DealDetailInner({ id }: { id: string }) {
   const from = searchParams.get('from')
   const backLabels: Record<string, string> = {
     brands: 'Back to Brands',
-    pipeline: 'Back to Pipeline',
+    pipeline: 'Back to Deals',
+    deals: 'Back to Deals',
     dashboard: 'Back to Dashboard',
     bills: 'Back to Bills',
     inbox: 'Back to Inbox',

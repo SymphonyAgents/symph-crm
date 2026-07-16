@@ -482,7 +482,7 @@ type TabId = 'notes' | 'resources' | 'proposals' | 'timeline' | 'people' | 'bill
 const VALID_TABS = new Set<TabId>(['notes', 'resources', 'proposals', 'timeline', 'people', 'billing'])
 const PARTNER_VISIBLE_TABS = new Set<TabId>(['timeline', 'people'])
 
-export function DealDetail({ dealId, backLabel = 'Back to Pipeline', onBack }: DealDetailProps) {
+export function DealDetail({ dealId, backLabel = 'Back to Deals', onBack }: DealDetailProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
