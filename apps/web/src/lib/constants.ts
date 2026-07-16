@@ -528,8 +528,9 @@ export const AVATAR_COLORS = [
 
 export const COMMAND_ROUTES = [
   { label: 'Dashboard',  path: '/dashboard',  keywords: ['home', 'overview'] },
-  { label: 'Pipeline',   path: '/pipeline',   keywords: ['kanban', 'stages', 'deals'] },
-  { label: 'Deals',      path: '/deals',      keywords: ['list', 'brand', 'opportunities'] },
+  { label: 'Leads',      path: '/leads',      keywords: ['prospects', 'qualification'] },
+  { label: 'Deals',      path: '/deals',      keywords: ['kanban', 'stages', 'opportunities'] },
+  { label: 'Brands',     path: '/brands',     keywords: ['list', 'brand', 'companies'] },
   { label: 'Inbox',      path: '/inbox',       keywords: ['email', 'messages', 'gmail'] },
   { label: 'Proposals',  path: '/proposals',   keywords: ['documents', 'proposal', 'builder'] },
   { label: 'Meetings',   path: '/meetings',    keywords: ['meetings', 'circleback', 'transcripts'] },

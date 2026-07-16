@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { formatDistanceToNow } from 'date-fns'
 import { useGetDeals, useGetCompanies, useGetUsers, useGetCatalogItems } from '@/lib/hooks/queries'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { cn, formatServiceType, getAdvanceTargets, getMoveBackTargets } from '@/lib/utils'
 import { formatDealMoney, formatCurrencyBreakdown, hasMultipleCurrencies, sumMoneyByCurrency } from '@/lib/currency'
 import { formatDealName } from '@/lib/format-deal-name'
@@ -854,6 +854,7 @@ export function Pipeline({
   const defaultedSearchRef = useRef(false)
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const router = useRouter()
   const scrolledRef = useRef(false)
   const { isSales, userId, user } = useUser()
@@ -1111,10 +1112,10 @@ export function Pipeline({
     const timer = setTimeout(() => {
       const el = document.querySelector(`[data-stage-id="${stageId}"]`)
       if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-      router.replace('/pipeline')
+      router.replace(pathname)
     }, 100)
     return () => clearTimeout(timer)
-  }, [isLoading, searchParams, router])
+  }, [isLoading, searchParams, router, pathname])
 
   const activeDeals = filteredDeals.filter(d => !CLOSED_STAGE_IDS.has(d.stage))
   const activeTotals = sumMoneyByCurrency(activeDeals)

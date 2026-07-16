@@ -29,9 +29,9 @@ export function PipelineBar({ deals }: PipelineBarProps) {
             role="button"
             tabIndex={0}
             className="flex flex-col gap-1.5 min-w-0 cursor-pointer hover:opacity-80 transition-opacity duration-150"
-            onClick={() => router.push(`/pipeline?stage=${s.id}`)}
+            onClick={() => router.push(`/deals?stage=${s.id}`)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') router.push(`/pipeline?stage=${s.id}`)
+              if (e.key === 'Enter' || e.key === ' ') router.push(`/deals?stage=${s.id}`)
             }}
           >
             <div
