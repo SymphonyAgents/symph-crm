@@ -211,6 +211,11 @@ export class StorageService implements OnModuleInit {
 
   /** Generate a signed URL for a signed proposal PDF. */
   async proposalSignedPdfUrl(storagePath: string, expiresInSeconds = 3600): Promise<string> {
+    // Some legacy proposal records store an already-shareable external URL
+    // (for example Google Drive) instead of a Supabase Storage object path.
+    // Return those directly instead of asking Supabase to sign them.
+    if (/^https?:\/\//i.test(storagePath)) return storagePath
+
     const { data, error } = await this.supabaseClient.storage
       .from(ATTACHMENTS_BUCKET)
       .createSignedUrl(storagePath, expiresInSeconds)
