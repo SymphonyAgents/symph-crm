@@ -4,6 +4,9 @@ import { api } from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type { ApiProposalHead, ApiProposalStatus, ApiProposalType, ApiProposalVersion, ApiProposalShareLink } from '@/lib/types'
 
+export const PROPOSAL_SIGNED_PDF_MAX_BYTES = 20 * 1024 * 1024
+export const PROPOSAL_SIGNED_PDF_MAX_MB = 20
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function withToast(
   label: string,
@@ -120,6 +123,10 @@ export function useUploadSignedProposalPdf(
   const qc = useQueryClient()
   return useMutation<ApiProposalHead, Error, UploadSignedProposalPdfInput>({
     mutationFn: ({ proposalId, file }) => {
+      if (file.size > PROPOSAL_SIGNED_PDF_MAX_BYTES) {
+        throw new Error(`PDF is too large. Please upload a file ${PROPOSAL_SIGNED_PDF_MAX_MB} MB or smaller.`)
+      }
+
       const formData = new FormData()
       formData.append('file', file)
       return api.upload<ApiProposalHead>(`/proposals/${proposalId}/signed-pdf`, formData)

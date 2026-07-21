@@ -16,6 +16,7 @@ import { Roles } from '../auth/roles.guard'
 import { CrmUserRole } from '@symph-crm/shared'
 
 const PROPOSAL_READ_ROLES = [CrmUserRole.Sales, CrmUserRole.Build]
+const PROPOSAL_SIGNED_PDF_MAX_BYTES = 20 * 1024 * 1024
 
 @Controller()
 export class ProposalsController {
@@ -77,7 +78,7 @@ export class ProposalsController {
   @Post('proposals/:id/signed-pdf')
   @UseInterceptors(FileInterceptor('file', {
     storage: memoryStorage(),
-    limits: { fileSize: 25 * 1024 * 1024 },
+    limits: { fileSize: PROPOSAL_SIGNED_PDF_MAX_BYTES },
   }))
   uploadSignedPdf(
     @Param('id') id: string,
