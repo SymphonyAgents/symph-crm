@@ -118,6 +118,11 @@ import type { ProposalStatus, ProposalType } from '@symph-crm/database'
  *     POST   /api/owner/wiki/page
  *     POST   /api/owner/wiki/log
  *
+ *   Proposals:
+ *     GET    /api/owner/proposals
+ *     GET    /api/owner/proposals/:id
+ *     GET    /api/owner/deals/:dealId/proposals
+ *
  *   Chat:
  *     GET    /api/owner/chats?userId=...
  *     GET    /api/owner/chats/:sessionId/messages
@@ -942,6 +947,21 @@ export class OwnerController {
   // ═══════════════════════════════════════════════════════════════════════════
   // Proposals
   // ═══════════════════════════════════════════════════════════════════════════
+
+  @Get('proposals')
+  async listProposals(@Query('workspaceId') workspaceId?: string) {
+    return this.proposals.listAll(workspaceId)
+  }
+
+  @Get('proposals/:id')
+  async getProposal(@Param('id') id: string) {
+    return this.proposals.getHead(id)
+  }
+
+  @Get('deals/:dealId/proposals')
+  async listDealProposals(@Param('dealId') dealId: string) {
+    return this.proposals.listByDeal(dealId)
+  }
 
   @Put('proposals/:id')
   async updateProposal(
