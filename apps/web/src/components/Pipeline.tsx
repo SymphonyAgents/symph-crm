@@ -835,7 +835,6 @@ export function Pipeline({
   const setSearch = usePipelineViewStore(state => state.setSearch)
   const amFilter = usePipelineViewStore(state => state.assigneeFilterUserId)
   const setAmFilter = usePipelineViewStore(state => state.setAssigneeFilterUserId)
-  const defaultSearchForUser = usePipelineViewStore(state => state.defaultSearchForUser)
   const [searchOpen, setSearchOpen] = useState(false)
   const [amDropdownOpen, setAmDropdownOpen] = useState(false)
   const [deleteConfirmDealId, setDeleteConfirmDealId] = useState<string | null>(null)
@@ -851,13 +850,12 @@ export function Pipeline({
   const [mobileShowAssign, setMobileShowAssign] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const amDropdownRef = useRef<HTMLDivElement>(null)
-  const defaultedSearchRef = useRef(false)
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const router = useRouter()
   const scrolledRef = useRef(false)
-  const { isSales, userId, user } = useUser()
+  const { isSales, userId } = useUser()
 
   const { data: allDeals = [], isLoading: dealsLoading } = useGetDeals()
   // Tab + sub-tab filters are purely client-side — one cached request, instant swaps.
@@ -900,19 +898,6 @@ export function Pipeline({
   const deleteDeal = useDeleteDeal()
   const patchStage = usePatchDealStage()
   const updateDeal = useUpdateDeal()
-
-  const currentUserSearchLabel = useMemo(() => {
-    if (!userId) return ''
-    const matchingUser = users.find(u => u.id === userId)
-    return getUserLabel(matchingUser, user?.name ?? user?.email ?? userId)
-  }, [userId, user?.name, user?.email, users])
-
-  useEffect(() => {
-    if (!userId || !currentUserSearchLabel || defaultedSearchRef.current) return
-    defaultedSearchRef.current = true
-    defaultSearchForUser(userId, currentUserSearchLabel)
-    setSearchOpen(true)
-  }, [currentUserSearchLabel, defaultSearchForUser, userId])
 
   // Cmd/Ctrl+F opens the search panel + focuses; Escape closes + clears.
   // Panel mounts the input lazily, so we need a small focus delay.
