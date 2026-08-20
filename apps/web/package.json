@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:pipeline-filter-default": "node scripts/validate-pipeline-filter-default.mjs"
   },
   "dependencies": {
     "@bprogress/next": "^3.2.12",
