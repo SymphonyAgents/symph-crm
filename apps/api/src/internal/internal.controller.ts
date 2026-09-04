@@ -1160,7 +1160,7 @@ export class InternalController {
    * GET /api/internal/wiki/page — Read any wiki page by relative path.
    *
    * Query param:
-   *   path = relative path within /share/crm/ (e.g. "deals/abc123/index.md")
+   *   path = relative path within the CRM storage root (e.g. "deals/abc123/index.md")
    *
    * Returns: { path, content: string | null }
    */
@@ -1175,7 +1175,7 @@ export class InternalController {
    * POST /api/internal/wiki/page — Write or append to a wiki page.
    *
    * Body:
-   *   path    string   Relative path within /share/crm/
+   *   path    string   Relative path within the CRM storage root
    *   content string   Markdown content to write
    *   append  boolean  If true, append to existing file instead of overwriting (default: false)
    *

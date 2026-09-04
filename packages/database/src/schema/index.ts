@@ -11,7 +11,7 @@ export * from './deal-contacts'
 export * from './partner-groups'
 export * from './partner-deal-groups'
 export * from './partner-deal-commissions'
-export * from './documents'   // replaces notes — content lives in NFS (storage_path), metadata only in DB
+export * from './documents'   // replaces notes; content is resolved by storage_path, metadata lives here
 export * from './proposals'           // proposal chain identity (title, deal, pin, soft-delete)
 export * from './proposal-versions'   // versioned HTML — inline text column
 export * from './proposal-share-links' // public share tokens, version-pinned

@@ -219,7 +219,6 @@ export async function POST(req: NextRequest) {
       // Assert T3 so the gateway honours system_prompt_additions.
       // Safe: this route is already gated by ARIA_API_TOKEN (server-side only).
       user_tier: 3,
-      workspace_path: '/share/agency/products/symph-crm',
       system_prompt_additions: systemPromptAdditions,
     }),
   })

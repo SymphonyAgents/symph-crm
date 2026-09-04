@@ -187,7 +187,7 @@ export class DocumentsService {
     const doc = await this.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
 
-    // Delete from NFS (best-effort — don't block DB cleanup)
+    // Delete from CRM-managed storage (best effort; do not block DB cleanup)
     await this.storage.deleteMarkdown(doc.storagePath)
 
     // Hard delete from DB
@@ -207,7 +207,7 @@ export class DocumentsService {
   async getDownloadUrl(id: string): Promise<{ url: string; filename: string }> {
     const doc = await this.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
-    // NFS files: return API endpoint path
+    // CRM-mounted files return an API endpoint path
     // Voice recordings (AUDIO_TAGS): return Supabase signed URL
     const AUDIO_TAGS = ['mp3', 'm4a', 'mpeg', 'mp4', 'x-m4a']
     const isVoice = doc.tags?.some(t => AUDIO_TAGS.includes(t))
@@ -217,7 +217,7 @@ export class DocumentsService {
       // Voice recordings in Supabase Storage — get signed URL
       url = await this.storage.voiceRecordingSignedUrl(doc.storagePath, 3600)
     } else {
-      // All other files (markdown, images, PDFs, docs) on NFS, return byte-serving API endpoint
+      // All other files use the CRM byte-serving API endpoint
       url = `/api/documents/${doc.id}/file`
     }
     // Extract filename from storagePath (last segment)
@@ -228,7 +228,7 @@ export class DocumentsService {
   /**
    * Generate a preview URL for a document.
    * Voice recordings (AUDIO_TAGS) in Supabase Storage get signed URLs.
-   * All other files (images, PDFs, markdown, docs) on NFS get API endpoint paths.
+   * All other files (images, PDFs, markdown, docs) in CRM-managed storage get API endpoint paths.
    */
   async getPreviewUrl(id: string): Promise<{ url: string; mimeType: string }> {
     const doc = await this.findOne(id)
@@ -242,7 +242,7 @@ export class DocumentsService {
       // Voice recordings in Supabase Storage — get signed URL
       url = await this.storage.voiceRecordingSignedUrl(doc.storagePath, 3600)
     } else {
-      // All other files on NFS, return byte-serving API endpoint for inline preview
+      // All other files use the byte-serving API endpoint for inline preview
       url = `/api/documents/${doc.id}/file?inline=1`
     }
 

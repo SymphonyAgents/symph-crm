@@ -437,7 +437,7 @@ function ArtifactBlock({
           </div>
         ) : (
           <div className="text-xs text-muted-foreground">
-            {fallbackPath ? `Saved at ${fallbackPath}. Content will load when the NFS file is available.` : 'Not saved yet.'}
+            {fallbackPath ? `Saved at ${fallbackPath}. Content will load when the CRM storage object is available.` : 'Not saved yet.'}
           </div>
         )}
       </div>

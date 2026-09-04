@@ -97,8 +97,11 @@ src/
 - All monetary values returned as strings (avoid float precision)
 - Nullable fields explicitly typed as `string | null`, not `undefined`
 
-## Environment and RBAC Notes
+## Environment, Storage, and RBAC Notes
 
+- `CRM_STORAGE_PATH` is required and points to the writable CRM content root. Production mounts the private GCS bucket at `/share/crm` through Cloud Storage FUSE.
+- `StorageService` is the only API source allowed to import `fs` or resolve CRM content paths. All domain services and Aria integrations use `StorageService` or CRM APIs.
+- The production API must remain at `--max-instances=1` while storage operation ordering is process-local. Before scaling out, implement and verify cross-instance coordination or object-generation compare-and-swap.
 - `SALES_EMAILS` is a comma- or semicolon-separated allowlist merged with the default sales emails in `users.service.ts`; listed users are auto-assigned the `SALES` role on sign-in before the internal `BUILD` fallback.
 - When adding a sales user, update `DEFAULT_SALES_EMAILS`, `.env.example`, `cloudbuild.yaml`, and `apps/api/scripts/users-role-regression.js` together.
 

@@ -28,7 +28,7 @@ AM sends a message
                                                              │  │  │  │
                                    Update deal fields (DB) ◄─┘  │  │  │
                                          Log activity (DB) ◄────┘  │  │
-                                  Update context.md (NFS) ◄─────────┘  │
+                                  Update context.md (GCS FUSE) ◄─────────┘  │
                                         Respond to AM ◄────────────────┘
 ```
 
@@ -47,7 +47,7 @@ Discord message → Aria (agent-worker)
                     │
                     ├── Reads: GET /api/internal/* (deals, contacts, companies)
                     ├── Writes: POST/PUT /api/internal/* (create deals, update stages)
-                    └── Notes: NFS vault at /share/crm/deals/{id}/
+                    └── Notes: CRM API backed by Cloud Storage FUSE
 ```
 
 **Auth:** `X-Internal-Secret` header (secret: `symph-crm-internal-secret` in GCP Secret Manager)  
@@ -68,7 +68,7 @@ crm.symph.co/chat → POST /api/chat/message → ChatService → Aria SDK
 
 **Used for:** Deep deal discussions, deal Q&A with full context, on-the-fly proposals, document generation
 
-Both channels write to the same data layer — same deals, same NFS notes, same activity log.
+Both channels write to the same data layer — same deals, same GCS-backed notes, same activity log.
 
 ---
 
@@ -90,9 +90,9 @@ Both channels write to the same data layer — same deals, same NFS notes, same 
 | Voice | Groq SDK (Whisper) | Fast speech-to-text for voice notes |
 | Hosting | Google Cloud Run (asia-southeast1) | API + Web as separate services |
 | CI/CD | GitHub Actions → Cloud Build | Push to main → parallel build & deploy |
-| Doc Storage | NFS (/share/crm/) | Markdown files via Aria's shared Filestore |
+| CRM Content Storage | Cloud Storage FUSE at `/share/crm` | Private `symph-crm-nfs-vault` bucket |
 | Binary Storage | Supabase Storage `attachments` bucket | Voice recordings only (audio needs Supabase signed URLs for playback) |
-| Image Storage | NFS /share/crm/ | Images routed to NFS via writeFile() — same layer as markdown |
+| Image and Document Storage | Cloud Storage FUSE at `/share/crm` | Images, PDFs, DOCX, and PPTX route through `StorageService` |
 
 ---
 
@@ -127,12 +127,12 @@ NestJS 11 (apps/api) — symph-crm-api Cloud Run
   │     └── Full CRUD on all entities
   │
   ├── DatabaseModule (Global)        ← Drizzle + postgres-js
-  ├── StorageService                 ← NFS primary, Supabase fallback
+  ├── StorageService                 ← GCS FUSE content, Supabase media
   └── ChatService (11 tools)         ← AI chat loop via Aria SDK
         │
         ▼
   ┌─────────────────┬──────────────────┐
-  │ PostgreSQL      │ NFS /share/crm/  │
+  │ PostgreSQL      │ GCS FUSE /share/crm │
   │ (Supabase)      │ (markdown docs)  │
   └─────────────────┴──────────────────┘
         ▲
@@ -143,7 +143,7 @@ NestJS 11 (apps/api) — symph-crm-api Cloud Run
 
 ## Three-Layer Storage (Critical)
 
-> Full spec: `docs/ARCHITECTURE-HYBRID.md` and `docs/nfs-storage-architecture.md`
+> Current storage spec: `docs/gcs-storage-architecture.md`
 
 ```
 Layer 1 — PostgreSQL (structured/queryable)
@@ -152,7 +152,7 @@ Layer 1 — PostgreSQL (structured/queryable)
   documents (metadata index ONLY — no content column)
   files (attachment metadata)
 
-Layer 2 — NFS /share/crm/ (markdown documents)
+Layer 2 — Cloud Storage FUSE /share/crm/ (CRM content)
   deals/{id}/context/context-{ts}.md     ← AI-maintained living record
   deals/{id}/general/general-{ts}.md
   deals/{id}/meeting/meeting-{ts}.md
@@ -162,12 +162,12 @@ Layer 2 — NFS /share/crm/ (markdown documents)
 
 Layer 3 — Supabase Storage `attachments` (binary)
   Voice recordings (.m4a) only — audio requires Supabase signed URLs for in-browser playback
-  NOTE: Images and PDFs now route to NFS (Layer 2) via writeFile(), not Supabase
+  NOTE: Images and PDFs route to the private GCS bucket through StorageService
 ```
 
-**Rule:** Zero content in PostgreSQL. All markdown on NFS. All binaries in Supabase Storage. No exceptions.
+**Rule:** PostgreSQL owns structured records and metadata. The private GCS bucket owns CRM notes, wiki pages, summaries, and non-audio resources. Supabase Storage retains voice, signed proposal PDFs, and catalog icons.
 
-The `documents` table is a **metadata-only index** — `id`, `deal_id`, `title`, `type`, `storage_path`, `excerpt` (500 chars max), `word_count`. The `storage_path` field points to the NFS file.
+The `documents` table is a **metadata-only index**. Its `storage_path` field points to a relative object path exposed through the mounted CRM storage root.
 
 ---
 
@@ -184,7 +184,7 @@ ChatService / Aria (11 tools)
   │
   ├── update_deal_fields()   → deals table (stage, value, last_activity_at)
   ├── log_activity()         → activities table
-  ├── update_context_doc()   → NFS context.md (append + rewrite)
+  ├── update_context_doc()   → GCS-backed context.md through StorageService
   └── respond()              → confirmation, draft, next steps
 ```
 
@@ -198,7 +198,7 @@ Notes saved in the CRM UI trigger an automatic wiki sync (3-second debounce per 
 Note saved (UI)
   → 3s in-memory debounce (Map<dealId, NodeJS.Timeout>)
   → Debounce fires
-  → Aria reads all NFS notes for the deal
+  → Aria reads all current notes through the CRM API
   → Updates deal + company wiki pages + MASTER_INDEX
   → Triggers summary generation (Aria SDK)
 ```
@@ -229,7 +229,7 @@ symph-crm/
 │   │   │   ├── activities/
 │   │   │   ├── billing/
 │   │   │   ├── internal/       # Aria-only API (35+ endpoints)
-│   │   │   ├── storage/        # StorageService (NFS + Supabase fallback)
+│   │   │   ├── storage/        # StorageService (GCS FUSE + retained Supabase media)
 │   │   │   └── database/       # Global DB provider (Drizzle + postgres-js)
 │   │   └── CLAUDE.md           # API design rules (DTOs, validation)
 │   │
@@ -280,7 +280,7 @@ symph-crm/
 └── docs/
     ├── ARCHITECTURE.md          ← this file
     ├── ARCHITECTURE-HYBRID.md   ← storage layer deep-dive
-    ├── nfs-storage-architecture.md ← NFS integration details
+    ├── gcs-storage-architecture.md ← current content storage and migration contract
     └── WIKI-SYNC.md             ← debounced wiki sync system
 ```
 
@@ -328,7 +328,7 @@ All core entities are workspace-scoped for multi-tenancy.
 
 **Document types:** `context | discovery | transcript_raw | transcript_clean | meeting | proposal | summary | email_thread | company_profile | weekly_digest | general`
 
-> ⚠️ `notes` table has been **replaced by `documents`**. The documents table is metadata-only — all content lives in NFS files referenced by `storage_path`.
+> ⚠️ `notes` table has been **replaced by `documents`**. The documents table is metadata-only; content is resolved through `StorageService` using `storage_path`.
 
 ### Pipeline & AM Management
 
@@ -415,7 +415,7 @@ Full endpoint list: `apps/api/src/internal/internal.controller.ts`
 | Web (Next.js) | https://crm.symph.co | asia-southeast1 |
 | API (NestJS) | https://symph-crm-api-t5wb3mrt7q-as.a.run.app | asia-southeast1 |
 | Database | PostgreSQL via Supabase | — |
-| NFS Storage | /share/crm/ on aria-vpc Filestore | 10.95.69.154 |
+| CRM Content Storage | GCS FUSE at `/share/crm` | `gs://symph-crm-nfs-vault` |
 | Binary Storage | Supabase Storage `attachments` bucket | — |
 
 **CI/CD:** Push to `main` → GitHub Actions (WIF) → Cloud Build → parallel deploy of API + Web to Cloud Run.
@@ -429,7 +429,7 @@ Full endpoint list: `apps/api/src/internal/internal.controller.ts`
 | NestJS over Next.js API routes | Clear service boundary, DI, modular architecture |
 | Drizzle over Prisma | Explicit queries, shared schema package, no migration magic |
 | Supabase over self-hosted PostgreSQL | Managed backups, connection pooling, less ops |
-| NFS over Supabase Storage for markdown | ~1ms vs ~150ms read latency; Aria reads directly without HTTP; grep-able |
+| GCS FUSE behind StorageService | Preserves stable file paths while making CRM the sole content authority |
 | pnpm monorepo | Shared DB schema between API and web with no duplication |
 | React Query v5 | Clean mutations + cache invalidation for CRM data patterns |
 | JSONB for activity metadata | Flexible event data without migrations per event type |
@@ -460,7 +460,7 @@ Full endpoint list: `apps/api/src/internal/internal.controller.ts`
 - Internal API (35+ endpoints for Aria)
 - Chat → AI loop (11 tools, context.md maintenance)
 - Gmail sync + Calendar integration
-- NFS document storage
+- Cloud Storage FUSE document storage
 - Voice note transcription (Groq Whisper)
 - Wiki sync on note save (debounced)
 - Proposal builder integration

@@ -592,7 +592,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Deals', onBack }: Deal
   //   if (summaries.length > 0) setIsSummaryGenerating(false)
   // }, [summaries.length])
   const { data: users = [] } = useGetUsers()
-  const deleteNfsNote = useDeleteDealNote({
+  const deleteStoredNote = useDeleteDealNote({
     onSuccess: () => {
       refetchDocs()
       setDeletingDoc(null)
@@ -685,7 +685,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Deals', onBack }: Deal
   }
 
   // ── Notes vs Resources split ─────────────────────────────────────────────
-  // Notes: NFS flat notes from GET /deals/:id/notes/flat
+  // Notes from the UI-equivalent GET /deals/:id/notes/flat endpoint
   // Resources: docs uploaded to the /resources/ bucket path (still from Supabase documents)
   const noteDocs = nfsNotes
   const resourceDocs = documents.filter(d => d.storagePath?.includes('/resources/'))
@@ -876,13 +876,13 @@ export function DealDetail({ dealId, backLabel = 'Back to Deals', onBack }: Deal
 
   const confirmDeleteDoc = useCallback(() => {
     if (!deletingDoc) return
-    // NFS notes have `category` and `filename` fields; Supabase docs do not
+    // File-backed notes have `category` and `filename` fields; document rows do not
     if ('category' in deletingDoc && 'filename' in deletingDoc) {
-      deleteNfsNote.mutate({ dealId, category: deletingDoc.category, filename: deletingDoc.filename })
+      deleteStoredNote.mutate({ dealId, category: deletingDoc.category, filename: deletingDoc.filename })
     } else {
       deleteDoc.mutate(deletingDoc.id)
     }
-  }, [deletingDoc, deleteNfsNote, deleteDoc, dealId])
+  }, [deletingDoc, deleteStoredNote, deleteDoc, dealId])
 
   const handleDownloadDoc = useCallback(async (doc: ApiDocument) => {
     try {
@@ -898,7 +898,7 @@ export function DealDetail({ dealId, backLabel = 'Back to Deals', onBack }: Deal
         a.click()
         document.body.removeChild(a)
       } else {
-        // NFS files: download directly via the /file endpoint (Content-Disposition: attachment)
+        // CRM-managed files download through the /file endpoint
         const filename = doc.storagePath?.split('/').pop() ?? doc.title
         const a = document.createElement('a')
         a.href = `${BACKEND_API_URL}/documents/${doc.id}/file`
@@ -998,10 +998,10 @@ export function DealDetail({ dealId, backLabel = 'Back to Deals', onBack }: Deal
               </button>
               <button
                 onClick={confirmDeleteDoc}
-                disabled={deleteNfsNote.isPending || deleteDoc.isPending}
+                disabled={deleteStoredNote.isPending || deleteDoc.isPending}
                 className="flex-1 h-9 rounded-lg text-ssm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
               >
-                {(deleteNfsNote.isPending || deleteDoc.isPending) ? (
+                {(deleteStoredNote.isPending || deleteDoc.isPending) ? (
                   <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 ) : (
                   'Delete forever'

@@ -62,7 +62,7 @@ You are Aria, acting as a CRM sales assistant for Symph — an AI-native softwar
 
 ## Wiki Knowledge Base (Karpathy pattern)
 
-The CRM maintains a persistent, compounding wiki vault on NFS. Every deal, company, and contact has an index.md page that synthesizes all their notes into structured knowledge. Use this BEFORE answering questions.
+The CRM maintains a persistent, compounding wiki behind its internal API. Every deal, company, and contact can have an index.md page that synthesizes notes into structured knowledge. Use the CRM wiki endpoints BEFORE answering questions.
 
 ### Query flow — index-first
 1. For ANY question about a deal, company, or contact — call GET /wiki/index first (scope=deal/company/person + id)
@@ -267,7 +267,6 @@ export class ChatService {
         user_id: dto.userId,
         // Assert T3 so system_prompt_additions is honoured by the gateway
         user_tier: 3,
-        workspace_path: '/share/agency/products/symph-crm',
         system_prompt_additions: systemPromptAdditions,
       }),
     })

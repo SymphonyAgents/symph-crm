@@ -8,9 +8,9 @@ import { users } from './users'
 /**
  * documents — metadata-only index for all long-form content.
  *
- * ZERO content stored in this table. All content lives in Supabase Storage
- * 'content' bucket as markdown files. This table is the queryable index:
- * search by deal, company, type, tags, etc. — then fetch the file from Storage.
+ * ZERO content is stored in this table. CRM-managed content lives behind
+ * StorageService in the private Cloud Storage FUSE mount. This table is the
+ * queryable index: search metadata here, then fetch content through the API.
  *
  * Replaces the old `notes` table which incorrectly stored content in DB.
  * See docs/ARCHITECTURE-HYBRID.md for full rationale.
@@ -53,7 +53,7 @@ export const documents = pgTable('documents', {
   excerpt: text('excerpt'),
   wordCount: integer('word_count').default(0),
 
-  // Storage reference — path inside the 'content' Supabase Storage bucket.
+  // Storage reference: relative path inside CRM-managed mounted storage.
   // Format: 'deals/{deal_id}/context.md', 'companies/{co_id}/profile.md', etc.
   // UNIQUE: one DB row per file.
   storagePath: text('storage_path').notNull().unique(),

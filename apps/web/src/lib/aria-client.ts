@@ -25,16 +25,13 @@ export type StreamEvent =
 export class AriaClient {
   private gatewayUrl: string
   private apiToken: string
-  private defaultWorkspacePath: string
 
   constructor(
     gatewayUrl?: string,
     apiToken?: string,
-    workspacePath?: string,
   ) {
     this.gatewayUrl = gatewayUrl || process.env.NEXT_PUBLIC_ARIA_GATEWAY_URL || 'https://aria-gateway.symph.co'
     this.apiToken = apiToken || process.env.ARIA_API_TOKEN || ''
-    this.defaultWorkspacePath = workspacePath || '/share/agency/products/symph-crm'
   }
 
   /**
@@ -58,7 +55,6 @@ export class AriaClient {
           content: req.content,
           userId: req.userId,
           userName: req.userName,
-          workspacePath: this.defaultWorkspacePath,
           context: req.context,
         }),
       })
