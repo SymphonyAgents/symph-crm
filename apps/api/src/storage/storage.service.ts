@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { BadRequestException, Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, OnModuleInit, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import { extractExcerpt, extractHtmlExcerpt } from './storage-content-metadata'
@@ -39,6 +39,7 @@ export type StorageStat = {
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name)
   private readonly storageRoot: string
+  private readonly readOnly: boolean
   private readonly pendingPathOperations = new Map<string, Promise<void>>()
   private supabase: SupabaseClient | null = null
 
@@ -52,6 +53,7 @@ export class StorageService implements OnModuleInit {
       )
     }
     this.storageRoot = path.resolve(configuredPath)
+    this.readOnly = config.get<string>('CRM_STORAGE_READ_ONLY')?.toLowerCase() === 'true'
 
     const url = config.get<string>('SUPABASE_URL')
     const key = config.get<string>('SUPABASE_SERVICE_ROLE_KEY')
@@ -66,8 +68,8 @@ export class StorageService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     try {
       await fs.mkdir(this.storageRoot, { recursive: true })
-      await fs.access(this.storageRoot, fs.constants.R_OK | fs.constants.W_OK)
-      this.logger.log(`CRM storage ready at ${this.storageRoot}`)
+      await fs.access(this.storageRoot, this.readOnly ? fs.constants.R_OK : fs.constants.R_OK | fs.constants.W_OK)
+      this.logger.log(`CRM storage ready at ${this.storageRoot}${this.readOnly ? ' (read-only)' : ''}`)
     } catch (error: unknown) {
       throw new Error(
         `CRM storage at ${this.storageRoot} is not accessible: ${this.errorMessage(error)}\n` +
@@ -89,6 +91,12 @@ export class StorageService implements OnModuleInit {
     if (!error || typeof error !== 'object' || !('code' in error)) return undefined
     const code = (error as { code?: unknown }).code
     return typeof code === 'string' ? code : undefined
+  }
+
+  private assertWritable(): void {
+    if (this.readOnly) {
+      throw new ServiceUnavailableException('CRM content storage is temporarily read-only')
+    }
   }
 
   private resolvePath(storagePath: string): string {
@@ -180,6 +188,7 @@ export class StorageService implements OnModuleInit {
   }
 
   async writeText(storagePath: string, content: string): Promise<void> {
+    this.assertWritable()
     await this.serializePath(storagePath, async () => {
       const fullPath = this.resolvePath(storagePath)
       await fs.mkdir(path.dirname(fullPath), { recursive: true })
@@ -188,6 +197,7 @@ export class StorageService implements OnModuleInit {
   }
 
   async appendText(storagePath: string, content: string): Promise<void> {
+    this.assertWritable()
     await this.serializePath(storagePath, async () => {
       const fullPath = this.resolvePath(storagePath)
       await fs.mkdir(path.dirname(fullPath), { recursive: true })
@@ -216,6 +226,7 @@ export class StorageService implements OnModuleInit {
   }
 
   async writeFile(storagePath: string, buffer: Buffer): Promise<void> {
+    this.assertWritable()
     await this.serializePath(storagePath, async () => {
       const fullPath = this.resolvePath(storagePath)
       await fs.mkdir(path.dirname(fullPath), { recursive: true })
@@ -233,6 +244,7 @@ export class StorageService implements OnModuleInit {
   }
 
   async deleteFile(storagePath: string): Promise<void> {
+    this.assertWritable()
     await this.serializePath(storagePath, async () => {
       try {
         await fs.unlink(this.resolvePath(storagePath))

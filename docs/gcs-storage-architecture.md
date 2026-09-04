@@ -94,7 +94,7 @@ Migration sequence:
 3. Review job identity, mounts, network, and destination.
 4. Run the initial copy and verify manifest equality.
 5. Rerun to prove idempotency.
-6. Freeze CRM writes briefly and run the final delta.
+6. Route traffic briefly to the prepared NFS-backed API revision with `CRM_STORAGE_READ_ONLY=true`, then run the final delta.
 7. Deploy and test a no-traffic FUSE-backed API revision.
 8. Move traffic all at once after explicit approval.
 9. Retain NFS unchanged for rollback until separately retired.

@@ -45,7 +45,7 @@ async function main(): Promise<void> {
   assert.match(apiDeploy, /type=cloud-storage/)
   assert.match(apiDeploy, /mount-path=\/share\/crm/)
   assert.match(apiDeploy, /--clear-network/)
-  assert.doesNotMatch(apiDeploy, /NFS_MOUNT_PATH|type=nfs|--network=projects\/symph-aria/)
+  assert.doesNotMatch(apiDeploy, /CRM_STORAGE_READ_ONLY|NFS_MOUNT_PATH|type=nfs|--network=projects\/symph-aria/)
 
   const root = await fsp.mkdtemp(path.join(os.tmpdir(), 'crm-storage-service-'))
   try {
@@ -80,6 +80,22 @@ async function main(): Promise<void> {
 
     await storage.deleteFile('deals/example/notes/note.md')
     assert.equal(await storage.readText('deals/example/notes/note.md'), null)
+
+    const readOnlyConfig = {
+      get: <T>(key: string): T | undefined => {
+        if (key === 'CRM_STORAGE_PATH') return root as T
+        if (key === 'CRM_STORAGE_READ_ONLY') return 'true' as T
+        return undefined
+      },
+    } as ConfigService
+    const readOnlyStorage = new StorageService(readOnlyConfig)
+    await readOnlyStorage.onModuleInit()
+    assert.equal(await readOnlyStorage.readText('..safe.md'), 'allowed')
+    await assert.rejects(() => readOnlyStorage.writeText('blocked.md', 'no'), /temporarily read-only/)
+    await assert.rejects(() => readOnlyStorage.appendText('..safe.md', 'no'), /temporarily read-only/)
+    await assert.rejects(() => readOnlyStorage.writeFile('blocked.bin', Buffer.from([1])), /temporarily read-only/)
+    await assert.rejects(() => readOnlyStorage.deleteFile('..safe.md'), /temporarily read-only/)
+    assert.equal(await readOnlyStorage.readText('..safe.md'), 'allowed')
   } finally {
     await fsp.rm(root, { recursive: true, force: true })
   }
