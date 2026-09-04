@@ -1,0 +1,103 @@
+# Build and configure the one-shot CRM storage migration job.
+# This file never executes the job. Run the configured job only after reviewing
+# its mounts, identity, source tree, and destination bucket.
+
+substitutions:
+  _REGION: asia-southeast1
+  _JOB_NAME: symph-crm-nfs-to-gcs-migration
+  _CRM_STORAGE_BUCKET: symph-crm-nfs-vault
+  _MIGRATION_SERVICE_ACCOUNT: 188047996224-compute@developer.gserviceaccount.com
+  _SOURCE_ARCHIVE: ''
+
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: validate-inputs
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        if [[ -z "$_CRM_STORAGE_BUCKET" ]]; then
+          echo '_CRM_STORAGE_BUCKET is required' >&2
+          exit 2
+        fi
+        if [[ ! "$_SOURCE_ARCHIVE" =~ ^aria-migrations/[A-Za-z0-9._/-]+\.tar\.gz$ ]]; then
+          echo '_SOURCE_ARCHIVE must name a tar.gz object under aria-migrations/' >&2
+          exit 2
+        fi
+        if [[ "$_MIGRATION_SERVICE_ACCOUNT" != '188047996224-compute@developer.gserviceaccount.com' ]]; then
+          echo '_MIGRATION_SERVICE_ACCOUNT must match the verified live CRM API runtime identity' >&2
+          exit 2
+        fi
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: fetch-source
+    waitFor: [validate-inputs]
+    entrypoint: bash
+    env:
+      - SOURCE_ARCHIVE=$_SOURCE_ARCHIVE
+    args:
+      - -ceu
+      - |
+        gcloud storage cp "gs://symph-crm_cloudbuild/$${SOURCE_ARCHIVE}" /tmp/source.tar.gz
+        expected_sha="$${SOURCE_ARCHIVE##*/}"
+        expected_sha="$${expected_sha%.tar.gz}"
+        actual_sha="$$(sha256sum /tmp/source.tar.gz | cut -d ' ' -f1)"
+        if [[ "$${actual_sha}" != "$${expected_sha}" ]]; then
+          echo 'Source archive SHA-256 does not match its immutable object name' >&2
+          exit 2
+        fi
+        if tar -tzf /tmp/source.tar.gz | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
+          echo 'Source archive contains an unsafe path' >&2
+          exit 2
+        fi
+        tar --no-same-owner --no-same-permissions -xzf /tmp/source.tar.gz -C /workspace
+
+  - name: gcr.io/cloud-builders/docker
+    id: build-migration-image
+    waitFor: [fetch-source]
+    args:
+      - build
+      - -f
+      - Dockerfile.storage-migration
+      - -t
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/storage-migration:$BUILD_ID
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    id: push-migration-image
+    waitFor: [build-migration-image]
+    args:
+      - push
+      - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/storage-migration:$BUILD_ID
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: configure-migration-job
+    waitFor: [push-migration-image]
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - deploy
+      - $_JOB_NAME
+      - --project=$PROJECT_ID
+      - --region=$_REGION
+      - --image=asia-docker.pkg.dev/$PROJECT_ID/symph-crm/storage-migration:$BUILD_ID
+      - --service-account=$_MIGRATION_SERVICE_ACCOUNT
+      - --tasks=1
+      - --parallelism=1
+      - --max-retries=0
+      - --task-timeout=30m
+      - --memory=512Mi
+      - --network=projects/symph-aria/global/networks/aria-vpc
+      - --subnet=projects/symph-aria/regions/asia-southeast1/subnetworks/aria-subnet
+      - --vpc-egress=private-ranges-only
+      - --add-volume=name=nfs-source,type=nfs,location=10.95.69.154:/share,readonly=true
+      - --add-volume-mount=volume=nfs-source,mount-path=/mnt/nfs
+      - --add-volume=name=gcs-destination,type=cloud-storage,bucket=$_CRM_STORAGE_BUCKET,mount-options=uid=1000;gid=1000;file-mode=644;dir-mode=755
+      - --add-volume-mount=volume=gcs-destination,mount-path=/mnt/gcs
+
+images:
+  - asia-docker.pkg.dev/$PROJECT_ID/symph-crm/storage-migration:$BUILD_ID
+
+options:
+  logging: CLOUD_LOGGING_ONLY

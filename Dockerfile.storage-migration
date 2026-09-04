@@ -1,0 +1,8 @@
+FROM node:20-alpine
+
+WORKDIR /app
+COPY scripts/migrate-crm-storage.mjs ./migrate-crm-storage.mjs
+
+USER node
+ENTRYPOINT ["node", "/app/migrate-crm-storage.mjs"]
+CMD ["--source", "/mnt/nfs/crm", "--destination", "/mnt/gcs"]
