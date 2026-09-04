@@ -93,7 +93,7 @@ steps:
       - --vpc-egress=private-ranges-only
       - --add-volume=name=nfs-source,type=nfs,location=10.95.69.154:/share,readonly=true
       - --add-volume-mount=volume=nfs-source,mount-path=/mnt/nfs
-      - --add-volume=name=gcs-destination,type=cloud-storage,bucket=$_CRM_STORAGE_BUCKET,mount-options=uid=1000;gid=1000;file-mode=644;dir-mode=755
+      - --add-volume=name=gcs-destination,type=cloud-storage,bucket=$_CRM_STORAGE_BUCKET,mount-options=uid=0;gid=0;file-mode=644;dir-mode=755
       - --add-volume-mount=volume=gcs-destination,mount-path=/mnt/gcs
 
 images:
