@@ -1,6 +1,4 @@
 import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common'
-import * as fs from 'fs'
-import * as path from 'path'
 import * as crypto from 'crypto'
 import { eq, inArray } from 'drizzle-orm'
 import { deals, documents } from '@symph-crm/database'
@@ -8,6 +6,7 @@ import { DB } from '../database/database.module'
 import type { Database } from '../database/database.types'
 import { AuditLogsService } from '../audit-logs/audit-logs.service'
 import { AriaGatewayService } from '../common/aria/aria-gateway.service'
+import { StorageService } from '../storage/storage.service'
 
 export type DealNoteFile = {
   filename: string
@@ -50,7 +49,7 @@ export type UpsertDealNoteOptions = {
   metadata?: Record<string, string | number | boolean | null | undefined>
 }
 
-/** All supported NFS note categories */
+/** All supported file-backed note categories. */
 const NOTE_CATEGORIES = ['general', 'meeting', 'notes', 'discovery', 'transcript', 'proposal'] as const
 
 const TYPE_TO_CATEGORY: Record<string, string> = {
@@ -167,7 +166,7 @@ function extractExcerpt(content: string): string | null {
 }
 
 /**
- * Build an NfsDealNote from a file on disk.
+ * Build the legacy-named NfsDealNote API shape from stored markdown.
  */
 // Parse author attribution from YAML frontmatter if present.
 function extractAuthorId(content: string): string | null {
@@ -239,14 +238,12 @@ function fileToNfsDealNote(
 
 @Injectable()
 export class DealNotesService {
-  private readonly basePath: string
   private readonly logger = new Logger(DealNotesService.name)
 
   /**
-   * Per-deal debounce timers for wiki sync. When a user saves notes rapidly,
-   * only the final sync fires (3s after the last note). See docs/WIKI-SYNC.md.
-   * Note: in-memory only — works for single Cloud Run instance. If multi-instance
-   * scaling is needed, replace with Redis-based distributed debounce.
+   * Per-deal debounce timers for wiki sync. The production API is intentionally
+   * limited to one Cloud Run instance. Scaling beyond one instance requires a
+   * distributed debounce and cross-instance storage coordination first.
    */
   private readonly pendingWikiSyncs = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -254,21 +251,26 @@ export class DealNotesService {
     private readonly auditLogs: AuditLogsService,
     @Inject(DB) private readonly db: Database,
     private readonly ariaGateway: AriaGatewayService,
-  ) {
-    this.basePath = process.env.NFS_CRM_PATH || '/share/crm'
-  }
+    private readonly storage: StorageService,
+  ) {}
 
-  /**
-   * Fire a wiki sync + summary regeneration to Aria for this deal.
-   * Called after the debounce settles — Aria reads all current NFS notes and
-   * updates deal index.md, company index.md, MASTER_INDEX, and summary.
-   */
   private fireWikiSync(dealId: string, performedBy?: string | null): void {
     const sessionId = `crm-wiki-sync-${dealId}-${Date.now()}`
     const message = `[CRM_WIKI_SYNC] deal_id=${dealId}${performedBy ? ` performed_by=${performedBy}` : ''}`
 
     this.ariaGateway.sendFireAndForget({ sessionId, content: message, userId: performedBy })
     this.logger.log(`Wiki sync triggered for deal ${dealId} (session ${sessionId})`)
+  }
+
+  private scheduleWikiSync(dealId: string, performedBy?: string | null): void {
+    const existing = this.pendingWikiSyncs.get(dealId)
+    if (existing) clearTimeout(existing)
+
+    const timer = setTimeout(() => {
+      this.pendingWikiSyncs.delete(dealId)
+      this.fireWikiSync(dealId, performedBy)
+    }, 3_000)
+    this.pendingWikiSyncs.set(dealId, timer)
   }
 
   private async getDealName(dealId: string): Promise<string | null> {
@@ -284,84 +286,62 @@ export class DealNotesService {
     }
   }
 
-  async getNotes(dealId: string): Promise<DealNotesResponse> {
-    const dealDir = path.join(this.basePath, 'deals', dealId)
+  private async readNoteFiles(dealId: string, category: string): Promise<DealNoteFile[]> {
+    const categoryPath = `deals/${dealId}/${category}`
+    const files = (await this.storage.listEntries(categoryPath))
+      .filter(entry => !entry.isDirectory && entry.name.endsWith('.md'))
 
+    const notes = await Promise.all(files.map(async file => {
+      const content = await this.storage.readText(`${categoryPath}/${file.name}`)
+      if (content === null) return null
+      return {
+        filename: file.name,
+        content,
+        createdAt: extractNoteTimestamp(file.name, content),
+      }
+    }))
+
+    return notes
+      .filter((note): note is DealNoteFile => note !== null)
+      .sort((a, b) => b.createdAt - a.createdAt)
+  }
+
+  async getNotes(dealId: string): Promise<DealNotesResponse> {
     const result: DealNotesResponse = {
       categories: { general: [], meeting: [], notes: [], discovery: [], transcript: [], proposal: [] },
       resources: [],
       log: null,
     }
 
-    // If the deal's NFS folder doesn't exist, return empty
-    if (!fs.existsSync(dealDir)) return result
-
-    // Read markdown notes from all category folders
     for (const category of NOTE_CATEGORIES) {
-      const catDir = path.join(dealDir, category)
-      if (!fs.existsSync(catDir)) continue
-
-      const files = fs.readdirSync(catDir).filter(f => f.endsWith('.md'))
-
-      const noteFiles: DealNoteFile[] = await Promise.all(
-        files.map(async (filename) => {
-          const filePath = path.join(catDir, filename)
-          const content = await fs.promises.readFile(filePath, 'utf-8')
-          const createdAt = extractNoteTimestamp(filename, content)
-          return { filename, content, createdAt }
-        }),
-      )
-
-      // Sort newest first
-      noteFiles.sort((a, b) => b.createdAt - a.createdAt)
-      result.categories[category] = noteFiles
+      result.categories[category] = await this.readNoteFiles(dealId, category)
     }
 
-    // Read deal log.md if it exists
-    const logPath = path.join(dealDir, 'log.md')
-    if (fs.existsSync(logPath)) {
-      result.log = await fs.promises.readFile(logPath, 'utf-8')
-    }
-
-    // Read resources folder — metadata only, no content
-    const resourcesDir = path.join(dealDir, 'resources')
-    if (fs.existsSync(resourcesDir)) {
-      const resourceFiles = fs.readdirSync(resourcesDir)
-      result.resources = resourceFiles.map((filename) => {
-        const filePath = path.join(resourcesDir, filename)
-        const stat = fs.statSync(filePath)
-        return {
-          filename,
-          size: stat.size,
-          ext: path.extname(filename).toLowerCase(),
-        }
-      })
-    }
+    result.log = await this.storage.readText(`deals/${dealId}/log.md`)
+    result.resources = (await this.storage.listEntries(`deals/${dealId}/resources`))
+      .filter(entry => !entry.isDirectory)
+      .map(entry => ({
+        filename: entry.name,
+        size: entry.size,
+        ext: entry.name.includes('.') ? `.${entry.name.split('.').pop()!.toLowerCase()}` : '',
+      }))
 
     return result
   }
 
   async getNotesFlat(dealId: string): Promise<NfsDealNote[]> {
-    const dealDir = path.join(this.basePath, 'deals', dealId)
     const notesByContent = new Map<string, NfsDealNote>()
 
-    if (!fs.existsSync(dealDir)) return []
-
     for (const category of NOTE_CATEGORIES) {
-      const catDir = path.join(dealDir, category)
-      if (!fs.existsSync(catDir)) continue
+      const categoryPath = `deals/${dealId}/${category}`
+      const files = (await this.storage.listEntries(categoryPath))
+        .filter(entry => !entry.isDirectory && entry.name.endsWith('.md'))
 
-      const files = fs.readdirSync(catDir).filter(f => f.endsWith('.md'))
+      for (const file of files) {
+        const content = await this.storage.readText(`${categoryPath}/${file.name}`)
+        if (content === null) continue
 
-      const notes = await Promise.all(
-        files.map(async (filename) => {
-          const filePath = path.join(catDir, filename)
-          const content = await fs.promises.readFile(filePath, 'utf-8')
-          return fileToNfsDealNote(filename, content, category, dealId)
-        }),
-      )
-
-      for (const note of notes) {
+        const note = fileToNfsDealNote(file.name, content, category, dealId)
         const key = contentHash(note.content)
         const existing = notesByContent.get(key)
         notesByContent.set(key, existing ? preferNoteCandidate(existing, note) : note)
@@ -370,10 +350,7 @@ export class DealNotesService {
 
     const allNotes = Array.from(notesByContent.values())
     await this.hydrateMissingAuthorsFromDocuments(allNotes)
-
-    // Sort newest first by createdAt
     allNotes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
     return allNotes
   }
 
@@ -397,31 +374,24 @@ export class DealNotesService {
 
   async saveNote(dealId: string, type: string, title: string, content: string, authorId?: string | null): Promise<NfsDealNote> {
     const category = TYPE_TO_CATEGORY[type] || 'notes'
-
     if (!NOTE_CATEGORIES.includes(category as typeof NOTE_CATEGORIES[number])) {
       throw new BadRequestException(`Invalid note category resolved: ${category}`)
     }
 
-    const catDir = path.join(this.basePath, 'deals', dealId, category)
-    fs.mkdirSync(catDir, { recursive: true })
-
     const timestamp = Date.now()
     const filename = `${category}-${timestamp}.md`
-    const filePath = path.join(catDir, filename)
-
-    // Build YAML frontmatter with author and timestamp metadata
+    const storagePath = `deals/${dealId}/${category}/${filename}`
     const frontmatter = [
       '---',
       `authorId: ${authorId || 'null'}`,
       `createdAt: ${new Date(timestamp).toISOString()}`,
       '---',
     ].join('\n')
-
     const fullContent = `${frontmatter}\n\n# ${title}\n\n${content}`
-    await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+
+    await this.storage.writeText(storagePath, fullContent)
     await this.touchDealActivity(dealId)
 
-    // Audit log — fire and forget (enrich with deal name)
     const dealName = await this.getDealName(dealId)
     this.auditLogs.log({
       action: 'create',
@@ -432,17 +402,7 @@ export class DealNotesService {
       details: { noteTitle: title, category, filename, dealName },
     }).catch(() => {})
 
-    // Debounced wiki sync — cancels any pending sync for this deal and resets
-    // the 3s timer. If the user adds multiple notes quickly, only one sync fires
-    // after they stop. See docs/WIKI-SYNC.md for edge cases and scaling notes.
-    const existing = this.pendingWikiSyncs.get(dealId)
-    if (existing) clearTimeout(existing)
-    const timer = setTimeout(() => {
-      this.pendingWikiSyncs.delete(dealId)
-      this.fireWikiSync(dealId, authorId)
-    }, 3_000)
-    this.pendingWikiSyncs.set(dealId, timer)
-
+    this.scheduleWikiSync(dealId, authorId)
     return fileToNfsDealNote(filename, fullContent, category, dealId)
   }
 
@@ -455,17 +415,12 @@ export class DealNotesService {
     options: UpsertDealNoteOptions,
   ): Promise<NfsDealNote> {
     const category = TYPE_TO_CATEGORY[type] || 'notes'
-
     if (!NOTE_CATEGORIES.includes(category as typeof NOTE_CATEGORIES[number])) {
       throw new BadRequestException(`Invalid note category resolved: ${category}`)
     }
 
     assertSafeMarkdownFilename(options.filename)
 
-    const catDir = path.join(this.basePath, 'deals', dealId, category)
-    fs.mkdirSync(catDir, { recursive: true })
-
-    const filePath = path.join(catDir, options.filename)
     const createdAt = options.createdAt ?? new Date()
     const metadata = options.metadata ?? {}
     const frontmatterEntries = Object.entries(metadata).map(([key, value]) => `${key}: ${serializeFrontmatterValue(value)}`)
@@ -476,9 +431,10 @@ export class DealNotesService {
       ...frontmatterEntries,
       '---',
     ].join('\n')
-
     const fullContent = `${frontmatter}\n\n# ${title}\n\n${content}`
-    await fs.promises.writeFile(filePath, fullContent, 'utf-8')
+    const storagePath = `deals/${dealId}/${category}/${options.filename}`
+
+    await this.storage.writeText(storagePath, fullContent)
     await this.touchDealActivity(dealId)
 
     const dealName = await this.getDealName(dealId)
@@ -491,14 +447,7 @@ export class DealNotesService {
       details: { noteTitle: title, category, filename: options.filename, dealName },
     }).catch(() => {})
 
-    const existing = this.pendingWikiSyncs.get(dealId)
-    if (existing) clearTimeout(existing)
-    const timer = setTimeout(() => {
-      this.pendingWikiSyncs.delete(dealId)
-      this.fireWikiSync(dealId, authorId)
-    }, 3_000)
-    this.pendingWikiSyncs.set(dealId, timer)
-
+    this.scheduleWikiSync(dealId, authorId)
     return fileToNfsDealNote(options.filename, fullContent, category, dealId)
   }
 
@@ -507,14 +456,15 @@ export class DealNotesService {
     const categories: Array<typeof NOTE_CATEGORIES[number]> = ['meeting', 'transcript']
 
     for (const category of categories) {
-      const catDir = path.join(this.basePath, 'deals', dealId, category)
-      if (!fs.existsSync(catDir)) continue
+      const categoryPath = `deals/${dealId}/${category}`
+      const files = (await this.storage.listEntries(categoryPath))
+        .filter(entry => !entry.isDirectory && entry.name.endsWith('.md') && entry.name.startsWith('circleback-'))
 
-      const files = fs.readdirSync(catDir).filter(f => f.endsWith('.md') && f.startsWith('circleback-'))
+      for (const file of files) {
+        const storagePath = `${categoryPath}/${file.name}`
+        const content = await this.storage.readText(storagePath)
+        if (content === null) continue
 
-      for (const filename of files) {
-        const filePath = path.join(catDir, filename)
-        const content = await fs.promises.readFile(filePath, 'utf-8')
         const currentAuthor = extractAuthorId(content)
         const source = extractFrontmatterValue(content, 'source')
         if (currentAuthor || source !== 'meetings.symph.co') continue
@@ -522,21 +472,12 @@ export class DealNotesService {
         const nextContent = content.replace(/^authorId:\s*(null|['"]?null['"]?)$/m, `authorId: ${authorId}`)
         if (nextContent === content) continue
 
-        await fs.promises.writeFile(filePath, nextContent, 'utf-8')
+        await this.storage.writeText(storagePath, nextContent)
         updated += 1
       }
     }
 
-    if (updated > 0) {
-      const existing = this.pendingWikiSyncs.get(dealId)
-      if (existing) clearTimeout(existing)
-      const timer = setTimeout(() => {
-        this.pendingWikiSyncs.delete(dealId)
-        this.fireWikiSync(dealId, authorId)
-      }, 3_000)
-      this.pendingWikiSyncs.set(dealId, timer)
-    }
-
+    if (updated > 0) this.scheduleWikiSync(dealId, authorId)
     return { updated }
   }
 
@@ -552,33 +493,25 @@ export class DealNotesService {
     }
     assertSafeMarkdownFilename(filename)
 
-    const filePath = path.join(this.basePath, 'deals', dealId, category, filename)
-    if (!fs.existsSync(filePath)) return null
-
-    const content = await fs.promises.readFile(filePath, 'utf-8')
-    return fileToNfsDealNote(filename, content, category, dealId)
+    const content = await this.storage.readText(storagePath)
+    return content === null ? null : fileToNfsDealNote(filename, content, category, dealId)
   }
 
   async deleteNote(dealId: string, category: string, filename: string, performedBy?: string): Promise<{ deleted: true }> {
-    // Validate category
     if (!NOTE_CATEGORIES.includes(category as typeof NOTE_CATEGORIES[number])) {
       throw new BadRequestException(`Invalid category: ${category}`)
     }
-
-    // Validate filename — no path traversal
-    if (filename.includes('..') || filename.includes('/')) {
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
       throw new BadRequestException('Invalid filename: path traversal not allowed')
     }
 
-    const filePath = path.join(this.basePath, 'deals', dealId, category, filename)
-
-    if (!fs.existsSync(filePath)) {
+    const storagePath = `deals/${dealId}/${category}/${filename}`
+    if (!(await this.storage.exists(storagePath))) {
       throw new NotFoundException(`Note not found: ${category}/${filename}`)
     }
 
-    await fs.promises.unlink(filePath)
+    await this.storage.deleteFile(storagePath)
 
-    // Audit log — fire and forget (enrich with deal name)
     const dealName = await this.getDealName(dealId)
     this.auditLogs.log({
       action: 'delete',
@@ -599,15 +532,6 @@ export class DealNotesService {
       .where(eq(deals.id, dealId))
   }
 
-  // ── Summary Generation (async via Aria — crm-summarize-deal skill) ────────
-
-  /**
-   * Fires an async summary generation request to Aria via the gateway.
-   * Aria invokes the crm-summarize-deal skill which reads all NFS notes,
-   * cross-references the company wiki, and writes the result to NFS.
-   * The caller returns immediately — the frontend polls GET /summaries
-   * until the new file appears.
-   */
   async triggerSummaryGeneration(dealId: string, userId?: string): Promise<{ status: 'generating'; triggeredAt: string }> {
     const allNotes = await this.getNotesFlat(dealId)
     if (allNotes.length === 0) {
@@ -618,67 +542,44 @@ export class DealNotesService {
     const sessionId = `crm-summary-${dealId}-${Date.now()}`
     const triggerMessage = `[CRM_SUMMARY] deal_id=${dealId}${userId ? ` performed_by=${userId}` : ''}`
 
-    // Fire-and-forget — do not await or poll. Aria writes the file to NFS when done.
     this.ariaGateway.sendFireAndForget({ sessionId, content: triggerMessage, userId })
     this.logger.log(`Summary generation triggered for deal ${dealId} (session ${sessionId})`)
     return { status: 'generating', triggeredAt }
   }
 
-  // ── Deal Summaries (NFS markdown files) ──────────────────────────────────
-
-  /** List all existing summaries for a deal, newest first */
   async listSummaries(dealId: string): Promise<DealSummaryMeta[]> {
-    const summaryDir = path.join(this.basePath, 'deals', dealId, 'summaries')
-    if (!fs.existsSync(summaryDir)) return []
-
-    const files = fs.readdirSync(summaryDir).filter(f => f.endsWith('.md'))
+    const summaryPath = `deals/${dealId}/summaries`
+    const files = (await this.storage.listEntries(summaryPath))
+      .filter(entry => !entry.isDirectory && entry.name.endsWith('.md'))
     const metas: DealSummaryMeta[] = []
 
-    for (const filename of files) {
-      const filePath = path.join(summaryDir, filename)
-      const content = await fs.promises.readFile(filePath, 'utf-8')
-      const meta = parseSummaryFrontmatter(filename, content)
+    for (const file of files) {
+      const content = await this.storage.readText(`${summaryPath}/${file.name}`)
+      if (content === null) continue
+      const meta = parseSummaryFrontmatter(file.name, content)
       if (meta) metas.push(meta)
     }
 
-    // Newest first
     metas.sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime())
     return metas
   }
 
-  /** Read a specific summary file */
   async readSummary(dealId: string, filename: string): Promise<{ meta: DealSummaryMeta; content: string } | null> {
-    if (filename.includes('..') || filename.includes('/')) {
+    if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
       throw new BadRequestException('Invalid filename')
     }
-    const filePath = path.join(this.basePath, 'deals', dealId, 'summaries', filename)
-    if (!fs.existsSync(filePath)) return null
-    const content = await fs.promises.readFile(filePath, 'utf-8')
+
+    const content = await this.storage.readText(`deals/${dealId}/summaries/${filename}`)
+    if (content === null) return null
     const meta = parseSummaryFrontmatter(filename, content)
-    if (!meta) return null
-    return { meta, content }
+    return meta ? { meta, content } : null
   }
 
-  /**
-   * Check if notes have changed since the last summary.
-   *
-   * Strategy: compare the current NFS note count against `notesIncluded` stored
-   * in the latest summary's frontmatter. Catches both additions and deletions.
-   *
-   * We deliberately avoid a DB counter because notes can be written directly to
-   * NFS by Aria (wiki sync, summary generation) — a DB column would drift
-   * immediately and require reconciliation on every check anyway.
-   */
   async hasNewNotesSinceLastSummary(dealId: string): Promise<{ hasNew: boolean; noteCount: number; latestSummaryAt: string | null }> {
     const summaries = await this.listSummaries(dealId)
     const latestSummary = summaries[0] ?? null
     const latestSummaryAt = latestSummary?.generatedAt ?? null
-
-    const allNotes = await this.getNotesFlat(dealId)
-    const currentCount = allNotes.length
-
-    // No summary yet → any notes mean regeneration is needed
-    // Summary exists → regenerate if count changed (add or delete)
+    const currentCount = (await this.getNotesFlat(dealId)).length
     const hasNew = latestSummary
       ? currentCount !== latestSummary.notesIncluded
       : currentCount > 0
@@ -686,7 +587,6 @@ export class DealNotesService {
     return { hasNew, noteCount: currentCount, latestSummaryAt }
   }
 
-  /** Write a generated summary as a new markdown file */
   async writeSummary(
     dealId: string,
     summary: string,
@@ -694,14 +594,10 @@ export class DealNotesService {
     notesIncluded: number,
     generatedBy?: string | null,
   ): Promise<DealSummaryMeta> {
-    const summaryDir = path.join(this.basePath, 'deals', dealId, 'summaries')
-    fs.mkdirSync(summaryDir, { recursive: true })
-
     const timestamp = Date.now()
     const isoDate = new Date(timestamp).toISOString()
     const filename = `summary-${timestamp}.md`
-    const filePath = path.join(summaryDir, filename)
-
+    const storagePath = `deals/${dealId}/summaries/${filename}`
     const frontmatter = [
       '---',
       `generatedAt: ${isoDate}`,
@@ -709,15 +605,13 @@ export class DealNotesService {
       `generatedBy: ${generatedBy || 'system'}`,
       '---',
     ].join('\n')
-
     const nextStepsMd = nextSteps.length > 0
-      ? `\n\n## Next Steps\n\n${nextSteps.map(s => `- ${s}`).join('\n')}`
+      ? `\n\n## Next Steps\n\n${nextSteps.map(step => `- ${step}`).join('\n')}`
       : ''
-
     const fullContent = `${frontmatter}\n\n# Deal Summary\n\n${summary}${nextStepsMd}\n`
-    await fs.promises.writeFile(filePath, fullContent, 'utf-8')
 
-    // Audit log
+    await this.storage.writeText(storagePath, fullContent)
+
     this.auditLogs.log({
       action: 'create',
       auditType: 'summary',
@@ -732,7 +626,7 @@ export class DealNotesService {
       generatedAt: isoDate,
       notesIncluded,
       generatedBy: generatedBy || 'system',
-      storagePath: `deals/${dealId}/summaries/${filename}`,
+      storagePath,
     }
   }
 }

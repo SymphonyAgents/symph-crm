@@ -1,160 +1,261 @@
 import * as fs from 'fs/promises'
 import * as path from 'path'
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, OnModuleInit, ServiceUnavailableException } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { extractExcerpt, extractHtmlExcerpt } from './storage-content-metadata'
 
 export const ATTACHMENTS_BUCKET = 'attachments'
 export const CATALOG_ICONS_BUCKET = 'catalog-icons'
 
+export type StorageEntry = {
+  name: string
+  isDirectory: boolean
+  size: number
+  modifiedAt: Date
+}
+
+export type StorageStat = {
+  size: number
+  modifiedAt: Date
+  isDirectory: boolean
+}
+
 /**
- * StorageService — NFS-primary document storage.
+ * StorageService owns every filesystem operation for CRM-managed content.
  *
- * ALL document files (markdown notes, images, PDFs, PPTX, docs) are stored on
- * the shared NFS volume at `{NFS_MOUNT_PATH}/crm/{storagePath}`.
+ * Production mounts the private CRM Cloud Storage bucket at CRM_STORAGE_PATH
+ * through Cloud Storage FUSE. Local development can use any writable directory.
+ * Voice recordings, signed proposal PDFs, and public catalog icons remain in
+ * their existing Supabase Storage buckets. `readMarkdown` retains the existing
+ * legacy `content` bucket fallback until DB pointers are reconciled after cutover.
  *
- * In production:  NFS_MOUNT_PATH=/share  →  /share/crm/deals/{id}/notes/...
- * In local dev:   NFS_MOUNT_PATH=~/Documents/symph-crm-vault  (or any local dir)
- *
- * Voice recordings are the ONLY exception — they stay in Supabase Storage
- * (ATTACHMENTS_BUCKET) because they need signed URLs for in-browser playback.
- *
- * Migration note: readMarkdown() falls back to Supabase Storage `content` bucket
- * for documents written before the NFS migration. This fallback should be removed
- * once the one-time migration script has been run.
+ * The mounted store has a single-writer deployment contract: Cloud Run must
+ * remain at max-instances=1. This process-local queue serializes operations on
+ * the same path inside that instance. Scaling beyond one instance requires a
+ * cross-instance lock or object-generation compare-and-swap before rollout.
  */
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name)
+  private readonly storageRoot: string
+  private readonly readOnly: boolean
+  private readonly pendingPathOperations = new Map<string, Promise<void>>()
   private supabase: SupabaseClient | null = null
 
-  /** Root path for all CRM files on the NFS volume. */
-  private readonly nfsRoot: string
-
   constructor(private config: ConfigService) {
-    const mountPath = config.get<string>('NFS_MOUNT_PATH')
-    if (!mountPath) {
+    const configuredPath = config.get<string>('CRM_STORAGE_PATH')
+    if (!configuredPath) {
       throw new Error(
-        'NFS_MOUNT_PATH is required but not set.\n' +
-        '  Production:  NFS_MOUNT_PATH=/share\n' +
-        '  Local dev:   NFS_MOUNT_PATH=/path/to/your/local-vault (e.g. ~/Documents/symph-crm-vault)',
+        'CRM_STORAGE_PATH is required but not set.\n' +
+        '  Production:  CRM_STORAGE_PATH=/share/crm\n' +
+        '  Local dev:   CRM_STORAGE_PATH=/path/to/your/local-vault',
       )
     }
-    this.nfsRoot = path.join(mountPath, 'crm')
+    this.storageRoot = path.resolve(configuredPath)
+    this.readOnly = config.get<string>('CRM_STORAGE_READ_ONLY')?.toLowerCase() === 'true'
 
-    // Supabase — for voice recordings only
     const url = config.get<string>('SUPABASE_URL')
     const key = config.get<string>('SUPABASE_SERVICE_ROLE_KEY')
     if (url && key) {
       this.supabase = createClient(url, key, { auth: { persistSession: false } })
-      this.logger.log('Supabase Storage initialized (voice recordings only)')
+      this.logger.log('Supabase Storage initialized for voice, signed PDFs, and catalog icons')
     } else {
-      this.logger.warn('SUPABASE_SERVICE_ROLE_KEY not configured — voice recording storage disabled')
+      this.logger.warn('SUPABASE_SERVICE_ROLE_KEY not configured; Supabase-backed file storage is disabled')
     }
   }
 
-  async onModuleInit() {
-    // Ensure NFS root is accessible and create if needed
+  async onModuleInit(): Promise<void> {
     try {
-      await fs.mkdir(this.nfsRoot, { recursive: true })
-      await fs.access(this.nfsRoot, fs.constants.R_OK | fs.constants.W_OK)
-      this.logger.log(`NFS storage ready at ${this.nfsRoot}`)
-    } catch (err: any) {
+      await fs.mkdir(this.storageRoot, { recursive: true })
+      await fs.access(this.storageRoot, this.readOnly ? fs.constants.R_OK : fs.constants.R_OK | fs.constants.W_OK)
+      this.logger.log(`CRM storage ready at ${this.storageRoot}${this.readOnly ? ' (read-only)' : ''}`)
+    } catch (error: unknown) {
       throw new Error(
-        `NFS storage at ${this.nfsRoot} is not accessible: ${err.message}\n` +
-        'Check that NFS_MOUNT_PATH is mounted and writable.',
+        `CRM storage at ${this.storageRoot} is not accessible: ${this.errorMessage(error)}\n` +
+        'Check that CRM_STORAGE_PATH is mounted and writable.',
       )
     }
   }
 
   private get supabaseClient(): SupabaseClient {
-    if (!this.supabase) throw new Error('Supabase Storage not configured (voice recording storage disabled)')
+    if (!this.supabase) throw new Error('Supabase Storage is not configured')
     return this.supabase
   }
 
-  /** Resolve a storage path to its absolute NFS location. */
-  private nfsPath(storagePath: string): string {
-    return path.join(this.nfsRoot, storagePath)
+  private errorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error)
   }
 
-  // ── Markdown content ──────────────────────────────────────────────────────
+  private errorCode(error: unknown): string | undefined {
+    if (!error || typeof error !== 'object' || !('code' in error)) return undefined
+    const code = (error as { code?: unknown }).code
+    return typeof code === 'string' ? code : undefined
+  }
 
-  /**
-   * Read a markdown file from NFS.
-   * Falls back to Supabase Storage `content` bucket for pre-migration documents.
-   * Remove the fallback once the one-time migration script has been run.
-   */
-  async readMarkdown(storagePath: string): Promise<string | null> {
-    // Primary: NFS
-    try {
-      return await fs.readFile(this.nfsPath(storagePath), 'utf-8')
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') {
-        throw new Error(`NFS read failed [${storagePath}]: ${err.message}`)
-      }
+  private assertWritable(): void {
+    if (this.readOnly) {
+      throw new ServiceUnavailableException('CRM content storage is temporarily read-only')
+    }
+  }
+
+  private resolvePath(storagePath: string): string {
+    if (path.isAbsolute(storagePath)) {
+      throw new BadRequestException('Storage path must be relative')
     }
 
-    // Migration fallback: document exists in Supabase Storage but not on NFS yet
-    if (!this.supabase) return null
+    const resolved = path.resolve(this.storageRoot, storagePath)
+    const relative = path.relative(this.storageRoot, resolved)
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+      throw new BadRequestException('Storage path escapes the CRM storage root')
+    }
+    return resolved
+  }
+
+  private async serializePath<T>(storagePath: string, operation: () => Promise<T>): Promise<T> {
+    const key = this.resolvePath(storagePath)
+    const previous = this.pendingPathOperations.get(key) ?? Promise.resolve()
+    const run = previous.catch(() => undefined).then(operation)
+    const completion = run.then(() => undefined, () => undefined)
+    this.pendingPathOperations.set(key, completion)
+
+    try {
+      return await run
+    } finally {
+      if (this.pendingPathOperations.get(key) === completion) {
+        this.pendingPathOperations.delete(key)
+      }
+    }
+  }
+
+  async exists(storagePath: string): Promise<boolean> {
+    try {
+      await fs.access(this.resolvePath(storagePath))
+      return true
+    } catch (error: unknown) {
+      if (this.errorCode(error) === 'ENOENT') return false
+      throw error
+    }
+  }
+
+  async stat(storagePath: string): Promise<StorageStat | null> {
+    try {
+      const result = await fs.stat(this.resolvePath(storagePath))
+      return {
+        size: result.size,
+        modifiedAt: result.mtime,
+        isDirectory: result.isDirectory(),
+      }
+    } catch (error: unknown) {
+      if (this.errorCode(error) === 'ENOENT') return null
+      throw error
+    }
+  }
+
+  async listEntries(storagePath: string): Promise<StorageEntry[]> {
+    const directory = this.resolvePath(storagePath)
+    const entries = await fs.readdir(directory, { withFileTypes: true, encoding: 'utf-8' })
+      .catch((error: unknown) => {
+        if (this.errorCode(error) === 'ENOENT') return null
+        throw error
+      })
+    if (entries === null) return []
+
+    const results = await Promise.all(entries.map(async entry => {
+      try {
+        const result = await fs.stat(path.join(directory, entry.name))
+        return {
+          name: entry.name,
+          isDirectory: entry.isDirectory(),
+          size: result.size,
+          modifiedAt: result.mtime,
+        }
+      } catch (error: unknown) {
+        if (this.errorCode(error) === 'ENOENT') return null
+        throw error
+      }
+    }))
+    return results.filter((entry): entry is StorageEntry => entry !== null)
+  }
+
+  async readText(storagePath: string): Promise<string | null> {
+    try {
+      return await fs.readFile(this.resolvePath(storagePath), 'utf-8')
+    } catch (error: unknown) {
+      if (this.errorCode(error) === 'ENOENT') return null
+      throw new Error(`CRM storage read failed [${storagePath}]: ${this.errorMessage(error)}`)
+    }
+  }
+
+  async writeText(storagePath: string, content: string): Promise<void> {
+    this.assertWritable()
+    await this.serializePath(storagePath, async () => {
+      const fullPath = this.resolvePath(storagePath)
+      await fs.mkdir(path.dirname(fullPath), { recursive: true })
+      await fs.writeFile(fullPath, content, 'utf-8')
+    })
+  }
+
+  async appendText(storagePath: string, content: string): Promise<void> {
+    this.assertWritable()
+    await this.serializePath(storagePath, async () => {
+      const fullPath = this.resolvePath(storagePath)
+      await fs.mkdir(path.dirname(fullPath), { recursive: true })
+      await fs.appendFile(fullPath, content, 'utf-8')
+    })
+  }
+
+  async readMarkdown(storagePath: string): Promise<string | null> {
+    const mountedContent = await this.readText(storagePath)
+    if (mountedContent !== null || !this.supabase) return mountedContent
+
     const { data, error } = await this.supabase.storage.from('content').download(storagePath)
     if (error) {
       if (error.message.includes('not found') || error.message.includes('Object not found')) return null
-      throw new Error(`Supabase migration fallback failed [${storagePath}]: ${error.message}`)
+      throw new Error(`Legacy document fallback failed [${storagePath}]: ${error.message}`)
     }
-    return await data.text()
+    return data.text()
   }
 
-  /** Write (upsert) a markdown file to NFS. Creates intermediate dirs as needed. */
   async writeMarkdown(storagePath: string, content: string): Promise<void> {
-    const fullPath = this.nfsPath(storagePath)
-    await fs.mkdir(path.dirname(fullPath), { recursive: true })
-    await fs.writeFile(fullPath, content, 'utf-8')
+    return this.writeText(storagePath, content)
   }
 
-  /** Delete a markdown file from NFS. No-op if not found. */
   async deleteMarkdown(storagePath: string): Promise<void> {
-    try {
-      await fs.unlink(this.nfsPath(storagePath))
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') {
-        this.logger.warn(`NFS delete failed [${storagePath}]: ${err.message}`)
-      }
-    }
+    return this.deleteFile(storagePath)
   }
 
-  // ── Binary files (images, PDFs, PPTX, docs) ──────────────────────────────
-
-  /** Write a binary file to NFS. */
   async writeFile(storagePath: string, buffer: Buffer): Promise<void> {
-    const fullPath = this.nfsPath(storagePath)
-    await fs.mkdir(path.dirname(fullPath), { recursive: true })
-    await fs.writeFile(fullPath, buffer)
+    this.assertWritable()
+    await this.serializePath(storagePath, async () => {
+      const fullPath = this.resolvePath(storagePath)
+      await fs.mkdir(path.dirname(fullPath), { recursive: true })
+      await fs.writeFile(fullPath, buffer)
+    })
   }
 
-  /** Read a binary file from NFS. Returns null if not found. */
   async readFile(storagePath: string): Promise<Buffer | null> {
     try {
-      return await fs.readFile(this.nfsPath(storagePath))
-    } catch (err: any) {
-      if (err.code === 'ENOENT') return null
-      throw new Error(`NFS file read failed [${storagePath}]: ${err.message}`)
+      return await fs.readFile(this.resolvePath(storagePath))
+    } catch (error: unknown) {
+      if (this.errorCode(error) === 'ENOENT') return null
+      throw new Error(`CRM storage file read failed [${storagePath}]: ${this.errorMessage(error)}`)
     }
   }
 
-  /** Delete a binary file from NFS. No-op if not found. */
   async deleteFile(storagePath: string): Promise<void> {
-    try {
-      await fs.unlink(this.nfsPath(storagePath))
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') {
-        this.logger.warn(`NFS file delete failed [${storagePath}]: ${err.message}`)
+    this.assertWritable()
+    await this.serializePath(storagePath, async () => {
+      try {
+        await fs.unlink(this.resolvePath(storagePath))
+      } catch (error: unknown) {
+        if (this.errorCode(error) !== 'ENOENT') {
+          this.logger.warn(`CRM storage delete failed [${storagePath}]: ${this.errorMessage(error)}`)
+        }
       }
-    }
+    })
   }
 
-  // ── Voice recordings (Supabase Storage) ──────────────────────────────────
-
-  /** Upload a voice recording. Returns the storage path. */
   async uploadVoiceRecording(storagePath: string, buffer: Buffer, mimeType: string): Promise<string> {
     const { error } = await this.supabaseClient.storage.from(ATTACHMENTS_BUCKET).upload(storagePath, buffer, {
       upsert: true,
@@ -164,7 +265,6 @@ export class StorageService implements OnModuleInit {
     return storagePath
   }
 
-  /** Generate a signed URL for a voice recording (expires in 1 hour by default). */
   async voiceRecordingSignedUrl(storagePath: string, expiresInSeconds = 3600): Promise<string> {
     const { data, error } = await this.supabaseClient.storage
       .from(ATTACHMENTS_BUCKET)
@@ -173,11 +273,6 @@ export class StorageService implements OnModuleInit {
     return data.signedUrl
   }
 
-  /**
-   * Create a signed upload URL for direct browser-to-Supabase uploads.
-   * Returns both the signed URL and the upload token. The browser PUTs the file
-   * bytes directly to signedUrl, bypassing the API server.
-   */
   async createSignedUploadUrl(storagePath: string): Promise<{ signedUrl: string; token: string }> {
     const { data, error } = await this.supabaseClient.storage
       .from(ATTACHMENTS_BUCKET)
@@ -186,20 +281,17 @@ export class StorageService implements OnModuleInit {
     return { signedUrl: data.signedUrl, token: data.token }
   }
 
-  /** Read a voice recording from Supabase Storage as a buffer. */
   async readVoiceRecording(storagePath: string): Promise<Buffer> {
     const { data, error } = await this.supabaseClient.storage.from(ATTACHMENTS_BUCKET).download(storagePath)
     if (error) throw new Error(`Voice recording read failed [${storagePath}]: ${error.message}`)
     return Buffer.from(await data.arrayBuffer())
   }
 
-  /** Delete a voice recording from Supabase Storage. */
   async deleteVoiceRecording(storagePath: string): Promise<void> {
     const { error } = await this.supabaseClient.storage.from(ATTACHMENTS_BUCKET).remove([storagePath])
     if (error) this.logger.warn(`Voice recording delete failed [${storagePath}]: ${error.message}`)
   }
 
-  /** Upload a signed proposal PDF to Supabase Storage. Returns the storage path. */
   async uploadProposalSignedPdf(storagePath: string, buffer: Buffer, mimeType: string): Promise<string> {
     const { error } = await this.supabaseClient.storage.from(ATTACHMENTS_BUCKET).upload(storagePath, buffer, {
       upsert: true,
@@ -209,11 +301,7 @@ export class StorageService implements OnModuleInit {
     return storagePath
   }
 
-  /** Generate a signed URL for a signed proposal PDF. */
   async proposalSignedPdfUrl(storagePath: string, expiresInSeconds = 3600): Promise<string> {
-    // Some legacy proposal records store an already-shareable external URL
-    // (for example Google Drive) instead of a Supabase Storage object path.
-    // Return those directly instead of asking Supabase to sign them.
     if (/^https?:\/\//i.test(storagePath)) return storagePath
 
     const { data, error } = await this.supabaseClient.storage
@@ -223,14 +311,6 @@ export class StorageService implements OnModuleInit {
     return data.signedUrl
   }
 
-  // ── Catalog icons (Supabase Storage, public bucket) ──────────────────────
-  //
-  // Catalog icons (product / service / reseller logos) are public assets so
-  // we use a dedicated public bucket and return the public URL — no signing
-  // needed, no expiry. Bucket must be created with `public = true` in the
-  // Supabase dashboard or via SQL.
-
-  /** Upload a catalog icon and return its public URL. */
   async uploadCatalogIcon(storagePath: string, buffer: Buffer, mimeType: string): Promise<string> {
     const { error } = await this.supabaseClient.storage.from(CATALOG_ICONS_BUCKET).upload(storagePath, buffer, {
       upsert: true,
@@ -242,73 +322,35 @@ export class StorageService implements OnModuleInit {
     return data.publicUrl
   }
 
-  /** Delete a catalog icon. Best-effort. */
   async deleteCatalogIcon(storagePath: string): Promise<void> {
     const { error } = await this.supabaseClient.storage.from(CATALOG_ICONS_BUCKET).remove([storagePath])
     if (error) this.logger.warn(`Catalog icon delete failed [${storagePath}]: ${error.message}`)
   }
 
-  // ── Legacy compat (kept for existing callers during transition) ───────────
-
-  /** @deprecated Use uploadVoiceRecording() for voice, writeFile() for other binaries */
+  /** @deprecated Use uploadVoiceRecording() for voice, writeFile() for other binaries. */
   async uploadAttachment(storagePath: string, buffer: Buffer, mimeType: string): Promise<string> {
     return this.uploadVoiceRecording(storagePath, buffer, mimeType)
   }
 
-  /** @deprecated Use readVoiceRecording() */
+  /** @deprecated Use readVoiceRecording(). */
   async readAttachment(storagePath: string): Promise<Buffer> {
     return this.readVoiceRecording(storagePath)
   }
 
-  /** @deprecated Use voiceRecordingSignedUrl() */
-  async signedUrl(bucket: string, storagePath: string, expiresInSeconds = 3600): Promise<string> {
+  /** @deprecated Use voiceRecordingSignedUrl(). */
+  async signedUrl(_bucket: string, storagePath: string, expiresInSeconds = 3600): Promise<string> {
     return this.voiceRecordingSignedUrl(storagePath, expiresInSeconds)
   }
 
-  /** @deprecated Use deleteVoiceRecording() for voice, deleteFile() for other binaries */
-  async delete(bucket: string, storagePath: string): Promise<void> {
+  /** @deprecated Use deleteVoiceRecording() for voice, deleteFile() for other binaries. */
+  async delete(_bucket: string, storagePath: string): Promise<void> {
     return this.deleteVoiceRecording(storagePath)
   }
 
-  // ── Utilities ─────────────────────────────────────────────────────────────
-
   get isConfigured(): boolean {
-    return true // NFS is always configured — errors at startup if not
+    return true
   }
 
-  /** Extract a ~500-char excerpt and word count from markdown content. */
-  static extractExcerpt(content: string): { excerpt: string; wordCount: number } {
-    const stripped = content
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/\*\*(.+?)\*\*/g, '$1')
-      .replace(/\*(.+?)\*/g, '$1')
-      .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-      .replace(/`(.+?)`/g, '$1')
-      .replace(/\n{2,}/g, ' ')
-      .trim()
-    const excerpt = stripped.slice(0, 500)
-    const wordCount = content.split(/\s+/).filter(Boolean).length
-    return { excerpt, wordCount }
-  }
-
-  /**
-   * Extract a ~500-char excerpt and word count from HTML proposal content.
-   * Strips <script> and <style> blocks first (their text would dominate),
-   * then drops all remaining tags and collapses whitespace.
-   */
-  static extractHtmlExcerpt(html: string): { excerpt: string; wordCount: number } {
-    const text = html
-      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ' ')
-      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/\s+/g, ' ')
-      .trim()
-    const excerpt = text.slice(0, 500)
-    const wordCount = text.split(/\s+/).filter(Boolean).length
-    return { excerpt, wordCount }
-  }
+  static readonly extractExcerpt = extractExcerpt
+  static readonly extractHtmlExcerpt = extractHtmlExcerpt
 }

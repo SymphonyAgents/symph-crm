@@ -26,6 +26,14 @@ Do not add `backdrop-blur-*`, `shadow-2xl`, or large custom overlay shadows to m
 
 Before creating or changing a modal, compare against `CreateDealModal.tsx`, `CreateBrandModal.tsx`, and `components/ui/dialog.tsx` so spacing, close behavior, dark mode, and transition timing stay consistent.
 
+## CRM Mounted Storage Single-Writer Invariant
+
+All CRM-managed content filesystem access belongs in `apps/api/src/storage/storage.service.ts`. Domain services and controllers must not import `fs`, hardcode `/share/crm`, or bypass `StorageService`. Aria integrations must use CRM APIs rather than direct mounted-volume access.
+
+The API deployment in `cloudbuild.yaml` must remain at `--max-instances=1`. `StorageService` uses a process-local per-path queue, so increasing the API above one instance would remove its same-path operation ordering guarantee and expose Cloud Storage FUSE to multiple application mounts. This does not make a separate read followed later by a write atomic; stale whole-page updates still require an explicit revision contract if that stronger guarantee becomes necessary. Before scaling out, implement and verify cross-instance coordination or object-generation compare-and-swap. Keep the storage-boundary regression check passing.
+
+`CRM_STORAGE_READ_ONLY=true` is a cutover-only safety switch that keeps reads available while rejecting CRM-managed content writes. It must remain unset in normal production and must never be treated as a general maintenance-mode framework.
+
 ## Commit Workflow
 
 When the user asks for a commit, reference the `source-command-commit` skill before committing and use it as the commit workflow checklist.

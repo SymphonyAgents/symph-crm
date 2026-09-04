@@ -81,7 +81,7 @@ export class DocumentsController {
   }
 
   /**
-   * Serve a file from NFS.
+   * Serve a file from CRM-managed storage.
    * GET /api/documents/{id}/file
    * Returns the actual file content with appropriate Content-Type and Content-Disposition headers.
    */
@@ -97,16 +97,15 @@ export class DocumentsController {
     const doc = await this.documentsService.findOne(id)
     if (!doc) throw new NotFoundException(`Document ${id} not found`)
 
-    // Only serve NFS files, not voice recordings
+    // Only serve CRM-mounted files, not voice recordings
     const AUDIO_TAGS = ['mp3', 'm4a', 'mpeg', 'mp4', 'x-m4a']
     const isVoice = doc.tags?.some(t => AUDIO_TAGS.includes(t))
     if (isVoice) {
       throw new BadRequestException('Voice recordings are served from Supabase Storage')
     }
 
-    // Read from NFS
     const buffer = await this.storage.readFile(doc.storagePath)
-    if (!buffer) throw new NotFoundException(`File not found on NFS: ${doc.storagePath}`)
+    if (!buffer) throw new NotFoundException(`File not found in CRM storage: ${doc.storagePath}`)
 
     // inline=1 → browser renders in-place (PDF preview); default → force download
     const filename = doc.storagePath.split('/').pop() ?? doc.title
@@ -185,8 +184,8 @@ export class DocumentsController {
     const titleBase = originalname.replace(/\.[^.]+$/, '') // strip extension
 
     // Classify MIME type to determine storage path and write strategy.
-    // TEXT_MIMES: parsed and stored as markdown on NFS.
-    // BINARY_DOC_MIMES: binary written verbatim to NFS (PDF, DOCX, PPTX), NOT via writeMarkdown.
+    // TEXT_MIMES: parsed and stored as markdown in CRM-managed storage.
+    // BINARY_DOC_MIMES: binary written verbatim (PDF, DOCX, PPTX), NOT via writeMarkdown.
     //   Previously these fell through to fileParser and had their extracted text written to the .pdf
     //   path via writeMarkdown(), overwriting the binary. The /file endpoint then served text as PDF.
     const TEXT_MIMES = new Set([
@@ -213,7 +212,7 @@ export class DocumentsController {
     } else if (baseMime.startsWith('audio/')) {
       content = `[Audio attachment: ${originalname}]`
     } else if (isBinaryDoc) {
-      // Binary documents (PDF, DOCX, etc.): binary is written to NFS below.
+      // Binary documents (PDF, DOCX, etc.): binary is written to mounted CRM storage below.
       // Do NOT pass content so documentsService.create() skips writeMarkdown()
       // and does not clobber the binary with extracted text.
       content = undefined
@@ -228,13 +227,13 @@ export class DocumentsController {
     const safeName = titleBase.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 60)
     const storagePath = `deals/${dealId}/${bucket}/${timestamp}-${safeName}.${isTextNote ? 'md' : ext}`
 
-    // Write binary to NFS. Audio stays in Supabase (needs signed URLs for playback).
+    // Write binary to mounted CRM storage. Audio stays in Supabase for signed playback URLs.
     if (baseMime.startsWith('audio/')) {
       await this.storage.uploadVoiceRecording(storagePath, buffer, baseMime)
       this.logger.log(`Audio stored in Supabase: ${storagePath} (${buffer.length} bytes)`)
     } else if (isBinary) {
       await this.storage.writeFile(storagePath, buffer)
-      this.logger.log(`Binary stored on NFS: ${storagePath} (${buffer.length} bytes)`)
+      this.logger.log(`Binary stored in CRM storage: ${storagePath} (${buffer.length} bytes)`)
     }
 
     const tags = [bucket, baseMime.split('/')[1] ?? ext]

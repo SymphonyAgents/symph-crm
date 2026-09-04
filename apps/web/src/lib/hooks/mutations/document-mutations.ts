@@ -106,7 +106,7 @@ export function useGetDocumentDownloadUrl(
   })
 }
 
-// ─── NFS Deal Note mutations ─────────────────────────────────────────────────
+// ─── File-backed deal note mutations ─────────────────────────────────────────
 
 export type SaveDealNoteInput = {
   dealId: string

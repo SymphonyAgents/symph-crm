@@ -578,7 +578,7 @@ export type FilterTab = 'all' | 'unread'
 
 export type InboxChannel = 'all' | 'email' | 'messenger' | 'instagram' | 'whatsapp' | 'viber'
 
-// ── Deal Notes (NFS flat) ──────────────────────────────────────────────────
+// ── Deal Notes (file-backed flat API) ──────────────────────────────────────
 
 
 export type NfsDealNote = {
@@ -597,7 +597,7 @@ export type NfsDealNote = {
   category: string
 }
 
-// ── Deal Notes (NFS) ────────────────────────────────────────────────────────
+// ── Deal Notes (file-backed API) ────────────────────────────────────────────
 
 export type DealNoteFile = {
   filename: string
@@ -618,7 +618,7 @@ export type DealNotesResponse = {
   log: string | null
 }
 
-// ── Deal Summaries (NFS) ────────────────────────────────────────────────────
+// ── Deal Summaries (CRM storage) ────────────────────────────────────────────
 
 export type DealSummaryMeta = {
   filename: string
@@ -639,7 +639,7 @@ export type DealSummaryCheck = {
   latestSummaryAt: string | null
 }
 
-// ── Contact Notes (NFS) ─────────────────────────────────────────────────────
+// ── Contact Notes (CRM storage) ─────────────────────────────────────────────
 
 export type ContactNoteFile = {
   filename: string

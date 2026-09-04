@@ -5,7 +5,6 @@ export type AriaFireAndForgetInput = {
   sessionId: string
   content: string
   userId?: string | null
-  workspacePath?: string
 }
 
 @Injectable()
@@ -33,7 +32,6 @@ export class AriaGatewayService {
         content: input.content,
         user_id: input.userId ?? 'system',
         user_tier: 3,
-        workspace_path: input.workspacePath ?? '/share/agency/products/symph-crm',
       }),
     }).catch((error) => {
       this.logger.error(`Aria fire-and-forget failed for session ${input.sessionId}: ${error}`)

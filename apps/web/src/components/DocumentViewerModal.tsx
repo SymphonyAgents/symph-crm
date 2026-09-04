@@ -77,7 +77,7 @@ type DocumentViewerModalProps = {
   onClose: () => void
   onDelete?: (doc: ViewableDoc) => void
   onDownload?: (doc: ViewableDoc) => void
-  /** Pre-loaded content — when provided, skips the GET /documents/:id/content fetch (used for NFS notes) */
+  /** Pre-loaded content skips the document-content fetch for notes already returned by the API. */
   initialContent?: string
 }
 
@@ -100,7 +100,7 @@ export function DocumentViewerModal({ doc, onClose, onDelete, onDownload, initia
   isEditingRef.current = isEditing
 
   // Fetch content for all non-image, non-audio documents (text, extracted PDF text, etc.)
-  // Skip fetch when initialContent is provided (NFS notes already include content)
+  // Skip fetch when the notes API already included content.
   const { data, isLoading } = useGetDocumentContent(!hasPreloadedContent && !isImage && !isAudio ? doc.id : null)
 
   // Fetch signed preview URL for images and audio (stored as binaries in ATTACHMENTS_BUCKET)

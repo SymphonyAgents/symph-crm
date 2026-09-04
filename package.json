@@ -11,7 +11,8 @@
     "lint": "pnpm -r run lint",
     "db:generate": "pnpm --filter @symph-crm/database generate",
     "db:migrate": "pnpm --filter @symph-crm/database migrate",
-    "db:studio": "pnpm --filter @symph-crm/database studio"
+    "db:studio": "pnpm --filter @symph-crm/database studio",
+    "test:storage-migration": "node --test scripts/migrate-crm-storage.test.mjs"
   },
   "engines": {
     "node": ">=20"
@@ -20,7 +21,8 @@
     "overrides": {
       "@babel/plugin-transform-modules-systemjs": "^7.29.4",
       "@xmldom/xmldom": "^0.9.10",
-      "fast-uri": "3.1.5",
+      "browserslist": "4.28.7",
+      "fast-uri": "3.1.6",
       "lodash": "^4.18.1",
       "path-to-regexp": "^8.4.2",
       "picomatch": "^4.0.4",

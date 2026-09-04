@@ -18,8 +18,8 @@ export type ProposalStatus = typeof PROPOSAL_STATUSES[number]
  * being viewed.
  *
  * NOTE: Proposals deliberately do NOT use the `documents` table. `documents`
- * is for AI-consumed long-form content (context.md, transcripts) stored on
- * NFS so Aria can grep the filesystem. Proposals are discrete versioned
+ * is for AI-consumed long-form content resolved through the CRM storage API.
+ * Proposals are discrete versioned
  * client-facing artifacts; HTML lives inline in `proposal_versions.html`
  * for atomicity and operational simplicity.
  */

@@ -1,0 +1,9 @@
+FROM node:20-alpine
+
+WORKDIR /app
+COPY scripts/migrate-crm-storage.mjs ./migrate-crm-storage.mjs
+
+# Source contains one intentionally owner-only file. The job runs as root so it
+# can read that file without changing source permissions; NFS remains read-only.
+ENTRYPOINT ["node", "/app/migrate-crm-storage.mjs"]
+CMD ["--source", "/mnt/nfs/crm", "--destination", "/mnt/gcs"]
