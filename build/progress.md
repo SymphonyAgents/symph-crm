@@ -18,4 +18,6 @@
 [2026-09-04 07:19:59 UTC] Added three direct TypeScript characterization tests for deal notes, wiki operations, and contact notes; all passed.
 [2026-09-04 07:22:52 UTC] Verified four credentials exposed in public history still match active versions. Tracked runbook sanitized; coordinated rotation is now a migration-execution and deploy blocker.
 [2026-09-04 07:25:28 UTC] Hardened migration build f79cfd85-b70a-4b79-9323-1667795f5238 succeeded with immutable source-archive verification; deployed image digest recorded by Cloud Build.
-[2026-09-04 07:48:36 UTC] Final API build, web TypeScript/build, four storage-consumer tests, storage-boundary regression, six migration tests, and all five existing API regressions passed. Remediated all six known high advisories by pinning patched fast-uri and browserslist versions; fresh registry audit still pending.
+[2026-09-04 07:48:36 UTC] Final API build, web TypeScript/build, four storage-consumer tests, storage-boundary regression, six migration tests, and all five existing API regressions passed. Remediated all six known high advisories by pinning patched fast-uri and browserslist versions.
+[2026-09-04 07:50:10 UTC] Fresh pnpm audit passed the high-severity gate with zero high or critical findings; 22 moderate and 6 low advisories remain outside this migration scope.
+[2026-09-04 07:50:10 UTC] Migration tooling committed as 38c285e and the GCS FUSE application/storage cutover source committed as 5b60fb8. Both remain local and unpushed pending the production security and cutover gates.
